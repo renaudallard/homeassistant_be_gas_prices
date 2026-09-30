@@ -395,6 +395,9 @@ _TAX_HEADING_RE = re.compile(
     r"Taxes et redevances : ((?:FL|WAL)(?: (?:FL|WAL))*)\s*$", re.MULTILINE
 )
 _TAX_VALUE_RE = re.compile(r"-|\d+,\d+")
+# What follows the block's footnotes. The February 2026 indexed cards left
+# out the first heading and go straight on to the VAT note.
+_TAX_BLOCK_ENDS = ("INFORMATION SUR VOTRE TARIF", "La TVA sur les prix indiqués")
 # The excise is one row in the table and both bands in its footnote: "0-12.000
 # kWh : 1,0929 c€/kWh, >= 12.001 kWh : 1,1830 c€/kWh".
 _EXCISE_RE = re.compile(r"0-12\.000 kWh : (\d+,\d+) c€/kWh, >= 12\.001 kWh : (\d+,\d+) c€")
@@ -412,9 +415,10 @@ def _tax_rows(text: str, region: str) -> dict[str, float | None]:
     tag = _REGION_TO_TAG[region]
     if tag not in tags:
         raise ExtractorError(f"Luminus: card is for {' '.join(tags)}, not {tag}")
-    end = text.find("INFORMATION SUR VOTRE TARIF", heading.end())
-    if end < 0:
+    ends = [at for at in (text.find(e, heading.end()) for e in _TAX_BLOCK_ENDS) if at >= 0]
+    if not ends:
         raise ExtractorError("Luminus: end of the tax block not found")
+    end = min(ends)
     lines = [line.strip() for line in text[heading.end() : end].splitlines()]
     labels = [line for line in lines if line.endswith("(c€/kWh)")]
     values = [line for line in lines if _TAX_VALUE_RE.fullmatch(line)]

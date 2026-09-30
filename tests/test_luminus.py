@@ -71,6 +71,7 @@ _BASICFIX_2025 = (
     "LUMINUS_PL_202512_ZGR1B2D_FR_FLA_BasicFix_Gas_2_year_Direct_Mail_Archive_Price_Lists.pdf"
 )
 _ARCHIVE_AUGUST = "archive_ComfyFlex_Gaz_Wallonia_2026-08.pdf"
+_ARCHIVE_FEBRUARY = "archive_ComfyFlex_Gaz_Wallonia_2026-02.pdf"
 _ARCHIVE_PRODUCTS = "archive_products_Gas_Wallonia_2026-08.json"
 _INDEX_PDF = "file-52a69f0e2a8fdd2905723e58474ddc38bd49de04-pdf.pdf"
 _INDEX_PAGE = "parametres-d-indexation_fr.html"
@@ -89,6 +90,25 @@ def _card(name: str) -> str:
 def _index_text() -> str:
     """pdfplumber takes seconds on the index PDF, so it is read once."""
     return luminus.index_table_text((FIXTURES / "luminus" / _INDEX_PDF).read_bytes())
+
+
+def test_february_2026_card_without_the_tarif_heading_is_read() -> None:
+    """The February 2026 indexed cards go from the tax block's footnotes
+    straight on to the VAT note, with no "INFORMATION SUR VOTRE TARIF"."""
+    text = _card(_ARCHIVE_FEBRUARY)
+    assert "INFORMATION SUR VOTRE TARIF" not in text
+    snap = luminus.parse_snapshot("luminus_comfyflex", REGION_WALLONIA, text)
+    assert snap.publication_label == "2026-02"
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    # "0,1000 x TTF DAHW + 0,0000 x TTF 1-0-3 + 1,8688", excluding VAT.
+    assert energy.base == pytest.approx(0.018688 * 1.06)
+    assert snap.taxes.energy_contribution == pytest.approx(0.001058)
+    assert snap.taxes.connection_fee == pytest.approx(0.000075)
+    assert snap.taxes.excise_bands == (
+        (12000.0, pytest.approx(0.008724)),
+        (None, pytest.approx(0.009623)),
+    )
 
 
 def test_comfyflex_indexes_quarterly_on_ttf_dahw() -> None:

@@ -71,7 +71,9 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
   - Flanders: the eight Fluvius areas as `FLUVIUS_LABELS` spells them.
   - A stray region tag ("WAL", "FL") sits alone on the line above the rows.
 - Taxes, "3 Taxes et redevances : WAL" (or FL): the row labels, then their
-  figures one a line in the same order.
+  figures one a line in the same order, up to "INFORMATION SUR VOTRE TARIF"
+  or, on the February 2026 indexed cards, which leave that heading out, the
+  VAT note "La TVA sur les prix indiqués".
   - "Cotisation sur l"énergie": a dash, read as 0.
   - Excise: the row prints the low band only; both come from its footnote
     "0-12.000 kWh : 1,0929 c€/kWh, >= 12.001 kWh : 1,1830 c€/kWh".
@@ -198,6 +200,8 @@ September 2026 online cards, both regions:
   `test_flanders_table_has_every_fluvius_area_and_no_data_management`.
 - 2025 layout: `test_2025_card_serves_both_regions`,
   `test_2025_title_without_the_online_marker_is_the_same_product`.
+- February 2026 indexed card without its tarif heading:
+  `test_february_2026_card_without_the_tarif_heading_is_read`.
 - Fail loud: `test_forward_term_weighted_in_fails_loud`,
   `test_walloon_card_without_connection_fee_fails_loud`.
 - Index: `test_index_pdf_places_each_figure_under_its_year`,
