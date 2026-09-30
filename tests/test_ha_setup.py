@@ -318,3 +318,6 @@ async def test_a_card_published_as_images_without_a_reading_is_unreadable(
     issues = ir.async_get(hass)
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is not None
     assert issues.async_get_issue(DOMAIN, f"card_read_by_ocr_{entry.entry_id}") is None
+    # Removed while retrying, it is never unloaded: its cards go with it.
+    await hass.config_entries.async_remove(entry.entry_id)
+    assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None

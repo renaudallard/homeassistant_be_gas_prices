@@ -178,7 +178,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: GasConfigEntry) -> None:
-    """Drop the entry's store with the entry, so a re-add starts clean."""
+    """Drop the entry's store and Repairs cards with the entry, so a re-add
+    starts clean. An entry removed while its setup was retrying was never
+    unloaded, which is where the cards are cleared otherwise."""
+    clear_issues(hass, entry.entry_id)
     await Store[dict[str, object]](
         hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
     ).async_remove()
