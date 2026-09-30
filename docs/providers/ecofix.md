@@ -82,7 +82,9 @@ TTF-RLP-M: "het rekenkundig gemiddelde van de dagelijkse Day Ahead- en Weekend
 TTF-prijzen (EGSI) tijdens de maand van levering, zoals gepubliceerd op de
 website van EEX". Ecofix's tariff page links no index values, and EEX's terms
 forbid reuse, so there is no `fetch_index`: every month is priced at the
-"Maandprijs" its card prints and marked provisional.
+"Maandprijs" its card prints and marked provisional. A contract signed on an
+earlier card, or with typed figures, is priced on its own formula at the
+index the month's card was taken back to (`bill.contract_leg`).
 
 The two products are priced on one index value, which neither card names.
 Taken back through each formula, the printed prices give 62,38 and 62,37

@@ -54,7 +54,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from . import calorific
-from .bill import IndexValue, bill_month, month_key
+from .bill import IndexValue, bill_month, contract_leg, month_key
 from .compare import rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -94,7 +94,6 @@ from .gas_meter import (
     statistic_kind,
 )
 from .issues import sync_issues
-from .manual_rate import manual_leg
 from .month_cards import (
     ArchiveUnavailable,
     MonthCardCache,
@@ -537,16 +536,17 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     def _energy_for(self, card: SupplierSnapshot) -> EnergyRates:
         """The energy leg a card bills this household on: the signing card's
-        when the entry names a signing month the archive can serve, with the
-        figures the household typed from its contract laid over it."""
-        leg = card.energy
+        when the entry names a signing month the archive can serve and the
+        contract holds its figures, with the figures the household typed
+        from its contract laid over it."""
+        signed: SupplierSnapshot | None = None
         signing = self._signing_month()
         if signing is not None:
             today_month = month_key(dt_util.now().date())
             signed = self._snapshot if signing == today_month else self._month_card(signing)
-            if signed is not None:
-                leg = signed.energy
-        return manual_leg(leg, self._data)
+        return contract_leg(
+            card.energy, None if signed is None else signed.energy, self._index_table, self._data
+        )
 
     def month_price(self, month: str) -> tuple[PriceBreakdown, float | None] | None:
         """The all-in price of ``month`` and the kWh a cubic metre was worth

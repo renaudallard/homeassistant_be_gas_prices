@@ -32,9 +32,21 @@ from datetime import date, timedelta
 
 import pytest
 
-from custom_components.be_gas_prices.bill import bill_month, index_for, resolve_energy_price
-from custom_components.be_gas_prices.const import CALIBER_Q10, DSO_ORES, REGION_WALLONIA
-from custom_components.be_gas_prices.providers import engie
+from custom_components.be_gas_prices.bill import (
+    bill_month,
+    contract_leg,
+    index_for,
+    resolve_energy_price,
+)
+from custom_components.be_gas_prices.const import (
+    CALIBER_Q10,
+    CONF_MANUAL_BASE,
+    CONF_MANUAL_FACTOR,
+    DSO_ORES,
+    REGION_FLANDERS,
+    REGION_WALLONIA,
+)
+from custom_components.be_gas_prices.providers import engie, sparki
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
@@ -79,6 +91,46 @@ def test_an_indexed_leg_is_priced_on_its_month() -> None:
 def test_a_fixed_leg_ignores_the_index() -> None:
     fixed = FixedRates(price=0.08, yearly_fixed_fee=60.0)
     assert resolve_energy_price(fixed, TABLE, "2026-07") == (0.08, None)
+
+
+def _sparki(name: str) -> SupplierSnapshot:
+    return sparki.parse_snapshot(
+        "sparki_self_service",
+        REGION_FLANDERS,
+        fixture_text(
+            "sparki", f"Sparki_Tariefkaart_{name}_Particulier_SelfService_Gas_NL.pdf", "layout"
+        ),
+        "u",
+    )
+
+
+def test_a_variable_contract_is_billed_on_the_card_of_the_month() -> None:
+    """The supplier sets a variable price every month, so a contract signed
+    in August is billed at September's price in September."""
+    august, september = _sparki("augustus").energy, _sparki("september").energy
+    assert august.price != september.price
+    assert contract_leg(september, august, None, {}) is september
+
+
+def test_a_fixed_contract_keeps_the_price_it_was_signed_at() -> None:
+    signed = FixedRates(price=0.10, yearly_fixed_fee=60.0)
+    assert contract_leg(FixedRates(price=0.07), signed, None, {}) is signed
+
+
+def test_a_signed_formula_moves_with_the_index_its_month_card_implies() -> None:
+    """With no index values published (Ecofix), the formula signed at 60
+    EUR/MWh is priced at the 65 the card of the month prints its price at,
+    not held at the signing month's price."""
+    signed = IndexedRates(factor=0.001, base=0.004, index="TTF", price=0.064)
+    own = IndexedRates(factor=0.0011, base=0.005, index="TTF", price=0.0765)
+    assert contract_leg(own, signed, None, {}).price == pytest.approx(signed.at(65.0))
+    # Once the supplier publishes the index, the table prices the formula.
+    assert contract_leg(own, signed, {"TTF": {"2026-09": 65.0}}, {}) is signed
+    # Typed figures are priced at the same index.
+    typed = contract_leg(own, signed, None, {CONF_MANUAL_FACTOR: 0.1, CONF_MANUAL_BASE: 0.2})
+    assert typed.price == pytest.approx((0.1 * 65.0 + 0.2) / 100.0 * 1.06)
+    # No signing card and nothing typed: the card's own leg as printed.
+    assert contract_leg(own, None, None, {}) is own
 
 
 def test_bill_month_applies_the_law_to_the_delivery_month() -> None:

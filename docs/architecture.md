@@ -54,7 +54,7 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `__init__.py` | Entry setup and teardown, the `refresh` and `backfill_statistics` services, the automatic price-history backfill. |
 | `coordinator.py` | `GasCoordinator`: one tick fetches or keeps the card, refreshes index and calorific values, reads the meter and builds `CoordinatorData`. Persists its state in a Store. |
 | `coordinator_data.py` | `CoordinatorData`, the record every entity reads, and `Conversion`. |
-| `bill.py` | One month billed: the card, the energy leg, the index value of the month, the volume and the days. Pure. |
+| `bill.py` | One month billed: the card, the energy leg (the month's card, the signing card or typed figures), the index value of the month, the volume and the days. Pure. |
 | `running_costs.py` | The year walked month by month on each month's card, the rolling year and the year-end projection. Pure. |
 | `pricing.py` | The per-kWh breakdown and the yearly fixed costs of one household on one card. Pure. |
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption out of recorder statistics, in m³ or kWh. |

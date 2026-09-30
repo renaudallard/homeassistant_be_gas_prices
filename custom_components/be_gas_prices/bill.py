@@ -36,10 +36,13 @@ The rules this encodes:
   where one is known, and the federal levies from the law for that delivery
   month (``_resolve.resolve_federal_levies``).
 - The energy leg is the card of the month, or the card the household signed
-  (the signing cohort) when the entry says so. An indexed leg is priced at
-  the index value of the delivery month once the supplier has published it,
-  at the latest value it has published before then, and at the card's own
-  printed figure when it publishes none.
+  (the signing cohort) when the entry says so and the contract is fixed or
+  indexed. A variable price is the supplier's for each month, so the card
+  of the month sets it whatever the signing date. An indexed leg is priced
+  at the index value of the delivery month once the supplier has published
+  it, at the latest value it has published before then, and, where it
+  publishes none, at the index the card of the month prices its own figure
+  at.
 - The distribution tier and the excise slices follow the household's annual
   volume, and the yearly fixed costs accrue by the day.
 """
@@ -48,9 +51,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import date
+from typing import Any
 
+from .manual_rate import manual_leg
 from .pricing import PriceBreakdown, compute_breakdown, energy_price, fixed_costs
-from .providers._rates import EnergyRates, IndexedRates
+from .providers._rates import EnergyRates, IndexedRates, VariableRates
 from .providers._resolve import resolve_for_delivery
 from .providers.base import IndexTable, SupplierSnapshot
 
@@ -84,6 +89,36 @@ def index_for(table: IndexTable | None, index: str, month: str) -> IndexValue | 
         return None
     latest = max(earlier)
     return IndexValue(values[latest], latest)
+
+
+def contract_leg(
+    own: EnergyRates,
+    signed: EnergyRates | None,
+    table: IndexTable | None,
+    data: dict[str, Any],
+) -> EnergyRates:
+    """The energy leg a month is billed on, from the card of the month
+    (``own``), the signing card's leg where one is known and the figures
+    the household typed (``data``).
+
+    Where the supplier publishes no value of the index, a card prints only
+    its own month's price. The index that price was set at is read back off
+    the card of the month, and a signed or typed formula is priced at it,
+    so the month moves with the market rather than holding the signing
+    month's figure.
+    """
+    leg = own if signed is None or isinstance(signed, VariableRates) else signed
+    leg = manual_leg(leg, data)
+    if (
+        leg is not own
+        and isinstance(leg, IndexedRates)
+        and isinstance(own, IndexedRates)
+        and own.index == leg.index
+        and own.factor
+        and not (table or {}).get(leg.index)
+    ):
+        leg = replace(leg, price=leg.at((own.price - own.base) / own.factor))
+    return leg
 
 
 def resolve_energy_price(
