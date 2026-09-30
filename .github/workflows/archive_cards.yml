@@ -140,12 +140,12 @@ jobs:
               jq -s '.[0] + .[1]' "$manifest" landed.json > "$manifest.tmp" && mv "$manifest.tmp" "$manifest"
             fi
           done
-          # Same retention as the rows: a month more than three years back
+          # Same retention as the rows: a month more than twelve months back
           # goes. Only this integration's releases, and counted from the 1st
           # so no day of the month shifts the cutoff. Listed with an explicit
           # limit: gh stops at 30 by default, and the old ones would sit
           # beyond it, never listed and never deleted.
-          cutoff="gas-$(date -u -d "$(date -u +%Y-%m-01) -36 months" +%Y-%m)"
+          cutoff="gas-$(date -u -d "$(date -u +%Y-%m-01) -12 months" +%Y-%m)"
           gh release list --repo "$CARDS_REPO" --limit 1000 --json tagName --jq '.[].tagName' \
             | while read -r tag; do
               case "$tag" in gas-*) ;; *) continue ;; esac

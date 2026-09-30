@@ -243,6 +243,14 @@ running month of a card published as images. The request names the
 supplier, the contract, the region and the month and nothing else; the
 option in the settings switches it off.
 
+The archive keeps the running month and the twelve before it. A signing
+month older than that is read from the supplier's own archive where it still
+holds it; otherwise each month is priced on its own card rather than the one
+signed for, unless you type the figures of your contract. A card an
+installation has read is kept in its store until an update changes the
+stored card format, so this matters when the entry is new, its signing date
+changes, or such an update is installed.
+
 ## Services
 
 ```yaml

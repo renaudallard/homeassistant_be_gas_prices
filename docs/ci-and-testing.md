@@ -129,7 +129,7 @@ under `gas/`:
   earlier runs kept.
 
 A row is rewritten only when the parse changed, so a quiet day writes
-nothing. Months older than `--keep-months` (36) are removed, with the texts
+nothing. Months older than `--keep-months` (12) are removed, with the texts
 no row names any more.
 
 When the parser sources change (their digest is stamped in `parser.txt`), or
@@ -149,10 +149,11 @@ to the same engine, so a new glyph library reads those cards again and no
 other. The engine needs Python 3.14, so the archive job runs on 3.14; the
 test suite, like an installation, runs on 3.13.
 
-`--backfill N` also mirrors the N closed months before this one from every
-supplier archive, for months not held yet. `--only` restricts to a supplier,
-`--index-only` refreshes the index tables alone. A supplier is given up for
-the day after three network failures in a row.
+`--backfill N` also mirrors the N closed months before this one, at most
+`--keep-months`, from every supplier archive, for months not held yet.
+`--only` restricts to a supplier, `--index-only` refreshes the index tables
+alone. A supplier is given up for the day after three network failures in a
+row.
 
 `scripts/card_texts.py` is the render cache both scripts share: a stored text
 is served only when `parser.txt` shows the same pypdf and pdfplumber
@@ -182,7 +183,7 @@ a day, and a failure that changes shape is posted at once.
 | `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
 | `live_check.yml` | daily, and on pull requests that touch a provider or the check | `live_check.py --texts` against a read-only clone of be_price_cards; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels |
-| `archive_cards.yml` | daily at 05:53 UTC, before the live check | on Python 3.14 with the OCR engine, clones be_price_cards with `BE_GAS_CARDS`, archives into `gas/`, uploads the PDFs as `gas-<YYYY-MM>` releases and prunes those past 36 months, writes the root and `gas/` READMEs, pushes with a rebase retry, warns 14 days before the token expires, files an issue when a step failed |
+| `archive_cards.yml` | daily at 05:53 UTC, before the live check | on Python 3.14 with the OCR engine, clones be_price_cards with `BE_GAS_CARDS`, archives into `gas/`, uploads the PDFs as `gas-<YYYY-MM>` releases and prunes those past 12 months, writes the root and `gas/` READMEs, pushes with a rebase retry, warns 14 days before the token expires, files an issue when a step failed |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
 
 ### What the repositories need

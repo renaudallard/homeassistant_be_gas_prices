@@ -65,8 +65,11 @@ month-ahead average) is `settled`: the card prices its month on it and the
 printed price is final.
 
 Which card's leg: the card of month M by default, or the signing card when
-the entry names a contract start date or a tariff card month. Figures the
-household typed from its contract (`manual_rate.py`) are laid over that leg.
+the entry names a contract start date or a tariff card month. A signing card
+no one serves any more (neither the supplier's archive nor the project's,
+which keeps twelve months) leaves each month on its own card's leg. Figures
+the household typed from its contract (`manual_rate.py`) are laid over that
+leg.
 
 ## The regulated figures the law sets for the delivery month
 

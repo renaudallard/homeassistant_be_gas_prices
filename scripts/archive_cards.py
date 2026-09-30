@@ -150,8 +150,9 @@ _INDICES = "indices"
 _MANIFEST = "pdfs.json"
 _COVERAGE = "coverage.md"
 _COVERAGE_DIR = "coverage"
-# Three years of months, the same retention the other two namespaces keep.
-_KEEP_MONTHS = 36
+# The running month and the twelve before it, the same retention the other
+# two namespaces keep.
+_KEEP_MONTHS = 12
 # A supplier whose cards fail on the network this many times in a row is not
 # answering this runner today, and every further card would cost the same
 # retries and pauses: give up on it until tomorrow rather than run the job
