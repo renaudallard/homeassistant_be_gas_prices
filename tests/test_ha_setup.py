@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date, timedelta
@@ -54,6 +55,7 @@ from custom_components.be_gas_prices.const import (
     CONVERSION_MANUAL,
     DOMAIN,
     DSO_ORES,
+    DSO_SIBELGA,
     REGION_WALLONIA,
 )
 from custom_components.be_gas_prices.providers import engie
@@ -227,6 +229,37 @@ async def test_the_daily_ranking_starts_at_its_minute(
         async_fire_time_changed(hass)
         await hass.async_block_till_done()
     assert ranked.await_count == 1
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_failed_setup_leaves_no_month_cards_task_behind(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The past months are fetched in the background from the first tick;
+    a setup that then fails must not leave that fetch running, a new one
+    starting on every retry."""
+    gate = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    async def slow_month(*_args: Any) -> None:
+        try:
+            await gate.wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=slow_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        # Sibelga is not on a Walloon card: the first tick cannot price it.
+        entry = MockConfigEntry(
+            domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_DSO: DSO_SIBELGA}
+        )
+        entry.add_to_hass(hass)
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        assert entry.state.name == "SETUP_RETRY"
+        await hass.async_block_till_done()
+        assert cancelled.is_set()
+        gate.set()
 
 
 async def test_setup_retries_when_there_is_no_card_at_all(

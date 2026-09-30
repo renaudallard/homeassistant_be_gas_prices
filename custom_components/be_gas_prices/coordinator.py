@@ -614,8 +614,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # until they land.
             self._first_tick = False
             if needed:
-                self._month_fill = self.hass.async_create_background_task(
-                    self._fill_then_refresh(needed), f"{DOMAIN} month cards"
+                self._month_fill = self.entry.async_create_background_task(
+                    self.hass, self._fill_then_refresh(needed), f"{DOMAIN} month cards"
                 )
         elif self._month_fill is None or self._month_fill.done():
             await self._fill_month_cards(needed)
@@ -649,8 +649,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         household = self.household
         if household is None:
             return
-        self._ranking_task = self.hass.async_create_background_task(
-            self._rank(today, household), f"{DOMAIN} daily ranking"
+        # Tied to the entry, so an unload, a removal or a failed setup
+        # cancels it rather than let it write the entry's store afterwards.
+        self._ranking_task = self.entry.async_create_background_task(
+            self.hass, self._rank(today, household), f"{DOMAIN} daily ranking"
         )
 
     async def _rank(self, today: date, household: Household) -> None:
