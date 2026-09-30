@@ -81,7 +81,7 @@
       },
       "factor": {
         "title": "Omrekeningsfactor",
-        "description": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas).",
+        "description": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
         "data": {
           "conversion_factor": "Omrekeningsfactor"
         }
@@ -220,7 +220,7 @@
       },
       "factor": {
         "title": "Omrekeningsfactor",
-        "description": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas).",
+        "description": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
         "data": {
           "conversion_factor": "Omrekeningsfactor"
         }

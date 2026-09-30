@@ -81,7 +81,7 @@
       },
       "factor": {
         "title": "Facteur de conversion",
-        "description": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche).",
+        "description": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche). Laissez-le vide pour choisir plutôt votre station de réception.",
         "data": {
           "conversion_factor": "Facteur de conversion"
         }
@@ -220,7 +220,7 @@
       },
       "factor": {
         "title": "Facteur de conversion",
-        "description": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche).",
+        "description": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche). Laissez-le vide pour choisir plutôt votre station de réception.",
         "data": {
           "conversion_factor": "Facteur de conversion"
         }

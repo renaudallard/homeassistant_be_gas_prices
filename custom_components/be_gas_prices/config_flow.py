@@ -81,6 +81,7 @@ from .const import (
     CONF_YTD_FROM_CONTRACT_START,
     CONVERSION_MANUAL,
     CONVERSION_MODES,
+    CONVERSION_STATION,
     CUSTOM_KEYS,
     DEFAULT_ANNUAL_CONSUMPTION_KWH,
     DEFAULT_CALIBER,
@@ -496,16 +497,18 @@ class _FlowSteps:
         errors: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
         if user_input is not None:
+            if user_input.get(CONF_CONVERSION_FACTOR) is None:
+                # No bill at hand: the station list, the forms having no way
+                # back to the mode picked on the household step.
+                self._data[CONF_CONVERSION_MODE] = CONVERSION_STATION
+                return await self.async_step_station()
             self._data[CONF_CONVERSION_FACTOR] = float(user_input[CONF_CONVERSION_FACTOR])
             self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
             self._data.pop(CONF_STATION, None)
             return await self._async_finish()
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_CONVERSION_FACTOR,
-                    default=_default(self._data, CONF_CONVERSION_FACTOR),
-                ): NumberSelector(
+                vol.Optional(CONF_CONVERSION_FACTOR): NumberSelector(
                     NumberSelectorConfig(
                         min=9.0,
                         max=13.0,
@@ -515,6 +518,11 @@ class _FlowSteps:
                     )
                 )
             }
+        )
+        # Suggested rather than a default, so a cleared field reaches here
+        # empty instead of coming back as the old factor.
+        schema = self.add_suggested_values_to_schema(
+            schema, {CONF_CONVERSION_FACTOR: self._data.get(CONF_CONVERSION_FACTOR)}
         )
         return self.async_show_form(step_id="factor", data_schema=schema, errors=errors or {})
 

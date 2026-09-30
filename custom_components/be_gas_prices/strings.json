@@ -81,7 +81,7 @@
       },
       "factor": {
         "title": "Conversion factor",
-        "description": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas).",
+        "description": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
         "data": {
           "conversion_factor": "Conversion factor"
         }
@@ -220,7 +220,7 @@
       },
       "factor": {
         "title": "Conversion factor",
-        "description": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas).",
+        "description": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
         "data": {
           "conversion_factor": "Conversion factor"
         }

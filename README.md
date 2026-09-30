@@ -216,7 +216,8 @@ Home Assistant installs them from the manifest.
    read (an Ecofix entry prices on it), and whether to compare every
    contract daily.
 5. **Conversion factor** (from your bill, the default) or **reception
-   station** (Atrias's calorific value).
+   station** (Atrias's calorific value). Leave the factor empty to pick the
+   station instead.
 
 **Settings, Devices & services, Belgian Gas Prices, Configure** opens a menu:
 edit the settings, quote another contract, rank every contract, or record a

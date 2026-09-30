@@ -81,7 +81,7 @@
       },
       "factor": {
         "title": "Umrechnungsfaktor",
-        "description": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas).",
+        "description": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
         "data": {
           "conversion_factor": "Umrechnungsfaktor"
         }
@@ -220,7 +220,7 @@
       },
       "factor": {
         "title": "Umrechnungsfaktor",
-        "description": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas).",
+        "description": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
         "data": {
           "conversion_factor": "Umrechnungsfaktor"
         }

@@ -242,6 +242,40 @@ async def test_atrias_down_falls_back_to_the_factor(hass: HomeAssistant) -> None
     assert result["errors"] == {"base": "stations_unavailable"}
 
 
+async def test_an_empty_factor_picks_the_station_instead(hass: HomeAssistant) -> None:
+    """The factor is the default, and a household with no bill at hand has
+    no way back to the household step: leaving it empty lists the stations."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_POSTCODE: ""})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REGION: REGION_WALLONIA}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: "engie"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_CONTRACT: "engie_flow"}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
+    result = await _household(hass, result["flow_id"], CONVERSION_MANUAL)
+    assert result["step_id"] == "factor"
+    with patch(
+        "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
+    ):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        assert result["step_id"] == "station"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_STATION: STATIONS[0].ean}
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    data = result["data"]
+    assert data[CONF_CONVERSION_MODE] == CONVERSION_STATION
+    assert data[CONF_STATION] == STATIONS[0].ean
+    assert CONF_CONVERSION_FACTOR not in data
+
+
 def _entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -328,6 +362,11 @@ async def test_options_switch_keeps_the_earlier_contract(hass: HomeAssistant) ->
         result["flow_id"], {CONF_DSO: DSO_ORES}
     )
     result = await _household_options(hass, result["flow_id"])
+    # Suggested rather than a default, so clearing it reaches the flow empty.
+    schema = result["data_schema"]
+    assert schema is not None
+    factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
+    assert factor.description == {"suggested_value": 11.5}
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_CONVERSION_FACTOR: 11.5}
     )
