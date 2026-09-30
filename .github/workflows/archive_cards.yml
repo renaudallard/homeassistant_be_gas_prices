@@ -94,14 +94,19 @@ jobs:
         # archived card per supplier, contract, region and month on top, so
         # it gets six hours.
         timeout-minutes: ${{ (github.event.inputs.backfill_months != '' && github.event.inputs.backfill_months != '0') && 360 || 60 }}
+        # The dispatch inputs reach the shell through the environment, not
+        # pasted into the command, so what is typed there is only ever an
+        # argument.
         env:
           CARDS_REPO: renaudallard/be_price_cards
+          BACKFILL: ${{ github.event.inputs.backfill_months || '0' }}
+          REPARSE: ${{ github.event.inputs.reparse == 'true' && '--reparse' || '' }}
         run: >-
           python scripts/archive_cards.py --out tmp/cards/gas --pdfs tmp/pdfs
           --pdf-base-url "https://github.com/${CARDS_REPO}/releases/download"
           --archive-base-url "https://github.com/${CARDS_REPO}/blob/main/gas"
-          --backfill "${{ github.event.inputs.backfill_months || '0' }}"
-          ${{ github.event.inputs.reparse == 'true' && '--reparse' || '' }}
+          --backfill "$BACKFILL"
+          ${REPARSE:+"$REPARSE"}
 
       - name: Keep the cards themselves
         id: keep
