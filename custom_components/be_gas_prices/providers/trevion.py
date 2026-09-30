@@ -330,7 +330,9 @@ def _excise(text: str) -> tuple[tuple[float | None, float], ...]:
     return excise_bands(to_float(match.group(1)) / 100.0, to_float(match.group(2)) / 100.0)
 
 
-_CONTRIBUTION_RE = re.compile(r"Bijdrage op de Energie \(c€/kWh\)\s+(\d+(?:,\d+)?)")
+# Trevion prints some figures with a decimal point ("53.07", "0.98"): one is
+# read whole, not cut at the point.
+_CONTRIBUTION_RE = re.compile(r"Bijdrage op de Energie \(c€/kWh\)\s+(\d+(?:[.,]\d+)?)")
 
 
 def _energy_contribution(text: str) -> float:

@@ -125,6 +125,12 @@ def test_march_card_carries_the_levies_before_august() -> None:
     assert snap.taxes.energy_contribution == pytest.approx(0.0010577)
 
 
+def test_a_contribution_printed_with_a_decimal_point_is_read_whole() -> None:
+    text = _card(_MARCH).replace("(c€/kWh) 0,10577", "(c€/kWh) 0.10577")
+    taxes = trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text).taxes
+    assert taxes.energy_contribution == pytest.approx(0.0010577)
+
+
 def test_published_index_is_the_month_before_the_card() -> None:
     assert trevion.published_index(_card(_SEPTEMBER)) == (date(2026, 8, 1), 61.72)
     # "juli 2026 (53.07 €/MWh)", with a dot.
