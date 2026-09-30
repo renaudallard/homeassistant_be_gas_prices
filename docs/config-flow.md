@@ -31,7 +31,8 @@ reloads the entry.
   the household's own contract are quoted (`compare.quote_contract`) and
   shown side by side. Nothing is saved.
 - **Compare every contract**: a progress step ranks every contract sold in
-  the region (`compare.rank`, 120 s budget, three cards at a time), then the
+  the region (`compare.rank`, 120 s budget, three cards at a time, one
+  supplier's in turn so a page or card they share is read once), then the
   ranked table with the household's own row in bold. Nothing is saved.
 - In both tables a dagger marks a provisional price and `OCR` a card
   published as images, quoted on the card archive's reading of it when the

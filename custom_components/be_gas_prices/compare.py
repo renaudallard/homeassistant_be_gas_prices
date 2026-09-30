@@ -51,6 +51,7 @@ from .const import SUPPLIER_CUSTOM
 from .month_cards import current_card
 from .pricing import PricingError
 from .providers import all_extractors
+from .providers._pdf import memoise_text_fetches
 from .providers._rates import IndexedRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
 from .running_costs import Household
@@ -214,7 +215,19 @@ async def rank(
             progress(done, len(pairs))
         return quote
 
-    results = await asyncio.gather(*(_one(extractor, contract) for extractor, contract in pairs))
-    quotes = [quote for quote in results if quote is not None]
+    async def _supplier(extractor: SupplierExtractor, contracts: list[str]) -> list[Quote | None]:
+        # One supplier's contracts in turn, so the listing page or the card
+        # they share (EBEM prints both its products on one) is read once and
+        # served to the others from the sweep's memo.
+        return [await _one(extractor, contract) for contract in contracts]
+
+    by_supplier: dict[str, tuple[SupplierExtractor, list[str]]] = {}
+    for extractor, contract in pairs:
+        by_supplier.setdefault(extractor.id, (extractor, []))[1].append(contract)
+    with memoise_text_fetches({}):
+        results = await asyncio.gather(
+            *(_supplier(extractor, contracts) for extractor, contracts in by_supplier.values())
+        )
+    quotes = [quote for group in results for quote in group if quote is not None]
     quotes.sort(key=lambda q: (q.annual_cost is None, q.annual_cost or 0.0, q.label))
     return quotes, skipped

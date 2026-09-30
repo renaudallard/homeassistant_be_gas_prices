@@ -35,7 +35,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from custom_components.be_gas_prices import providers
-from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
+from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract, rank
 from custom_components.be_gas_prices.compare_table import quote_table
 from custom_components.be_gas_prices.const import (
     CALIBER_Q10,
@@ -84,10 +84,14 @@ from custom_components.be_gas_prices.daily_ranking import DailyRanking, ranking_
 from custom_components.be_gas_prices.manual_rate import manual_leg
 from custom_components.be_gas_prices.month_cards import MonthCardCache
 from custom_components.be_gas_prices.pricing import compute_breakdown, fixed_costs
-from custom_components.be_gas_prices.providers import engie
-from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
+from custom_components.be_gas_prices.providers import _pdf, engie
+from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers._resolve import resolve_network
-from custom_components.be_gas_prices.providers.base import CardNotReadableError, SupplierSnapshot
+from custom_components.be_gas_prices.providers.base import (
+    CardNotReadableError,
+    SupplierExtractor,
+    SupplierSnapshot,
+)
 from custom_components.be_gas_prices.providers.custom import build_snapshot
 from custom_components.be_gas_prices.running_costs import Household, RunningCosts
 from tests import approx, fixture_text
@@ -408,6 +412,59 @@ async def test_a_card_published_as_images_is_quoted_on_the_archive_reading() -> 
     assert "Engie Easy Variable OCR" in quote_table([quote], own=None)
     # An entry that keeps the archive out is not priced on it.
     assert refused.error is not None and refused.annual_cost is None
+
+
+class _Listing:
+    status = 200
+
+    async def __aenter__(self) -> _Listing:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+    async def text(self, errors: str = "strict") -> str:
+        return "listing"
+
+
+class _Web:
+    def __init__(self) -> None:
+        self.asked: list[str] = []
+
+    def get(self, url: str, **_kwargs: Any) -> _Listing:
+        self.asked.append(url)
+        return _Listing()
+
+
+async def test_a_ranking_reads_what_a_supplier_s_contracts_share_once() -> None:
+    """Two contracts off one listing page: the second is served the page the
+    first read rather than downloading and parsing it again."""
+    card = _flow_card()
+
+    async def fetch(session: Any, contract: str, _region: str) -> SupplierSnapshot:
+        await _pdf.fetch_text(session, "https://acme.test/listing")
+        return replace(card, contract=contract)
+
+    acme = SupplierExtractor(
+        id="acme",
+        label="Acme",
+        contracts=tuple(
+            Contract(id=f"acme_{n}", label=f"Acme {n}", kind="indexed") for n in ("a", "b")
+        ),
+        fetch=fetch,
+    )
+    web = _Web()
+    household = Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0)
+    with patch("custom_components.be_gas_prices.compare.all_extractors", return_value=(acme,)):
+        quotes, skipped = await rank(
+            web,  # type: ignore[arg-type]
+            "wallonia",
+            household,
+            "2026-09",
+            use_archive=False,
+        )
+    assert (len(quotes), skipped) == (2, 0)
+    assert web.asked == ["https://acme.test/listing"]
 
 
 def test_quote_table_bolds_the_own_row_and_signs_the_gap() -> None:
