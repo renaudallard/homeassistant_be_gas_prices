@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from datetime import date
@@ -295,6 +296,15 @@ def _archive(pages: dict[str, str]) -> Callable[..., Any]:
         raise ExtractorError(f"HTTP 404 fetching {url}")
 
     return fetch
+
+
+@pytest.mark.parametrize("payload", ["n0t b@se64", "Fichier non trouvé"])
+def test_an_archive_sheet_that_is_not_base64_is_an_extractor_error(payload: str) -> None:
+    """Text that is not ASCII raises a plain ValueError out of b64decode,
+    which the month cache would not catch."""
+    reply = json.dumps({"Response": {"TariffSheet": f"data:application/pdf;base64,{payload}"}})
+    with pytest.raises(ExtractorError, match="bad base64"):
+        octaplus._archive_pdf(reply, "G_OCTA_FLUX_RE_WL_FR")
 
 
 async def test_fetch_for_month_reads_the_archived_card_through_the_render_hook() -> None:

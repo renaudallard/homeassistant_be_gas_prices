@@ -59,7 +59,6 @@ so :func:`fetch_for_month` returns None for such months.
 from __future__ import annotations
 
 import base64
-import binascii
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -243,7 +242,8 @@ def _archive_pdf(body: str, name: str) -> bytes:
         raise ExtractorError(f"OCTA+ archive sheet: no card in the reply for {name!r}")
     try:
         payload = base64.b64decode(sheet.split("base64,", 1)[1], validate=True)
-    except binascii.Error as err:
+    except ValueError as err:
+        # binascii.Error, or plain ValueError for text that is not ASCII.
         raise ExtractorError(f"OCTA+ archive sheet: bad base64 for {name!r}") from err
     if not is_pdf_payload(payload):
         raise ExtractorError(f"OCTA+ archive sheet: {name!r} is not a PDF")

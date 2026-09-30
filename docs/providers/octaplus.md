@@ -114,7 +114,8 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 - Card: `https://srv.octaplus.be/websiterest/getTariffSheet?Canal=website&RequestedPDF=<name>`
   answers `{"Response": {"Ok": "True", "TariffSheet":
   "data:application/pdf;base64,..."}}`. A name it does not hold is answered
-  200 with `{"Ok": "False", "Message": "E-ECP"}`, which reads as no card.
+  200 with `{"Ok": "False", "Message": "E-ECP"}`, which reads as no card. A
+  sheet that is not base64, ASCII or not, is an `ExtractorError`.
 - The bytes go through `_pdf.render_pdf("layout", ...)`, so the card archiver
   sees them like any card fetched by a reader.
 - Names: the archive spells FIXED in upper case. The March 2026 listing names
