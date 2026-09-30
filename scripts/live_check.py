@@ -43,6 +43,9 @@ says nothing about the card, and checks what came back:
     connection fee of a month const.py knows, a Fluvius data management fee
     the card leaves out), the departure is a notice rather than a failure.
 
+A card published as page images is parsed on the card archive's OCR reading
+of its bytes (``--texts``); one the archive has not read yet is a notice.
+
 Prints a markdown report to stdout and writes the labels of the failures to
 ``--fingerprint``, which the workflow hands to file_ci_issue.sh so the same
 failures are filed once. Exits 0 when everything passed, 1 on a failure that
@@ -105,6 +108,7 @@ from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
 )
 from custom_components.be_gas_prices.providers._rates import IndexedRates  # noqa: E402
 from custom_components.be_gas_prices.providers.base import (  # noqa: E402
+    CardNotReadableError,
     SupplierExtractor,
     SupplierSnapshot,
 )
@@ -214,9 +218,13 @@ def targets(
 
 
 def _failure(label: str, err: BaseException) -> Check:
-    return Check(
-        label, "transient" if is_transient(err) else "fail", f"{type(err).__name__}: {err}"
-    )
+    detail = f"{type(err).__name__}: {err}"
+    if isinstance(err, CardNotReadableError):
+        # A card published as page images, which only the card archive's
+        # OCR reading of these very bytes lets the check parse. Until the
+        # archive has read them no change here can: reported, never filed.
+        return Check(label, "notice", detail)
+    return Check(label, "transient" if is_transient(err) else "fail", detail)
 
 
 def _freshness(label: str, snapshot: SupplierSnapshot, today: date) -> Check:
@@ -601,8 +609,9 @@ def render_report(checks: list[Check]) -> str:
     _table(
         lines,
         "Notices",
-        "Figures the integration does not bill as printed, and figures the cards "
-        "disagree on with no majority to measure them against. Reported, never filed.",
+        "Figures the integration does not bill as printed, figures the cards "
+        "disagree on with no majority to measure them against, and cards published "
+        "as page images the card archive has not read yet. Reported, never filed.",
         by_status["notice"],
     )
     lines += ["## All checks", ""]

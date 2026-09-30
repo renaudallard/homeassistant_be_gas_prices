@@ -43,6 +43,7 @@ import pytest
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
+    CardNotReadableError,
     DsoOverlay,
     DsoTier,
     ExtractorError,
@@ -425,6 +426,21 @@ async def test_failures_are_told_apart_and_set_the_exit_code(tmp_path: Path) -> 
     assert "| `slow/slow_fix/flanders: fetch` | ExtractorError: network error fetching" in report
 
     assert lc.exit_code(await lc.check_fleet(None, healthy, TODAY, sleep=_no_sleep)) == 0
+
+
+async def test_a_card_published_as_images_without_a_reading_is_a_notice() -> None:
+    """Ecofix's card before the archive has read today's bytes: nothing here
+    can read it, so it is reported and not filed."""
+
+    async def images(_session: Any, _contract: str, _region: str) -> SupplierSnapshot:
+        raise CardNotReadableError("card has no text layer: 60 characters across 2 page(s)")
+
+    checks = await lc.check_fleet(None, [_extractor("pictures", images)], TODAY, sleep=_no_sleep)
+    assert [(c.label, c.status) for c in checks] == [
+        ("pictures/pictures_fix/flanders: fetch", "notice")
+    ]
+    assert lc.exit_code(checks) == 0
+    assert lc.render_fingerprint(checks) == ""
 
 
 async def test_the_custom_and_withdrawn_suppliers_are_not_checked() -> None:
