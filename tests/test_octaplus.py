@@ -227,6 +227,14 @@ def test_card_of_another_product_is_refused() -> None:
         )
 
 
+def test_a_formula_printed_with_decimal_points_is_read_whole() -> None:
+    text = _card("G_OCTA_FLUX_RE_WL_FR.pdf").replace("* 1,010 + 2,160", "* 1.010 + 2.160")
+    energy = octaplus.parse_snapshot("octaplus_flux", REGION_WALLONIA, text).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(0.001010 * 1.06)
+    assert energy.base == pytest.approx(0.002160 * 1.06)
+
+
 def test_card_that_lost_its_formula_fails_loud() -> None:
     text = _card("G_OCTA_FLUX_RE_WL_FR.pdf").replace("ZTP RLP M *", "ZTP RLP *")
     with pytest.raises(ExtractorError, match="formula"):

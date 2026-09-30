@@ -335,7 +335,10 @@ _PRICE_RE = re.compile(r"Coût du gaz \(c€/kWh\)\s+(\d+,\d+)")
 # "ZTP RLP M * 1,010 + 2,160." on Flux and Eco Flux, "ZTP RLP M* 1,15+ 10
 # EUR/MWh." on Smart Variable, both in EUR/MWh. Only the first says HTVA, but
 # Smart Variable's printed estimate too is its formula grossed up by 6%.
-_FORMULA_RE = re.compile(rf"{_INDEX}\s*\*\s*(\d+(?:,\d+)?)\s*([{SIGN_CHARS}])\s*(\d+(?:,\d+)?)")
+# A figure printed with a decimal point is read whole, not cut at the point.
+_FORMULA_RE = re.compile(
+    rf"{_INDEX}\s*\*\s*(\d+(?:[.,]\d+)?)\s*([{SIGN_CHARS}])\s*(\d+(?:[.,]\d+)?)"
+)
 
 
 def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
