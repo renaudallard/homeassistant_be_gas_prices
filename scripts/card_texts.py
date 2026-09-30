@@ -49,11 +49,11 @@ from pathlib import Path
 # region and month.
 ROWS = "cards"
 ROWS_GLOB = f"{ROWS}/*/*/*/????-??.json"
-# The digest of the parser sources the rows were last replayed with, and on
-# its second line the versions of the readers their texts were rendered with.
+# The digest of the parser sources the rows were last replayed with.
 PARSER_STAMP = "parser.txt"
 # The two PDF text readers. pdfplumber pins the pdfminer.six it runs on, so
-# its version stands for both.
+# its version stands for both. Their versions are recorded on each source
+# they rendered, like the OCR engine's.
 _READERS = ("pypdf", "pdfplumber")
 # The engine that reads a card published as page images. Its version is
 # recorded on each source it read rather than in the stamp, so a new engine
@@ -85,21 +85,18 @@ def engine_version() -> str:
 
 
 def readers_line() -> str:
-    """The reader versions a render runs on, as the stamp records them."""
+    """The reader versions a render runs on, as a source records them."""
     return " ".join(f"{name}=={_version(name)}" for name in _READERS)
 
 
-def read_stamp(archive: Path) -> tuple[str, str] | None:
-    """The parser digest and the readers line of the archive's stamp, or
-    None for an archive that was never stamped."""
+def read_stamp(archive: Path) -> str | None:
+    """The parser digest of the archive's stamp, or None for an archive that
+    was never stamped."""
     path = archive / PARSER_STAMP
     if not path.exists():
         return None
     lines = path.read_text(encoding="utf-8").splitlines()
-    return (
-        lines[0].strip() if lines else "",
-        lines[1].strip() if len(lines) > 1 else "",
-    )
+    return lines[0].strip() if lines else ""
 
 
 def read_text(path: Path) -> str:
@@ -114,28 +111,32 @@ class StoredTexts:
 
     def __init__(self, archive: Path) -> None:
         self.archive = archive
-        # A text is served only to the readers that rendered it. A pypdf or
-        # pdfplumber release can lay a card out differently (6.16 and 6.18
-        # did on 2026-09-13 in the electricity archive), and a stored text
-        # would otherwise stand in for the new reader for as long as the
-        # card's bytes stay the same.
-        stamp = read_stamp(archive)
-        self.serve = stamp is None or stamp[1] == readers_line()
         # (variant, digest) -> text path in the archive, from every row.
         self.texts: dict[tuple[str, str], str] = {}
         # (variant, digest) -> the engine version, for the texts the OCR
         # engine read off a card published as page images.
         self.ocr: dict[tuple[str, str], str] = {}
+        readers = readers_line()
         for row in archive.glob(ROWS_GLOB):
             try:
                 sources = json.loads(row.read_text(encoding="utf-8")).get("_sources", [])
             except (ValueError, AttributeError):
                 continue
             for source in sources:
-                if isinstance(source, dict) and "pdf" in source:
-                    self.texts[(source["variant"], source["pdf"])] = source["text"]
-                    if isinstance(source.get("ocr"), str):
-                        self.ocr[(source["variant"], source["pdf"])] = source["ocr"]
+                if not (isinstance(source, dict) and "pdf" in source):
+                    continue
+                key = (source["variant"], source["pdf"])
+                if isinstance(source.get("ocr"), str):
+                    self.ocr[key] = source["ocr"]
+                elif source.get("readers") != readers:
+                    # A text is served only to the readers that rendered
+                    # it. A pypdf or pdfplumber release can lay a card out
+                    # differently (6.16 and 6.18 did on 2026-09-13 in the
+                    # electricity archive), and a stored text would stand in
+                    # for the new readers, hiding what they make of the card
+                    # for as long as its bytes stay the same.
+                    continue
+                self.texts[key] = source["text"]
         # What this run rendered, so a second card on the same bytes is
         # served too.
         self.fresh: dict[tuple[str, str], str] = {}
@@ -161,7 +162,7 @@ class StoredTexts:
         self.keep(digest, payload)
         key = (variant, digest)
         text = self.fresh.get(key)
-        if text is None and self.serve:
+        if text is None:
             stored = self.texts.get(key)
             if stored is not None and (self.archive / stored).exists():
                 text = read_text(self.archive / stored)

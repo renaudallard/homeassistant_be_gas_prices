@@ -36,7 +36,8 @@ cannot serve, plus three keys of the archive's that the reader ignores:
 
   - ``_seen_on``: the day the card was captured;
   - ``_sources``: every page and PDF the parse read, each with its text under
-    ``<out>/texts/<YYYY-MM>/<sha256>.txt`` and, for a PDF, its digest;
+    ``<out>/texts/<YYYY-MM>/<sha256>.txt`` and, for a PDF, its digest and
+    what read it: the PDF readers' versions, or the OCR engine's;
   - ``_via``: ``live`` for the card that was current, ``archive`` for one
     mirrored from the supplier's own archive.
 
@@ -52,7 +53,7 @@ card's, and the workflow uploads each directory as the assets of the release
 of that name; ``<out>/pdfs.json`` then says which release holds each digest.
 The digest is also what keeps a daily run cheap: a card whose bytes the
 archive already holds is served its stored text instead of being rendered
-again.
+again, by the same readers only.
 
 Every supplier's index publication (its ``fetch_index``) is kept as
 ``<out>/indices/<supplier>.json``, {index: {"YYYY-MM": EUR/MWh}}, merged into
@@ -247,6 +248,10 @@ class _Cards(StoredTexts):
             if read_with != engine:
                 self.texts.pop(key, None)
                 del self.ocr[key]
+        # (variant, digest) -> the readers a replayed row names on a source,
+        # whose text the replay parses again. A text served or rendered in
+        # this run is the installed readers'.
+        self.readers: dict[tuple[str, str], str] = {}
         self.pdf_dir = pdf_dir
         manifest = _read_json(out / _MANIFEST)
         self.kept: dict[str, str] = manifest if isinstance(manifest, dict) else {}
@@ -257,9 +262,12 @@ class _Cards(StoredTexts):
         self, variant: str, url: str, payload: bytes, renderer: Callable[[bytes], str]
     ) -> str:
         try:
-            return await super().render(variant, url, payload, renderer)
+            text = await super().render(variant, url, payload, renderer)
         except CardNotReadableError:
             pass
+        else:
+            self.readers.pop((variant, self.digests[url]), None)
+            return text
         digest = hashlib.sha256(payload).hexdigest()
         text = await asyncio.to_thread(_ocr_text, payload)
         self.rendered += 1
@@ -425,16 +433,20 @@ def _source_entry(key: str, text: str, cards: _Cards) -> dict[str, str]:
     digest = cards.digests.get(url)
     if digest is not None:
         entry["pdf"] = digest
-        _mark_ocr(entry, cards)
+        _mark_reading(entry, cards)
     return entry
 
 
-def _mark_ocr(entry: dict[str, str], cards: _Cards) -> None:
-    """Name the engine on a source it read, which is also how an
-    installation learns that its card was read off an image."""
-    engine = cards.ocr.get((entry["variant"], entry["pdf"]))
+def _mark_reading(entry: dict[str, str], cards: _Cards) -> None:
+    """Name what read a PDF source: the OCR engine, which is also how an
+    installation learns that its card was read off an image, or the PDF
+    readers, whose text is served again to the same versions only."""
+    key = (entry["variant"], entry["pdf"])
+    engine = cards.ocr.get(key)
     if engine is not None:
         entry["ocr"] = engine
+    else:
+        entry["readers"] = cards.readers.get(key, readers_line())
 
 
 def _sources_of(memo: _RecordingMemo, cards: _Cards, month: str) -> list[dict[str, str]]:
@@ -457,7 +469,7 @@ def _sources_of(memo: _RecordingMemo, cards: _Cards, month: str) -> list[dict[st
             "text": _write_text(out, month, text),
             "pdf": digest,
         }
-        _mark_ocr(entry, cards)
+        _mark_reading(entry, cards)
         sources.append(entry)
     return sorted(sources, key=lambda s: (s["variant"] != "text", s["variant"], s["url"]))
 
@@ -819,12 +831,18 @@ async def _replay_row(
         # Seeded, not touched: only what the parse reads counts as read.
         dict.__setitem__(memo, _memo_key(source), text)
     cards.digests.update({s["url"]: s["pdf"] for s in sources if "pdf" in s})
-    # The row's text is its engine's reading whichever engine this run has,
-    # and still names that engine: an installation learns from it that the
-    # card was read off an image, and a later engine reads the card again.
-    cards.ocr.update(
-        {(s["variant"], s["pdf"]): s["ocr"] for s in sources if "pdf" in s and "ocr" in s}
-    )
+    # The row's texts are what read them whatever this run has installed,
+    # and go on naming it: an installation learns from the engine that the
+    # card was read off an image, and newer readers or a newer engine read
+    # the card again.
+    for source in sources:
+        if "pdf" not in source:
+            continue
+        key = (source["variant"], source["pdf"])
+        if "ocr" in source:
+            cards.ocr[key] = source["ocr"]
+        else:
+            cards.readers[key] = source.get("readers", "")
     cards.calls.clear()
     offline: Any = _Offline()
     with memoise_text_fetches(memo), render_through(cards.render):
@@ -983,7 +1001,7 @@ async def archive(
                         summary.indices += 1
         # A fresh archive holds nothing older than this parser, so the first
         # run only stamps it.
-        if reparse or (stamp is not None and stamp[0] != parser):
+        if reparse or (stamp is not None and stamp != parser):
             await _replay_all(
                 {ex.id: ex for ex in registry},
                 cards,
@@ -995,9 +1013,9 @@ async def archive(
     if summary.download_failed and stamp is not None:
         # Stamping now would call the rows it missed replayed, and no later
         # run would look at them again until an unrelated parser change.
-        parser = stamp[0]
+        parser = stamp
         print("a kept card could not be downloaded; the next run replays the rows again")
-    (out / PARSER_STAMP).write_text(f"{parser}\n{readers_line()}\n", encoding="utf-8")
+    (out / PARSER_STAMP).write_text(f"{parser}\n", encoding="utf-8")
     removed = _prune(out, keep_months, today) + _drop_unnamed_texts(out)
     _write_coverage(out, pdf_base_url, archive_base_url)
     print(

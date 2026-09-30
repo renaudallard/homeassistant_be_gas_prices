@@ -159,11 +159,12 @@ test suite, like an installation, runs on 3.13.
 alone. A supplier is given up for the day after three network failures in a
 row.
 
-`scripts/card_texts.py` is the render cache both scripts share: a stored text
-is served only when `parser.txt` shows the same pypdf and pdfplumber
-versions, so a reader upgrade renders afresh. The live check serves the
-archive's OCR readings as they are: it installs no engine and checks the
-figures the archive read.
+`scripts/card_texts.py` is the render cache both scripts share: each PDF
+source of a row names the pypdf and pdfplumber versions that rendered its
+text, and a stored text is served only to those same versions, so a reader
+upgrade renders every card afresh, in the archive and in the live check, for
+as long as it takes. The live check serves the archive's OCR readings as
+they are: it installs no engine and checks the figures the archive read.
 
 ## scripts/refresh_postcodes.py
 

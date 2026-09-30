@@ -70,6 +70,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 # scripts/ is not a package, so it is added to sys.path above rather than
 # imported by dotted path; mypy cannot follow that.
 import archive_cards as ac  # type: ignore[import-not-found]
+import card_texts  # type: ignore[import-not-found]
 
 NOW = datetime(2026, 9, 11, 6, 0, tzinfo=UTC)
 LISTING_URL = "https://acme.test/tariffs"
@@ -713,6 +714,42 @@ async def test_a_replay_under_another_engine_keeps_the_reading_marked(
     september = json.loads((out / ROW / "2026-09.json").read_text(encoding="utf-8"))
     card = next(s for s in september["_sources"] if s["url"] == CARD_URL)
     assert card["ocr"] == "0.3.0+aaaaaaaaaaaa"
+
+
+class _NewReadersAcme(_Acme):
+    """Acme read by a pypdf release that lays its card out otherwise."""
+
+    def render(self, payload: bytes) -> str:
+        self.renders += 1
+        return payload.decode("ascii").replace("price", "p r i c e")
+
+
+async def test_new_readers_render_the_card_again_on_every_run(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stored text is served only to the readers that rendered it, so a
+    card the new readers break keeps failing, in the archive and in the live
+    check, rather than being seen failing once and then read off the old
+    readers' text."""
+    out = tmp_path / "gas"
+
+    def readers(line: str) -> None:
+        monkeypatch.setattr(card_texts, "readers_line", lambda: line)
+        monkeypatch.setattr(ac, "readers_line", lambda: line)
+
+    readers("pypdf==1 pdfplumber==1")
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    row = json.loads((out / ROW / "2026-09.json").read_text(encoding="utf-8"))
+    card = next(s for s in row["_sources"] if s["url"] == CARD_URL)
+    assert card["readers"] == "pypdf==1 pdfplumber==1"
+    assert card_texts.StoredTexts(out).texts
+    readers("pypdf==2 pdfplumber==1")
+    for _ in range(2):
+        acme = _NewReadersAcme()
+        summary = await ac.archive(out, extractors=[acme.extractor()], now=NOW, sleep=_no_sleep)
+        assert acme.renders == 1
+        assert summary.failed
+    assert card_texts.StoredTexts(out).texts == {}
 
 
 async def test_a_card_read_by_its_text_layer_is_not_marked(tmp_path: Path, web: _Session) -> None:

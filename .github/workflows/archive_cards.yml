@@ -200,8 +200,7 @@ jobs:
             "- \`indices/<supplier>.json\`: the index values the supplier publishes, by index" \
             "  and month, in EUR/MWh." \
             "- \`pdfs.json\`: which release holds each card, by SHA-256." \
-            "- \`parser.txt\`: the digest of the parser the rows were last replayed with, and" \
-            "  the versions of the PDF readers their texts were rendered with." \
+            "- \`parser.txt\`: the digest of the parser the rows were last replayed with." \
             "" \
             "The PDFs themselves are the assets of the \`gas-<YYYY-MM>\` releases of this" \
             "repository, one release per month of cards, each file named by its SHA-256." \
