@@ -263,8 +263,13 @@ def test_manual_rate_replaces_an_indexed_formula() -> None:
     assert typed.base == pytest.approx(0.009335 * 1.06)
     assert typed.index == "ZTPDAM"
     assert typed.yearly_fixed_fee == 50.0
-    # A factor without a base is not a formula.
-    assert manual_leg(leg, {CONF_MANUAL_FACTOR: 0.1}) is leg
+    # A figure typed alone replaces the card's own and keeps the other.
+    base_only = manual_leg(leg, {CONF_MANUAL_BASE: 0.9335})
+    assert isinstance(base_only, IndexedRates)
+    assert (base_only.factor, base_only.base) == (0.001, pytest.approx(0.009335 * 1.06))
+    factor_only = manual_leg(leg, {CONF_MANUAL_FACTOR: 0.1020})
+    assert isinstance(factor_only, IndexedRates)
+    assert (factor_only.factor, factor_only.base) == (pytest.approx(0.001020 * 1.06), 0.01)
 
 
 def test_the_fluvius_data_management_fee_stands_in_where_a_card_prints_none() -> None:

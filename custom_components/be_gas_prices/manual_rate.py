@@ -27,10 +27,10 @@
 
 A signing card is read from the supplier's or the project's archive, and when
 neither reaches the month, or the offer had figures of its own, the household
-can type them. They are laid over the energy leg the card gives: a fixed
-contract's price, an indexed contract's factor and base, and the yearly fee.
-Typed excluding VAT the way formulas are printed, they are put on the card's
-VAT-inclusive basis here.
+can type them. They are laid over the energy leg the card gives, each on its
+own: a fixed contract's price, an indexed contract's factor and base, and the
+yearly fee. Typed excluding VAT the way formulas are printed, they are put on
+the card's VAT-inclusive basis here.
 """
 
 from __future__ import annotations
@@ -62,8 +62,13 @@ def manual_leg(leg: EnergyRates, data: dict[str, Any]) -> EnergyRates:
     fee = _number(data, CONF_MANUAL_FEE)
     if isinstance(leg, FixedRates) and price is not None:
         leg = replace(leg, price=price / 100.0 * vat)
-    elif isinstance(leg, IndexedRates) and factor is not None and base is not None:
-        leg = replace(leg, factor=factor / 100.0 * vat, base=base / 100.0 * vat)
+    elif isinstance(leg, IndexedRates):
+        # Each figure on its own: a contract may differ from its card by its
+        # base alone, and every field of the form is optional.
+        if factor is not None:
+            leg = replace(leg, factor=factor / 100.0 * vat)
+        if base is not None:
+            leg = replace(leg, base=base / 100.0 * vat)
     if fee is not None:
         leg = replace(leg, yearly_fixed_fee=fee)
     return leg
