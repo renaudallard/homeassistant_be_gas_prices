@@ -68,7 +68,7 @@
           "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
           "gas_meter": "A cumulative gas sensor in m³ or kWh.",
           "conversion_mode": "The factor on your bill is the one your network operator bills with. The station's calorific value leaves out the operator's correction for the pressure and temperature at the meter and counts up to a few percent more kWh: pick it when you have no bill at hand.",
-          "card_archive": "When a supplier's card cannot be read, use the last card the project's daily archive captured. The request names the supplier and the contract and nothing else.",
+          "card_archive": "Read the card archive the project keeps on GitHub for a past month the supplier no longer serves, and for the running month when the supplier's card cannot be read. A request names the supplier, the contract, the region and the month and nothing else.",
           "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
         }
       },
@@ -207,7 +207,7 @@
           "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
           "gas_meter": "A cumulative gas sensor in m³ or kWh.",
           "conversion_mode": "The factor on your bill is the one your network operator bills with. The station's calorific value leaves out the operator's correction for the pressure and temperature at the meter and counts up to a few percent more kWh: pick it when you have no bill at hand.",
-          "card_archive": "When a supplier's card cannot be read, use the last card the project's daily archive captured. The request names the supplier and the contract and nothing else.",
+          "card_archive": "Read the card archive the project keeps on GitHub for a past month the supplier no longer serves, and for the running month when the supplier's card cannot be read. A request names the supplier, the contract, the region and the month and nothing else.",
           "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
         }
       },

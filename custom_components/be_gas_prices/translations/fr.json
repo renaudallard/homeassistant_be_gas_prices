@@ -68,7 +68,7 @@
           "caliber": "La redevance bruxelloise dépend du débit maximal du compteur, indiqué sur le compteur (les compteurs G4 et G6 font 6 ou 10 m³/h).",
           "gas_meter": "Un capteur de gaz cumulatif en m³ ou en kWh.",
           "conversion_mode": "Le facteur de votre facture est celui avec lequel votre gestionnaire de réseau facture. Le pouvoir calorifique de la station ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur et compte jusqu'à quelques pour cent de kWh en plus : choisissez-le si vous n'avez pas de facture sous la main.",
-          "card_archive": "Quand la carte d'un fournisseur ne peut pas être lue, utiliser la dernière carte que l'archive quotidienne du projet a conservée. La requête ne mentionne que le fournisseur et le contrat.",
+          "card_archive": "Lire l'archive des cartes que le projet tient sur GitHub pour un mois passé que le fournisseur ne sert plus, et pour le mois en cours quand la carte du fournisseur ne peut pas être lue. Une requête ne mentionne que le fournisseur, le contrat, la région et le mois.",
           "daily_compare": "Récupère une fois par jour les cartes de tous les fournisseurs de votre région et publie la meilleure économie comme capteur."
         }
       },
@@ -207,7 +207,7 @@
           "caliber": "La redevance bruxelloise dépend du débit maximal du compteur, indiqué sur le compteur (les compteurs G4 et G6 font 6 ou 10 m³/h).",
           "gas_meter": "Un capteur de gaz cumulatif en m³ ou en kWh.",
           "conversion_mode": "Le facteur de votre facture est celui avec lequel votre gestionnaire de réseau facture. Le pouvoir calorifique de la station ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur et compte jusqu'à quelques pour cent de kWh en plus : choisissez-le si vous n'avez pas de facture sous la main.",
-          "card_archive": "Quand la carte d'un fournisseur ne peut pas être lue, utiliser la dernière carte que l'archive quotidienne du projet a conservée. La requête ne mentionne que le fournisseur et le contrat.",
+          "card_archive": "Lire l'archive des cartes que le projet tient sur GitHub pour un mois passé que le fournisseur ne sert plus, et pour le mois en cours quand la carte du fournisseur ne peut pas être lue. Une requête ne mentionne que le fournisseur, le contrat, la région et le mois.",
           "daily_compare": "Récupère une fois par jour les cartes de tous les fournisseurs de votre région et publie la meilleure économie comme capteur."
         }
       },

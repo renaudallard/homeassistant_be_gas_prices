@@ -68,7 +68,7 @@
           "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
           "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
           "conversion_mode": "Der Faktor auf Ihrer Rechnung ist der, mit dem Ihr Netzbetreiber abrechnet. Der Brennwert der Station lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt bis zu einige Prozent mehr kWh: Wählen Sie ihn, wenn Sie keine Rechnung zur Hand haben.",
-          "card_archive": "Wenn die Karte eines Lieferanten nicht gelesen werden kann, die letzte Karte verwenden, die das tägliche Archiv des Projekts gespeichert hat. Die Anfrage nennt nur den Lieferanten und den Vertrag.",
+          "card_archive": "Das Kartenarchiv des Projekts auf GitHub für einen vergangenen Monat lesen, den der Lieferant nicht mehr bereitstellt, und für den laufenden Monat, wenn die Karte des Lieferanten nicht gelesen werden kann. Eine Anfrage nennt nur den Lieferanten, den Vertrag, die Region und den Monat.",
           "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
         }
       },
@@ -207,7 +207,7 @@
           "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
           "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
           "conversion_mode": "Der Faktor auf Ihrer Rechnung ist der, mit dem Ihr Netzbetreiber abrechnet. Der Brennwert der Station lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt bis zu einige Prozent mehr kWh: Wählen Sie ihn, wenn Sie keine Rechnung zur Hand haben.",
-          "card_archive": "Wenn die Karte eines Lieferanten nicht gelesen werden kann, die letzte Karte verwenden, die das tägliche Archiv des Projekts gespeichert hat. Die Anfrage nennt nur den Lieferanten und den Vertrag.",
+          "card_archive": "Das Kartenarchiv des Projekts auf GitHub für einen vergangenen Monat lesen, den der Lieferant nicht mehr bereitstellt, und für den laufenden Monat, wenn die Karte des Lieferanten nicht gelesen werden kann. Eine Anfrage nennt nur den Lieferanten, den Vertrag, die Region und den Monat.",
           "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
         }
       },
