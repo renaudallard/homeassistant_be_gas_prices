@@ -8,7 +8,7 @@ once in `_FlowSteps` over `self._data`.
 
 | Step | Asks | Notes |
 | --- | --- | --- |
-| `postcode` (`user`) | Postcode, optional | `postcodes.resolve` gives the region and the gas DSOs of the postcode. Unknown postcode: error. A postcode with no gas DSO designated: error, clear it to pick by hand. Part of it on a DSO no card prices (`UNPRICED`): `unpriced_network`. Blank: `region`. |
+| `postcode` (`user`) | Postcode, optional | `postcodes.resolve` gives the region and the gas DSOs of the postcode. Unknown postcode: error. A postcode with no gas DSO designated: error, clear it to pick by hand. Part of it on a DSO no card prices (`UNPRICED`): `unpriced_network`. Blank: `region`. Suggested rather than defaulted, so clearing the field reaches `region`. |
 | `unpriced_network` | Nothing | A warning: part of the postcode is on a network no Belgian card prices (Baarle-Hertog's Enexis), so continue only on the postcode's Belgian DSO. |
 | `region` | Region | Only when no postcode resolved. |
 | `supplier` | Supplier | Suppliers with a contract in the region, withdrawn ones hidden, the custom supplier last. |

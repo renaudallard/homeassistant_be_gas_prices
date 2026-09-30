@@ -186,22 +186,21 @@ class _FlowSteps:
             match = postcodes.resolve(code)
             if match is None:
                 errors[CONF_POSTCODE] = "unknown_postcode"
+            elif not match.dsos:
+                errors[CONF_POSTCODE] = "no_gas_network"
             else:
                 self._data[CONF_POSTCODE] = code
                 self._data[CONF_REGION] = match.region
                 self._candidates = match.dsos
-                if not match.dsos:
-                    errors[CONF_POSTCODE] = "no_gas_network"
-                elif match.unpriced:
+                if match.unpriced:
                     return await self.async_step_unpriced_network()
-                else:
-                    return await self.async_step_supplier()
-        schema = vol.Schema(
-            {
-                vol.Optional(
-                    CONF_POSTCODE, default=_default(self._data, CONF_POSTCODE, "")
-                ): TextSelector()
-            }
+                return await self.async_step_supplier()
+        # Suggested rather than a default, so a cleared field reaches here
+        # empty and leads to the region instead of coming back as the old
+        # postcode. A refused one is shown as typed and is not kept.
+        schema = self.add_suggested_values_to_schema(
+            vol.Schema({vol.Optional(CONF_POSTCODE): TextSelector()}),
+            {CONF_POSTCODE: self._data.get(CONF_POSTCODE)} if user_input is None else user_input,
         )
         return self.async_show_form(step_id="postcode", data_schema=schema, errors=errors)
 

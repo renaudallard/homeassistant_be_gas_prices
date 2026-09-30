@@ -218,6 +218,47 @@ async def test_an_unknown_postcode_is_refused(hass: HomeAssistant) -> None:
     assert result["errors"] == {CONF_POSTCODE: "unknown_postcode"}
 
 
+def _postcode_without_gas() -> str:
+    for code in sorted(postcodes.POSTCODES):
+        match = postcodes.resolve(code)
+        if match is not None and not match.dsos:
+            return code
+    raise AssertionError("every postcode has a gas network")
+
+
+async def test_a_postcode_without_gas_can_be_cleared_for_the_region(hass: HomeAssistant) -> None:
+    """The error says to clear the postcode, and a cleared field is sent as
+    nothing at all: it must lead to the region, not back to the error."""
+    code = _postcode_without_gas()
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_POSTCODE: code}
+    )
+    assert result["errors"] == {CONF_POSTCODE: "no_gas_network"}
+    schema = result["data_schema"]
+    assert schema is not None
+    [field] = schema.schema
+    assert field.description == {"suggested_value": code}
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "region"
+
+
+async def test_options_clearing_the_postcode_leads_to_the_region(hass: HomeAssistant) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, CONF_POSTCODE: _walloon_ores_postcode()}
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "settings"}
+    )
+    assert result["step_id"] == "postcode"
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "region"
+
+
 async def test_atrias_down_falls_back_to_the_factor(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
