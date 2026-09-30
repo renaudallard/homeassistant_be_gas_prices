@@ -66,6 +66,7 @@ from datetime import date
 from typing import Any
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from ..const import REGION_FLANDERS
 from ._network import (
@@ -91,7 +92,7 @@ from ._pdf import (
     printed_vat_rate,
 )
 from ._rates import Contract, IndexedRates
-from ._validity import end_of_month, month_card
+from ._validity import end_of_month, future_month, month_card
 from .base import (
     DsoOverlay,
     ExtractorError,
@@ -222,7 +223,10 @@ async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -
     assets = _assets(rows, contract)
     if not assets:
         raise ExtractorError(f"Frank Energie: no card found for {contract.label}")
-    newest = max(assets).month
+    # Frank uploads a month's cards in the last days of the month before,
+    # and until that month begins the running one's card is in force.
+    months = {asset.month for asset in assets}
+    newest = max((m for m in months if not future_month(m)), default=max(months))
     return await _read_month(session, contract, region, [a for a in assets if a.month == newest])
 
 
@@ -262,7 +266,9 @@ async def _read_listed(
 
 
 async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -> str | None:
-    """The upload time of the newest gas file: a new card changes it.
+    """The upload time of the newest gas file, a new card changing it, and
+    the running month, so a card uploaded before its month began is fetched
+    once it begins.
 
     One short query, where reading a card takes half a minute of rendering
     on a Raspberry Pi.
@@ -273,7 +279,9 @@ async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -
         rows = await _query(session, _GAS_ASSETS + "]{_createdAt} | order(_createdAt desc)[0..0]")
     except ExtractorError:
         return None
-    return str(rows[0].get("_createdAt")) if rows else None
+    if not rows:
+        return None
+    return f"{rows[0].get('_createdAt')} {dt_util.now().date():%Y-%m}"
 
 
 # ---- the card ----------------------------------------------------------------

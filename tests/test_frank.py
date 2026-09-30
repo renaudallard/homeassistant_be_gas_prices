@@ -32,6 +32,7 @@ from datetime import date
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
@@ -238,6 +239,19 @@ async def test_fetch_takes_the_newest_month_of_the_tier() -> None:
     assert snap.publication_label == "2026-09"
 
 
+@freeze_time("2026-08-31 12:00:00+02:00")
+async def test_fetch_keeps_the_running_month_until_the_next_one_begins() -> None:
+    """September's cards were uploaded on 31 August: that day is still
+    priced on August's."""
+    august = _PREFIX + "Gas ZTP HV  Augustus 2026.pdf"
+    with (
+        patch.object(frank, "fetch_text", AsyncMock(return_value=_assets())),
+        patch.object(frank, "fetch_pdf_text_layout", AsyncMock(return_value=_card(HV))) as fetched,
+    ):
+        await frank.fetch(AsyncMock(), "frank_variable_hv", REGION_FLANDERS)
+    assert fetched.call_args.args[1] == _url(august)
+
+
 async def test_fetch_for_month_skips_an_upload_carrying_another_tier() -> None:
     """ "Gas ZTP Januari 2026 v2.pdf" is the Korting card, uploaded after the
     standard tier's own January card."""
@@ -296,11 +310,12 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
         )
 
 
-async def test_probe_is_the_newest_upload_time() -> None:
+@freeze_time("2026-09-15 12:00:00+02:00")
+async def test_probe_is_the_newest_upload_time_and_the_running_month() -> None:
     with patch.object(frank, "fetch_text", AsyncMock(return_value=_assets())):
         assert (
             await frank.probe(AsyncMock(), "frank_variable", REGION_FLANDERS)
-            == "2026-08-31T08:17:54Z"
+            == "2026-08-31T08:17:54Z 2026-09"
         )
     with patch.object(frank, "fetch_text", AsyncMock(side_effect=ExtractorError("HTTP 503 x"))):
         assert await frank.probe(AsyncMock(), "frank_variable", REGION_FLANDERS) is None

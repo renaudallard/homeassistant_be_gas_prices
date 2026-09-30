@@ -21,11 +21,14 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   matching; a name without a month ("Gas ZTP Wintervast 2025", a different,
   fixed product) is ignored.
 - `fetch` reads the 40 newest gas uploads, keeps the tier's, takes the newest
-  month the names give and then the newest upload of it. Upload time alone
-  would be wrong: the HV and Slim cards of March 2026 were uploaded on 1
-  April, after April's.
-- Probe: the `_createdAt` of the newest gas upload, one short query. Any new
-  card changes it.
+  month the names give that is not after the running one (the newest at all
+  when there is none) and then the newest upload of it. Frank uploads a
+  month's cards in the last days of the month before, which stays priced on
+  its own card. Upload time alone would be wrong: the HV and Slim cards of
+  March 2026 were uploaded on 1 April, after April's.
+- Probe: the `_createdAt` of the newest gas upload and the running month,
+  one short query. Any new card changes it, and so does a month beginning
+  whose card was uploaded before it.
 
 ## Products and regions
 
