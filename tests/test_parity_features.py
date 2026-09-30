@@ -64,10 +64,13 @@ from custom_components.be_gas_prices.const import (
     CONF_REGION,
     CONF_SUPPLIER,
     CONF_YTD_FROM_CONTRACT_START,
+    CUSTOM_CONTRACT,
     DSO_FLUVIUS_KEMPEN,
     DSO_ORES,
     DSO_SIBELGA,
+    REGION_BRUSSELS,
     REGION_FLANDERS,
+    SUPPLIER_CUSTOM,
     TIER_T2,
 )
 from custom_components.be_gas_prices.contract_periods import (
@@ -178,6 +181,41 @@ async def test_an_earlier_contract_is_billed_on_its_signing_card() -> None:
     typed = record_switch({**fixed, CONF_MANUAL_PRICE: 9.0}, date(2026, 7, 1))
     [earlier] = await _bill_earlier(typed, {"2025-10": 0.10})
     assert _energy_price(earlier) == pytest.approx(0.09 * 1.06)
+
+
+async def test_an_earlier_contract_on_the_custom_supplier_is_billed_on_its_typed_card() -> None:
+    custom = {
+        **_custom_data(),
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_REGION: REGION_BRUSSELS,
+    }
+    data = record_switch(custom, date(2026, 6, 1))
+    session = AsyncMock()
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(273)}
+    costs, missing = await PeriodBilling(MonthCardCache()).bill(
+        session, data, date(2026, 9, 30), kwh_days, 5_000.0, use_archive=True
+    )
+    assert missing == []
+    [earlier] = costs
+    assert earlier.months[-1].month == "2026-05"
+    assert _energy_price(earlier) == pytest.approx(0.075)
+    # The typed card has nothing to fetch, from the supplier or the archive.
+    assert session.get.call_count == 0
+    # Recorded without its typed card, it is reported rather than billed at 0.
+    bare = {
+        key: data[CONF_PREVIOUS_CONTRACTS][0][key]
+        for key in (CONF_SUPPLIER, CONF_CONTRACT, CONF_REGION, CONF_DSO, "until")
+    }
+    costs, missing = await PeriodBilling(MonthCardCache()).bill(
+        session,
+        {CONF_PREVIOUS_CONTRACTS: [bare]},
+        date(2026, 9, 30),
+        kwh_days,
+        5_000.0,
+        use_archive=True,
+    )
+    assert (costs, missing) == ([], ["Expert: custom figures"])
 
 
 def test_a_contract_that_ended_last_year_is_not_billed_this_year() -> None:

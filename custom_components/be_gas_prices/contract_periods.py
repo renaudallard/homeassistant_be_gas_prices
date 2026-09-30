@@ -46,27 +46,32 @@ from .const import (
     CONF_CONTRACT,
     CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
+    CONF_CUSTOM_PRICE,
     CONF_DSO,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_SUPPLIER,
     CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
+    CUSTOM_KEYS,
     DEFAULT_CALIBER,
     MANUAL_RATE_KEYS,
+    SUPPLIER_CUSTOM,
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card
 from .pricing import PricingError
 from .providers._rates import EnergyRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
+from .providers.custom import build_snapshot as build_custom_snapshot
 from .running_costs import Household, RunningCosts, running_costs
 from .running_costs import months_between as _months_between
 
 _LOGGER = logging.getLogger(__name__)
 
 # What an earlier contract keeps of the entry: enough to price it the way
-# the current one is, on its signing card and the figures typed from it,
-# nothing about the meter, which stays the household's.
+# the current one is, on its signing card and the figures typed from it, or
+# on the card typed for the custom supplier; nothing about the meter, which
+# stays the household's.
 PERIOD_KEYS = (
     CONF_SUPPLIER,
     CONF_CONTRACT,
@@ -76,6 +81,7 @@ PERIOD_KEYS = (
     CONF_CONTRACT_START_DATE,
     CONF_TARIFF_CARD_DATE,
     *MANUAL_RATE_KEYS,
+    *CUSTOM_KEYS,
 )
 
 
@@ -232,8 +238,13 @@ class PeriodBilling:
                 continue
             contract = str(period[CONF_CONTRACT])
             region = str(period[CONF_REGION])
-            signing = signing_month(period)
-            wanted = _months_between(start, end)
+            custom = extractor.id == SUPPLIER_CUSTOM
+            if custom and CONF_CUSTOM_PRICE not in period:
+                # Recorded before a switch kept the typed card.
+                missing.append(extractor.label)
+                continue
+            signing = None if custom else signing_month(period)
+            wanted = [] if custom else _months_between(start, end)
             if signing is not None and signing not in wanted:
                 wanted.append(signing)
             for month in wanted:
@@ -251,7 +262,12 @@ class PeriodBilling:
                 row = self._months.get(_e, _c, _r, month)
                 return None if row is None else row.snapshot
 
-            end_card = month_card(month_key(end)) if month_key(end) < current else None
+            end_card: SupplierSnapshot | None = None
+            if custom:
+                # The typed card prices every month the contract supplied.
+                end_card = build_custom_snapshot(period)
+            elif month_key(end) < current:
+                end_card = month_card(month_key(end))
             if end_card is None:
                 end_card = await self._current_card(
                     session, extractor, contract, region, today, use_archive
