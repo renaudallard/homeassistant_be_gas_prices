@@ -114,6 +114,7 @@ from card_texts import (  # type: ignore[import-not-found]  # noqa: E402
     ROWS_GLOB,
     StoredTexts,
     engine_version,
+    in_daemon_thread,
     read_stamp,
     read_text,
     readers_line,
@@ -269,7 +270,7 @@ class _Cards(StoredTexts):
             self.readers.pop((variant, self.digests[url]), None)
             return text
         digest = hashlib.sha256(payload).hexdigest()
-        text = await asyncio.to_thread(_ocr_text, payload)
+        text = await in_daemon_thread(_ocr_text, payload)
         self.rendered += 1
         self.fresh[(variant, digest)] = text
         self.ocr[(variant, digest)] = engine_version()

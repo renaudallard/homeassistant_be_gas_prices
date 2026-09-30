@@ -31,9 +31,12 @@ one rule each; none of them is a regulator's figure.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import subprocess
 import sys
+import threading
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import date
@@ -60,6 +63,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 # scripts/ is not a package, so it is added to sys.path above rather than
 # imported by dotted path; mypy cannot follow that.
 import live_check as lc  # type: ignore[import-not-found]
+from card_texts import in_daemon_thread  # type: ignore[import-not-found]
 
 TODAY = date(2026, 9, 29)
 Fetch = Callable[[Any, str, str], Awaitable[SupplierSnapshot]]
@@ -494,3 +498,18 @@ def test_the_workflow_tells_a_crash_from_a_failing_card(
     env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}", "GITHUB_OUTPUT": str(output)}
     subprocess.run(["bash", "-e", "-c", step["run"]], cwd=tmp_path, env=env, check=True)
     assert output.read_text() == f"rc={rc}\n"
+
+
+def test_a_render_that_never_returns_does_not_hold_the_exit() -> None:
+    """The per-card timeout abandons the render; its thread must not keep
+    the event loop, or the process, from ending."""
+    hang = threading.Event()
+
+    async def main() -> None:
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(in_daemon_thread(lambda _: hang.wait(), b""), 0.1)
+
+    started = time.monotonic()
+    asyncio.run(main())
+    assert time.monotonic() - started < 5.0
+    hang.set()

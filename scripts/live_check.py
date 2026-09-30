@@ -82,7 +82,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 # scripts/ is not a package, so it is put on sys.path above rather than
 # imported by dotted path; mypy cannot follow that.
-from card_texts import StoredTexts  # type: ignore[import-not-found]  # noqa: E402
+from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
 from custom_components.be_gas_prices.const import (  # noqa: E402
@@ -619,13 +619,20 @@ def render_report(checks: list[Check]) -> str:
     return "\n".join(lines) + "\n"
 
 
+async def _render(
+    _variant: str, _url: str, payload: bytes, renderer: Callable[[bytes], str]
+) -> str:
+    return str(await in_daemon_thread(renderer, payload))
+
+
 async def _run(texts: Path | None, fingerprint: Path) -> int:
     today = datetime.now(BRUSSELS).date()
     cache = StoredTexts(texts) if texts is not None else None
     async with aiohttp.ClientSession() as session:
         with ExitStack() as hooks:
-            if cache is not None:
-                hooks.enter_context(render_through(cache.render))
+            # Every render goes through a hook that runs it in a daemon
+            # thread, so one that never returns cannot hold the exit.
+            hooks.enter_context(render_through(_render if cache is None else cache.render))
             checks = await check_fleet(session, all_extractors(), today)
     print(render_report(checks))
     if cache is not None:
