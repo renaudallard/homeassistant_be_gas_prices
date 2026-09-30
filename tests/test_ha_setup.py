@@ -262,6 +262,34 @@ async def test_a_failed_setup_leaves_no_month_cards_task_behind(
         gate.set()
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_ranking_stored_for_another_contract_is_not_served(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """Today's ranking was made while the household was on another contract:
+    its saving is against a contract left, so it is not shown."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "ranking": {
+                "day": "2026-09-15",
+                "own": ["luminus", "luminus_comfyflex"],
+                "rows": [
+                    ["engie", "engie_flow", "Engie Flow", 1400.0],
+                    ["luminus", "luminus_comfyflex", "Luminus ComfyFlex", 1900.0],
+                ],
+            }
+        },
+    }
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.daily_ranking is None
+
+
 async def test_setup_retries_when_there_is_no_card_at_all(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

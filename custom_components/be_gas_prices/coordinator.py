@@ -260,7 +260,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._months.load_json(blob.get("months"))
         stamp = blob.get("backfill")
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
-        self.daily_ranking = DailyRanking.from_json(blob.get("ranking"))
+        ranking = DailyRanking.from_json(blob.get("ranking"))
+        # A ranking made for another contract prices a saving against a
+        # contract the household left: the day is ranked again instead.
+        if ranking is not None and ranking.own == (self.extractor.id, self.contract):
+            self.daily_ranking = ranking
 
     async def _save_persistent(self) -> None:
         payload: dict[str, Any] = {
