@@ -31,6 +31,8 @@ one rule each; none of them is a regulator's figure.
 
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
@@ -39,6 +41,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml  # type: ignore[import-untyped]
 
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
@@ -470,3 +473,24 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
 
     monkeypatch.setattr(lc, "check_fleet", crash)
     assert lc.main() == 3
+
+
+@pytest.mark.parametrize(("fingerprint", "rc"), [(False, "3"), (True, "1")])
+def test_the_workflow_tells_a_crash_from_a_failing_card(
+    tmp_path: Path, fingerprint: bool, rc: str
+) -> None:
+    """An import that fails exits 1 before the check writes its fingerprint:
+    the workflow reads that as the crash it is, not as a card to file."""
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/live_check.yml").read_text()
+    )
+    step = next(s for s in workflow["jobs"]["check"]["steps"] if s.get("id") == "check")
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    write = "touch failures.txt\n" if fingerprint else ""
+    (stubs / "python").write_text(f"#!/bin/sh\n{write}exit 1\n")
+    (stubs / "python").chmod(0o755)
+    output = tmp_path / "output"
+    env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}", "GITHUB_OUTPUT": str(output)}
+    subprocess.run(["bash", "-e", "-c", step["run"]], cwd=tmp_path, env=env, check=True)
+    assert output.read_text() == f"rc={rc}\n"

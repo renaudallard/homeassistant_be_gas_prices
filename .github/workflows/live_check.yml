@@ -79,6 +79,12 @@ jobs:
           # rc 3: the check itself crashed; the traceback is in the log.
           python scripts/live_check.py ${texts:-} --fingerprint failures.txt > report.md
           rc=$?
+          # An exception before the check runs, such as an import that
+          # fails, exits 1 like a failing card but writes no fingerprint:
+          # it is a crash, and filing it would find no failures to list.
+          if [ "$rc" = 1 ] && [ ! -f failures.txt ]; then
+            rc=3
+          fi
           cat report.md
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           # The steps below branch on rc, so this one always succeeds.

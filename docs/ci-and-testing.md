@@ -113,7 +113,9 @@ being rendered, which is most of a run's time. `--fingerprint FILE` receives
 the failing labels.
 
 Exit codes: 0 all passed, 1 a persistent failure, 2 only transient ones, 3
-the check itself crashed.
+the check itself crashed. A crash before the check runs (an import that
+fails) exits 1 without writing the fingerprint, and the workflow reads that
+as 3.
 
 ## scripts/archive_cards.py
 
