@@ -23,6 +23,7 @@ process).
 - `test_config_flow.py`, `test_ha_setup.py`: the wizard and options menu, and
   a full setup through Home Assistant's loader with the sensors it creates.
 - `test_postcodes.py`: the postcode table.
+- `test_calorific.py`: Atrias's monthly calorific value files.
 - `test_fetch.py`: the shared HTTP helpers against a local server
   (`socket_enabled`, since the harness blocks sockets otherwise).
 - `test_live_check.py`, `test_archive_cards.py`: the two daily scripts, with

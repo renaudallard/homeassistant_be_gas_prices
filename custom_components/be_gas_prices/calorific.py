@@ -64,6 +64,7 @@ from homeassistant.util.ssl import create_client_context
 from .const import ATRIAS_API_URL, ATRIAS_CONFIG_URL
 from .providers._parse import to_float
 from .providers._pdf import USER_AGENT, error_text
+from .providers.base import ExtractorError
 
 _INTERMEDIATE = Path(__file__).with_name("certs") / "godaddy_g2_intermediate.pem"
 _KEY_RE = re.compile(r"apimSubscriptionKey\s*:\s*['\"]([0-9a-fA-F]+)['\"]")
@@ -101,7 +102,9 @@ async def subscription_key(session: aiohttp.ClientSession) -> str:
         ) as resp:
             if resp.status >= 400:
                 raise CalorificError(f"HTTP {resp.status} fetching {ATRIAS_CONFIG_URL}")
-            body = await resp.text()
+            # Not strict, so a page in another charset fails the key search
+            # below as a CalorificError rather than escaping as a decode error.
+            body = await resp.text(errors="replace")
     except (aiohttp.ClientError, TimeoutError) as err:
         raise CalorificError(
             f"network error fetching {ATRIAS_CONFIG_URL}: {error_text(err)}"
@@ -173,7 +176,7 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
     The files vary from month to month: a byte order mark or a preamble line
     before the header, a header misspelt "SGCVMonth", the columns in another
     order, the decimal a quoted comma or a dot. A station listed at 0 is not
-    in use that month and is left out.
+    in use that month and is left out, as is one with no value at all.
     """
     text = payload.decode("utf-8-sig", errors="replace")
     lines = text.splitlines()
@@ -193,7 +196,14 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
     for row in reader:
         if len(row) <= max(name_at, ean_at, value_at):
             continue
-        value = to_float(row[value_at])
+        cell = row[value_at].strip()
+        if not cell:
+            # No value that month, like a station listed at 0.
+            continue
+        try:
+            value = to_float(cell)
+        except ExtractorError:
+            raise CalorificError(f"calorific value file has a bad value {cell!r}") from None
         if value > 0:
             out[Station(ean=row[ean_at].strip(), name=row[name_at].strip())] = value
     if not out:
