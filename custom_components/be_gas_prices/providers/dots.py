@@ -119,7 +119,12 @@ _CARD_MONTH_RE = re.compile(rf"Tariefkaart\s+({_MONTHS})\s+(20\d{{2}})\b", re.IG
 _PRODUCT_TEXT = "Dots: Gas Connect - Digital"
 _REGION_TEXT = "residentiële klanten in het Vlaamse Gewest"
 _VAT_RE = r"inclusief\s+(\d+)\s*%\s*BTW"
-_PRICE_RE = re.compile(r"^Gas\s+(\S.*ZTP.*?)\s+(\d+,\d+)[ \t]*$", re.MULTILINE)
+# "Gas 1,05 * M ZTP rek. gem. EGSI EEX + 0,9 7,873": the formula up to its
+# adder, then the price. Anchored on the adder, so a price wrapped onto the
+# next line refuses the card rather than reading the 0,9 as the price.
+_PRICE_RE = re.compile(
+    r"^Gas[ \t]+(\S.*ZTP.*\+[ \t]*\d+(?:,\d+)?)[ \t]+(\d+,\d+)[ \t]*$", re.MULTILINE
+)
 _FEE_RE = re.compile(r"€\s*(\d+(?:,\d+)?)\s*/maand/EAN")
 # pypdf breaks some tax figures around their comma ("0, 10577", "1 ,093").
 _FIGURE = r"\s+(\d+ ?, ?\d+)"

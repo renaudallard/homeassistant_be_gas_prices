@@ -57,8 +57,9 @@ zijn inclusief 6% BTW (indien van toepassing)".
 ## How each figure is read (pypdf text)
 
 - Month: "Tariefkaart september 2026".
-- Energy: the "Gas ... ZTP ... 7,873" line (formula, then price); fee
-  "€5,3/maand/EAN" x 12.
+- Energy: the "Gas ... ZTP ... + 0,9 7,873" line (formula up to its adder,
+  then the price, on the same line: a price wrapped off it refuses the card
+  rather than reading the adder); fee "€5,3/maand/EAN" x 12.
 - VAT: "inclusief 6% BTW" into `card_vat_rate`.
 - Taxes: "Energiebijdrage 0,10577", "Verbruik tussen 0 & 12.000 kWh 1,093",
   "Verbruik > 12.000 kWh 1,183". pypdf breaks some of these around the comma
@@ -96,5 +97,6 @@ zijn inclusief 6% BTW (indien van toepassing)".
 
 `tests/test_dots.py`: the price kept as printed, the levies, the Antwerpen
 row, the wrong cells dropping their tier, the Internal card refused, region and
-contract refusals, a lost price line, the product page link, `fetch`, and the
+contract refusals, a lost price line, a price wrapped off the formula line,
+the product page link, `fetch`, and the
 extractor having neither archive nor index.

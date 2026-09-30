@@ -142,6 +142,13 @@ def test_card_that_lost_its_price_line_fails_loud() -> None:
         dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, text, "url")
 
 
+def test_a_price_wrapped_off_the_formula_line_is_refused() -> None:
+    """Read as it stood, the formula's adder would pass for the price."""
+    text = fixture_text("dots", CARD).replace("EEX + 0,9 7,873", "EEX + 0,9\n7,873")
+    with pytest.raises(ExtractorError, match="price or fee"):
+        dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, text, "url")
+
+
 def test_product_page_links_the_card() -> None:
     page = fixture_page("dots", "dots_dots-connect-gas-digital.html")
     assert dots.card_path(page) == (
