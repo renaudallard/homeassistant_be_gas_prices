@@ -690,6 +690,31 @@ async def test_a_card_published_as_images_is_read_by_the_ocr_engine(
     assert next(s for s in row["_sources"] if s["url"] == CARD_URL)["ocr"] == "0.3.0+bbbbbbbbbbbb"
 
 
+async def test_a_replay_under_another_engine_keeps_the_reading_marked(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In October a new engine and a parser change: September's row, parsed
+    again from its stored text, still names the engine that read it."""
+    out = tmp_path / "gas"
+    monkeypatch.setattr(ac, "_ocr_text", lambda payload: "month 2026-09 price 0.09")
+    monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+aaaaaaaaaaaa")
+    await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    web.pages[CARD_URL] = _card("2026-10", "0.10")
+    monkeypatch.setattr(ac, "_ocr_text", lambda payload: "month 2026-10 price 0.10")
+    monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+bbbbbbbbbbbb")
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        extractors=[_ImageAcme().extractor()],
+        now=datetime(2026, 10, 2, 6, tzinfo=UTC),
+        sleep=_no_sleep,
+    )
+    assert summary.replayed == 2
+    september = json.loads((out / ROW / "2026-09.json").read_text(encoding="utf-8"))
+    card = next(s for s in september["_sources"] if s["url"] == CARD_URL)
+    assert card["ocr"] == "0.3.0+aaaaaaaaaaaa"
+
+
 async def test_a_card_read_by_its_text_layer_is_not_marked(tmp_path: Path, web: _Session) -> None:
     out = tmp_path / "gas"
     await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)

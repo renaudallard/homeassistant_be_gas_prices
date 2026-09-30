@@ -819,6 +819,12 @@ async def _replay_row(
         # Seeded, not touched: only what the parse reads counts as read.
         dict.__setitem__(memo, _memo_key(source), text)
     cards.digests.update({s["url"]: s["pdf"] for s in sources if "pdf" in s})
+    # The row's text is its engine's reading whichever engine this run has,
+    # and still names that engine: an installation learns from it that the
+    # card was read off an image, and a later engine reads the card again.
+    cards.ocr.update(
+        {(s["variant"], s["pdf"]): s["ocr"] for s in sources if "pdf" in s and "ocr" in s}
+    )
     cards.calls.clear()
     offline: Any = _Offline()
     with memoise_text_fetches(memo), render_through(cards.render):
