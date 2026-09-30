@@ -463,7 +463,7 @@
         },
         "start_date": {
           "name": "Date de début",
-          "description": "Par défaut le début de la fenêtre de l'année."
+          "description": "Par défaut le début de la fenêtre de l'année. Jamais avant un changement de contrat enregistré cette année."
         },
         "clear": {
           "name": "Effacer d'abord",

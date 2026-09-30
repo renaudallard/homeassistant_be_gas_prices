@@ -463,7 +463,7 @@
         },
         "start_date": {
           "name": "Startdatum",
-          "description": "Standardmäßig der Beginn des Fensters dieses Jahres."
+          "description": "Standardmäßig der Beginn des Fensters dieses Jahres. Nie vor einem in diesem Jahr erfassten Vertragswechsel."
         },
         "clear": {
           "name": "Zuerst löschen",

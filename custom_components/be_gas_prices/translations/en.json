@@ -463,7 +463,7 @@
         },
         "start_date": {
           "name": "Start date",
-          "description": "Defaults to the start of the year's window."
+          "description": "Defaults to the start of the year's window. Never before a change of contract recorded this year."
         },
         "clear": {
           "name": "Clear first",

@@ -104,7 +104,9 @@ async def backfill_prices(
     *,
     clear: bool = False,
 ) -> dict[str, int]:
-    """Write the hourly price rows from ``start`` to the last full hour.
+    """Write the hourly price rows from ``start``, or from the day the
+    current contract took over at a switch recorded this year, to the last
+    full hour.
 
     Returns the rows written per statistic id, none without a recorder.
     ``clear`` deletes the sensors' statistics first, whole, since the
@@ -121,6 +123,12 @@ async def backfill_prices(
     )
     from homeassistant.components.recorder.statistics import async_import_statistics
 
+    switched = coordinator.switch_day(dt_util.now().date())
+    if switched is not None and start < switched:
+        # The hours before were an earlier contract's, which the price
+        # sensors showed then and which this, pricing the current contract,
+        # would overwrite.
+        start = switched
     entry_id = coordinator.entry.entry_id
     ids = {key: _statistic_id(hass, entry_id, key) for key, _unit in _SERIES}
     present = {key: sid for key, sid in ids.items() if sid is not None}

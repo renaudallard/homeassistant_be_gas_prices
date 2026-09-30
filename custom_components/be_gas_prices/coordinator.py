@@ -219,6 +219,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """The first day the current contract supplied this year."""
         return current_period_start(self._data, self.window_start(today), today)
 
+    def switch_day(self, today: date) -> date | None:
+        """The day the current contract took over from one recorded at a
+        switch this year, None when the year had no switch."""
+        if not periods_this_year(self._data, today):
+            return None
+        return self.period_start(today)
+
     # ---- persistence ------------------------------------------------------
 
     async def async_load_persistent(self) -> None:
@@ -498,7 +505,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if self.extractor.id == SUPPLIER_CUSTOM:
             # Every month bills on the typed card.
             return []
-        start = self.window_start(today)
+        start = self.period_start(today)
         current = month_key(today)
         months: list[str] = []
         year, month = start.year, start.month

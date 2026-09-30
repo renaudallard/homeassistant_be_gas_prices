@@ -30,8 +30,9 @@ cards (`issues.sync_issues`).
 3. **Calorific values** (`_refresh_calorific`), daily, for a household that
    converts on its reception station: every month Atrias lists since
    January of last year, only the months not held yet.
-4. **Past months' cards** (`_fill_month_cards`) for every closed month of the
-   window and the signing month. The first tick does this in the background,
+4. **Past months' cards** (`_fill_month_cards`) for every closed month the
+   current contract supplied this year and the signing month. The first tick
+   does this in the background,
    because it is what setup waits on, and requests a refresh when done.
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
    source of the Energy dashboard, read as daily changes from 1 January of
@@ -68,7 +69,9 @@ whose fix flow fetches again, and it is what lets the card archive stand in.
 - `be_gas_prices.refresh` and the *Refresh tariff card* button force the next
   tick to fetch the card and the index values whatever their age.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
-  statistics from a start date (default: the start of the year's window).
+  statistics from a start date (default: the start of the year's window),
+  never before a change of contract recorded this year: the hours before it
+  were the earlier contract's.
   `clear: true` deletes those statistics in full first, since the recorder
   has no windowed delete, and requires an `entry_id`.
 

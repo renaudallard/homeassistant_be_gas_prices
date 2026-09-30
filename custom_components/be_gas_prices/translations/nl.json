@@ -463,7 +463,7 @@
         },
         "start_date": {
           "name": "Startdatum",
-          "description": "Standaard het begin van het venster van dit jaar."
+          "description": "Standaard het begin van het venster van dit jaar. Nooit vóór een contractwissel die dit jaar is vastgelegd."
         },
         "clear": {
           "name": "Eerst wissen",

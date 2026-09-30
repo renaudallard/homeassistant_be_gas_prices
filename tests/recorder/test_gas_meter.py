@@ -61,6 +61,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CONVERSION_MODE,
     CONF_DSO,
     CONF_GAS_METER,
+    CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_SUPPLIER,
     CONVERSION_MANUAL,
@@ -148,7 +149,9 @@ def _card() -> SupplierSnapshot:
 
 
 async def _setup_entry(
-    hass: HomeAssistant, card: SupplierSnapshot | None = None
+    hass: HomeAssistant,
+    card: SupplierSnapshot | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> MockConfigEntry:
     """An Engie Flow entry in Wallonia, on the September card unless given
     another, read from the meter. The price history it writes at setup is
@@ -173,6 +176,7 @@ async def _setup_entry(
             CONF_CONVERSION_FACTOR: 11.5,
             CONF_CARD_ARCHIVE: False,
             CONF_GAS_METER: METER,
+            **(extra or {}),
         },
     )
     entry.add_to_hass(hass)
@@ -238,6 +242,27 @@ async def test_the_price_history_is_written_hour_by_hour(
     assert [row["mean"] for row in stats[kwh]] == [pytest.approx(price)] * 10
     assert [row["mean"] for row in stats[m3]] == [pytest.approx(price * 11.5)] * 10
     assert stats[kwh][0]["start"] == start.timestamp()
+
+
+@pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
+async def test_the_price_history_stops_at_a_recorded_switch(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """The hours before the switch were the earlier contract's: asked from
+    the day before, the backfill writes the current contract's day only."""
+    await _zone(hass)
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_easy_fixed",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-09-14",
+    }
+    entry = await _setup_entry(hass, extra={CONF_PREVIOUS_CONTRACTS: [earlier]})
+    coordinator = entry.runtime_data
+    assert coordinator.switch_day(date(2026, 9, 15)) == date(2026, 9, 15)
+    counts = await backfill_prices(hass, coordinator, date(2026, 9, 14))
+    assert counts["sensor.engie_flow_current_price"] == 10
 
 
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
