@@ -121,13 +121,14 @@ fails with "not the order this reader maps by position"; check the rows
 against the regulator's figures again and map by label if they now agree.
 The fixed terms alone tell the eight areas apart.
 
-Every 2025 card of the template (and Belvus's January to March 2026 ones)
-carries the broken row "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72", which by
-position would bill Halle-Vilvoorde's mid tier 70,72 c€/kWh. The shared
-`dso_overlay` drops a tier whose proportional term is not below the one
-before it, so on those cards Halle-Vilvoorde keeps its small tier only: a
-household above 5 000 kWh there gets a pricing error, and every other row
-prices.
+The 2025 table of the template (on every 2025 card, and on Belvus's January
+to March 2026 ones) is laid out otherwise: each row carries its own label's
+figures ("FLUVIUS WEST 2,48 17,15" is West's, as EBEM's labelled card of
+December 2025 prints it), so read by position seven areas of eight would get
+another area's tariff. It also carries the broken row "FLUVIUS LIMBURG 2,09
+13,32 70,72 70,72", whose mid tier the shared `dso_overlay` drops as not
+degressive. That row is what tells the 2025 table, and `_dsos` refuses a card
+printing it: those months are months with no card.
 
 ## Index
 
@@ -159,15 +160,15 @@ prices.
   later upload.
 - Checked live on 29 September 2026 for one product per brand: every card
   the archives list from January to September 2026 reads. The February to
-  December 2025 cards read without Halle-Vilvoorde's mid tier (the broken
-  row above), and the January 2025 ones checked do not parse (no card month,
-  or no databeheer line). A refused month is a month with no card.
+  December 2025 cards are refused for their 2025 table (above), and the
+  January 2025 ones checked do not parse (no card month, or no databeheer
+  line). A refused month is a month with no card.
 - A month ahead of today (Home Assistant's clock) is not asked for; a card
   naming another month is refused; a transient failure raises.
 
 ## Known quirks and card errors
 
-- The misassigned labels and the 2025 broken row, above.
+- The misassigned labels and the 2025 table, above.
 - Every card from February 2025 to September 2026 prints the same tax block:
   excise 0,8724 / 0,9457 c€/kWh and contribution 0,1057. From August 2026 the
   law override replaces them. Before that, 0,8724 is the law's 8,23 EUR/MWh
@@ -193,8 +194,8 @@ prices.
 - `test_the_label_limburg_carries_halle_vilvoorde`,
   `test_power2you_prints_three_decimals`: individual rows.
 - `test_levies_are_read_as_printed`, `test_august_card_and_evident_typo`.
-- `test_the_2025_broken_row_loses_its_mid_tier`: Halle-Vilvoorde keeps T1
-  only on a 2025 card, and above 5 000 kWh does not price.
+- `test_a_card_with_the_2025_table_is_refused`: a December 2025 card, whose
+  rows carry their own labels' figures.
 - Refusals: another product's card, relabelled rows, a lost formula,
   Wallonia, an unknown contract.
 - Discovery: `test_current_card_is_the_groups_gas_link` (every contract),

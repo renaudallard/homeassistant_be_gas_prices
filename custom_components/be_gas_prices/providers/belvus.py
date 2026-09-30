@@ -60,7 +60,7 @@ from datetime import date, timedelta
 
 import aiohttp
 
-from ..const import REGION_FLANDERS, TIER_T2
+from ..const import REGION_FLANDERS
 from ._energy_together import INDEX, card_month, last_known_index, parse_card
 from ._parse import require_contract
 from ._pdf import fetch_pdf_text, fetch_text
@@ -107,7 +107,10 @@ def _contract(contract_id: str, region: str) -> _ContractDef:
 def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) -> SupplierSnapshot:
     """Parse one card's text as pypdf extracts it, in either layout."""
     contract = _contract(contract_id, region)
-    snapshot = parse_card(
+    # The January to March 2026 cards reprint the 2025 distribution table
+    # for months Fluvius billed on its 2026 tariffs, which the shared reader
+    # refuses.
+    return parse_card(
         text,
         supplier="belvus",
         label="Belvus",
@@ -115,12 +118,6 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
         product=contract.file,
         source_url=source_url,
     )
-    # The January to March 2026 cards reprint the 2025 distribution table
-    # for months Fluvius billed on its 2026 tariffs. Its broken row, whose mid
-    # tier the reader drops, is what tells that table.
-    if any(TIER_T2 not in overlay.tiers for overlay in snapshot.dsos.values()):
-        raise ExtractorError("Belvus: a Fluvius row is not degressive, as on the 2025 table")
-    return snapshot
 
 
 async def _read(

@@ -69,10 +69,10 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
   ahead of today (Home Assistant's clock) is not asked for.
 - January to March 2026: refused. They reprint a 2025 distribution table
   (Antwerpen 2,1 14,24 0,87 75,6, databeheer 18,56) with the broken row
-  "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72". Where the Energy Together reader
-  drops that row's mid tier, `parse_snapshot` refuses the card: the row is
-  what tells the 2025 table, which would bill a 2026 month on the previous
-  year's network tariffs.
+  "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72". The Energy Together reader
+  refuses the card: the row is what tells the 2025 table, which would bill
+  a 2026 month on the previous year's network tariffs, and whose rows do not
+  follow the positions the reader maps.
 - April 2026: refused. Same 2025 table, and the label wraps as "FLUVIUS" /
   "MIDDENVLAANDEREN", so the label order check fails.
 - May to September 2026 read.

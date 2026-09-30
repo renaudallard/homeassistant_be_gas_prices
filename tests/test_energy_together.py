@@ -48,7 +48,6 @@ from custom_components.be_gas_prices.const import (
     TIER_T1,
     TIER_T2,
 )
-from custom_components.be_gas_prices.pricing import PricingError, compute_breakdown
 from custom_components.be_gas_prices.providers import energy_together as et
 from custom_components.be_gas_prices.providers._energy_together import last_known_index
 from custom_components.be_gas_prices.providers._rates import IndexedRates
@@ -235,20 +234,15 @@ def test_relabelled_rows_are_refused() -> None:
         et.parse_snapshot("hoa_energy_nova", REGION_FLANDERS, text, "url")
 
 
-def test_the_2025_broken_row_loses_its_mid_tier() -> None:
-    """The 2025 cards print "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72": read by
-    position that would bill Halle-Vilvoorde's mid tier 70,72 c EUR/kWh."""
-    snap = _parse("servolt", "Tariefkaart_Control_NG_2025-12.pdf", "servolt_control")
-    tiers = snap.dsos[DSO_FLUVIUS_HALLE_VILVOORDE].tiers
-    assert list(tiers) == [TIER_T1]
-    assert tiers[TIER_T1].fixed_per_year == pytest.approx(13.32)
-    assert tiers[TIER_T1].proportional == pytest.approx(0.0209)
-    assert all(
-        TIER_T2 in snap.dsos[key].tiers for key in FLUVIUS_KEYS - {DSO_FLUVIUS_HALLE_VILVOORDE}
-    )
-    compute_breakdown(snap, DSO_FLUVIUS_HALLE_VILVOORDE, 4_000.0, 0.03)
-    with pytest.raises(PricingError, match="T2"):
-        compute_breakdown(snap, DSO_FLUVIUS_HALLE_VILVOORDE, 17_000.0, 0.03)
+def test_a_card_with_the_2025_table_is_refused() -> None:
+    """The 2025 table prints each row under its own label, "FLUVIUS WEST 2,48
+    17,15" being West's as EBEM's labelled card of December 2025 prints it,
+    so read by position seven areas would get another's tariff. Its broken
+    row "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72" is what tells it."""
+    text = fixture_text("servolt", "Tariefkaart_Control_NG_2025-12.pdf")
+    assert "FLUVIUS WEST 2,48 17,15" in text
+    with pytest.raises(ExtractorError, match="not degressive"):
+        et.parse_snapshot("servolt_control", REGION_FLANDERS, text, "url")
 
 
 def test_card_that_lost_its_formula_fails_loud() -> None:

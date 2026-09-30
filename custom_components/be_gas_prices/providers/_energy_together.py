@@ -61,9 +61,12 @@ Midden-Vlaanderen carries Limburg's 14,59 / 2,24 / 77,46 / 0,98, and so on
 down the table; only Antwerpen is right. So the rows are mapped by position,
 and a card whose labels come in any other order is refused: were either the
 labels or the figures moved, the position would no longer say whose figures
-a row carries. The 2025 cards break one row ("FLUVIUS LIMBURG 2,09 13,32
+a row carries. The 2025 table is another matter: its rows carry their own
+labels' figures, which by position would give seven areas out of eight
+another area's tariff, and it breaks one row ("FLUVIUS LIMBURG 2,09 13,32
 70,72 70,72"), whose mid tier :func:`._network.dso_overlay` drops as not
-degressive.
+degressive. That broken row is what tells the 2025 table, and a card
+printing it is refused.
 """
 
 from __future__ import annotations
@@ -80,6 +83,7 @@ from ..const import (
     DSO_FLUVIUS_MIDDEN_VLAANDEREN,
     DSO_FLUVIUS_WEST,
     DSO_FLUVIUS_ZENNE_DIJLE,
+    TIER_T2,
     VAT_RATE_REDUCED,
 )
 from ._network import T1_FIXED, T1_PROP, T2_FIXED, T2_PROP, dso_overlay, excise_bands
@@ -252,12 +256,18 @@ def _dsos(text: str, label: str) -> dict[str, DsoOverlay]:
             f"{label}: Fluvius rows read {', '.join(printed) or 'none'}, not the order "
             "this reader maps by position"
         )
-    return {
+    overlays = {
         owner: dso_overlay(
             cells, _COLUMNS, supplier=label, label=owner, transport=transport, metering=metering
         )
         for owner, (_, cells) in zip(_ROW_OWNERS, rows, strict=True)
     }
+    if any(TIER_T2 not in overlay.tiers for overlay in overlays.values()):
+        raise ExtractorError(
+            f"{label}: a Fluvius row is not degressive, as on the 2025 table, whose rows "
+            "carry their own labels' figures rather than this reader's positions"
+        )
+    return overlays
 
 
 def parse_card(
