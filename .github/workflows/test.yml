@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Callable so autorelease.yml can gate a release on exactly this suite
+  # instead of keeping a hand copy of it that can drift.
+  workflow_call:
+
+# Cancel a stale push or PR run when a new commit lands. github.workflow is
+# the CALLER's name, so the standalone run and the one autorelease calls land
+# in different groups; sharing one on a push to main, cancel-in-progress
+# would kill the release's own gate.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          # The oldest Python the Home Assistant release hacs.json names
+          # accepts (2026.2 requires 3.13.2 or later).
+          python-version: "3.13"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Type check (production code, --strict)
+        run: mypy --strict custom_components/be_gas_prices
+      - name: Type check (tests and helper scripts, non-strict)
+        # The tests are not --strict clean (the harness has untyped helpers
+        # the integration never imports), but a plain mypy still catches the
+        # optional index and the wrong argument. The scripts run as daily
+        # workflows; checking them here surfaces a regression on the pull
+        # request rather than in the next scheduled run.
+        run: mypy tests/ scripts/
+      - name: Tests
+        # Split across the runner's cores by file, so a file's fixtures are
+        # built once in one worker. Each worker costs one Home Assistant
+        # import, which is why this is here and not in addopts: it would make
+        # a single-file run during development slower, not faster.
+        run: pytest tests/ -q -n auto --dist loadfile

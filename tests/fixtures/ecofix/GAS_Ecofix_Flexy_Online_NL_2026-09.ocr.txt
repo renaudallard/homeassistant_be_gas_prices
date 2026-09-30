@@ -1,0 +1,88 @@
+Tariefkaart
+September 2026
+Variabele prijzen aardgas voor contracten afgesloten in september 2026
+Voor residentiële klanten in België (Prijzen inclusief 6% BTW)
+Samenstelling van je energieprijs
+Wist je dat je prijs voor aardgas uit 3 delen bestaat?
+1.De energieprijs
+(vaste vergoeding, kosten eigen aan Ecofix en de energieprijs)
+(distributie & transport)
+3.Toeslagen en heffingen
+(toeslagen, accijnzen & bijdragen)
+Geleverde energie (Ecofix)
+variabele prijs - contract van 1 jaar Netwerkkosten (Netbeheerder)
+telefonische klantendienst - Ecofix app Taksen, heffingen & BTW (Overheid)
+1.Variabele energieprijs - 1 jaar
+Vaste vergoeding Prijs per kWh (€ cent/kWh)
+(€/jaar) Maandelijkse prijzen
+10,00 + 6,91 Maandprijs
+6,92 Verwachte jaarprijs
+.
+2 Netwerkkosten (distributie en transport)
+Vlaanderen Distributie
+Klein verbruik Gemiddeld verbruik Groot verbruik >= 150
+Tarief databeheer
+<= 5000 kWh/jaar 5 001 - 150 000 kWh/jaar 001 kWh/jaar
+Distributie Transport
+netbeheerder Vaste Vaste Vaste €cent/kWh
+Afname Afname Afname Maandelijks/Jaarlijks
+vergoeding vergoeding vergoeding
+€cent/kWh €cent/kWh €cent/kWh €/jaar
+€/jaar €/jaar €/jaar
+Fluvius Antwerpen 15,68 2,257 83,22 0,905 562,63 0,586 18,92 0,165
+Fluvius Halle-Vilvoorde 17,59 2,496 93,38 0,981 631,27 0,621 18,92 0,165
+Fluvius Imewo 18,61 2,628 98,81 1,024 668,02 0,644 18,92 0,165
+Fluvius Kempen 16,17 2,275 85,83 0,882 580,25 0,552 18,92 0,165
+Fluvius Limburg 14,59 2,240 77,46 0,983 523,72 0,686 18,92 0,165
+Fluvius Midden-Vlaanderen 16,33 2,317 86,71 0,909 586,19 0,577 18,92 0,165
+Fluvius West 19,03 2,695 101,02 1,055 682,96 0,667 18,92 0,165
+Fluvius Zenne-Dijle 18,40 2,602 97,72 1,017 660,65 0,641 18,92 0,165
+www.ecofixgp.be
+Download de Ecofix app
+Bezoek onze website voor alle info & voorwaarden
+Ecofix Gas & Power – 02 882 86 86 – hello@ecofixgp.be – www.ecofixgp.be – Kunstlaan 56, 1000 Brussel – BE 1011.812.443
+Tariefkaart
+September 2026
+Wallonië Distributie
+Klein verbruik Gemiddeld verbruik Groot verbruik
+<= 5000 kWh/jaar 5 001 - 150 000 kWh/jaar >= 150 001 kWh/jaar
+Distributie Transport
+netbeheerder Vaste Vaste Vaste €cent/kWh
+Afname Afname Afname
+vergoeding vergoeding vergoeding
+€cent/kWh €cent/kWh €cent/kWh
+€/jaar €/jaar €/jaar
+ORES (Brabant Wallon) 31,91 4,198 140,93 2,115 889,48 1,548 0,165
+ORES (Hainaut Gaz) 31,91 4,198 140,93 2,115 889,48 1,548 0,165
+ORES (Luxembourg) 31,91 4,198 140,93 2,115 889,48 1,548 0,165
+ORES (Mouscron) 31,91 4,198 140,93 2,115 889,48 1,548 0,165
+ORES (Namur) 31,91 4,198 140,93 2,115 889,48 1,548 0,165
+TECTO - RESA 34,59 4,640 140,93 2,259 962,74 2,241 0,165
+3.Toeslagen & heffingen
+Gewone accijnzen (€cent/kWh) Federale bijzondere accijnzen (€cent/kWh)
+Bijdrage op energie 0,10577 Verbruik tussen 0 & 12.000 kWh 0,87238
+Verbruik groter dan 12.000 kWh 0,96229
+Toeslag Wallonië (€cent/kWh)
+Aansluitingsvergoeding 0,00750
+Informatie over onze tarieven
+Hoe wordt de prijs van aardgas berekend?
+De prijs van natuurlijk aardgas bij Ecofix Gas & Power wordt maandelijks aangepast op basis van de marktprijs, ongeacht de duur van je contract. We gebruiken
+hiervoor het rekenkundig gemiddelde van de dagelijkse Day Ahead- en Weekend TTF-prijzen (EGSI) tijdens de maand van levering, zoals gepubliceerd op de website
+van EEX.
+Zijn de marktprijzen voor de lopende maand nog niet beschikbaar op het moment dat we je meterstanden ontvangen? Dan baseren we ons op de meest recente
+beschikbare data tot de dag van je afrekeningsfactuur.
+Onze tariefformule voor aardgas (excl. btw): (0,1010*TTF-RLP-M) + 0,2200 c€/kWh
+Deze tariefformule blijft 1 jaar gegarandeerd, ook bij een contract van onbepaalde duur.
+Maandelijks afrekenen
+Heb je gekozen voor maandelijkse afrekeningen? (conform artikel 11.3 van de Algemene Voorwaarden) Dan rekenen we je verbruik niet aan door middel van
+voorschotten, maar op basis van je werkelijke verbruik per maand. Dit doen we door het verschil te berekenen tussen de meterstanden aan het begin en het einde
+van de maand. Zo betaal je exact wat je verbruikt, zonder verrassingen achteraf. Een digitale meter is hiervoor verplicht, zodat je netbeheerder ons maandelijks je
+meterstanden kan doorsturen. Zo kunnen wij een nauwkeurige afrekening opmaken, afgestemd op jouw werkelijk verbruik.
+Verzend- en betaalwijze facturen
+Je ontvangt onze facturen per e-mail. Je kiest je betaalwijze: per domiciliëring of overschrijving. De eerste factuur dient betaald te worden voor de start
+leveringsdatum, tenzij je gekozen hebt voor maandelijkse afrekeningen. We behouden ons het recht voor om de start leveringsdatum uit te stellen als daaraan niet
+wordt voldaan. U vindt alle informatie over betaling en facturatie in artikel 11 van onze Algemene Voorwaarden.
+Kosten voor herinneringen en ingebrekestellingen
+Kosten voor herinneringen (eerste 3 gratis) 7,50 €
+Kosten voor ingebrekestelling 15,00 €
+Ecofix Gas & Power – 02 882 86 86 – hello@ecofixgp.be – www.ecofixgp.be – Kunstlaan 56, 1000 Brussel – BE 1011.812.443

@@ -1,0 +1,234 @@
+name: Bug report
+description: Report a problem with the integration
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report. Please fill in every section you
+        can: a missing supplier, network operator, contract or version is the
+        most common reason a bug takes weeks instead of hours to fix.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: What is the issue about?
+      description: Helps route the report to the right area of the code.
+      options:
+        - Wrong price (Current price, Current price per m³)
+        - Wrong cost (Current year cost, Current month cost, Rolling year cost, Projected year-end cost)
+        - Wrong conversion from m³ to kWh (Conversion factor)
+        - Network or taxes component wrong
+        - Gas meter not read, or consumption wrong
+        - Setup or options flow
+        - Stale tariff card or repair issue
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: e.g. 2026.9.1
+    validations:
+      required: true
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      description: Settings -> Devices & services -> Belgian Gas Prices -> three-dot menu -> "Download diagnostics" shows it under `manifest.version`.
+      placeholder: e.g. 0.0.1
+    validations:
+      required: true
+
+  - type: input
+    id: when_started
+    attributes:
+      label: When did it start?
+      description: First version it broke under, or a date or event ("after upgrading to 0.0.2", "first noticed today"). Many reports line up with a supplier publishing a new card; a date narrows it.
+      placeholder: e.g. since 0.0.2, or "on the 1st of the month"
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Install method
+      options:
+        - HACS
+        - Manual copy into custom_components
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: region
+    attributes:
+      label: Region
+      options:
+        - Flanders
+        - Wallonia
+        - Brussels
+    validations:
+      required: true
+
+  - type: dropdown
+    id: dso
+    attributes:
+      label: Network operator
+      description: The gas distribution network operator the integration was set up with.
+      options:
+        - Fluvius Antwerpen
+        - Fluvius Halle-Vilvoorde
+        - Fluvius Imewo
+        - Fluvius Kempen
+        - Fluvius Limburg
+        - Fluvius Midden-Vlaanderen
+        - Fluvius West
+        - Fluvius Zenne-Dijle
+        - ORES
+        - RESA
+        - Sibelga
+    validations:
+      required: true
+
+  - type: dropdown
+    id: supplier
+    attributes:
+      label: Supplier
+      options:
+        - Eneco
+        - Engie
+        - Luminus
+        - Mega
+        - TotalEnergies
+        - OCTA+
+        - Bolt
+        - EnergyVision
+        - Elegant
+        - Trevion
+        - HOA Energy
+        - Servolt Energie
+        - Evident Energie
+        - Power2You
+        - Prijspunten Energie
+        - Smappee Smiles
+        - Belvus
+        - Sparki
+        - Dots Energy
+        - energie.be
+        - EBEM
+        - Frank Energie
+        - Ecofix
+        - "Expert: custom figures"
+    validations:
+      required: true
+
+  - type: input
+    id: contract
+    attributes:
+      label: Contract
+      description: The contract as the integration's options name it (e.g. "Engie Flow", "Luminus Comfy").
+    validations:
+      required: true
+
+  - type: input
+    id: contract_start
+    attributes:
+      label: Contract start date and tariff card month
+      description: What the contract step of the options holds, if set. They price a fixed or indexed contract on the card of the month it was signed instead of the current one, so they are the first thing to check on a wrong price.
+      placeholder: e.g. 2026-06-01, card of May 2026; or "not set"
+
+  - type: input
+    id: annual_consumption
+    attributes:
+      label: Yearly consumption
+      description: The yearly gas use set in the household step, in kWh. It picks the distribution tier and the excise slices until the meter has measured a full year.
+      placeholder: e.g. 17000
+
+  - type: dropdown
+    id: meter_unit
+    attributes:
+      label: Gas meter unit
+      description: The unit of the gas meter sensor the integration reads.
+      options:
+        - m³
+        - kWh
+        - No gas meter set
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: conversion_mode
+    attributes:
+      label: Conversion from m³ to kWh
+      description: How the household step converts cubic metres to kWh. Only used with a meter in m³.
+      options:
+        - The calorific value of my reception station (Atrias)
+        - The factor printed on my bill
+        - Not applicable (meter in kWh or no meter)
+
+  - type: dropdown
+    id: caliber
+    attributes:
+      label: Gas meter size (Brussels only)
+      description: The meter size set in the household step; it decides the Brussels per-meter levy.
+      options:
+        - 6 or 10 m³/h (G4, G6)
+        - 16 m³/h (G10)
+        - 25 m³/h (G16)
+        - 40 m³/h (G25)
+        - 65 m³/h (G40)
+        - 100 m³/h (G65)
+        - 160 m³/h (G100)
+        - Above 160 m³/h
+        - Not applicable
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: What you observed, including the values you think are wrong (price, cost, conversion factor, consumption).
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: The figure from your bill or from the supplier's card, if you have it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        Enable debug logging in `configuration.yaml`, reload the integration,
+        then paste the lines from `home-assistant.log` that mention
+        `be_gas_prices`.
+
+        ```yaml
+        logger:
+          default: warning
+          logs:
+            custom_components.be_gas_prices: debug
+        ```
+      render: shell
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics download (optional but very helpful)
+      description: Settings -> Devices & services -> Belgian Gas Prices -> three-dot menu -> "Download diagnostics", then drag the JSON file into this box.

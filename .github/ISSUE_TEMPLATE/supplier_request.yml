@@ -1,0 +1,74 @@
+name: Supplier request
+description: Ask for a Belgian gas supplier or product that is not covered yet
+labels: [supplier]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask here rather than sending a pull request. A gas tariff card carries
+        a dozen things that are easy to read almost right: which consumption
+        tier a column is, whether a figure is per year or per month, whether
+        a formula is printed with or without VAT, which month an index belongs
+        to. Each of those misprices a bill quietly. What takes the time is
+        getting them right against the real card, so the card is the useful
+        thing to send.
+
+  - type: input
+    id: supplier
+    attributes:
+      label: Supplier
+      description: The company's name as it appears on the card.
+      placeholder: e.g. Ecopower, Wind voor A
+    validations:
+      required: true
+
+  - type: input
+    id: product
+    attributes:
+      label: Product
+      description: The gas contract you are on, named the way the supplier names it.
+      placeholder: e.g. Aardgas Variabel, Gaz Fixe 1 an
+    validations:
+      required: true
+
+  - type: input
+    id: card
+    attributes:
+      label: Link to the gas tariff card
+      description: >
+        The PDF or page the supplier publishes its gas prices on. This is the
+        one field that cannot be worked around: without the card there is
+        nothing to read prices from.
+      placeholder: https://...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: regions
+    attributes:
+      label: Regions it is sold in
+      multiple: true
+      options:
+        - Flanders
+        - Wallonia
+        - Brussels
+    validations:
+      required: true
+
+  - type: input
+    id: index
+    attributes:
+      label: Where the index values are published
+      description: >
+        For a variable product: the page or PDF where the supplier publishes
+        the monthly values of the index its formula names (ZTP, TTF and so on),
+        if you know it.
+      placeholder: https://...
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything unusual about it
+      description: >
+        A quarterly index, a fee that only applies online, a product sold only
+        with electricity. Optional, and useful.

@@ -1,0 +1,42 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Collect from tests/ alone: tmp/ holds research downloads and scratch
+# scripts, and pytest would import any test module it found there.
+testpaths = ["tests"]
+# A parser regression that loops forever fails its test instead of hanging.
+timeout = 60
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# RUF001-003 flag ambiguous Unicode characters, and the parsers match the
+# no-break and narrow spaces and the dash variants Belgian cards print on
+# purpose. E501 is left to the formatter.
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.format]
+exclude = ["*.md"]
+
+[tool.mypy]
+# custom_components/be_gas_prices and tests/ would otherwise resolve both as
+# 'be_gas_prices.*' and 'custom_components.be_gas_prices.*'.
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = [
+    "pypdf",
+    "pypdf.*",
+    "pdfplumber",
+    "pdfplumber.*",
+    # The OCR engine for cards published as page images runs in the card
+    # archive workflow only, on Python 3.14, and is absent here.
+    "ocr_price_cards",
+    "ocr_price_cards.*",
+    "pytest_homeassistant_custom_component",
+    "pytest_homeassistant_custom_component.*",
+]
+ignore_missing_imports = true

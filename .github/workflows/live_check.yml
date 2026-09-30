@@ -1,0 +1,145 @@
+name: Live check
+
+on:
+  schedule:
+    # 06:29 UTC, after the suppliers' overnight publication and after the card
+    # archiver (05:53), whose texts this reads. Off the hour on purpose: GitHub
+    # documents the start of every hour as a high-load slot for the schedule
+    # event and drops queued runs out of it when the load is bad enough. The
+    # cron only asks: the electricity integration's two jobs have started
+    # four to seven hours late. Neither job waits on the other, so a shed
+    # archive run cannot take the day's supplier check down with it; this
+    # one then simply renders more.
+    - cron: "29 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "custom_components/be_gas_prices/providers/**"
+      - "scripts/live_check.py"
+      - "scripts/card_texts.py"
+      - ".github/workflows/live_check.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+# A run still going when the next is scheduled, or two pull requests touching
+# providers/, would otherwise file the same issue twice. The newer run wins.
+concurrency:
+  group: live-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # The script retries each fetch itself and bounds each attempt, so a
+    # whole run is well under this; it only keeps a hung run from idling for
+    # the six-hour default.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # The script imports the integration, which imports Home Assistant,
+          # and the providers read their cards with the two PDF readers.
+          # Versions come from requirements-dev.txt so this runs against what
+          # the test suite proved, without a second copy of the numbers.
+          pip install -c requirements-dev.txt pypdf pdfplumber aiohttp homeassistant
+
+      - name: Check out the archive's texts
+        # A card the archiver walked earlier and still holds is not rendered
+        # again: the check downloads and parses it and takes the render from
+        # what the archive stored. The cards repository is public, so this
+        # needs no token and works on a fork's pull request too; without it
+        # every card is rendered, which only takes longer.
+        run: |
+          if git clone -q --depth=1 \
+              https://github.com/renaudallard/be_price_cards.git tmp/cards \
+              && [ -d tmp/cards/gas ]; then
+            echo "texts=--texts tmp/cards/gas" >> "$GITHUB_ENV"
+          else
+            echo "no archive to read texts from; every card is rendered"
+          fi
+
+      - name: Run the live check
+        id: check
+        run: |
+          set +e
+          # rc 0: every check passed.
+          # rc 1: a failure that is not transient (a parse error, a 404, a
+          #       stale card, a regulated figure the fleet disagrees with).
+          # rc 2: only transient failures, a supplier that did not answer on
+          #       any attempt. That says nothing about the card: reported in
+          #       the log, never filed.
+          # rc 3: the check itself crashed; the traceback is in the log.
+          python scripts/live_check.py ${texts:-} --fingerprint failures.txt > report.md
+          rc=$?
+          cat report.md
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # The steps below branch on rc, so this one always succeeds.
+          exit 0
+
+      - name: Open or update the live-check issue
+        # Skipped on pull_request: the failing job is the signal there, and a
+        # fork's run cannot open an issue anyway.
+        if: github.event_name != 'pull_request' && steps.check.outputs.rc == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "## Run"
+            echo
+            echo "$run_url"
+            echo
+            echo "## Failing checks"
+            echo
+            sed 's/^/- `/; s/$/`/' failures.txt
+            echo
+            # The report without its "All checks" list, which only repeats
+            # the tables above it and would push a large fleet's body past
+            # GitHub's 65,536 character limit.
+            awk '/^## All checks$/{exit} {print}' report.md
+          } > issue_body.md
+          # Defensive cap: a mass failure could still reach the limit through
+          # the tables alone. Cut at a line boundary and point at the log.
+          if [ "$(wc -c < issue_body.md)" -gt 60000 ]; then
+            head -c 60000 issue_body.md | sed '$d' > issue_body.tmp
+            printf '\n_[issue body truncated: full report in the run log]_\n' >> issue_body.tmp
+            mv issue_body.tmp issue_body.md
+          fi
+          # One issue, found by its label, fingerprinted on the failing
+          # labels: a card that stays broken gets one comment a week rather
+          # than one a day, and a failure that changes shape is posted at once.
+          bash scripts/file_ci_issue.sh \
+            --label live-check \
+            --title "[live-check] a gas tariff card check failed" \
+            --body issue_body.md \
+            --fingerprint failures.txt \
+            --workflow .github/workflows/live_check.yml
+
+      - name: Note the transient failures
+        if: steps.check.outputs.rc == '2'
+        run: echo "::notice::only transient failures; the report above lists them and nothing is filed"
+
+      - name: Fail the pull request on a failure
+        # A pull request that breaks a card, or a crash of the check, fails
+        # the pull request; a supplier that did not answer does not.
+        if: github.event_name == 'pull_request' && steps.check.outputs.rc != '0' && steps.check.outputs.rc != '2'
+        run: |
+          echo "live check rc=${{ steps.check.outputs.rc }}; failing the pull request" >&2
+          exit 1
+
+      - name: Fail the run when the check crashed
+        # No issue is filed for a crash, which is this repository's bug and
+        # not a supplier's, so without this the run would end green with the
+        # traceback buried in the log.
+        if: github.event_name != 'pull_request' && steps.check.outputs.rc != '0' && steps.check.outputs.rc != '1' && steps.check.outputs.rc != '2'
+        run: |
+          echo "the live check crashed (rc=${{ steps.check.outputs.rc }}); see the traceback above" >&2
+          exit 1

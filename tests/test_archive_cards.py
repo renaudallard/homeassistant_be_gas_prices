@@ -1,0 +1,703 @@
+# Copyright (c) 2026, Renaud Allard <renaud@allard.it>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+"""scripts/archive_cards.py: the daily writer of the gas card archive.
+
+The supplier here is synthetic: a listing page and a PDF whose text carries
+the card month and a price, parsed through the integration's own readers, so
+the memo, the render hook and the digests are the real ones.
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import aiohttp
+import pytest
+import yaml  # type: ignore[import-untyped]
+from homeassistant.util import dt as dt_util
+
+from custom_components.be_gas_prices.const import CARD_ARCHIVE_URL
+from custom_components.be_gas_prices.month_cards import fetch_archived_card, fetch_archived_row
+from custom_components.be_gas_prices.providers import _pdf
+from custom_components.be_gas_prices.providers._network import excise_bands
+from custom_components.be_gas_prices.providers._rates import Contract, FixedRates
+from custom_components.be_gas_prices.providers._validity import end_of_month
+from custom_components.be_gas_prices.providers.base import (
+    CardNotReadableError,
+    DsoOverlay,
+    DsoTier,
+    ExtractorError,
+    SupplierExtractor,
+    SupplierSnapshot,
+    TaxOverlay,
+)
+from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+
+# scripts/ is not a package, so it is added to sys.path above rather than
+# imported by dotted path; mypy cannot follow that.
+import archive_cards as ac  # type: ignore[import-not-found]
+
+NOW = datetime(2026, 9, 11, 6, 0, tzinfo=UTC)
+LISTING_URL = "https://acme.test/tariffs"
+CARD_URL = "https://acme.test/card.pdf"
+ROW = "cards/acme/acme_fix/wallonia"
+
+
+def _card(month: str, price: str) -> bytes:
+    return f"%PDF-1.4 month {month} price {price}".encode("ascii")
+
+
+class _Response:
+    content_length = None
+    status = 200
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    async def text(self) -> str:
+        return self._body.decode("utf-8")
+
+    async def read(self) -> bytes:
+        return self._body
+
+    async def json(self, content_type: str | None = None) -> Any:
+        return json.loads(self._body)
+
+    async def __aenter__(self) -> _Response:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+
+class _Session:
+    """Just enough of aiohttp for the readers: one canned body per URL."""
+
+    def __init__(self, pages: dict[str, bytes]) -> None:
+        self.pages = pages
+        self.asked: list[str] = []
+
+    def get(self, url: str, **_kw: Any) -> _Response:
+        self.asked.append(url)
+        if url not in self.pages:
+            raise aiohttp.ClientConnectionError(url)
+        return _Response(self.pages[url])
+
+    async def __aenter__(self) -> _Session:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+
+@pytest.fixture
+def web(monkeypatch: pytest.MonkeyPatch) -> _Session:
+    """The session the archiver opens, serving the synthetic supplier."""
+    session = _Session({LISTING_URL: b"listing", CARD_URL: _card("2026-09", "0.08")})
+    monkeypatch.setattr(ac.aiohttp, "ClientSession", lambda *_a, **_kw: session)
+    return session
+
+
+def _snapshot(contract: str, label: str, price: float) -> SupplierSnapshot:
+    year, month = (int(part) for part in label.split("-"))
+    return SupplierSnapshot(
+        supplier="acme",
+        contract=contract,
+        energy=FixedRates(price=price, yearly_fixed_fee=50.0),
+        dsos={
+            "ores": DsoOverlay(
+                tiers={
+                    "t1": DsoTier(fixed_per_year=30.0, proportional=0.04),
+                    "t2": DsoTier(fixed_per_year=140.0, proportional=0.02),
+                },
+                transport=0.0016,
+            )
+        },
+        taxes=TaxOverlay(
+            excise_bands=excise_bands(0.011, 0.012), connection_fee=0.00008, card_vat_rate=0.06
+        ),
+        source_url=CARD_URL,
+        publication_label=label,
+        valid_until=end_of_month(year, month),
+    )
+
+
+def _parse(text: str, factor: float, contract: str) -> SupplierSnapshot:
+    month = re.search(r"month (\S+)", text)
+    price = re.search(r"price (\S+)", text)
+    if month is None or price is None:
+        raise ExtractorError("Acme: card not read")
+    return _snapshot(contract, month.group(1), float(price.group(1)) * factor)
+
+
+class _Acme:
+    """A supplier whose card is a listing page and a PDF. ``factor`` stands
+    for a parser change; ``days`` records the day each parse ran on."""
+
+    def __init__(self, factor: float = 1.0) -> None:
+        self.factor = factor
+        self.renders = 0
+        self.days: list[date] = []
+
+    def render(self, payload: bytes) -> str:
+        self.renders += 1
+        return payload.decode("ascii")
+
+    async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+        await _pdf.fetch_text(session, LISTING_URL)
+        text = await _pdf.fetch_pdf_rendered(
+            session, CARD_URL, variant="plain", timeout=30, render=self.render
+        )
+        self.days.append(dt_util.now().date())
+        return _parse(text, self.factor, contract)
+
+    def extractor(self, **kwargs: Any) -> SupplierExtractor:
+        return SupplierExtractor(
+            id="acme",
+            label="Acme",
+            contracts=(
+                Contract(
+                    id="acme_fix", label="Acme Fix", kind="fixed", regions=frozenset({"wallonia"})
+                ),
+            ),
+            fetch=self.fetch,
+            **kwargs,
+        )
+
+
+async def _no_sleep(_seconds: float) -> None:
+    return None
+
+
+def _tree(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def _digest(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+async def test_a_row_is_what_the_integration_reads_for_a_past_month(
+    tmp_path: Path, web: _Session
+) -> None:
+    """The row is the codec's snapshot with the archive's own keys beside
+    it, at the path month_cards asks for, and the reader ignores the extra
+    keys and hands back the very snapshot the parse produced."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    path = out / ROW / "2026-09.json"
+    row = json.loads(path.read_text(encoding="utf-8"))
+
+    assert row["_seen_on"] == "2026-09-11"
+    assert row["_via"] == "live"
+    assert [(s["url"], s["variant"]) for s in row["_sources"]] == [
+        (LISTING_URL, "text"),
+        (CARD_URL, "plain"),
+    ]
+    assert "pdf" not in row["_sources"][0]
+    assert row["_sources"][1]["pdf"] == _digest(web.pages[CARD_URL])
+    assert (out / row["_sources"][1]["text"]).read_bytes() == web.pages[CARD_URL]
+    assert (out / row["_sources"][0]["text"]).read_text() == "listing"
+
+    expected = _snapshot("acme_fix", "2026-09", 0.08)
+    assert snapshot_from_json(row) == expected
+    assert CARD_ARCHIVE_URL.endswith(f"/gas/{ac.ROWS}")
+    reader = _Session(
+        {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": path.read_bytes()}
+    )
+    assert await fetch_archived_card(reader, "acme", "acme_fix", "wallonia", "2026-09") == expected  # type: ignore[arg-type]
+
+
+async def test_a_card_is_filed_under_the_month_its_label_names(
+    tmp_path: Path, web: _Session
+) -> None:
+    """October's card published on 28 September is October's row."""
+    web.pages[CARD_URL] = _card("2026-10", "0.08")
+    out = tmp_path / "gas"
+    await ac.archive(
+        out,
+        extractors=[_Acme().extractor()],
+        now=datetime(2026, 9, 28, 6, tzinfo=UTC),
+        sleep=_no_sleep,
+    )
+    assert [p.name for p in (out / ROW).iterdir()] == ["2026-10.json"]
+
+
+async def test_a_day_on_which_nothing_changed_writes_nothing(tmp_path: Path, web: _Session) -> None:
+    """The listing carries a nonce and the run is a day later, but the card
+    is the same: not a byte of the archive moves, the PDF is not kept twice
+    and the card, its bytes unchanged, is not rendered again."""
+    web.pages[LISTING_URL] = b"listing nonce=1"
+    out = tmp_path / "gas"
+    acme = _Acme()
+    first = await ac.archive(
+        out, extractors=[acme.extractor()], now=NOW, sleep=_no_sleep, pdf_dir=tmp_path / "pdfs1"
+    )
+    assert first.stored == 1
+    digest = _digest(web.pages[CARD_URL])
+    kept = tmp_path / "pdfs1" / "gas-2026-09" / f"{digest}.pdf"
+    assert kept.read_bytes() == web.pages[CARD_URL]
+    # What the workflow does between two runs: upload it and record where.
+    (out / "pdfs.json").write_text(json.dumps({digest: f"gas-2026-09/{digest}.pdf"}))
+    before = _tree(out)
+
+    web.pages[LISTING_URL] = b"listing nonce=2"
+    second = await ac.archive(
+        out,
+        extractors=[acme.extractor()],
+        now=NOW + timedelta(days=1),
+        sleep=_no_sleep,
+        pdf_dir=tmp_path / "pdfs2",
+    )
+    assert (second.stored, second.unchanged) == (0, 1)
+    assert _tree(out) == before
+    assert not (tmp_path / "pdfs2").exists()
+    assert acme.renders == 1
+
+
+async def test_a_changed_card_rewrites_its_month(tmp_path: Path, web: _Session) -> None:
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    web.pages[CARD_URL] = _card("2026-09", "0.09")
+    later = datetime(2026, 9, 20, 6, tzinfo=UTC)
+    summary = await ac.archive(out, extractors=[_Acme().extractor()], now=later, sleep=_no_sleep)
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert summary.stored == 1
+    assert (row["energy"]["price"], row["_seen_on"]) == (0.09, "2026-09-20")
+    # The first capture's card text is named by no row any more.
+    assert len(list((out / "texts").rglob("*.txt"))) == 2
+
+
+def test_months_older_than_three_years_go_with_the_texts_nothing_names(tmp_path: Path) -> None:
+    out = tmp_path
+    for rel in ("texts/2023-08/old.txt", "texts/2026-09/kept.txt", "texts/2026-09/nonce.txt"):
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        (out / rel).write_text(rel)
+    for month, text in (
+        ("2023-08", "texts/2023-08/old.txt"),
+        ("2023-09", "texts/2026-09/kept.txt"),
+    ):
+        path = out / ROW / f"{month}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"_sources": [{"url": LISTING_URL, "variant": "text", "text": text}]})
+        )
+    (out / "pdfs.json").write_text(json.dumps({"a": "gas-2023-08/a.pdf", "b": "gas-2023-09/b.pdf"}))
+    (out / "indices").mkdir()
+    (out / "indices" / "acme.json").write_text(
+        json.dumps({"IDX": {"2023-08": 1.0, "2023-09": 2.0}, "GONE": {"2020-01": 3.0}})
+    )
+
+    today = date(2026, 9, 29)
+    assert ac._prune(out, 36, today) == 3
+    assert ac._drop_unnamed_texts(out) == 2
+
+    assert sorted(_tree(out)) == [
+        f"{ROW}/2023-09.json",
+        "indices/acme.json",
+        "pdfs.json",
+        "texts/2026-09/kept.txt",
+    ]
+    assert json.loads((out / "pdfs.json").read_text()) == {"b": "gas-2023-09/b.pdf"}
+    assert json.loads((out / "indices" / "acme.json").read_text()) == {"IDX": {"2023-09": 2.0}}
+
+
+def test_no_text_goes_while_a_row_cannot_be_read(tmp_path: Path) -> None:
+    (tmp_path / ROW).mkdir(parents=True)
+    (tmp_path / ROW / "2026-09.json").write_text("{not json")
+    (tmp_path / "texts" / "2026-09").mkdir(parents=True)
+    (tmp_path / "texts" / "2026-09" / "a.txt").write_text("a")
+    assert ac._drop_unnamed_texts(tmp_path) == 0
+    assert (tmp_path / "texts" / "2026-09" / "a.txt").exists()
+
+
+async def test_the_index_publication_is_kept_and_merged(tmp_path: Path, web: _Session) -> None:
+    """Today's values go on top of what the archive held, a revised month
+    takes its new figure, a month the page no longer lists stays, and a month
+    past the retention goes."""
+    out = tmp_path / "gas"
+    index = out / "indices" / "acme.json"
+    index.parent.mkdir(parents=True)
+    index.write_text(
+        json.dumps({"IDX": {"2026-07": 29.0, "2026-08": 28.0}, "OLD": {"2023-01": 50.0}})
+    )
+
+    async def fetch_index(_session: Any) -> dict[str, dict[str, float]]:
+        return {"IDX": {"2026-08": 30.0, "2026-09": 31.0}}
+
+    extractor = _Acme().extractor(fetch_index=fetch_index)
+    summary = await ac.archive(out, extractors=[extractor], now=NOW, sleep=_no_sleep)
+    assert json.loads(index.read_text()) == {
+        "IDX": {"2026-07": 29.0, "2026-08": 30.0, "2026-09": 31.0}
+    }
+    assert summary.indices == 1
+
+    again = await ac.archive(out, extractors=[extractor], now=NOW, sleep=_no_sleep)
+    assert again.indices == 0
+
+    async def broken(_session: Any) -> dict[str, dict[str, float]]:
+        raise ExtractorError("Acme: indexation table not found")
+
+    held = index.read_bytes()
+    failed = await ac.archive(
+        out, extractors=[_Acme().extractor(fetch_index=broken)], now=NOW, sleep=_no_sleep
+    )
+    assert index.read_bytes() == held
+    assert [line.split(":")[0] for line in failed.failed] == ["acme index"]
+
+
+async def test_backfill_mirrors_the_supplier_archive_for_months_not_held(
+    tmp_path: Path, web: _Session
+) -> None:
+    asked: list[date] = []
+
+    async def fetch_for_month(
+        _session: Any, contract: str, _region: str, month: date
+    ) -> SupplierSnapshot | None:
+        asked.append(month)
+        if month == date(2026, 7, 1):
+            return None
+        return _snapshot(contract, f"{month:%Y-%m}", 0.07)
+
+    out = tmp_path / "gas"
+    held = out / ROW / "2026-06.json"
+    held.parent.mkdir(parents=True)
+    held.write_text("{}")
+    summary = await ac.archive(
+        out,
+        extractors=[_Acme().extractor(fetch_for_month=fetch_for_month)],
+        now=NOW,
+        sleep=_no_sleep,
+        backfill_months=3,
+    )
+    assert asked == [date(2026, 8, 1), date(2026, 7, 1)]
+    assert (summary.backfilled, summary.absent) == (1, 1)
+    assert json.loads((out / ROW / "2026-08.json").read_text())["_via"] == "archive"
+    assert not (out / ROW / "2026-07.json").exists()
+    assert held.read_text() == "{}"
+
+
+async def test_a_parser_change_replays_the_stored_months_on_their_capture_day(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In October a parser fix doubles what the card is read as. September's
+    row is parsed again from its own stored texts, on its capture day and
+    without a request, and keeps the day it was captured."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    web.pages[CARD_URL] = _card("2026-10", "0.09")
+    fixed = _Acme(factor=2.0)
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+
+    summary = await ac.archive(
+        out,
+        extractors=[fixed.extractor()],
+        now=datetime(2026, 10, 2, 6, tzinfo=UTC),
+        sleep=_no_sleep,
+    )
+    september = json.loads((out / ROW / "2026-09.json").read_text())
+    assert september["energy"]["price"] == pytest.approx(0.16)
+    assert september["_seen_on"] == "2026-09-11"
+    assert (summary.replayed, summary.reparsed) == (2, 1)
+    # The live walk on the real clock, then each replay on its row's day.
+    assert fixed.days[1:] == [date(2026, 9, 11), date(2026, 10, 2)]
+    assert len(web.asked) == 4
+    assert (out / "parser.txt").read_text().splitlines()[0] == "a parser that changed"
+
+
+async def test_a_row_the_parser_cannot_rebuild_offline_is_left_as_it_was(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    before = (out / ROW / "2026-09.json").read_bytes()
+
+    class _Wider(_Acme):
+        async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+            await _pdf.fetch_text(session, "https://acme.test/a-page-the-row-never-read")
+            return await super().fetch(session, contract, region)
+
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        only=frozenset({"nobody"}),
+        extractors=[_Wider(factor=2.0).extractor()],
+        now=NOW,
+        sleep=_no_sleep,
+    )
+    assert (out / ROW / "2026-09.json").read_bytes() == before
+    assert summary.replayed == 0
+    assert len(summary.unreplayable) == 1
+    assert "a replay is offline" in summary.unreplayable[0]
+    assert not summary.download_failed
+
+
+async def test_a_card_handed_over_inside_json_is_kept_once_and_put_back_for_a_replay(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The card arrives base64 inside a JSON answer, as OCTA+'s archive
+    hands it over. The stored text names the kept PDF instead of carrying it
+    a second time, and a replay gets the bytes back from the release."""
+    payload = _card("2026-09", "0.08") + b" " + b"x" * 600
+    sheet_url = "https://acme.test/sheet?name=card"
+    envelope = "data:application/pdf;base64," + base64.b64encode(payload).decode("ascii")
+    web.pages[sheet_url] = json.dumps({"TariffSheet": envelope}).encode("ascii")
+
+    class _Sheet(_Acme):
+        async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+            reply = json.loads(await _pdf.fetch_text(session, sheet_url))
+            card = base64.b64decode(reply["TariffSheet"].split("base64,", 1)[1])
+            text = await _pdf.render_pdf("layout", sheet_url, card, self.render)
+            self.days.append(dt_util.now().date())
+            return _parse(text, self.factor, contract)
+
+    out = tmp_path / "gas"
+    await ac.archive(
+        out, extractors=[_Sheet().extractor()], now=NOW, sleep=_no_sleep, pdf_dir=tmp_path / "pdfs"
+    )
+    digest = _digest(payload)
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    by_variant = {s["variant"]: s for s in row["_sources"]}
+    assert by_variant["layout"]["pdf"] == digest
+    stored = (out / by_variant["text"]["text"]).read_text()
+    assert f"{{{{card:{digest}}}}}" in stored
+    assert "base64," in stored and len(stored) < 200
+    assert (tmp_path / "pdfs" / "gas-2026-09" / f"{digest}.pdf").read_bytes() == payload
+
+    # A later run: the PDF is in its release now, and the parser changed.
+    (out / "pdfs.json").write_text(json.dumps({digest: f"gas-2026-09/{digest}.pdf"}))
+    release = "https://cards.test/releases/download"
+    web.pages[f"{release}/gas-2026-09/{digest}.pdf"] = payload
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        only=frozenset({"nobody"}),
+        extractors=[_Sheet(factor=2.0).extractor()],
+        now=datetime(2026, 10, 2, 6, tzinfo=UTC),
+        sleep=_no_sleep,
+        pdf_base_url=release,
+    )
+    assert summary.unreplayable == []
+    assert (summary.replayed, summary.reparsed) == (1, 1)
+    assert json.loads((out / ROW / "2026-09.json").read_text())["energy"]["price"] == pytest.approx(
+        0.16
+    )
+
+
+async def test_a_supplier_that_does_not_answer_is_given_up_on_for_the_day(
+    tmp_path: Path, web: _Session
+) -> None:
+    asked: list[str] = []
+
+    async def fetch(_session: Any, contract: str, _region: str) -> SupplierSnapshot:
+        asked.append(contract)
+        raise ExtractorError(f"network error fetching {CARD_URL}: TimeoutError")
+
+    extractor = SupplierExtractor(
+        id="acme",
+        label="Acme",
+        contracts=tuple(
+            Contract(id=f"acme_{n}", label="Acme", kind="fixed", regions=frozenset({"wallonia"}))
+            for n in range(5)
+        ),
+        fetch=fetch,
+    )
+    summary = await ac.archive(tmp_path, extractors=[extractor], now=NOW, sleep=_no_sleep)
+    # Three cards of three attempts each, then the rest of the day off.
+    assert asked == ["acme_0"] * 3 + ["acme_1"] * 3 + ["acme_2"] * 3
+    assert summary.given_up == ["acme"]
+    assert summary.stored == summary.unchanged == 0
+
+
+async def test_the_coverage_sheet_links_each_month_to_its_card_and_row(
+    tmp_path: Path, web: _Session
+) -> None:
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    digest = _digest(web.pages[CARD_URL])
+    (out / "pdfs.json").write_text(json.dumps({digest: f"gas-2026-09/{digest}.pdf"}))
+    ac._write_coverage(out, "https://cards.test/download", "https://cards.test/blob/main/gas")
+    sheet = (out / "coverage" / "acme.md").read_text()
+    assert (
+        f"| acme_fix | wallonia | [pdf](https://cards.test/download/gas-2026-09/{digest}.pdf) "
+        f"[json](https://cards.test/blob/main/gas/{ROW}/2026-09.json) |"
+    ) in sheet
+    assert (
+        "- [acme](coverage/acme.md): 1 row, 2026-09 to 2026-09" in (out / "coverage.md").read_text()
+    )
+
+
+def test_main_fails_the_run_only_when_nothing_was_archived(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    results = iter((ac._Summary(), ac._Summary(unchanged=1)))
+
+    async def archive(_out: Path, **_kwargs: Any) -> Any:
+        return next(results)
+
+    monkeypatch.setattr(ac, "archive", archive)
+    monkeypatch.setattr(sys, "argv", ["archive_cards.py", "--out", str(tmp_path)])
+    assert ac.main() == 1
+    assert ac.main() == 0
+
+
+def test_the_push_survives_another_archive_rewriting_the_readme(tmp_path: Path) -> None:
+    """The electricity and water workflows push to the same main and each
+    rewrites the root README with its own text. One of them landing between
+    this job's clone and its push, README included, must not lose the run:
+    the push step rebases, keeps this job's README, which lists every
+    namespace, and lands."""
+
+    def git(*args: str, cwd: Path) -> str:
+        return subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+
+    origin = tmp_path / "origin.git"
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    git("init", "-q", "-b", "main", cwd=seed)
+    (seed / "README.md").write_text("# Price cards\n")
+    git("add", "README.md", cwd=seed)
+    git("commit", "-q", "-m", "start", cwd=seed)
+    git("clone", "-q", "--bare", str(seed), str(origin), cwd=tmp_path)
+
+    work = tmp_path / "work"
+    (work / "tmp").mkdir(parents=True)
+    git("clone", "-q", "--depth=1", f"file://{origin}", "tmp/cards", cwd=work)
+    other = tmp_path / "electricity"
+    git("clone", "-q", "--depth=1", f"file://{origin}", str(other), cwd=tmp_path)
+    (other / "README.md").write_text("# Price cards\n\nelectricity and water\n")
+    (other / "electricity").mkdir()
+    (other / "electricity" / "row.json").write_text("{}\n")
+    git("add", "-A", cwd=other)
+    git("commit", "-q", "-m", "Cards seen", cwd=other)
+    git("push", "-q", "origin", "HEAD:main", cwd=other)
+
+    cards = work / "tmp" / "cards"
+    (cards / "README.md").write_text("# Price cards\n\nelectricity, gas and water\n")
+    (cards / "gas").mkdir()
+    (cards / "gas" / "row.json").write_text("{}\n")
+
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/archive_cards.yml").read_text()
+    )
+    step = next(s for s in workflow["jobs"]["archive"]["steps"] if s.get("id") == "push")
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    (stubs / "sleep").write_text("#!/bin/sh\nexit 0\n")
+    (stubs / "sleep").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}"}
+    done = subprocess.run(
+        ["bash", "-e", "-c", step["run"]], cwd=work, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    log = git("log", "--format=%s", "main", cwd=origin).splitlines()
+    assert log[:2] == [f"Gas cards seen on {datetime.now(UTC).date().isoformat()}", "Cards seen"]
+    assert (
+        git("show", "main:README.md", cwd=origin) == "# Price cards\n\nelectricity, gas and water\n"
+    )
+    assert git("show", "main:electricity/row.json", cwd=origin) == "{}\n"
+    assert git("show", "main:gas/row.json", cwd=origin) == "{}\n"
+
+
+class _ImageAcme(_Acme):
+    """Acme publishing its card as page images: no text reader reads it."""
+
+    def render(self, payload: bytes) -> str:
+        self.renders += 1
+        raise CardNotReadableError("card has no text layer")
+
+
+async def test_a_card_published_as_images_is_read_by_the_ocr_engine(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The engine reads what the text readers refuse, the row says so, and
+    the reading is served again until another engine is installed."""
+    out = tmp_path / "gas"
+    read = []
+
+    def ocr(payload: bytes) -> str:
+        read.append(payload)
+        return "month 2026-09 price 0.09"
+
+    monkeypatch.setattr(ac, "_ocr_text", ocr)
+    monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+aaaaaaaaaaaa")
+    await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    path = out / ROW / "2026-09.json"
+    row = json.loads(path.read_text(encoding="utf-8"))
+    card = next(s for s in row["_sources"] if s["url"] == CARD_URL)
+    assert card["ocr"] == "0.3.0+aaaaaaaaaaaa"
+    assert snapshot_from_json(row) == _snapshot("acme_fix", "2026-09", 0.09)
+    assert len(read) == 1
+    # What an installation reads: the row, and that it was read off an image.
+    reader = _Session(
+        {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": path.read_bytes()}
+    )
+    got = await fetch_archived_row(reader, "acme", "acme_fix", "wallonia", "2026-09")  # type: ignore[arg-type]
+    assert got == (_snapshot("acme_fix", "2026-09", 0.09), True)
+
+    # The same bytes the next day: the stored reading, not the engine.
+    await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    assert len(read) == 1
+    # A new engine reads the card again.
+    monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+bbbbbbbbbbbb")
+    await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    assert len(read) == 2
+    row = json.loads(path.read_text(encoding="utf-8"))
+    assert next(s for s in row["_sources"] if s["url"] == CARD_URL)["ocr"] == "0.3.0+bbbbbbbbbbbb"
+
+
+async def test_a_card_read_by_its_text_layer_is_not_marked(tmp_path: Path, web: _Session) -> None:
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    path = out / ROW / "2026-09.json"
+    row = json.loads(path.read_text(encoding="utf-8"))
+    assert all("ocr" not in source for source in row["_sources"])
+    reader = _Session(
+        {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": path.read_bytes()}
+    )
+    got = await fetch_archived_row(reader, "acme", "acme_fix", "wallonia", "2026-09")  # type: ignore[arg-type]
+    assert got is not None and got[1] is False

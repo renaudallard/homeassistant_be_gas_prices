@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/public/img/belvus-icon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="48x48" href="/public/img/favicon-48.png">
+<link rel="apple-touch-icon" href="/public/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="dns-prefetch" href="https://unpkg.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" as="script" crossorigin href="https://unpkg.com/react@18.3.1/umd/react.production.min.js">
+<link rel="preload" as="script" crossorigin href="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js">
+<script src="/src/js/support.js"></script>
+<template id="__bundler_thumbnail" data-bg-color="#42263A">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#42263A"/>
+    <circle cx="600" cy="360" r="150" fill="none" stroke="#F2ECE4" stroke-width="20"/>
+    <path d="M600 250 L520 400 L600 400 L560 500 L680 350 L600 350 Z" fill="#F2ECE4"/>
+    <text x="600" y="640" font-family="Arial, sans-serif" font-size="110" font-weight="800" fill="#F2ECE4" text-anchor="middle">belvus</text>
+  </svg>
+</template>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="/public/fonts/Novecento-Condensed-Bold.otf" as="font" type="font/otf" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15/dist/ScrollTrigger.min.js"></script>
+<link rel="stylesheet" href="/src/css/styles.css">
+<style>/* Transparent over the hero (top of home page) */
+.nav.is-transparent{ background:transparent; border-bottom-color:transparent; color:#fff; backdrop-filter:none; -webkit-backdrop-filter:none; }
+.nav.is-transparent .nav-logo > svg{ fill:#fff; }
+.nav.is-transparent .btn--ghost{ color:#fff; border-color:rgba(255,255,255,0.6); }
+.nav.is-transparent .btn--ghost:hover{ border-color:#fff; }
+/* ===== Algemene voorwaarden (legal doc) ===== */
+.tc-wrap{ max-width:1180px; margin:0 auto; padding:56px 5vw 96px; display:grid; grid-template-columns:262px 1fr; gap:56px; align-items:start; }
+.tc-toc{ position:sticky; top:96px; }
+.tc-toc__label{ margin:0 0 14px; font-size:12px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; color:#A39CA8; }
+.tc-toc nav{ display:flex; flex-direction:column; }
+.tc-toc a{ padding:6px 0 6px 13px; font-size:13.5px; line-height:1.35; color:#5A535F; text-decoration:none; border-left:2px solid #EFEAE3; transition:color .2s var(--cubic-default), border-color .2s var(--cubic-default); }
+.tc-toc a:hover{ color:#14101A; border-color:#563240; }
+.tc-article{ min-width:0; max-width:760px; }
+.tc-h2{ font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(23px,2.6vw,30px); line-height:1.14; color:#14101A; margin:56px 0 16px; letter-spacing:-0.012em; scroll-margin-top:104px; display:flex; gap:14px; align-items:baseline; }
+.tc-article > .tc-h2:first-child{ margin-top:0; }
+.tc-h2 .n{ font-family:'Novecento Condensed','Saira Condensed',sans-serif; color:#563240; font-size:0.82em; flex:none; }
+.tc-h3{ font-family:'Manrope',sans-serif; font-weight:700; font-size:17.5px; color:#14101A; margin:30px 0 8px; scroll-margin-top:104px; }
+.tc-p{ margin:0 0 16px; font-size:15.5px; line-height:1.72; color:#3A3340; }
+.tc-ul{ margin:0 0 18px; padding:0; list-style:none; display:flex; flex-direction:column; gap:11px; }
+.tc-ul > li{ position:relative; padding-left:22px; font-size:15.5px; line-height:1.66; color:#3A3340; }
+.tc-ul > li::before{ content:''; position:absolute; left:2px; top:9px; width:7px; height:7px; border-radius:50%; background:#FFF302; box-shadow:0 0 0 1px #563240; }
+.tc-sub{ margin:10px 0 2px 2px; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px; }
+.tc-sub > li{ position:relative; padding-left:20px; font-size:15px; line-height:1.6; color:#4A4450; }
+.tc-sub > li::before{ content:'–'; position:absolute; left:2px; color:#563240; font-weight:800; }
+.tc-sub2{ margin:8px 0 2px 2px; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
+.tc-sub2 > li{ position:relative; padding-left:20px; font-size:14.5px; line-height:1.55; color:#5A535F; }
+.tc-sub2 > li::before{ content:'•'; position:absolute; left:3px; color:#A39CA8; }
+.tc-term{ font-weight:700; color:#14101A; }
+@media (max-width:860px){ .tc-wrap{ grid-template-columns:1fr; gap:28px; } .tc-toc{ position:static; } .tc-toc nav{ flex-flow:row wrap; } .tc-toc a{ border-left:none; padding:6px 12px; background:#F5F1EA; border-radius:8px; } }
+/* ===== Historische tariefkaarten ===== */
+.ht-table{ border:1px solid #EFEAE3; border-radius:16px; overflow:hidden; background:#fff; margin-bottom:26px; }
+.ht-head{ display:flex; justify-content:space-between; padding:12px 20px; background:#FBFAF8; border-bottom:1px solid #EFEAE3; font-size:12px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#A39CA8; }
+.ht-row{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 20px; border-bottom:1px solid #F4F0EA; }
+.ht-row:last-child{ border-bottom:none; }
+.ht-row:hover{ background:#FBFAF8; }
+.ht-row__name{ display:inline-flex; align-items:center; gap:11px; font-size:14.5px; font-weight:600; color:#14101A; min-width:0; overflow-wrap:anywhere; }
+.ht-dl{ display:inline-flex; align-items:center; gap:8px; flex:none; background:#FFF302; color:#000; font-weight:800; font-size:13.5px; padding:9px 16px; border-radius:999px; text-decoration:none; transition:transform .3s var(--cubic-default); }
+.ht-dl:hover{ transform:translateY(-1px); }
+/* ===== Generic mobile layout fixes ===== */
+@media screen and (max-width:767px){
+  .split-2{ grid-template-columns:1fr !important; gap:28px !important; }
+  .grid-4{ grid-template-columns:1fr 1fr !important; gap:14px !important; }
+  .grid-3{ grid-template-columns:1fr !important; }
+  .grid-3.scroll-mobile{ display:flex !important; grid-template-columns:none !important; gap:14px !important; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; margin-left:-6vw; margin-right:-6vw; padding-left:6vw; padding-right:6vw; padding-bottom:6px; }
+  .grid-3.scroll-mobile::-webkit-scrollbar{ display:none; }
+  .grid-3.scroll-mobile > *{ scroll-snap-align:center; flex:0 0 84%; min-width:0; }
+  main img{ max-width:100%; }
+  .nav-dropdown__content-li{ width:100% !important; flex:none !important; }
+  .footer-brand{ width:100% !important; }
+  .footer-links-wrap{ min-width:0 !important; width:100%; }
+  .footer-links{ grid-template-columns:1fr !important; gap:0 !important; }
+  .footer-nl{ justify-content:flex-start !important; }
+  .footer-nl > div{ flex-wrap:wrap; }
+  .footer-acc{ border-top:1px solid #6A4250; }
+  .footer-acc:last-child{ border-bottom:1px solid #6A4250; }
+  .footer-acc__head{ margin:0; padding:17px 2px; cursor:pointer; }
+  .footer-acc__icon{ display:inline-flex; align-items:center; justify-content:center; flex:none; font-size:24px; font-weight:400; line-height:1; color:#E0D5DA; transition:transform .3s var(--cubic-default); }
+  .footer-acc.open .footer-acc__icon{ transform:rotate(45deg); }
+  .footer-acc__body{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .35s var(--cubic-default); }
+  .footer-acc.open .footer-acc__body{ grid-template-rows:1fr; }
+  .footer-acc__inner{ overflow:hidden; min-height:0; padding:0 2px; }
+  .footer-acc.open .footer-acc__inner{ padding-bottom:20px; }
+}</style>
+<script src="/src/js/nav.js"></script>
+</helmet>
+
+<div style="background:#fff; overflow-x:clip; padding-top:77px">
+
+<!-- ===================== NAVIGATION (Osmo Multilevel, Belvus-adapted) ===================== -->
+<nav data-menu-status="closed" class="nav">
+  <div class="nav-container">
+    <div class="nav-bg"></div>
+    <div class="nav-inner">
+      <a href="#" onClick="{{ goHome }}" class="nav-logo" style="display:flex; align-items:center; gap:10px">
+      <img src="/public/img/belvus-icon.svg" alt="Belvus" style="width:40px; height:40px; display:block; object-fit:contain">
+      <svg viewBox="220 408 584 208" fill="#000000" style="height:26px; display:block"><path d="M 107.312 0.158 C 103.312 17.932 95.395 37.887 96.625 57.047 C 97.07 70.29 100.867 83.572 115.48 70.852 C 131.721 56.715 144.813 31.667 153.031 11.956 C 155.437 6.187 155.834 0.85 163.59 0.161 C 169.088 -0.327 175.301 0.476 180.873 0.205 C 187.911 17.94 196.503 37.182 209.81 51.389 C 219.944 62.612 234.022 70.765 229.62 88.762 C 227.707 96.582 218.932 105.124 210.566 105.124 L 170.623 105.124 L 170.246 104.748 L 170.246 83.153 C 179.797 80.878 190.863 83.475 200.754 82.508 C 208.254 79.71 194.29 70.88 192.225 67.712 C 182.844 58.291 175.654 46.582 168.742 35.566 C 155.426 62.43 130.092 109.583 93.559 98.534 C 82.844 94.631 76.466 84.494 73.396 73.991 C 60.08 92.282 34.782 111.539 13.344 93.329 C -10.006 72.038 1.752 24.424 14.859 0.158 L 39.731 0.158 L 40.009 0.677 C 32.065 21.235 23.041 43.58 26.072 66.043 C 29.572 88.01 47.331 67.951 53.525 59.652 C 66.877 41.988 74.366 20.52 82.438 0.158 L 107.312 0.158 Z" transform="translate(568.586,445.249)"></path><path d="M 0.002 0.509 C 0.634 -0.6 63.826 0.504 64.69 0.135 C 78.866 1.307 92.295 7.447 97.162 21.667 C 102.662 37.41 96.062 51.206 82.655 59.393 C 120.494 74.312 104.464 126.682 65.957 125.952 C 44.335 126.613 21.555 125.869 0 125.567 L 0.002 0.509 Z M 27.637 50.356 L 59.166 50.356 C 64.982 50.356 71.84 45.74 73.04 39.866 C 76.059 15.858 42.053 24.785 27.635 23.234 L 27.637 50.356 Z M 62.18 72.455 L 27.637 72.455 C 27.352 78.073 27.049 83.784 27.648 89.394 C 27.844 93.634 26.527 98.678 27.79 102.605 C 39.365 102.821 51.072 103.275 62.654 102.56 C 81.106 99.925 80.324 74.459 62.181 72.453" transform="translate(229.63,414.89)"></path><path d="M 28.242 58.47 C 27.176 59.565 29.048 63.206 29.408 64.588 C 36.556 81.953 59.733 82.583 70.516 68.557 C 78.935 69.093 87.559 68.387 95.957 68.769 C 83.455 112.066 13.03 109.482 2.364 66.003 C -10.293 24.675 30.126 -12.543 70.14 4.037 C 91.718 12.802 101.199 35.74 98.226 58.045 C 97.932 59.268 28.88 58.057 28.242 58.47 Z M 28.242 40.89 L 71.459 40.89 C 72.047 40.89 71.605 39.01 71.515 38.574 C 67.068 14.981 29.545 17.554 28.242 40.89 Z" transform="translate(229.63,414) matrix(0.966,-0.259,0.259,0.966,94.781,42.909)"></path><path d="M 99.452 0.002 C 88.283 30.9 76.328 64.963 64.282 95.304 L 34.494 95.44 L 33.753 95.175 C 22.246 63.792 10.502 32.289 0.001 0.576 C -0.012 0.36 0.19 0 0.342 0 L 25.465 0 L 49.831 69.56 L 74.203 0.002 L 99.452 0.002 Z" transform="translate(472.06,445.406)"></path><path d="M 120.998 8.658 C 123.837 6.097 126.373 3.229 129.007 0.459 L 129.713 0.256 L 148.369 12.528 C 148.45 12.706 146.991 14.552 146.72 14.909 C 111.925 63.766 33.283 63.154 0 12.907 L 19.193 0 C 44.174 31.721 91.409 36.753 120.998 8.658 Z" transform="translate(551.153,559.19)"></path><path d="M 0 3.408 C 7.919 1.677 16.909 0.883 25.01 0.005 C 27.504 -0.871 25.034 126.056 25.877 126.455 L 25.5 126.832 L 0.377 126.832 L 0 126.455 L 0 3.408 Z" transform="translate(441.121,414)"></path></svg>
+    </a>
+      <div class="nav-center">
+        <ul class="nav-center__list">
+          <li><a href="#" onClick="{{ goHome }}" class="{{ clsHome }}"><span class="nav-link__label">Home</span></a></li>
+          <li>
+            <button data-dropdown-toggle="" class="nav-link">
+              <span class="nav-link__label">Aanbod</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 17 10" fill="none" class="nav-link__dropdown-icon"><path d="M1.5 1.5L8.5 8.5L15.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+            </button>
+            <div class="nav-dropdown"><div class="nav-dropdown__overflow"><div class="nav-dropdown__overflow-inner"><div class="nav-container"><ul class="nav-dropdown__content">
+              <li class="nav-dropdown__content-li"><a href="/aanbod-particulieren" class="nav-dropdown__link"><div class="nav-dropdown__link-bg"><picture><source srcset="/public/img/sven-26.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/sven-26.jpg" alt="" class="nav-dropdown__img"></picture><div class="nav-dropdown__img-overlay"></div></div><div class="nav-dropdown__link-inner"><span class="nav-dropdown__link-label">Particulieren</span><div class="nav-dropdown__link-bubble"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none" class="icon"><path d="M9.334 12.667L14 8 9.334 3.333" stroke="currentColor" strokeMiterlimit="10"></path><path d="M14 8H1.334" stroke="currentColor" strokeMiterlimit="10"></path></svg></div></div></a></li>
+              <li class="nav-dropdown__content-li"><a href="/aanbod-professionals" class="nav-dropdown__link"><div class="nav-dropdown__link-bg"><picture><source srcset="/public/img/baker.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/baker.png" alt="" class="nav-dropdown__img"></picture><div class="nav-dropdown__img-overlay"></div></div><div class="nav-dropdown__link-inner"><span class="nav-dropdown__link-label">Professionals</span><div class="nav-dropdown__link-bubble"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none" class="icon"><path d="M9.334 12.667L14 8 9.334 3.333" stroke="currentColor" strokeMiterlimit="10"></path><path d="M14 8H1.334" stroke="currentColor" strokeMiterlimit="10"></path></svg></div></div></a></li>
+              <li class="nav-dropdown__content-li"><a href="/aanbod-grote-ondernemingen" class="nav-dropdown__link"><div class="nav-dropdown__link-bg"><picture><source srcset="/public/img/belvus-hq.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/belvus-hq.jpg" alt="" class="nav-dropdown__img"></picture><div class="nav-dropdown__img-overlay"></div></div><div class="nav-dropdown__link-inner"><span class="nav-dropdown__link-label">Grote ondernemingen</span><div class="nav-dropdown__link-bubble"><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 16 16" fill="none" class="icon"><path d="M9.334 12.667L14 8 9.334 3.333" stroke="currentColor" strokeMiterlimit="10"></path><path d="M14 8H1.334" stroke="currentColor" strokeMiterlimit="10"></path></svg></div></div></a></li>
+              <li class="nav-dropdown__content-li"><a href="/diensten" class="kb-feature kb-feature--tile"><div class="kb-feature__img"><picture><source srcset="/public/img/sven-31.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/sven-31.jpg" alt="Tariefkaarten"></picture></div><div class="kb-feature__body"><span class="kb-feature__title">Tariefkaarten</span><span class="kb-feature__sub">Bekijk al onze tarieven, ook de historische.</span><span class="kb-feature__btn">Bekijk tariefkaarten <span class="svgarw"></span></span></div></a></li>
+            </ul></div></div></div></div>
+          </li>
+          <li>
+            <button data-dropdown-toggle="" class="nav-link nav-kb-toggle">
+              <span class="nav-link__label">Kennisbank</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 17 10" fill="none" class="nav-link__dropdown-icon"><path d="M1.5 1.5L8.5 8.5L15.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+            </button>
+            <div class="nav-dropdown nav-kb-dd"><div class="nav-dropdown__overflow"><div class="nav-dropdown__overflow-inner"><div class="nav-container"><ul class="nav-dropdown__content" style="gap:2.5em; align-items:stretch">
+              <li class="nav-dropdown__content-li" style="flex:1">
+                <p class="kb-col-label">Basiskennis</p>
+                <div class="kb-list">
+                  <a href="/kennisbank" class="kb-item"><span class="kb-item__title">Wat is elektriciteit?</span><span class="kb-item__sub">Van centrale tot stopcontact</span></a>
+                  <a href="/kennisbank-verbruik" class="kb-item"><span class="kb-item__title">Je verbruik begrijpen</span><span class="kb-item__sub">Van kilowattuur tot pieken en dalen</span></a>
+                  <a href="/kennisbank-groene-energie" class="kb-item"><span class="kb-item__title">Groene energie in België</span><span class="kb-item__sub">Herkomst en garanties van oorsprong</span></a>
+                </div>
+              </li>
+              <li class="nav-dropdown__content-li" style="flex:1">
+                <p class="kb-col-label">Besparen &amp; tarieven</p>
+                <div class="kb-list">
+                  <a href="/kennisbank-besparen" class="kb-item"><span class="kb-item__title">Slim besparen op je verbruik</span><span class="kb-item__sub">Sluipverbruik en slimme gewoontes</span></a>
+                  <a href="/kennisbank-factuur" class="kb-item"><span class="kb-item__title">Je energiefactuur ontcijferd</span><span class="kb-item__sub">Elk onderdeel helder uitgelegd</span></a>
+                  <a href="/kennisbank-tarief" class="kb-item"><span class="kb-item__title">Vast, variabel of dynamisch</span><span class="kb-item__sub">Ontdek wat het beste bij jou past</span></a>
+                </div>
+              </li>
+              <li class="nav-dropdown__content-li" style="flex:none; width:21em">
+                <a href="/kennisbank-overzicht" class="kb-feature">
+                  <div class="kb-feature__img"><picture><source srcset="/public/img/sven-10.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/sven-10.jpg" alt="Kennisbank"></picture></div>
+                  <div class="kb-feature__body">
+                    <span class="kb-feature__title">De volledige kennisbank</span>
+                    <span class="kb-feature__sub">Alles over energie, verbruik en besparen, helder uitgelegd.</span>
+                    <span class="kb-feature__btn">Ontdek alle onderwerpen <span class="svgarw"></span></span>
+                  </div>
+                </a>
+              </li>
+            </ul></div></div></div></div>
+          </li>
+          <li><a href="#" onClick="{{ goAbout }}" class="nav-link"><span class="nav-link__label">Over ons</span></a></li>
+          <li><a href="#" onClick="{{ goContact }}" class="nav-link"><span class="nav-link__label">Contact</span></a></li>
+        </ul>
+      </div>
+      <div class="nav-end">
+        <a href="https://mijnbelvus.be/" class="btn btn--ghost nav-cta md--hide bv044"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>Mijn Belvus</span></a>
+        <button onClick="{{ openCalc }}" class="btn btn--primary nav-cta bv044"><span>Bereken je besparing</span></button>
+        <button data-menu-button="" aria-label="Menu openen" class="menu-button"><div class="menu-button__line"></div><div class="menu-button__line"></div></button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="page-bg"></div>
+</nav>
+
+<!-- STICKY CHAT (dummy) -->
+<div class="chat-float" style="position:fixed; right:clamp(16px,2.5vw,30px); bottom:clamp(16px,2.5vw,30px); z-index:70; display:flex; align-items:flex-end; gap:12px; pointer-events:none">
+  <input type="checkbox" id="belvusChatClose" class="chat-close-cb" hidden>
+  <div class="chat-msg">
+    <label for="belvusChatClose" class="chat-x" aria-label="Bericht sluiten">&times;</label>
+    <div class="chat-label" style="background:#fff; color:#14101A; border-radius:18px 18px 4px 18px; padding:13px 16px; max-width:224px; box-shadow:0 18px 44px rgba(20,16,26,0.24); font-size:14px; font-weight:600; line-height:1.4">Stel je vraag via WhatsApp</div>
+  </div>
+  <div class="chat-avatar" style="position:relative; flex:none">
+    <a href="https://wa.me/32472248717" target="_blank" rel="noopener" aria-label="Chat via WhatsApp" class="bv044" style="display:flex; align-items:center; justify-content:center; width:60px; height:60px; border-radius:50%; background:#563240; box-shadow:0 14px 34px rgba(20,16,26,0.32); border:3px solid #fff">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.074-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/></svg>
+    </a>
+    <span class="chat-dot" style="position:absolute; right:1px; top:1px; width:14px; height:14px; border-radius:50%; background:#22A45D; border:2.5px solid #fff"></span>
+  </div>
+</div>
+
+
+<div class="mobile-cta"><button onClick="{{ openCalc }}" class="btn btn--primary bv044" style="width:100%; justify-content:center">Bereken je besparing</button></div>
+
+<main>
+
+<div>
+  <!-- TARIEFKAARTEN HERO -->
+  <section style="position:relative; overflow:hidden; background:#42263A; color:#fff">
+    <div style="position:absolute; inset:0; background:radial-gradient(120% 150% at 12% -10%, rgba(86,50,64,0.95), rgba(20,16,26,0.15))"></div>
+    <div style="position:relative; max-width:1180px; margin:0 auto; padding:64px 5vw 66px">
+      <span style="display:inline-flex; align-items:center; gap:9px; color:#fff; font-weight:800; font-size:12.5px; letter-spacing:0.12em; text-transform:uppercase"><span style="width:9px; height:9px; border-radius:50%; background:#FFF302; flex:none; display:inline-block"></span>Transparant, ook terugkijkend</span>
+      <h1 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:clamp(42px,7vw,92px); line-height:0.9; letter-spacing:-0.01em; margin:20px 0 0; max-width:15ch">Historische tariefkaarten</h1>
+      <p style="font-size:17px; line-height:1.55; color:#EFE7EA; max-width:620px; margin:20px 0 0">Bij Belvus kijk je gewoon mee, ook naar vroeger. Download hier de tariefkaarten van al onze producten, per maand.</p>
+      <div style="display:flex; gap:10px; margin-top:26px">
+        <span style="display:inline-flex; align-items:center; background:#FFF302; color:#000; font-weight:800; font-size:14px; padding:10px 20px; border-radius:999px">2026</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOADS -->
+  <div class="tc-wrap">
+    <aside class="tc-toc">
+      <p class="tc-toc__label">Producten</p>
+      <nav>
+        <a href="#smart-plus">Smart Plus</a>
+        <a href="#flex-online">Flex Online</a>
+        <a href="#flow-plus">Flow+</a>
+        <a href="#dynamisch">Dynamisch</a>
+        <a href="#smart-plus-pro">Smart Plus Pro</a>
+        <a href="#flex-online-pro">Flex Online Pro</a>
+        <a href="#dynamisch-pro">Dynamisch Pro</a>
+      </nav>
+    </aside>
+    <article class="tc-article" style="max-width:820px">
+      <p style="margin:0 0 10px; font-size:12px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#8B8590">Particulier</p>
+      <h2 class="tc-h2" id="smart-plus" style="margin-top:0;"><span class="n">01</span><span>Smart Plus</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Gas</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_SmartPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_SmartPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+
+      <h2 class="tc-h2" id="flex-online" style=""><span class="n">02</span><span>Flex Online</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Gas</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_FlexOnline_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_FlexOnline_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+
+      <h2 class="tc-h2" id="flow-plus" style=""><span class="n">03</span><span>Flow+</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flow+ Gas</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_FlowPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flow+ Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_FlowPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flow+ Gas</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_FlowPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flow+ Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_FlowPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flow+ Gas</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_FlowPlus_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flow+ Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_FlowPlus_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+
+      <h2 class="tc-h2" id="dynamisch" style=""><span class="n">04</span><span>Dynamisch</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Dynamisch Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_Dynamisch_EL.pdf?v=3" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+      <p style="margin:56px 0 10px; font-size:12px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:#8B8590">Professioneel</p>
+      <h2 class="tc-h2" id="smart-plus-pro" style=""><span class="n">05</span><span>Smart Plus Pro</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_SmartPlusPro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Smart Plus Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_SmartPlusPro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+
+      <h2 class="tc-h2" id="flex-online-pro" style=""><span class="n">06</span><span>Flex Online Pro</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-08/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Augustus 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-07/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juli 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-06/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Juni 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-05/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Mei 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-04/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">April 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-03/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Maart 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-02/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Februari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Gas</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_FlexOnlinePro_GAS.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Flex Online Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-01/Tariefkaart_FlexOnlinePro_EL.pdf" target="_blank" rel="noopener" class="ht-dl">Januari 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+      <h2 class="tc-h2" id="dynamisch-pro" style=""><span class="n">07</span><span>Dynamisch Pro</span></h2>
+      <div class="ht-table">
+        <div class="ht-head"><span>Naam</span><span>Datum</span></div>
+        <div class="ht-row">
+          <span class="ht-row__name"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#563240" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Tariefkaart Dynamisch Pro Elektriciteit</span>
+          <a href="/public/tariefkaarten/2026-09/Tariefkaart_DynamischPro_EL.pdf?v=2" target="_blank" rel="noopener" class="ht-dl">September 2026<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M6 11l6 6 6-6"></path><path d="M4 21h16"></path></svg></a>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer style="background:#563240">
+  <div style="background:#563240; color:#fff; border-bottom:1px solid #6A4250">
+    <div style="max-width:1280px; margin:0 auto; padding:22px 5vw; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap">
+      <span style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:clamp(19px,2.3vw,30px)">Energie zoals het hoort: eerlijk, slim en eenvoudig</span>
+      <a href="https://nl.trustpilot.com/review/belvus.be" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:14px; text-decoration:none; color:inherit"><span style="display:inline-flex; align-items:center; gap:7px; font-weight:800; font-size:15px; color:#fff"><svg width="18" height="18" viewBox="0 0 24 24" fill="#00B67A"><path d="M12 1.5l2.85 8.77h9.22l-7.46 5.42 2.85 8.77L12 19.04l-7.46 5.42 2.85-8.77-7.46-5.42h9.22z"></path></svg>Trustpilot</span><span style="width:1px; height:22px; background:rgba(255,255,255,0.25)"></span><span style="display:inline-flex;gap:3px"><span style="width:22px;height:22px;background:#00B67A;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;border-radius:5px">★</span><span style="width:22px;height:22px;background:#00B67A;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;border-radius:5px">★</span><span style="width:22px;height:22px;background:#00B67A;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;border-radius:5px">★</span><span style="width:22px;height:22px;background:#00B67A;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;border-radius:5px">★</span><span style="width:22px;height:22px;background:#00B67A;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;border-radius:5px">★</span></span><span style="font-weight:700; font-size:14px; color:#fff">4,5/5</span><span style="color:#C9B9C1; font-size:13.5px">Bekijk alle reviews <span class="svgarw"></span></span></a>
+    </div>
+  </div>
+  <div style="background:#563240; color:#fff; overflow:hidden; position:relative">
+    <img src="/public/img/belvus-icon.svg" alt="" style="position:absolute; right:2vw; bottom:-56px; width:clamp(240px,24vw,340px); height:auto; opacity:0.05; transform:rotate(-8deg); pointer-events:none; z-index:0">
+    <div style="position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:64px 5vw 64px; display:flex; gap:44px; align-items:flex-start; flex-wrap:wrap">
+      <div class="footer-brand" style="width:380px; flex:none; align-self:stretch; display:flex; flex-direction:column; gap:24px">
+        <img src="/public/img/belvus-word-white-cropped.svg" alt="Belvus" style="height:46px; width:129px; align-self:flex-start; display:block">
+        <p style="color:#C9B9C1; font-size:15px; line-height:1.6; margin:0; max-width:290px">Energie hoeft geen energie te kosten. Eerlijke prijzen en absurd goede service.</p>
+        <div style="display:flex; flex-direction:column; gap:5px; color:#C9B9C1; font-size:13.5px; line-height:1.65; font-family:'Manrope',sans-serif">
+          <span style="color:#fff; font-weight:800; font-size:14px; margin-bottom:3px">Belvus</span>
+          <span>Frankrijklei 5</span>
+          <span>2000 Antwerpen, België</span>
+          <span>Klantendienst@belvus.be</span>
+          <span>03 393 06 83</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; color:#A78D98; font-size:12.5px; line-height:1.6; font-family:'Manrope',sans-serif; border-top:1px solid #6A4250; padding-top:20px; margin-top:4px">
+          <span>Ondernemingsnummer (KBO): BE 1020.490.973</span>
+          <span>RPR Antwerpen, afdeling Antwerpen</span>
+        </div>
+      </div>
+      <div class="footer-links-wrap" style="flex:1; min-width:520px; display:flex; flex-direction:column; gap:28px">
+      <div class="footer-links" style="display:grid; grid-template-columns:repeat(3,1fr); gap:36px"><div class="footer-acc"><button type="button" class="footer-acc__head"><span>Over Belvus</span><span class="footer-acc__icon">+</span></button><div class="footer-acc__body"><div class="footer-acc__inner" style="display:flex; flex-direction:column; gap:12px; align-items:flex-start"><a href="https://mijnbelvus.be/"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Mijn Belvus</a><button onClick="{{ openCalc }}" style="color:#D9CDD4; font-size:15px; text-align:left; background:transparent; border:none; cursor:pointer; padding:0; font-family:'Manrope',sans-serif">Bereken je besparing</button><a href="/over-ons"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Over ons</a><a href="/contact"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Contact</a></div></div></div><div class="footer-acc"><button type="button" class="footer-acc__head"><span>Support</span><span class="footer-acc__icon">+</span></button><div class="footer-acc__body"><div class="footer-acc__inner" style="display:flex; flex-direction:column; gap:12px; align-items:flex-start"><a href="/kennisbank-overzicht"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Kennisbank</a><a href="/contact"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Contactpagina</a><a href="https://www.tiktok.com/@belvus.be" target="_blank" rel="noopener" style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">TikTok</a><a href="https://www.instagram.com/belvus_be/" target="_blank" rel="noopener" style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Instagram</a><a href="https://www.facebook.com/p/Belvus-61577714147529/" target="_blank" rel="noopener" style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Facebook</a><a href="https://www.linkedin.com/company/belvus/" target="_blank" rel="noopener" style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">LinkedIn</a></div></div></div><div class="footer-acc"><button type="button" class="footer-acc__head"><span>Aanbod</span><span class="footer-acc__icon">+</span></button><div class="footer-acc__body"><div class="footer-acc__inner" style="display:flex; flex-direction:column; gap:12px; align-items:flex-start"><a href="/aanbod-particulieren"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Particulier</a><a href="/aanbod-professionals"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Professionals</a><a href="/aanbod-grote-ondernemingen"  style="color:#D9CDD4; font-size:15px; text-decoration:none; font-family:'Manrope',sans-serif">Grote ondernemingen</a></div></div></div>
+      </div>
+      <div class="footer-nl" style="display:flex; justify-content:flex-end">
+        <div style="display:flex; align-items:center; gap:18px; max-width:460px; width:100%">
+          <div style="position:relative; width:88px; height:88px; flex:none; border-radius:50%; overflow:hidden; background:#FFF302; transform:rotate(-3deg); box-shadow:0 6px 14px rgba(0,0,0,0.3)">
+            <picture><source srcset="/public/img/sven-14.avif" type="image/avif"><img loading="lazy" decoding="async" class="bvpar" data-px="0.02" src="/public/img/sven-14.jpg" alt="Belvus medewerker" style="width:100%; height:100%; object-fit:cover; object-position:50% 20%; transform:rotate(3deg) scale(1.35)"></picture>
+          </div>
+          <div style="flex:1; min-width:0">
+            <h4 style="font-size:15px; font-weight:800; color:#fff; margin:0 0 6px; font-family:'Manrope',sans-serif">Blijf op de hoogte</h4>
+            <p style="color:#C9B9C1; font-size:13.5px; line-height:1.55; margin:0 0 14px; font-family:'Manrope',sans-serif">Energietips en nieuws, één keer per maand. Geen spam.</p>
+            <div style="display:flex; gap:8px; background:#fff; border-radius:999px; padding:6px 6px 6px 18px; align-items:center">
+              <input value="{{ nlEmail }}" onInput="{{ onNlEmail }}" type="email" placeholder="Je e-mailadres" style="flex:1; min-width:0; border:none; outline:none; background:transparent; font-size:14px; color:#14101A; font-family:'Manrope',sans-serif">
+              <button onClick="{{ onNlSubmit }}" style="flex:none; background:#FFF302; color:#14101A; border:none; border-radius:999px; padding:10px 20px; font-size:13.5px; font-weight:800; cursor:pointer; font-family:'Manrope',sans-serif">Inschrijven</button>
+            </div>
+            <p style="color:#7FCB9B; font-size:12.5px; margin:10px 0 0; font-family:'Manrope',sans-serif; min-height:16px">{{ nlMsg }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="background:#563240; border-top:1px solid #6A4250; position:relative; overflow:hidden">
+    <div style="max-width:1280px; margin:0 auto; padding:24px 5vw; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; position:relative">
+      <p style="margin:0; color:#A78D98; font-size:13px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 18px"><span>© 2026 Belvus</span><a href="/algemene-voorwaarden" style="color:#C9B9C1; text-decoration:none">Algemene voorwaarden</a><a href="/historische-tariefkaarten" style="color:#C9B9C1; text-decoration:none">Historische tariefkaarten</a><a href="/privacybeleid" style="color:#C9B9C1; text-decoration:none">Privacy</a><a href="/public/docs/energieovernamedocument.pdf" target="_blank" rel="noopener" style="color:#C9B9C1; text-decoration:none">Energieovernamedocument</a><a href="https://mrboost.nl" target="_blank" rel="noopener" style="color:#C9B9C1; text-decoration:none">Made by Mr Boost</a></p>
+      <div style="display:flex; gap:10px">
+        <a href="https://www.tiktok.com/@belvus.be" target="_blank" rel="noopener" aria-label="Belvus op TikTok" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:inline-flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></a>
+        <a href="https://www.instagram.com/belvus_be/" target="_blank" rel="noopener" aria-label="Belvus op Instagram" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:inline-flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>
+        <a href="https://www.facebook.com/p/Belvus-61577714147529/" target="_blank" rel="noopener" aria-label="Belvus op Facebook" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:inline-flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></a>
+        <a href="https://www.linkedin.com/company/belvus/" target="_blank" rel="noopener" aria-label="Belvus op LinkedIn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:inline-flex;align-items:center;justify-content:center"><svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg></a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ===================== CALCULATOR OVERLAY ===================== -->
+<sc-if value="{{ calcOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed; inset:0; z-index:100; background:rgba(20,16,26,0.55); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:24px">
+  <div style="width:100%; max-width:680px; max-height:92vh; overflow-y:auto; background:#fff; border-radius:26px; box-shadow:0 40px 100px rgba(0,0,0,0.4); animation:pop .3s ease">
+    <div style="position:sticky; top:0; background:#fff; padding:22px 28px 16px; border-bottom:1px solid #F0ECE5; z-index:2">
+      <div style="display:flex; align-items:center; justify-content:space-between">
+        <div style="display:flex; align-items:center; gap:10px"><img src="/public/img/belvus-icon.svg" alt="Belvus" style="width:30px; height:30px; object-fit:contain"><span style="font-weight:800; font-size:16px; color:#14101A">Bereken je besparing</span></div>
+        <button onClick="{{ closeCalc }}" style="width:36px; height:36px; border-radius:50%; background:#F4F0EA; color:#14101A; font-size:18px; font-weight:700; display:flex; align-items:center; justify-content:center">✕</button>
+      </div>
+      <div style="margin-top:14px; height:6px; background:#F0ECE5; border-radius:999px; overflow:hidden"><div style="height:100%; background:#FFF302; border-radius:999px; transition:width .35s ease; width:{{ progress }}"></div></div>
+      <p style="margin:9px 0 0; font-size:12.5px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:#A39CA8">Stap {{ step }} van 5</p>
+    </div>
+
+    <div style="padding:30px 28px 32px">
+      <sc-if value="{{ s1 }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 8px">Waar woon je?</h2>
+        <p style="margin:0 0 22px; color:#5A535F; font-size:15px; line-height:1.5">Vul je postcode in, zo tonen we de juiste tarieven voor jouw adres.</p>
+        <label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Ik vraag aan als</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px">
+          <button data-c="particulier" onClick="{{ setKlant }}" style="{{ styKlantPart }}">Particulier</button>
+          <button data-c="professioneel" onClick="{{ setKlant }}" style="{{ styKlantPro }}">Professioneel</button>
+        </div>
+        <div>
+          <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Postcode</label><input value="{{ postcode }}" onInput="{{ onPostcode }}" inputmode="numeric" maxlength="4" placeholder="bv. 2000" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:15px; padding:17px 18px; font-size:18px; font-weight:700; color:#14101A; letter-spacing:0.08em" style-focus="border-color:#000"></div>
+        </div>
+        <sc-if value="{{ pcCityKnown }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:12px 0 0; font-size:14px; font-weight:700; color:#563240">{{ pcCityLabel }}</p>
+        </sc-if>
+        <sc-if value="{{ pcMulti }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px">
+          <sc-for list="{{ pcCityOptions }}" as="c" hint-placeholder-count="2">
+            <button data-c="{{ c.name }}" onClick="{{ pickCity }}" style="{{ c.sty }}">{{ c.name }}</button>
+          </sc-for>
+        </div>
+        </sc-if>
+        <sc-if value="{{ pcUnknown }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:12px 0 0; font-size:14px; font-weight:700; color:#B3261E">Deze postcode vinden we niet terug in ons leveringsgebied (Vlaanderen). Controleer je postcode of neem contact op.</p>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 8px">Welke energie heb je nodig?</h2>
+        <p style="margin:0 0 22px; color:#5A535F; font-size:15px; line-height:1.5">Kies waarvoor je een tarief wil vergelijken.</p>
+        <div style="display:flex; flex-direction:column; gap:13px">
+          <button data-t="elek" onClick="{{ selectEnergy }}" style="{{ styElek }}"><picture><source srcset="/public/img/calc-elek.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/calc-elek.png" alt="" style="flex:none; width:34px; height:34px; object-fit:contain"></picture><div style="text-align:left"><div style="font-weight:800; font-size:16px; color:#14101A">Elektriciteit</div><div style="font-size:13.5px; color:#6B6470">Alleen stroom</div></div></button>
+          <button data-t="gas" onClick="{{ selectEnergy }}" style="{{ styGas }}"><picture><source srcset="/public/img/calc-gas.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/calc-gas.png" alt="" style="flex:none; width:34px; height:34px; object-fit:contain"></picture><div style="text-align:left"><div style="font-weight:800; font-size:16px; color:#14101A">Gas</div><div style="font-size:13.5px; color:#6B6470">Alleen aardgas</div></div></button>
+          <button data-t="beide" onClick="{{ selectEnergy }}" style="{{ styBeide }}"><picture><source srcset="/public/img/calc-beide.avif" type="image/avif"><img loading="lazy" decoding="async" src="/public/img/calc-beide.png" alt="" style="flex:none; width:34px; height:34px; object-fit:contain"></picture><div style="text-align:left"><div style="font-weight:800; font-size:16px; color:#14101A">Elektriciteit &amp; gas</div><div style="font-size:13.5px; color:#6B6470">Allebei</div></div></button>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ s3 }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 8px">Je meter en verbruik</h2>
+        <p style="margin:0 0 18px; color:#5A535F; font-size:15px; line-height:1.5">Vertel ons welke meter je hebt en wat je verbruikt. Geen idee? Wij schatten het voor je in op basis van je woning.</p>
+        <sc-if value="{{ showMeter }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-bottom:20px; display:flex; flex-direction:column; gap:12px">
+          <label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px; margin-bottom:0">Type elektriciteitsmeter</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+            <button data-m="enkel" onClick="{{ setMeter }}" style="{{ styMeterEnkel }}">Enkelvoudig<span style="display:block; font-weight:600; font-size:12.5px; color:#6B6470; margin-top:3px">Één telwerk</span></button>
+            <button data-m="dubbel" onClick="{{ setMeter }}" style="{{ styMeterDubbel }}">Tweevoudig<span style="display:block; font-weight:600; font-size:12.5px; color:#6B6470; margin-top:3px">Piek en dal</span></button>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:16px; padding:15px 18px"><div><div style="font-weight:800; font-size:15.5px; color:#14101A">Zonnepanelen</div><div style="font-size:13px; color:#6B6470">Wek je zelf stroom op en lever je terug?</div></div><div style="display:flex; gap:8px"><button data-k="instSolar" data-v="yes" onClick="{{ setInst }}" style="{{ stySolarYes }}">Ja</button><button data-k="instSolar" data-v="no" onClick="{{ setInst }}" style="{{ stySolarNo }}">Nee</button></div></div><div style="display:flex; align-items:center; justify-content:space-between; gap:14px; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:16px; padding:15px 18px; margin-top:13px"><div><div style="font-weight:800; font-size:15.5px; color:#14101A">Exclusief nachttarief</div><div style="font-size:13px; color:#6B6470">Heb je een aparte nachtmeter?</div></div><div style="display:flex; gap:8px"><button data-k="instNight" data-v="yes" onClick="{{ setInst }}" style="{{ styNightYes }}">Ja</button><button data-k="instNight" data-v="no" onClick="{{ setInst }}" style="{{ styNightNo }}">Nee</button></div></div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ knowsChoiceVisible }}" hint-placeholder-val="{{ true }}"><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px; margin-bottom:10px">Ken je je jaarverbruik?</label>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px; margin-bottom:8px">
+          <button data-v="yes" onClick="{{ setKnows }}" style="{{ styKnowsYes }}">Ja, ik weet het</button>
+          <button data-v="no" onClick="{{ setKnows }}" style="{{ styKnowsNo }}">Nee, schat in</button>
+        </div></sc-if>
+        <sc-if value="{{ knowsYes }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px; display:flex; flex-direction:column; gap:14px">
+          <sc-if value="{{ useElec }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ meterEnkel }}" hint-placeholder-val="{{ true }}">
+          <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Elektriciteit (kWh / jaar)</label><input value="{{ usageElec }}" onInput="{{ onUsageElec }}" inputmode="numeric" placeholder="bv. 3500" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+          </sc-if>
+          <sc-if value="{{ meterDubbel }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+            <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Piekuren (kWh / jaar)</label><input value="{{ usagePeak }}" onInput="{{ onUsagePeak }}" inputmode="numeric" placeholder="bv. 2100" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+            <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Daluren (kWh / jaar)</label><input value="{{ usageOff }}" onInput="{{ onUsageOff }}" inputmode="numeric" placeholder="bv. 1400" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+          </div>
+          </sc-if>
+          <sc-if value="{{ nightYes }}" hint-placeholder-val="{{ false }}">
+          <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Exclusief nachtverbruik (kWh / jaar)</label><input value="{{ usageNight }}" onInput="{{ onUsageNight }}" inputmode="numeric" placeholder="bv. 1800" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+          </sc-if>
+          <sc-if value="{{ solarYes }}" hint-placeholder-val="{{ false }}">
+          <div style="border:2px solid #ECE7E0; background:#FBFAF8; border-radius:16px; padding:16px 18px; display:flex; flex-direction:column; gap:12px">
+            <div style="font-weight:800; font-size:15px; color:#14101A">Teruglevering zonnepanelen</div>
+            <sc-if value="{{ meterEnkel }}" hint-placeholder-val="{{ true }}">
+            <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Injectie op het net (kWh / jaar)</label><input value="{{ injTotal }}" onInput="{{ onInjTotal }}" inputmode="numeric" placeholder="bv. 1600" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+            </sc-if>
+            <sc-if value="{{ meterDubbel }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+              <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Injectie piekuren (kWh)</label><input value="{{ injPeak }}" onInput="{{ onInjPeak }}" inputmode="numeric" placeholder="bv. 1100" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+              <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Injectie daluren (kWh)</label><input value="{{ injOff }}" onInput="{{ onInjOff }}" inputmode="numeric" placeholder="bv. 500" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+            </div>
+            </sc-if>
+            <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Capaciteit van de panelen (kVA) <span style="font-weight:600; color:#8B8590">— optioneel, standaard 4</span></label><input value="{{ kva }}" onInput="{{ onKva }}" inputmode="decimal" placeholder="bv. 5" style="width:100%; box-sizing:border-box; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+          </div>
+          </sc-if>
+          </sc-if>
+          <sc-if value="{{ useGas }}" hint-placeholder-val="{{ false }}">
+          <div><label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:8px">Gas (kWh / jaar)</label><input value="{{ usageGas }}" onInput="{{ onUsageGas }}" inputmode="numeric" placeholder="bv. 15.000" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:14px; padding:15px 16px; font-size:16px; font-weight:700; color:#14101A" style-focus="border-color:#000"></div>
+          </sc-if>
+        </div>
+        </sc-if>
+        <sc-if value="{{ knowsNo }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:18px">
+          <label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin-bottom:10px">Type woning</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:11px">
+            <button data-t="appartement" onClick="{{ selectHome }}" style="{{ styHomeApp }}"><span style="height:34px; display:flex; align-items:center; justify-content:flex-start"><span style="font-size:29px; line-height:34px">🏢</span></span><span style="font-weight:700; font-size:15px; color:#14101A">Appartement</span></button>
+            <button data-t="rijtjeshuis" onClick="{{ selectHome }}" style="{{ styHomeRij }}"><span style="height:34px; display:flex; align-items:center; justify-content:flex-start"><span style="font-size:29px; line-height:34px">🏠</span></span><span style="font-weight:700; font-size:15px; color:#14101A">Rijhuis</span></button>
+            <button data-t="hoekwoning" onClick="{{ selectHome }}" style="{{ styHomeHoek }}"><span style="height:34px; display:flex; align-items:center; justify-content:flex-start"><span style="font-size:23px; line-height:34px; letter-spacing:-4px">🏠🏠</span></span><span style="font-weight:700; font-size:15px; color:#14101A">Halfopen bebouwing</span></button>
+            <button data-t="vrijstaand" onClick="{{ selectHome }}" style="{{ styHomeVrij }}"><span style="height:34px; display:flex; align-items:center; justify-content:flex-start"><span style="font-size:29px; line-height:34px">🏡</span></span><span style="font-weight:700; font-size:15px; color:#14101A">Open bebouwing</span></button>
+          </div>
+          <label style="display:block; font-size:13px; font-weight:700; color:#14101A; margin:20px 0 10px">Aantal personen</label>
+          <div style="display:flex; gap:9px">
+            <sc-for list="{{ personsView }}" as="p" hint-placeholder-count="6">
+              <button data-n="{{ p.n }}" onClick="{{ pickPersons }}" style="{{ p.sty }}">{{ p.n }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{ estShow }}" hint-placeholder-val="{{ false }}"><div style="margin-top:16px; padding:12px 16px; border-radius:12px; background:#F4F7EF; border:2px solid #DCE8D0; font-size:14px; font-weight:600; color:#3A3340; line-height:1.5">Geschat verbruik: <sc-if value="{{ useElec }}" hint-placeholder-val="{{ false }}"><span><b>{{ estElec }} kWh</b> elektriciteit</span></sc-if><sc-if value="{{ estBoth }}" hint-placeholder-val="{{ false }}"><span> · </span></sc-if><sc-if value="{{ useGas }}" hint-placeholder-val="{{ false }}"><span><b>{{ estGas }} kWh</b> gas</span></sc-if> per jaar</div></sc-if></sc-if>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ s4 }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 8px">Jouw installatie</h2>
+        <p style="margin:0 0 22px; color:#5A535F; font-size:15px; line-height:1.5">Nog een paar korte vragen over je aansluiting, zo klopt je voorstel meteen.</p>
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <sc-if value="{{ useElec }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:16px; padding:15px 18px"><div><div style="font-weight:800; font-size:15.5px; color:#14101A">Laadpaal</div><div style="font-size:13px; color:#6B6470">Laad je een elektrische wagen thuis?</div></div><div style="display:flex; gap:8px"><button data-k="instCharger" data-v="yes" onClick="{{ setInst }}" style="{{ styChargerYes }}">Ja</button><button data-k="instCharger" data-v="no" onClick="{{ setInst }}" style="{{ styChargerNo }}">Nee</button></div></div>
+          </sc-if>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:16px; padding:15px 18px"><div><div style="font-weight:800; font-size:15.5px; color:#14101A">Digitale meter</div><div style="font-size:13px; color:#6B6470">Heb je een digitale meter?</div></div><div style="display:flex; gap:8px"><button data-k="instDigital" data-v="yes" onClick="{{ setInst }}" style="{{ styDigitalYes }}">Ja</button><button data-k="instDigital" data-v="no" onClick="{{ setInst }}" style="{{ styDigitalNo }}">Nee</button></div></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ s5offers }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column">
+        <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 8px">Onze tarieven voor jou</h2>
+        <p style="margin:0 0 20px; color:#5A535F; font-size:15px; line-height:1.5">Op basis van je verbruik passen deze tarieven het best bij je.</p>
+
+        <div style="{{ styCardFlex }}">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px">
+            <span style="background:#FFF302; color:#000; font-weight:800; font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; padding:6px 12px; border-radius:999px">Aanbevolen</span>
+            <span style="background:#F4F0EA; color:#5A535F; font-weight:700; font-size:12px; padding:6px 12px; border-radius:999px">Variabel</span>
+          </div>
+          <h3 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:24px; line-height:1; color:#14101A; margin:0 0 12px">Belvus Flex Online{{ prodSuffix }}</h3>
+          <div style="display:flex; flex-direction:column; gap:7px; margin-bottom:14px">
+            <div style="display:flex; gap:9px; align-items:center; font-size:14px; color:#14101A; font-weight:600"><span style="flex:none; width:19px; height:19px; border-radius:50%; background:#FFF302; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#000; font-weight:800">✓</span> Vast voorschotbedrag</div>
+            <div style="display:flex; gap:9px; align-items:center; font-size:14px; color:#14101A; font-weight:600"><span style="flex:none; width:19px; height:19px; border-radius:50%; background:#FFF302; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#000; font-weight:800">✓</span> Geniet meteen van prijsdalingen</div>
+          </div>
+          <p style="margin:0 0 4px; font-size:13px; color:#8B8590; font-weight:700">Contract: <span style="color:#14101A">1 jaar</span></p>
+          <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:16px; flex-wrap:wrap">
+            <span style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; font-size:38px; line-height:1; color:#14101A">{{ fFlexM }}</span><span style="font-size:13px; color:#8B8590; font-weight:700">/ maand</span>
+            <span style="font-size:14px; color:#5A535F; font-weight:700">{{ fFlexY }} / jaar</span>
+          </div>
+          <button onClick="{{ pickFlex }}" style="width:100%; padding:14px; border-radius:999px; background:#FFF302; color:#000; font-weight:800; font-size:15px; border:none; cursor:pointer; font-family:'Manrope',sans-serif" class="bv044">Teken nu in</button>
+          <button onClick="{{ openBdFlex }}" style="width:100%; margin-top:8px; background:none; border:none; cursor:pointer; font-size:13px; font-weight:800; color:#563240; text-decoration:underline; font-family:'Manrope',sans-serif; padding:4px">Bekijk prijsopbouw</button>
+        </div>
+
+        <div style="{{ styCardSmart }}">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px">
+            <span></span>
+            <span style="background:#F4F0EA; color:#5A535F; font-weight:700; font-size:12px; padding:6px 12px; border-radius:999px">Variabel</span>
+          </div>
+          <h3 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:24px; line-height:1; color:#14101A; margin:0 0 12px">Belvus SmartPlus{{ prodSuffix }}</h3>
+          <div style="display:flex; flex-direction:column; gap:7px; margin-bottom:14px">
+            <div style="display:flex; gap:9px; align-items:center; font-size:14px; color:#14101A; font-weight:600"><span style="flex:none; width:19px; height:19px; border-radius:50%; background:#FFF302; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#000; font-weight:800">✓</span> Vast voorschotbedrag</div>
+            <div style="display:flex; gap:9px; align-items:center; font-size:14px; color:#14101A; font-weight:600"><span style="flex:none; width:19px; height:19px; border-radius:50%; background:#FFF302; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#000; font-weight:800">✓</span> Geniet meteen van prijsdalingen</div>
+          </div>
+          <p style="margin:0 0 4px; font-size:13px; color:#8B8590; font-weight:700">Contract: <span style="color:#14101A">1 jaar</span></p>
+          <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:16px; flex-wrap:wrap">
+            <span style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; font-size:38px; line-height:1; color:#14101A">{{ fSmartM }}</span><span style="font-size:13px; color:#8B8590; font-weight:700">/ maand</span>
+            <span style="font-size:14px; color:#5A535F; font-weight:700">{{ fSmartY }} / jaar</span>
+          </div>
+          <button onClick="{{ pickSmart }}" style="width:100%; padding:14px; border-radius:999px; background:#14101A; color:#fff; font-weight:800; font-size:15px; border:none; cursor:pointer; font-family:'Manrope',sans-serif" class="bv044">Teken nu in</button>
+          <button onClick="{{ openBdSmart }}" style="width:100%; margin-top:8px; background:none; border:none; cursor:pointer; font-size:13px; font-weight:800; color:#563240; text-decoration:underline; font-family:'Manrope',sans-serif; padding:4px">Bekijk prijsopbouw</button>
+        </div>
+        <sc-if value="{{ showDynCard }}" hint-placeholder-val="{{ false }}"><div style="{{ styCardDyn }}">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px">
+            <span style="background:#563240; color:#fff; font-weight:800; font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; padding:6px 12px; border-radius:999px">Nieuw</span>
+            <span style="background:#F4F0EA; color:#5A535F; font-weight:700; font-size:12px; padding:6px 12px; border-radius:999px">Dynamisch</span>
+          </div>
+          <h3 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:24px; line-height:1; color:#14101A; margin:0 0 12px">Belvus Dynamisch{{ prodSuffix }}</h3>
+          <div style="display:flex; flex-direction:column; gap:7px; margin-bottom:14px">
+            <div style="display:flex; gap:9px; align-items:center; font-size:14px; color:#14101A; font-weight:600"><span style="flex:none; width:19px; height:19px; border-radius:50%; background:#FFF302; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#000; font-weight:800">✓</span> Je volgt de uurprijzen van de beurs</div>
+            <div style="display:flex; gap:9px; align-items:center; font-size:14px; color:#14101A; font-weight:600"><span style="flex:none; width:19px; height:19px; border-radius:50%; background:#FFF302; display:inline-flex; align-items:center; justify-content:center; font-size:11px; color:#000; font-weight:800">✓</span> Slim verbruiken loont meteen</div>
+          </div>
+          <p style="margin:0 0 4px; font-size:13px; color:#8B8590; font-weight:700">Contract: <span style="color:#14101A">1 jaar</span></p>
+          <div style="display:flex; align-items:baseline; gap:10px; margin-bottom:10px; flex-wrap:wrap">
+            <span style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; font-size:38px; line-height:1; color:#14101A">{{ fDynM }}</span><span style="font-size:13px; color:#8B8590; font-weight:700">/ maand</span>
+            <span style="font-size:14px; color:#5A535F; font-weight:700">{{ fDynY }} / jaar</span>
+          </div>
+          <p style="margin:0 0 14px; font-size:12.5px; color:#8B8590; line-height:1.5">Indicatie op basis van de gemiddelde uurprijs van de afgelopen 12 maanden. Je effectieve prijs volgt de markt per uur.</p>
+          <button onClick="{{ pickDyn }}" style="width:100%; padding:14px; border-radius:999px; background:#563240; color:#fff; font-weight:800; font-size:15px; border:none; cursor:pointer; font-family:'Manrope',sans-serif" class="bv044">Teken nu in</button>
+          <sc-if value="{{ showBdDyn }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openBdDyn }}" style="width:100%; margin-top:8px; background:none; border:none; cursor:pointer; font-size:13px; font-weight:800; color:#563240; text-decoration:underline; font-family:'Manrope',sans-serif; padding:4px">Bekijk prijsopbouw</button></sc-if>
+        </div></sc-if>
+        <div style="background:#563240; color:#fff; border-radius:14px; padding:14px 18px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; text-align:center; order:90">
+          <picture style="display:contents"><source srcset="/public/img/bv-logo.avif" type="image/avif"><img src="/public/img/bv-logo.png" alt="Belvus" style="height:26px; width:auto; display:block"></picture>
+          <span style="font-size:14.5px; font-weight:800; color:#fff">Altijd persoonlijk geholpen. Geen verrassingen.</span>
+        </div>
+        <p style="margin:12px 0 0; font-size:12.5px; color:#8B8590; text-align:center; order:91">{{ btwNote }}</p>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ s5form }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <sc-if value="{{ notSubmitted }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 8px">Voltooi je aanvraag</h2>
+          <p style="margin:0 0 18px; color:#5A535F; font-size:15px; line-height:1.5">Geef je gegevens op om door te gaan met je gekozen energieplan.</p>
+          <div style="border:2px solid #563240; border-radius:16px; padding:18px 20px; background:#FBF7F9; margin-bottom:6px">
+            <p style="margin:0 0 6px; font-weight:800; color:#563240; font-size:15px">Aanbod: {{ planName }}</p>
+            <p style="margin:0 0 4px; font-size:14px; color:#14101A"><strong style="font-weight:800">{{ fPlanM }}/maand</strong> <span style="color:#8B8590">({{ fPlanY }}/jaar)</span></p>
+            <p style="margin:0; font-size:13px; color:#5A535F">Contract: 1 jaar &middot; {{ btwNote }}</p>
+          </div>
+
+          <sc-if value="{{ isPro }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <h3 style="font-size:15px; font-weight:800; color:#14101A; margin:22px 0 12px; padding-top:18px; border-top:1px solid #EFEAE3">Bedrijfsgegevens</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+              <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Bedrijfsnaam *</label><input value="{{ company }}" onInput="{{ onCompany }}" placeholder="Bedrijfsnaam" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div>
+              <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Ondernemingsnummer (KBO) *</label><input value="{{ kbo }}" onInput="{{ onKbo }}" inputmode="numeric" placeholder="BE 0123.456.789" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div>
+              <div style="grid-column:1 / -1"><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Naam contactpersoon *</label><input value="{{ contact }}" onInput="{{ onContact }}" placeholder="Voornaam en achternaam" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div>
+            </div>
+          </div>
+          </sc-if>
+          <h3 style="font-size:15px; font-weight:800; color:#14101A; margin:22px 0 12px; padding-top:18px; border-top:1px solid #EFEAE3">Persoonlijke gegevens</h3>
+          <div style="display:grid; grid-template-columns:1fr; gap:12px">
+            
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Geboortedatum *</label><input type="date" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sBirth }}" onInput="{{ onSBirth }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Voornaam *</label><input placeholder="Voornaam" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sFirst }}" onInput="{{ onSFirst }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Achternaam *</label><input placeholder="Achternaam" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sLast }}" onInput="{{ onSLast }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">E-mailadres *</label><input type="email" placeholder="je@email.be" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sEmail }}" onInput="{{ onSEmail }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Telefoonnummer *</label><input inputmode="tel" placeholder="04xx xx xx xx" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sPhone }}" onInput="{{ onSPhone }}"></div>
+          </div>
+
+          <h3 style="font-size:15px; font-weight:800; color:#14101A; margin:22px 0 12px; padding-top:18px; border-top:1px solid #EFEAE3">Adresgegevens</h3>
+          <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px">
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Straat *</label><input placeholder="Straat" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sStreet }}" onInput="{{ onSStreet }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Huisnummer *</label><input placeholder="Nr." style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sNr }}" onInput="{{ onSNr }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Bus</label><input placeholder="Bus" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sBus }}" onInput="{{ onSBus }}"></div>
+          </div>
+          <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-top:12px">
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Gemeente *</label><input value="{{ gemeente }}" onInput="{{ onGemeente }}" placeholder="Gemeente" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Postcode *</label><input value="{{ postcode }}" onInput="{{ onPostcode }}" inputmode="numeric" maxlength="4" placeholder="Postcode" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div>
+          </div>
+          <h3 style="font-size:15px; font-weight:800; color:#14101A; margin:22px 0 12px; padding-top:18px; border-top:1px solid #EFEAE3">Contract &amp; aansluitingsgegevens</h3>
+          <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Gewenste startdatum contract *</label><select value="{{ sStart }}" onChange="{{ onSStart }}" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"><option value="Zo snel mogelijk">Zo snel mogelijk</option><option value="{{ sdVal1 }}">{{ sdOpt1 }}</option><option value="{{ sdVal2 }}">{{ sdOpt2 }}</option></select></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px">
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">IBAN *</label><input placeholder="BE.." style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sIban }}" onInput="{{ onSIban }}"></div>
+            <div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Rekeninghouder (IBAN) *</label><input placeholder="Naam rekeninghouder" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box" value="{{ sIbanName }}" onInput="{{ onSIbanName }}"></div>
+            <sc-if value="{{ useElec }}" hint-placeholder-val="{{ true }}"><div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Elektriciteit EAN *</label><input placeholder="18-cijferige EAN" value="{{ sEanE }}" onInput="{{ onSEanE }}" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div></sc-if>
+            <sc-if value="{{ useGas }}" hint-placeholder-val="{{ true }}"><div><label style="display:block; font-size:12.5px; font-weight:700; color:#14101A; margin-bottom:6px">Gas EAN *</label><input placeholder="18-cijferige EAN" value="{{ sEanG }}" onInput="{{ onSEanG }}" style="width:100%; border:2px solid #ECE7E0; background:#FBFAF8; border-radius:12px; padding:12px 14px; font-size:14.5px; font-weight:600; color:#14101A; font-family:'Manrope',sans-serif; box-sizing:border-box"></div></sc-if>
+          </div>
+
+          <h3 style="font-size:15px; font-weight:800; color:#14101A; margin:22px 0 12px; padding-top:18px; border-top:1px solid #EFEAE3">Toestemmingen</h3>
+          <div style="display:flex; flex-direction:column; gap:11px">
+            <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px; color:#3A3340; line-height:1.5; font-weight:500"><input type="checkbox" style="flex:none; width:17px; height:17px; margin-top:1px; accent-color:#563240" checked="{{ sAgreeTerms }}" onChange="{{ onSAgreeTerms }}"><span>Ik ga akkoord met de <a href="/algemene-voorwaarden" style="color:#563240; font-weight:700">algemene voorwaarden</a> van Belvus *</span></label>
+            <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px; color:#3A3340; line-height:1.5; font-weight:500"><input type="checkbox" style="flex:none; width:17px; height:17px; margin-top:1px; accent-color:#563240" checked="{{ sAgreeGdpr }}" onChange="{{ onSAgreeGdpr }}"><span>Ik geef toestemming voor de verwerking van mijn persoonsgegevens voor deze aanvraag *</span></label>
+            <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px; color:#3A3340; line-height:1.5; font-weight:500"><input type="checkbox" style="flex:none; width:17px; height:17px; margin-top:1px; accent-color:#563240" checked="{{ sAgreePrivacy }}" onChange="{{ onSAgreePrivacy }}"><span>Ik accepteer het <a href="/privacybeleid" style="color:#563240; font-weight:700">privacybeleid</a> van Belvus *</span></label>
+            <label style="display:flex; gap:10px; align-items:flex-start; font-size:13px; color:#3A3340; line-height:1.5; font-weight:500"><input type="checkbox" style="flex:none; width:17px; height:17px; margin-top:1px; accent-color:#563240" checked="{{ sAgreeSepa }}" onChange="{{ onSAgreeSepa }}"><span>Door ondertekening van dit formulier geef je toestemming aan (A) Belvus om via domiciliëring doorlopende invorderingsopdrachten naar je bank te sturen om een bedrag van je rekening te debiteren en (B) aan je bank om doorlopend een bedrag van je rekening te debiteren volgens de opdracht van Belvus. Ga je niet akkoord met een debitering, dan kan je die laten terugbetalen; neem hiervoor binnen 8 weken na de debitering contact op met je bank. *</span></label>
+          </div>
+
+          <sc-if value="{{ hasSendError }}" hint-placeholder-val="{{ false }}"><div style="margin-top:16px; padding:13px 16px; border-radius:12px; background:#FDECEC; border:2px solid #E5484D; color:#B00020; font-size:14px; font-weight:600; line-height:1.45">{{ sendError }}</div></sc-if><button onClick="{{ submitApp }}" class="bv044" style="width:100%; margin-top:20px; padding:16px; border-radius:999px; background:#FFF302; color:#000; font-weight:800; font-size:16px; border:none; cursor:pointer; font-family:'Manrope',sans-serif">{{ submitLabel }}</button>
+          
+        </div>
+        </sc-if>
+        <sc-if value="{{ isSubmitted }}" hint-placeholder-val="{{ false }}">
+        <div style="text-align:center; padding:26px 6px">
+          <span style="display:inline-flex; width:64px; height:64px; border-radius:50%; background:#FFF302; align-items:center; justify-content:center; font-size:30px; color:#000; font-weight:800; margin-bottom:18px">✓</span>
+          <h2 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:34px; line-height:0.96; color:#14101A; margin:0 0 10px">Je aanvraag is goed ontvangen</h2>
+          <p style="margin:0 auto; color:#5A535F; font-size:15px; line-height:1.6; max-width:340px">Bedankt voor je vertrouwen. Binnen enkele minuten krijg je een bevestigingsmail met alle details.</p><p style="margin:12px auto 0; color:#5A535F; font-size:15px; line-height:1.6; max-width:340px">Vanaf nu volgen wij je aanvraag en overstap verder voor je op. Zelf hoef je niets meer te doen. Wij houden je op de hoogte van elke volgende stap.</p><p style="margin:12px auto 0; color:#5A535F; font-size:15px; line-height:1.6; max-width:340px">Vragen? We helpen je graag via <a href="mailto:klantendienst@belvus.be" style="color:#563240; font-weight:700">klantendienst@belvus.be</a> of <a href="tel:+3233930683" style="color:#563240; font-weight:700; white-space:nowrap">03 393 06 83</a>.</p>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <div style="display:flex; gap:12px; margin-top:26px">
+        <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ back }}" style="flex:0 0 auto; padding:16px 22px; border-radius:14px; background:#F4F0EA; color:#14101A; font-weight:800; font-size:15px"><span class="svgarw svgarw--l" style="margin-right:8px"></span>Terug</button>
+        </sc-if>
+        <sc-if value="{{ showNext }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ next }}" style="{{ styNext }}">{{ nextLabel }}<span class="svgarw" style="margin-left:8px"></span></button>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+
+<sc-if value="{{ bdOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed; inset:0; z-index:130; background:rgba(20,16,26,0.6); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:18px">
+  <div style="width:100%; max-width:560px; max-height:90vh; overflow-y:auto; background:#fff; border-radius:22px; box-shadow:0 40px 100px rgba(20,16,26,0.35)">
+    <div style="position:sticky; top:0; background:#fff; padding:20px 26px 14px; border-bottom:1px solid #F0ECE5; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px">
+      <div><h3 style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-weight:800; text-transform:uppercase; font-size:24px; line-height:1; color:#14101A; margin:0">Prijsopbouw</h3><p style="margin:4px 0 0; font-size:13px; font-weight:700; color:#8B8590">{{ bdTitle }}</p></div>
+      <button onClick="{{ closeBd }}" aria-label="Sluiten" style="flex:none; width:38px; height:38px; border-radius:50%; background:#F4F0EA; border:none; cursor:pointer; font-size:17px; font-weight:700; color:#14101A">✕</button>
+    </div>
+    <div style="padding:20px 26px 26px">
+      <sc-if value="{{ bdLoading }}" hint-placeholder-val="{{ false }}"><p style="margin:8px 0; font-size:14.5px; color:#5A535F; font-weight:600">Prijsopbouw laden…</p></sc-if>
+      <sc-if value="{{ bdHasError }}" hint-placeholder-val="{{ false }}"><div style="padding:13px 16px; border-radius:12px; background:#FDF6EC; border:2px solid #E8C989; color:#7A5A1E; font-size:14px; font-weight:600; line-height:1.5">{{ bdError }}</div></sc-if>
+      <sc-if value="{{ bdReady }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <sc-if value="{{ bdHasBoth }}" hint-placeholder-val="{{ false }}">
+        <div style="display:inline-flex; background:#F4F0EA; border-radius:999px; padding:4px; margin-bottom:18px">
+          <button onClick="{{ setBdE }}" style="{{ styBdE }}">⚡ Stroom</button>
+          <button onClick="{{ setBdG }}" style="{{ styBdG }}">🔥 Gas</button>
+        </div>
+        </sc-if>
+        <div style="display:flex; flex-direction:column">
+          <sc-for list="{{ bdRowsView }}" as="r" hint-placeholder-count="6">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #F4F0EA">
+            <div style="min-width:0"><div style="font-size:14.5px; font-weight:700; color:#14101A; line-height:1.35">{{ r.label }}</div><div style="font-size:12.5px; color:#8B8590; font-weight:600; margin-top:2px">{{ r.sub }}</div></div>
+            <div style="flex:none; font-size:15px; font-weight:800; color:#14101A; white-space:nowrap">{{ r.amt }}</div>
+          </div>
+          </sc-for>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0 4px">
+            <span style="font-size:15.5px; font-weight:800; color:#14101A">Totaal per jaar</span>
+            <span style="font-family:'Novecento Condensed','Saira Condensed',sans-serif; font-size:24px; font-weight:800; color:#14101A; white-space:nowrap">{{ bdTotal }}</span>
+          </div>
+        </div>
+        <p style="margin:16px 0 0; font-size:12px; color:#A39CA8; line-height:1.55">{{ bdNote }}</p>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    page: 'tariefkaarten-historie', open: false, step: 1, signing: false, pcErr: false,
+    postcode: '', huisnr: '', energyType: '', knows: null, instSolar: null, instCharger: null, instDigital: null, instNight: false,
+    klant: 'particulier', meter: 'enkel', gemeente: '',
+    usagePeak: '', usageOff: '', usageNight: '', injTotal: '', injPeak: '', injOff: '', kva: '',
+    company: '', kbo: '', contact: '',
+    usageElec: '', usageGas: '', homeType: '', persons: 3,
+    name: '', email: '', phone: '', activeId: '', featIdx: 0, estimate: null,
+    nlEmail: '', nlMsg: '',
+    pxTab: 'markt', pxRes: 'uur', pxDay: 0, pxHover: null, pxReal: {},
+    sending: false, sendError: '', apiTotals: null,
+    bdOpen:false, bdPlan:'', bdTab:'e', bdData:null, bdLoading:false, bdError:'',
+    sGender:'', sBirth:'', sFirst:'', sLast:'', sEmail:'', sPhone:'',
+    sStreet:'', sNr:'', sBus:'', sStart:'Zo snel mogelijk',
+    sIban:'', sIbanName:'', sEanE:'', sEanG:'',
+    sAgreeTerms:false, sAgreeGdpr:false, sAgreePrivacy:false, sAgreeSepa:false
+  };
+
+  onNlEmail(e){ this.setState({ nlEmail: e.target.value, nlMsg: '' }); }
+  onNlSubmit(){
+    const v = (this.state.nlEmail||'').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { this.setState({ nlMsg: 'Geef een geldig e-mailadres in.' }); return; }
+    this.setState({ nlEmail: '', nlMsg: 'Bedankt! Je bent ingeschreven.' });
+  }
+
+
+  _openBreakdown(plan){
+    const st = this.state;
+    this.setState({ bdOpen:true, bdPlan:plan, bdTab: (st.energyType==='gas'?'g':'e'), bdData:null, bdLoading:true, bdError:'' });
+    const payload = {
+      plan, klant:st.klant, postcode:st.postcode, huisnr:st.huisnr,
+      energyType:st.energyType, meter:st.meter, knows:st.knows,
+      usageElec:st.usageElec, usagePeak:st.usagePeak, usageOff:st.usageOff,
+      usageNight:st.usageNight, usageGas:st.usageGas,
+      homeType:st.homeType, persons:st.persons,
+      instSolar:st.instSolar, instNight:st.instNight,
+      instDigital:st.instDigital, instCharger:st.instCharger,
+      injTotal:st.injTotal, injPeak:st.injPeak, injOff:st.injOff, kva:st.kva
+    };
+    const key = JSON.stringify(payload);
+    this._bdCache = this._bdCache || {};
+    if (this._bdCache[key]) { this.setState({ bdData:this._bdCache[key], bdLoading:false }); return; }
+    fetch('/api/breakdown', { method:'POST', headers:{'Content-Type':'application/json'}, body:key })
+      .then(r=>r.json())
+      .then(j=>{
+        if (this.state.bdPlan!==plan || !this.state.bdOpen) return;
+        if (j && j.ok) { this._bdCache[key]=j; this.setState({ bdData:j, bdLoading:false }); }
+        else this.setState({ bdLoading:false, bdError:(j&&j.message)||'De prijsopbouw kon niet worden opgehaald.' });
+      })
+      .catch(()=>{ if(this.state.bdOpen) this.setState({ bdLoading:false, bdError:'Geen verbinding. Probeer het later opnieuw.' }); });
+  }
+
+  // Sleutel over alle wizard-invoer, zodat kaarttotalen nooit bij verouderde
+  // invoer getoond worden.
+  _totKey(){
+    const st = this.state;
+    return JSON.stringify({
+      plan:'all', klant:st.klant, postcode:st.postcode, huisnr:st.huisnr,
+      energyType:st.energyType, meter:st.meter, knows:st.knows,
+      usageElec:st.usageElec, usagePeak:st.usagePeak, usageOff:st.usageOff,
+      usageNight:st.usageNight, usageGas:st.usageGas,
+      homeType:st.homeType, persons:st.persons,
+      instSolar:st.instSolar, instNight:st.instNight,
+      instDigital:st.instDigital, instCharger:st.instCharger,
+      injTotal:st.injTotal, injPeak:st.injPeak, injOff:st.injOff, kva:st.kva
+    });
+  }
+
+  // Stap-5-kaarten: totalen per plan uit dezelfde serverberekening als de
+  // prijsopbouw-popup, zodat kaart en popup altijd overeenkomen.
+  _prefetchTotals(){
+    const key = this._totKey();
+    this._totCache = this._totCache || {};
+    if (this._totCache[key]) {
+      if (!this.state.apiTotals || this.state.apiTotals.key !== key) this.setState({ apiTotals:{ key, t:this._totCache[key] } });
+      return;
+    }
+    if (this._totPending === key) return;
+    this._totPending = key;
+    fetch('/api/breakdown', { method:'POST', headers:{'Content-Type':'application/json'}, body:key })
+      .then(r=>r.json())
+      .then(j=>{
+        if (this._totPending===key) this._totPending = null;
+        if (j && j.ok && j.totals) { this._totCache[key]=j.totals; this.setState({ apiTotals:{ key, t:j.totals } }); }
+      })
+      .catch(()=>{ if (this._totPending===key) this._totPending = null; });
+  }
+
+  pxCompute(){
+    const s = this.state, self = this;
+    const W=580, H=200, PXL=46, PXR=14, PT=16, PB=34;
+    const yBot=H-PB, yTop=PT, PW=W-PXL-PXR;
+    const day = s.pxDay||0;
+    const real = (s.pxReal||{})[day];
+    const isKw = s.pxRes==='kwartier';
+    const isAllin = s.pxTab!=='markt';
+    const eur=(v)=>'€ '+v.toFixed(3).replace('.',',');
+    const eur2=(v)=>'€ '+v.toFixed(2).replace('.',',');
+    const pad=(x)=>String(x).padStart(2,'0');
+
+    // Echte prijzen: Belpex-kwartierwaarden + Belvus-opslagen via /api/prices.php
+    let vals=null, gasVal=null, note='';
+    if (real && real.ok){
+      const arr = isAllin ? real.allin : real.market;
+      if (isKw) vals = arr.slice(0,96);
+      else { vals=[]; for(let h=0;h<24;h++){ let t=0; for(let q=0;q<4;q++) t+=arr[h*4+q]; vals.push(t/4); } }
+      // markt-tab: TTF-gasdagprijs (Lynx); all-in-tab: Salesdock-tarief
+      gasVal = isAllin ? (real.gas==null?null:real.gas)
+                       : (real.gas_market==null?null:real.gas_market);
+    } else if (real && real.reason==='not_published'){
+      note='De beursprijzen voor deze dag zijn nog niet gepubliceerd. Day-ahead prijzen verschijnen doorgaans rond 13:00.';
+    } else if (real){
+      note='Prijzen tijdelijk niet beschikbaar. Probeer het later opnieuw.';
+    } else {
+      note='Prijzen laden…';
+    }
+
+    const n = vals ? vals.length : (isKw?96:24);
+    const bw = PW/n;
+    let linePath='', areaPath='', avg=null, yAt=null, yMinV=0, yMaxV=0.35;
+    if (vals){
+      const dMax=Math.max.apply(null,vals), dMin=Math.min.apply(null,vals);
+      yMaxV=Math.max(0.10, dMax*1.12);
+      yMinV=Math.min(0, dMin<0 ? dMin*1.12 : 0);
+      yAt=(v)=> yBot-((v-yMinV)/(yMaxV-yMinV))*(yBot-yTop);
+      let d='M '+PXL+' '+yAt(vals[0]).toFixed(1);
+      for(let i=0;i<n;i++){ const xR=PXL+(i+1)*bw; d+=' L '+xR.toFixed(1)+' '+yAt(vals[i]).toFixed(1); if(i<n-1) d+=' L '+xR.toFixed(1)+' '+yAt(vals[i+1]).toFixed(1); }
+      linePath=d;
+      areaPath=d+' L '+(PXL+n*bw).toFixed(1)+' '+yBot+' L '+PXL+' '+yBot+' Z';
+      avg = vals.reduce((a,b)=>a+b,0)/n;
+    }
+    // y-aslabels op de vaste rasterhoogtes (fracties van de oude 0-0,35 schaal)
+    const yLbl=(f)=> eur2(yMinV + f*(yMaxV-yMinV));
+
+    const slotLabel=(i)=>{ if(isKw){ const sm=i*15, em=sm+15; return pad(Math.floor(sm/60))+':'+pad(sm%60)+' en '+pad(Math.floor(em/60)%24)+':'+pad(em%60); } return pad(i)+':00 en '+pad((i+1)%24)+':00'; };
+    const hi = (!vals || s.pxHover==null)?null:Math.max(0,Math.min(n-1,s.pxHover));
+    const hoverActive = hi!=null;
+    let nowActive=false, nowX=0;
+    if(vals && day===0){ const dt=new Date(); const idx=isKw?(dt.getHours()*4+Math.floor(dt.getMinutes()/15)):dt.getHours(); nowActive=true; nowX=PXL+idx*bw; }
+    const onMove=(e)=>{ if(!vals) return; const rect=e.currentTarget.getBoundingClientRect(); const relX=(e.clientX-rect.left)/rect.width; const f=(relX*W-PXL)/PW; let i=Math.floor(f*n); i=Math.max(0,Math.min(n-1,i)); if(i!==self.state.pxHover) self.setState({pxHover:i}); };
+    const onLeave=()=>{ if(self.state.pxHover!=null) self.setState({pxHover:null}); };
+    const dayLabel = day===0?'Vandaag': day===-1?'Gisteren': day===1?'Morgen': (()=>{ const dt=new Date(); dt.setDate(dt.getDate()+day); return dt.toLocaleDateString('nl-BE',{day:'numeric',month:'long'}); })();
+    const setDay=(nd)=>{ if(nd<-7||nd>1) return; self.setState({pxDay:nd,pxHover:null}); self._loadPrices(nd); };
+    return {
+      pxClsUur: isKw?'':'on', pxClsKwartier: isKw?'on':'',
+      setPxUur:()=>self.setState({pxRes:'uur',pxHover:null}),
+      setPxKwartier:()=>self.setState({pxRes:'kwartier',pxHover:null}),
+      pxPrevDay:()=>setDay((s.pxDay||0)-1),
+      pxNextDay:()=>setDay((s.pxDay||0)+1),
+      pxDayLabel: dayLabel,
+      pxLinePath: linePath, pxAreaPath: areaPath,
+      pxHoverActive: hoverActive, pxNotHover: !hoverActive,
+      pxHoverX: hoverActive?(PXL+hi*bw).toFixed(1):'0', pxHoverW: bw.toFixed(1),
+      pxDotX: hoverActive?(PXL+(hi+0.5)*bw).toFixed(1):'0', pxDotY: (hoverActive&&yAt)?yAt(vals[hi]).toFixed(1):'0',
+      pxHLabel: hoverActive?slotLabel(hi):'', pxHStroom: hoverActive?eur(vals[hi]):'',
+      pxHGas: (hoverActive&&gasVal!=null)?eur(gasVal):'',
+      pxNowActive: (nowActive && !hoverActive), pxNowX: nowX.toFixed(1), pxNowW: bw.toFixed(1),
+      pxAvg: avg!=null?eur(avg):'–',
+      pxGas: gasVal!=null?eur(gasVal):'–',
+      pxGasLabel: 'Gasprijs (markt)',
+      pxY0: yLbl(0), pxY1: yLbl(0.2857), pxY2: yLbl(0.5714), pxY3: yLbl(0.8571),
+      pxNote: note, pxHasNote: !!note,
+      onPxMove: onMove, onPxLeave: onLeave
+    };
+  }
+  _loadPrices(day){
+    if (typeof window==='undefined' || typeof fetch==='undefined') return;
+    day = day||0;
+    this._pxFetch = this._pxFetch||{};
+    const cur=(this.state.pxReal||{})[day];
+    if (this._pxFetch[day] || (cur&&cur.ok)) return;
+    this._pxFetch[day]=true;
+    fetch('/api/prices?day='+day).then(r=>r.json()).then(j=>{
+      const m=Object.assign({},this.state.pxReal||{}); m[day]=(j&&typeof j==='object')?j:{ok:false,reason:'error'};
+      this._pxFetch[day]=false; this.setState({pxReal:m});
+    }).catch(()=>{
+      const m=Object.assign({},this.state.pxReal||{}); m[day]={ok:false,reason:'error'};
+      this._pxFetch[day]=false; this.setState({pxReal:m});
+    });
+  }
+  go(page){ const _m={home:'/',about:'/over-ons',services:'/diensten',contact:'/contact',kennisbank:'/kennisbank'}; if(typeof window!=='undefined'){ window.location.href=_m[page]||'/'; } }
+  revScroll(dir){ const el=this.revRef&&this.revRef.current; if(!el) return; const c=el.firstElementChild; const w=c?c.getBoundingClientRect().width+24:380; el.scrollBy({left:dir*w, behavior:'smooth'}); }
+  scrollToId(id){ if (typeof window==='undefined') return; const el = document.getElementById(id); if (!el) return; const y = el.getBoundingClientRect().top + window.scrollY - 104; window.scrollTo({ top:y, behavior:'smooth' }); this.setState({ activeId:id }); }
+
+  _loadEstimate(){
+    // Geschat verbruik ophalen (Salesdock via /api/estimate.php, met
+    // tabel-fallback op de server) zodra woningtype/personen bekend zijn.
+    if (typeof window==='undefined' || typeof fetch==='undefined') return;
+    const s = this.state;
+    if (s.knows!==false || !s.homeType) return;
+    const key = s.homeType+'-'+s.persons;
+    if (this._estKey===key) return;
+    this._estKey = key;
+    fetch('/api/estimate?homeType='+encodeURIComponent(s.homeType)+'&persons='+s.persons)
+      .then(r=>r.json()).then(j=>{
+        if (j && j.ok) this.setState({ estimate:{ key:key, e:j.e_single, g:j.gas } });
+      }).catch(()=>{ this._estKey=null; });
+  }
+  componentDidMount(){ this._loadPrices(0); this._fx(); this._initNav(); this._initMarquee(); this._loadPC(); }
+  _loadPC(){ import('/src/js/postcodes.js').then(m=>{ this._pc = m.POSTCODES; this.forceUpdate(); }).catch(()=>{}); }
+  _initMarquee(){
+    if (typeof window === 'undefined') return;
+    const t0 = this._mqStart || (this._mqStart = Date.now());
+    const tick = () => {
+      const g = window.gsap, ST = window.ScrollTrigger;
+      if (!(g && ST)){ if (Date.now()-t0 < 9000) setTimeout(tick, 70); return; }
+      try { g.registerPlugin(ST); } catch(e){}
+      document.querySelectorAll('[data-marquee-scroll-direction-target]').forEach((marquee) => {
+        if (marquee.dataset.marqueeReady) return;
+        const marqueeContent = marquee.querySelector('[data-marquee-collection-target]');
+        const marqueeScroll = marquee.querySelector('[data-marquee-scroll-target]');
+        if (!marqueeContent || !marqueeScroll) return;
+        if (!marqueeContent.offsetWidth){ if (Date.now()-t0 < 9000) setTimeout(tick, 90); return; }
+        marquee.dataset.marqueeReady = '1';
+        const { marqueeSpeed: speed, marqueeDirection: direction, marqueeDuplicate: duplicate, marqueeScrollSpeed: scrollSpeed } = marquee.dataset;
+        const marqueeSpeedAttr = parseFloat(speed);
+        const marqueeDirectionAttr = direction === 'right' ? 1 : -1;
+        const duplicateAmount = parseInt(duplicate || 0);
+        const scrollSpeedAttr = parseFloat(scrollSpeed);
+        const speedMultiplier = window.innerWidth < 479 ? 0.25 : window.innerWidth < 991 ? 0.5 : 1;
+        const marqueeSpeed = marqueeSpeedAttr * (marqueeContent.offsetWidth / window.innerWidth) * speedMultiplier;
+        marqueeScroll.style.marginLeft = (scrollSpeedAttr * -1) + '%';
+        marqueeScroll.style.width = ((scrollSpeedAttr * 2) + 100) + '%';
+        if (duplicateAmount > 0){
+          const fragment = document.createDocumentFragment();
+          for (let i = 0; i < duplicateAmount; i++){ fragment.appendChild(marqueeContent.cloneNode(true)); }
+          marqueeScroll.appendChild(fragment);
+        }
+        const marqueeItems = marquee.querySelectorAll('[data-marquee-collection-target]');
+        const animation = g.to(marqueeItems, { xPercent: -100, repeat: -1, duration: marqueeSpeed, ease: 'linear' }).totalProgress(0.5);
+        g.set(marqueeItems, { xPercent: marqueeDirectionAttr === 1 ? 100 : -100 });
+        animation.timeScale(marqueeDirectionAttr);
+        animation.play();
+        marquee.setAttribute('data-marquee-status', 'normal');
+        ST.create({ trigger: marquee, start: 'top bottom', end: 'bottom top', onUpdate: (self) => {
+          const isInverted = self.direction === 1;
+          const currentDirection = isInverted ? -marqueeDirectionAttr : marqueeDirectionAttr;
+          animation.timeScale(currentDirection);
+          marquee.setAttribute('data-marquee-status', isInverted ? 'normal' : 'inverted');
+        }});
+        const tl = g.timeline({ scrollTrigger: { trigger: marquee, start: '0% 100%', end: '100% 0%', scrub: 0 } });
+        const scrollStart = marqueeDirectionAttr === -1 ? scrollSpeedAttr : -scrollSpeedAttr;
+        tl.fromTo(marqueeScroll, { x: scrollStart + 'vw' }, { x: (-scrollStart) + 'vw', ease: 'none' });
+      });
+    };
+    tick();
+  }
+  _initNav(){ if (typeof window==='undefined') return; let n=0; const t=()=>{ if (typeof window.initBelvusNav==='function'){ window.initBelvusNav(); } else if (n++<60){ setTimeout(t,50); } }; t(); }
+  componentDidUpdate(){ this._fx(); this._initMarquee(); }
+  _fx(){
+    if (typeof window === 'undefined') return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const els = document.querySelectorAll('[data-reveal]:not(.in)');
+    if (reduce || !('IntersectionObserver' in window)){
+      els.forEach(e=>e.classList.add('in'));
+    } else {
+      if (!this._io){
+        this._io = new IntersectionObserver((ents)=>{
+          ents.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in'); this._io.unobserve(en.target); } });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+      }
+      els.forEach(e=>this._io.observe(e));
+      // reveal anything already in view right away (avoids first-paint flash)
+      requestAnimationFrame(()=>{ document.querySelectorAll('[data-reveal]:not(.in)').forEach(e=>{ const r=e.getBoundingClientRect(); if(r.top < window.innerHeight*0.92) e.classList.add('in'); }); });
+    }
+    if (!this._spyBound){
+      this._spyBound = true;
+      const onSpy = ()=>{
+        const ids = this._tocIds || [];
+        if (!ids.length) return;
+        const first = document.getElementById(ids[0]);
+        if (!first) return;
+        let active = ids[0];
+        for (const id of ids){ const el = document.getElementById(id); if (!el) continue; if (el.getBoundingClientRect().top - 120 <= 1) active = id; }
+        if (active !== this.state.activeId) this.setState({ activeId: active });
+      };
+      window.addEventListener('scroll', onSpy, { passive:true });
+      this._onSpy = onSpy;
+    }
+    if (!this._pxBound){
+      this._pxBound = true;
+      const run = ()=>{ this._raf = null; document.querySelectorAll('[data-px]').forEach(el=>{ const sp = parseFloat(el.getAttribute('data-px'))||0.06; const r = el.getBoundingClientRect(); const off = r.top + r.height/2 - window.innerHeight/2; const base = el.classList.contains('bvpar') ? ' scale(1.09)' : ''; el.style.transform = 'translate3d(0,' + (-off*sp).toFixed(1) + 'px,0)' + base; }); };
+      const onScroll = ()=>{ if(this._raf) return; this._raf = requestAnimationFrame(run); };
+      window.addEventListener('scroll', onScroll, { passive:true });
+      window.addEventListener('resize', onScroll, { passive:true });
+      this._onScroll = onScroll; run();
+    } else if (this._onScroll){ this._onScroll(); }
+  }
+
+  renderVals(){
+    const s = this.state;
+    const ELEC_B=0.295, ELEC_M=0.36, GAS_B=0.084, GAS_M=0.103, FIX_B=58, FIX_M=98;
+    const homeBase = { appartement:[1400,6528], rijtjeshuis:[2700,14144], hoekwoning:[3400,17408], vrijstaand:[4600,22848] };
+    const pf = ({1:0.65,2:0.85,3:1,4:1.15,5:1.3,6:1.45})[s.persons] || 1;
+    const useElec = s.energyType==='elek' || s.energyType==='beide';
+    const useGas  = s.energyType==='gas'  || s.energyType==='beide';
+
+    let elec=0, gas=0, estE=null, estG=null;
+    if (s.knows===true){
+      const eDual = (parseFloat(s.usagePeak)||0) + (parseFloat(s.usageOff)||0);
+      const eNight = s.instNight===true ? (parseFloat(s.usageNight)||0) : 0;
+      elec = useElec ? ((s.meter==='dubbel' ? eDual : (parseFloat(s.usageElec)||0)) + eNight) : 0;
+      gas  = useGas  ? (parseFloat(s.usageGas)||0)  : 0;
+    } else if (s.knows===false && s.homeType){
+      // Geschat verbruik: uit Salesdock (state.estimate) of de lokale tabel.
+      const estOk = s.estimate && s.estimate.key === s.homeType+'-'+s.persons;
+      const b = homeBase[s.homeType] || [0,0];
+      estE = estOk ? s.estimate.e : Math.round(b[0]*pf);
+      estG = estOk ? s.estimate.g : Math.round(b[1]*pf);
+      elec = useElec ? estE : 0;
+      gas  = useGas  ? estG : 0;
+    }
+    const nMeters = (useElec?1:0) + (useGas?1:0);
+    const inj = (useElec && s.instSolar===true) ? (s.meter==='dubbel' ? (parseFloat(s.injPeak)||0)+(parseFloat(s.injOff)||0) : (parseFloat(s.injTotal)||0)) : 0;
+    let belvus = elec*ELEC_B + gas*GAS_B + FIX_B*nMeters;
+    let market = elec*ELEC_M + gas*GAS_M + FIX_M*nMeters;
+    belvus = Math.max(0, belvus - inj*0.055);
+    market = Math.max(0, market - inj*0.040);
+    const savings = Math.max(0, market - belvus);
+    const euro = n => '€' + Math.round(n||0).toLocaleString('nl-BE');
+    const num  = n => (n||0).toLocaleString('nl-BE');
+
+    const validPC = /^\d{4}$/.test((s.postcode||'').trim());
+    const pcList = (this._pc && validPC) ? (this._pc[(s.postcode||'').trim()] || null) : null;
+    const pcCityKnown = !!pcList;
+    const pcUnknown = validPC && !!this._pc && !pcList;
+    const pcMulti = !!pcList && pcList.length>1;
+    const gemeente = s.gemeente || (pcList ? pcList[0] : '');
+    const pcCityLabel = pcList ? (pcMulti ? (s.postcode + ' — kies je gemeente') : (s.postcode + ' ' + pcList[0])) : '';
+    const validEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((s.email||'').trim());
+    let canNext = false;
+    if (s.step===1) canNext = validPC && !pcUnknown;
+    else if (s.step===2) canNext = !!s.energyType;
+    else if (s.step===3){
+      // instNight staat standaard op false; alleen zonnepanelen moet echt
+      // beantwoord zijn. Een onbeantwoorde vraag mag stap 3 niet stil blokkeren.
+      const baseOk = !useElec || (!!s.meter && s.instSolar!==null);
+      let usageOk = false;
+      if (s.knows===true){
+        // num() accepteert ook Belgische komma-notatie ("4,6" -> 4.6)
+        const num = v => { const n = parseFloat(String(v==null?'':v).replace(',','.')); return isNaN(n) ? 0 : n; };
+        const elecOk = !useElec || (s.meter==='dubbel' ? (num(s.usagePeak)>0 && num(s.usageOff)>0) : num(s.usageElec)>0);
+        const nightOk = !(useElec && s.instNight===true) || num(s.usageNight)>0;
+        // kVA is optioneel (wijzigingsdoc 2.1); server vult standaard 4 in.
+        const solarOk = true;
+        usageOk = elecOk && nightOk && solarOk && (!useGas || num(s.usageGas)>0);
+      } else if (s.knows===false) usageOk = !!s.homeType;
+      canNext = baseOk && usageOk;
+    }
+    else if (s.step===4) canNext = (!useElec || s.instCharger!==null) && s.instDigital!==null;
+    else canNext = true;
+
+    const opt = active => ({ display:'flex', alignItems:'center', gap:'16px', padding:'18px 20px', borderRadius:'16px', border:'2px solid '+(active?'#FFF302':'#ECE7E0'), background: active?'#FFF302':'#FBFAF8', cursor:'pointer', transition:'all .15s', boxShadow:'none', width:'100%' });
+    const toggle = active => ({ padding:'15px', borderRadius:'14px', border:'2px solid '+(active?'#FFF302':'#ECE7E0'), background: active?'#FFF302':'#FBFAF8', cursor:'pointer', fontWeight:800, fontSize:'15px', color:'#14101A', transition:'all .15s', boxShadow:'none' });
+    const homeCard = active => ({ display:'flex', flexDirection:'column', alignItems:'center', gap:'8px', padding:'18px 10px', borderRadius:'14px', border:'2px solid '+(active?'#FFF302':'#ECE7E0'), background: active?'#FFF302':'#FBFAF8', cursor:'pointer', transition:'all .15s', boxShadow:'none' });
+    const pBtn = active => ({ flex:1, padding:'13px 0', borderRadius:'12px', border:'2px solid '+(active?'#FFF302':'#ECE7E0'), background: active?'#FFF302':'#FBFAF8', cursor:'pointer', fontWeight:800, fontSize:'16px', color:'#14101A', transition:'all .15s', boxShadow:'none' });
+
+    const chip = active => ({ padding:'9px 16px', borderRadius:'999px', border:'2px solid '+(active?'#FFF302':'#ECE7E0'), background:active?'#FFF302':'#fff', fontWeight:700, fontSize:'13.5px', color:'#14101A', cursor:'pointer', fontFamily:"'Manrope',sans-serif" });
+    // Servertotalen (indien geladen en passend bij de huidige invoer);
+    // anders de clientschatting als fallback.
+    const apiT = (s.apiTotals && s.apiTotals.t && s.apiTotals.key === this._totKey()) ? s.apiTotals.t : null;
+    const pickT = p => (apiT && apiT[p]) ? (s.klant==='professioneel' ? apiT[p].total_ex : apiT[p].total) : null;
+    const yFlex  = pickT('flex')  != null ? pickT('flex')  : belvus;
+    const ySmart = pickT('smart') != null ? pickT('smart') : belvus*1.227;
+    const yDyn   = pickT('dyn')   != null ? pickT('dyn')   : belvus*0.955;
+    const savingsY = Math.max(0, market - yFlex);
+    const planY = s.plan==='smart' ? ySmart : (s.plan==='dyn' ? yDyn : yFlex);
+    const planNameBase = s.plan==='smart' ? 'Belvus SmartPlus' : (s.plan==='dyn' ? 'Belvus Dynamisch' : 'Belvus Flex Online');
+    const proSuffix = s.klant==='professioneel' ? ' Pro' : '';
+    const yn = active => ({ padding:'9px 22px', borderRadius:'999px', border:'2px solid '+(active?'#FFF302':'#ECE7E0'), background:active?'#FFF302':'#fff', fontWeight:800, fontSize:'14px', color:'#14101A', cursor:'pointer', fontFamily:"'Manrope',sans-serif" });
+    const nextBase = { flex:1, padding:'16px', borderRadius:'14px', fontWeight:800, fontSize:'16px', transition:'transform .12s', border:'none' };
+    const styNext = canNext
+      ? { ...nextBase, background:'#FFF302', color:'#000', cursor:'pointer' }
+      : { ...nextBase, background:'#F0ECE5', color:'#BDB7C0', cursor:'not-allowed' };
+
+    const toc = [
+      { id:'wat-is-elektriciteit', label:'Wat is elektriciteit?', d:2 },
+      { id:'centrale-tot-stopcontact', label:'Van centrale tot stopcontact', d:3 },
+      { id:'spanning-stroom-vermogen', label:'Spanning, stroom en vermogen', d:3 },
+      { id:'verbruik-begrijpen', label:'Je verbruik begrijpen', d:2 },
+      { id:'wat-is-kilowattuur', label:'Wat is een kilowattuur?', d:3 },
+      { id:'waar-gaat-stroom-naartoe', label:'Waar gaat je stroom naartoe?', d:3 },
+      { id:'groene-energie-belgie', label:'Groene energie in België', d:2 },
+      { id:'garanties-van-oorsprong', label:'Garanties van oorsprong', d:3 },
+      { id:'slim-besparen', label:'Slim besparen op je verbruik', d:2 },
+      { id:'sluipverbruik', label:'Sluipverbruik aanpakken', d:3 },
+      { id:'slimme-meter', label:'De digitale meter', d:3 },
+      { id:'factuur-ontcijferd', label:'Je energiefactuur ontcijferd', d:2 },
+      { id:'verder-lezen', label:'Verder lezen', d:2 }
+    ];
+    this._tocIds = toc.map(t=>t.id);
+    const kbActive = s.activeId || toc[0].id;
+    const tocView = toc.map(t=>{
+      const on = t.id===kbActive;
+      return { label:t.label, onClick:()=>this.scrollToId(t.id), sty:{
+        display:'block', textDecoration:'none', cursor:'pointer', lineHeight:1.35, fontSize:'14px', transition:'color .2s, border-color .2s, background .2s',
+        padding: t.d===3 ? '7px 0 7px 30px' : '8px 0 8px 16px',
+        borderLeft: '2px solid ' + (on ? '#563240' : '#EFEAE3'),
+        color: on ? '#14101A' : '#8B8590',
+        fontWeight: on ? 700 : 500,
+        background: on ? 'linear-gradient(90deg, rgba(255,243,2,0.22), rgba(255,243,2,0))' : 'transparent'
+      } };
+    });
+
+    return {
+      isHome:s.page==='home', isAbout:s.page==='about', isServices:s.page==='services', isContact:s.page==='contact',
+      accSupportCls: s.footAcc==='support'?'open':'', accOntdekCls: s.footAcc==='ontdek'?'open':'', accDienstenCls: s.footAcc==='diensten'?'open':'',
+      toggleFootAcc:(e)=>{ const k=e.currentTarget.dataset.acc; this.setState(p=>({ footAcc: p.footAcc===k?'':k })); },
+      goHome:()=>this.go('home'), goAbout:()=>this.go('about'), goServices:()=>this.go('services'), goContact:()=>this.go('contact'),
+      revRef:(this.revRef=this.revRef||React.createRef()), revPrev:()=>this.revScroll(-1), revNext:()=>this.revScroll(1),
+      isKennisbank:s.page==='kennisbank', goKennisbank:()=>this.go('kennisbank'), tocView,
+      nlEmail:s.nlEmail, nlMsg:s.nlMsg, onNlEmail:(e)=>this.onNlEmail(e), onNlSubmit:()=>this.onNlSubmit(),
+      featPct: (s.featIdx||0)*100,
+      featIdx0:(s.featIdx||0)===0?1:0, featIdx1:(s.featIdx||0)===1?1:0, featIdx2:(s.featIdx||0)===2?1:0,
+      featPrev:()=>this.setState(p=>({ featIdx: (((p.featIdx||0)+2)%3) })),
+      featNext:()=>this.setState(p=>({ featIdx: (((p.featIdx||0)+1)%3) })),
+      navHome:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.go('home'); },
+      navAbout:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.go('about'); },
+      navServices:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.go('services'); },
+      navKennisbank:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.go('kennisbank'); },
+      navContact:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.go('contact'); },
+      navNoop:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); },
+      clsHome:'nav-link'+(s.page==='home'?' is--active':''),
+      ...this.pxCompute(),
+      clsDiensten:'nav-link'+(s.page==='services'?' is--active':''),
+      clsKennisbank:'nav-link'+(s.page==='kennisbank'?' is--active':''),
+      clsOver:'nav-link'+(s.page==='about'?' is--active':''),
+      clsContact:'nav-link'+(s.page==='contact'?' is--active':''),
+
+      calcOpen:s.open,
+      openCalc:()=>this.setState({ open:true, step:1, signing:false, submitted:false }),
+      startFromHero:()=>{ const pc=(this.state.postcode||'').trim(); if(!/^\d{4}$/.test(pc) || (this._pc && !this._pc[pc])){ this.setState({ pcErr:true }); return; } this.setState({ open:true, step:1, signing:false, submitted:false, pcErr:false }); },
+      pcErr:s.pcErr,
+      closeCalc:()=>this.setState({ open:false }),
+
+      step:s.step, progress: Math.round((s.step/5)*100)+'%',
+      s1:s.step===1, s2:s.step===2, s3:s.step===3, s4:s.step===4,
+      s5offers:s.step===5 && !s.signing,
+      s5form:s.step===5 && !!s.signing,
+      next:()=>{ if(canNext) this.setState(p=>({ step: Math.min(5, p.step+1) }), ()=>{ if(this.state.step===5) this._prefetchTotals(); }); },
+      back:()=>this.setState(p=> p.signing ? { signing:false, submitted:false } : { step: Math.max(1, p.step-1) }),
+      canNext, styNext,
+      showBack: (s.step>1 || !!s.signing) && !s.submitted,
+      showNext: s.step<5,
+      nextLabel: s.step===4 ? 'Bekijk voorstel' : 'Volgende',
+
+      postcode:s.postcode, onPostcode:e=>this.setState({ postcode:e.target.value.replace(/[^0-9]/g,'').slice(0,4), pcErr:false, gemeente:'' }),
+      klant:s.klant, isPro:s.klant==='professioneel',
+      setKlant:e=>{ const c=e.currentTarget.dataset.c; const patch={ klant:c };
+        // Professioneel kent geen schatting (wijzigingsdoc 7): verbruik is verplicht.
+        if (c==='professioneel') patch.knows = true;
+        this.setState(patch); },
+      styKlantPart:toggle(s.klant==='particulier'), styKlantPro:toggle(s.klant==='professioneel'),
+      pcCityKnown, pcUnknown, pcMulti, pcCityLabel,
+      pcCityOptions:(pcList||[]).map(c=>({ name:c, sty:chip(c===gemeente) })),
+      pickCity:e=>this.setState({ gemeente:e.currentTarget.dataset.c }),
+      gemeente, onGemeente:e=>this.setState({ gemeente:e.target.value }),
+      showMeter:useElec, meterEnkel:s.meter==='enkel', meterDubbel:s.meter==='dubbel',
+      setMeter:e=>this.setState({ meter:e.currentTarget.dataset.m }),
+      styMeterEnkel:toggle(s.meter==='enkel'), styMeterDubbel:toggle(s.meter==='dubbel'),
+      solarYes:s.instSolar===true, nightYes:s.instNight===true,
+      usagePeak:s.usagePeak, onUsagePeak:e=>this.setState({ usagePeak:e.target.value.replace(/[^0-9]/g,'') }),
+      usageOff:s.usageOff, onUsageOff:e=>this.setState({ usageOff:e.target.value.replace(/[^0-9]/g,'') }),
+      usageNight:s.usageNight, onUsageNight:e=>this.setState({ usageNight:e.target.value.replace(/[^0-9]/g,'') }),
+      injTotal:s.injTotal, onInjTotal:e=>this.setState({ injTotal:e.target.value.replace(/[^0-9]/g,'') }),
+      injPeak:s.injPeak, onInjPeak:e=>this.setState({ injPeak:e.target.value.replace(/[^0-9]/g,'') }),
+      injOff:s.injOff, onInjOff:e=>this.setState({ injOff:e.target.value.replace(/[^0-9]/g,'') }),
+      kva:s.kva, onKva:e=>this.setState({ kva:e.target.value.replace(/[^0-9,\.]/g,'') }),
+      company:s.company, onCompany:e=>this.setState({ company:e.target.value }),
+      kbo:s.kbo, onKbo:e=>this.setState({ kbo:e.target.value }),
+      contact:s.contact, onContact:e=>this.setState({ contact:e.target.value }),
+      huisnr:s.huisnr, onHuisnr:e=>this.setState({ huisnr:e.target.value }),
+      setInst:e=>{ const k=e.currentTarget.dataset.k; this.setState({ [k]: e.currentTarget.dataset.v==='yes' }); },
+      stySolarYes:yn(s.instSolar===true), stySolarNo:yn(s.instSolar===false), styChargerYes:yn(s.instCharger===true), styChargerNo:yn(s.instCharger===false), styDigitalYes:yn(s.instDigital===true), styDigitalNo:yn(s.instDigital===false), styNightYes:yn(s.instNight===true), styNightNo:yn(s.instNight===false),
+
+      selectEnergy:e=>this.setState({ energyType:e.currentTarget.dataset.t }),
+      styElek: opt(s.energyType==='elek'), styGas: opt(s.energyType==='gas'), styBeide: opt(s.energyType==='beide'),
+
+      setKnows:e=>this.setState({ knows: e.currentTarget.dataset.v==='yes' }, ()=>this._loadEstimate()),
+      knowsYes:s.knows===true, knowsNo:s.knows===false,
+      styKnowsYes: toggle(s.knows===true), styKnowsNo: toggle(s.knows===false),
+      knowsChoiceVisible: s.klant!=='professioneel',
+      estShow: s.knows===false && !!s.homeType && estE!=null,
+      estElec: estE!=null ? estE.toLocaleString('nl-BE') : '',
+      estGas: estG!=null ? estG.toLocaleString('nl-BE') : '',
+      useElec, useGas, estBoth: useElec && useGas,
+      usageElec:s.usageElec, onUsageElec:e=>this.setState({ usageElec:e.target.value.replace(/[^0-9]/g,'') }),
+      usageGas:s.usageGas, onUsageGas:e=>this.setState({ usageGas:e.target.value.replace(/[^0-9]/g,'') }),
+
+      selectHome:e=>this.setState({ homeType:e.currentTarget.dataset.t }, ()=>this._loadEstimate()),
+      styHomeApp: homeCard(s.homeType==='appartement'), styHomeRij: homeCard(s.homeType==='rijtjeshuis'),
+      styHomeHoek: homeCard(s.homeType==='hoekwoning'), styHomeVrij: homeCard(s.homeType==='vrijstaand'),
+      personsView: [1,2,3,4,5,6].map(n=>({ n, sty: pBtn(s.persons===n) })),
+      pickPersons:e=>this.setState({ persons: +e.currentTarget.dataset.n }, ()=>this._loadEstimate()),
+
+      name:s.name, onName:e=>this.setState({ name:e.target.value }),
+      email:s.email, onEmail:e=>this.setState({ email:e.target.value }),
+      phone:s.phone, onPhone:e=>this.setState({ phone:e.target.value }),
+
+      fSavings:euro(savingsY), fMarket:euro(market), fBelvus:euro(yFlex), fMonthly:euro(yFlex/12),
+      fFlexM:euro(yFlex/12), fFlexY:euro(yFlex),
+      fSmartM:euro(ySmart/12), fSmartY:euro(ySmart),
+      fDynM:euro(yDyn/12), fDynY:euro(yDyn),
+      planName:planNameBase + proSuffix,
+      prodSuffix: proSuffix,
+      btwNote: s.klant==='professioneel' ? 'Getoonde prijzen zijn excl. btw.' : 'Getoonde prijzen zijn incl. btw.',
+      fPlanM:euro(planY/12), fPlanY:euro(planY),
+      // --- Prijsopbouw (wettelijke transparantie) ---------------------
+      // Dynamisch is (tijdelijk) uit Salesdock gehaald: de hele kaart blijft
+      // Zichtbaar zodra Salesdock echte Dynamisch-prijzen levert voor dit
+      // klanttype (particulier: ja; zakelijk volgt automatisch zodra het
+      // product daar in de flow staat). Geen schattingen tonen.
+      showDynCard: !!(apiT && apiT.dyn),
+      // Kaartvolgorde: goedkoopste bovenaan (klantwens sept); de Aanbevolen-
+      // styling blijft op Flex Online, ongeacht de positie. Zonder API-prijs
+      // (dyn verborgen) telt die kaart als duurste mee.
+      ...(()=>{ const pr = v => (v==null||!isFinite(v)) ? Infinity : v;
+        const rang = [['F',pr(yFlex)],['S',pr(ySmart)],['D',pr(yDyn)]].sort((a,b)=>a[1]-b[1]);
+        const o = {}; rang.forEach((x,i)=>{ o[x[0]] = (i+1)*10; });
+        return {
+          styCardFlex: 'border:2px solid #000; border-radius:20px; padding:22px; background:#FFFDE6; margin-bottom:14px; order:'+o.F,
+          styCardSmart: 'border:1px solid #EFEAE3; border-radius:20px; padding:22px; background:#fff; margin-bottom:14px; order:'+o.S,
+          styCardDyn: 'border:1px solid #EFEAE3; border-radius:20px; padding:22px; background:#fff; margin-bottom:14px; order:'+o.D
+        }; })(),
+      showBdDyn: !!(apiT && apiT.dyn),
+      openBdFlex:()=>this._openBreakdown('flex'),
+      openBdSmart:()=>this._openBreakdown('smart'),
+      openBdDyn:()=>this._openBreakdown('dyn'),
+      closeBd:()=>this.setState({ bdOpen:false }),
+      setBdE:()=>this.setState({ bdTab:'e' }),
+      setBdG:()=>this.setState({ bdTab:'g' }),
+      ...(function(){
+        const bd = s.bdData;
+        const planNaam = { flex:'Belvus Flex Online', smart:'Belvus SmartPlus', dyn:'Belvus Dynamisch' }[s.bdPlan] || '';
+        const eurF = (v,dec)=>'€ '+(v==null?0:v).toLocaleString('nl-BE',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+        const hasE = !!(bd && bd.electricity), hasG = !!(bd && bd.gas);
+        const tab = (s.bdTab==='g' && hasG) || !hasE ? 'g' : 'e';
+        const blok = bd ? (tab==='g' ? bd.gas : bd.electricity) : null;
+        const segSty = on => ({ padding:'9px 18px', borderRadius:'999px', border:'none', cursor:'pointer', fontWeight:800, fontSize:'13.5px', fontFamily:"'Manrope',sans-serif", background:on?'#FFF302':'transparent', color:'#14101A' });
+        const pro = s.klant==='professioneel';
+        const rows = blok ? blok.components.map(c=>({
+          label: c.label,
+          sub: c.unit==='kWh' ? (eurF(pro?c.unit_tariff_ex:c.unit_tariff,4)+' per kWh') : (eurF(pro?c.unit_tariff_ex:c.unit_tariff,2)+' per jaar'),
+          amt: eurF(pro?c.total_ex:c.total,2)
+        })) : [];
+        const usE = bd&&bd.assumptions&&bd.assumptions.usage_e, usG = bd&&bd.assumptions&&bd.assumptions.usage_g;
+        let note = 'Jaarbedragen '+(pro?'excl. btw':'incl. btw')+', op basis van jouw opgegeven verbruik';
+        if (usE||usG) note += ' ('+[usE?num(usE)+' kWh stroom':null, usG?num(usG)+' kWh gas':null].filter(Boolean).join(' · ')+')';
+        note += bd&&bd.assumptions&&bd.assumptions.postcode ? ' en postcode '+bd.assumptions.postcode+'.' : '.';
+        if (bd&&bd.grid_operator) note += ' Netbeheerder: '+bd.grid_operator+'.';
+        note += ' Onder voorbehoud van wijzigingen in netkosten en heffingen.';
+        return {
+          bdOpen: !!s.bdOpen, bdTitle: (bd&&bd.product)||planNaam,
+          bdLoading: !!s.bdLoading, bdError: s.bdError||'', bdHasError: !!s.bdError,
+          bdReady: !!bd, bdHasBoth: hasE&&hasG,
+          styBdE: segSty(tab==='e'), styBdG: segSty(tab==='g'),
+          bdRowsView: rows, bdTotal: blok?eurF(pro?blok.total_ex:blok.total,2):'', bdNote: note
+        };
+      })(),
+      pickFlex:()=>this.setState({ plan:'flex', step:5, signing:true, submitted:false }),
+      pickSmart:()=>this.setState({ plan:'smart', step:5, signing:true, submitted:false }),
+      pickDyn:()=>this.setState({ plan:'dyn', step:5, signing:true, submitted:false }),
+      isSubmitted: !!s.submitted, notSubmitted: !s.submitted,
+      submitApp:()=>{
+        if (this.state.sending) return;
+        this.setState({ sending:true, sendError:'' });
+        const st = this.state;
+        const payload = {
+          // 'gemeente' is de berekende waarde uit renderVals (state of
+          // postcode-lookup); de state zelf kan leeg zijn als de bezoeker
+          // het veld nooit heeft aangeraakt.
+          postcode:st.postcode, huisnr:st.huisnr, gemeente:st.gemeente || gemeente, klant:st.klant,
+          energyType:st.energyType, meter:st.meter, knows:st.knows,
+          usageElec:st.usageElec, usageGas:st.usageGas, usagePeak:st.usagePeak,
+          usageOff:st.usageOff, usageNight:st.usageNight,
+          instSolar:st.instSolar, instNight:st.instNight, instCharger:st.instCharger,
+          instDigital:st.instDigital, injTotal:st.injTotal, injPeak:st.injPeak,
+          injOff:st.injOff, kva:st.kva, homeType:st.homeType, persons:st.persons,
+          company:st.company, kbo:st.kbo, contact:st.contact,
+          name:st.name, email:st.email, phone:st.phone, plan:st.plan,
+          // laatste stap: volledige aanvraaggegevens
+          gender:st.sGender, birthdate:st.sBirth,
+          firstname:st.sFirst, lastname:st.sLast,
+          sEmail:st.sEmail, sPhone:st.sPhone,
+          street:st.sStreet, streetNr:st.sNr, bus:st.sBus,
+          startDate:st.sStart,
+          iban:st.sIban, ibanName:st.sIbanName,
+          eanElek:st.sEanE, eanGas:st.sEanG,
+          agreeTerms:st.sAgreeTerms, agreeGdpr:st.sAgreeGdpr,
+          agreePrivacy:st.sAgreePrivacy, agreeSepa:st.sAgreeSepa,
+          website:'' /* honeypot */
+        };
+        fetch('/api/submit-lead', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        }).then(r=>r.json().then(j=>({ok:r.ok, j}))).then(({ok,j})=>{
+          if (ok && j && j.ok) { this.setState({ submitted:true, sending:false }); }
+          else {
+            const errs = j && j.errors ? Object.values(j.errors).join(' ') : '';
+            this.setState({ sending:false,
+              sendError: errs || (j && j.message) || 'Versturen mislukt. Probeer het opnieuw.' });
+          }
+        }).catch(()=>{
+          this.setState({ sending:false,
+            sendError:'Geen verbinding. Probeer het opnieuw of bel 03 393 06 83.' });
+        });
+      },
+      sending: !!s.sending, sendError: s.sendError || '', hasSendError: !!s.sendError,
+      // --- laatste stap: waarden en handlers -------------------------
+      sGender:s.sGender, onSGender:e=>this.setState({ sGender:e.target.value }),
+      sBirth:s.sBirth, onSBirth:e=>this.setState({ sBirth:e.target.value }),
+      sFirst:s.sFirst, onSFirst:e=>this.setState({ sFirst:e.target.value }),
+      sLast:s.sLast, onSLast:e=>this.setState({ sLast:e.target.value }),
+      sEmail:s.sEmail, onSEmail:e=>this.setState({ sEmail:e.target.value }),
+      sPhone:s.sPhone, onSPhone:e=>this.setState({ sPhone:e.target.value }),
+      sStreet:s.sStreet, onSStreet:e=>this.setState({ sStreet:e.target.value }),
+      sNr:s.sNr, onSNr:e=>this.setState({ sNr:e.target.value }),
+      sBus:s.sBus, onSBus:e=>this.setState({ sBus:e.target.value }),
+      sStart:s.sStart, onSStart:e=>this.setState({ sStart:e.target.value }),
+      sIban:s.sIban, onSIban:e=>this.setState({ sIban:e.target.value }),
+      sIbanName:s.sIbanName, onSIbanName:e=>this.setState({ sIbanName:e.target.value }),
+      sEanE:s.sEanE, onSEanE:e=>this.setState({ sEanE:e.target.value }),
+      sEanG:s.sEanG, onSEanG:e=>this.setState({ sEanG:e.target.value }),
+      sAgreeTerms:s.sAgreeTerms, onSAgreeTerms:e=>this.setState({ sAgreeTerms:!!e.target.checked }),
+      sAgreeGdpr:s.sAgreeGdpr, onSAgreeGdpr:e=>this.setState({ sAgreeGdpr:!!e.target.checked }),
+      sAgreePrivacy:s.sAgreePrivacy, onSAgreePrivacy:e=>this.setState({ sAgreePrivacy:!!e.target.checked }),
+      sAgreeSepa:s.sAgreeSepa, onSAgreeSepa:e=>this.setState({ sAgreeSepa:!!e.target.checked }),
+      canSubmitApp: (()=>{
+        const okCb = s.sAgreeTerms && s.sAgreeGdpr && s.sAgreePrivacy;
+        const needE = s.energyType==='elek' || s.energyType==='beide';
+        const needG = s.energyType==='gas'  || s.energyType==='beide';
+        const ean = v => /^\d{18}$/.test(String(v||'').replace(/\s+/g,''));
+        const okEan = (!needE || ean(s.sEanE)) && (!needG || ean(s.sEanG));
+        const okIban = String(s.sIban||'').replace(/\s+/g,'').length >= 12;
+        return !!(okCb && okEan && okIban);
+      })(),
+      submitLabel: s.sending ? 'Bezig met versturen...' : 'Aanvraag indienen',
+      // Startdatum-opties (wijzigingsdoc punt 8): aanvraagdatum + 30/60 dagen,
+      // dan de eerste dag van de eerstvolgende maand. Optie 1 zonder datum;
+      // opties 2/3 sturen de concrete datum (jjjj-mm-dd) mee — de server
+      // (bv_startdate) laat concrete datums ongemoeid.
+      ...(function(){
+        const f = (days) => { const b = new Date(); b.setDate(b.getDate()+days);
+          return new Date(b.getFullYear(), b.getMonth()+1, 1); };
+        const pad = (x) => String(x).padStart(2,'0');
+        const iso = (d) => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+        const lbl = (d) => d.toLocaleDateString('nl-BE', { day:'numeric', month:'long', year:'numeric' });
+        const d1 = f(30), d2 = f(60);
+        return { sdVal1:iso(d1), sdOpt1:lbl(d1), sdVal2:iso(d2), sdOpt2:lbl(d2) };
+      })(),
+      fElec:num(elec), fGas:num(gas),
+      savingsPct: market>0 ? Math.round((savingsY/market)*100) : 0
+    };
+  }
+}
+</script>
+</body>
+</html>
