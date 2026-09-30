@@ -50,7 +50,14 @@ class RetryFetchFlow(RepairsFlow):
         entry = self.hass.config_entries.async_get_entry(self._entry_id)
         coordinator = getattr(entry, "runtime_data", None) if entry is not None else None
         if coordinator is not None:
-            await coordinator.async_force_refresh()
+            await coordinator.async_force_refresh(wait=True)
+            if coordinator.snapshot_stale():
+                # Finishing the flow would delete the Repairs card although
+                # nothing was fixed; aborted, it stays.
+                return self.async_abort(
+                    reason="still_stale",
+                    description_placeholders={"error": coordinator.last_error or "-"},
+                )
         return self.async_create_entry(data={})
 
 

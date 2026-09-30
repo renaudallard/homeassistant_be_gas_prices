@@ -418,6 +418,9 @@
             "title": "Die Tarifkarte von {supplier} ist veraltet",
             "description": "Die Karte, nach der {entry} rechnet, wurde seit einer Woche nicht aktualisiert oder gilt für einen abgelaufenen Monat, daher können die Preise falsch sein. Letzter Fehler: {error}. Absenden, um sie jetzt neu abzurufen."
           }
+        },
+        "abort": {
+          "still_stale": "Die Karte konnte weiterhin nicht aktualisiert werden. Letzter Fehler: {error}. Sie wird stündlich erneut abgerufen, und diese Reparatur bleibt bis dahin bestehen."
         }
       }
     },

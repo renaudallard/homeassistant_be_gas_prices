@@ -587,11 +587,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     # ---- the tick -------------------------------------------------------------
 
-    async def async_force_refresh(self) -> None:
-        """Fetch the card again on the next tick whatever its age."""
+    async def async_force_refresh(self, *, wait: bool = False) -> None:
+        """Fetch the card again on the next tick whatever its age, or with
+        ``wait`` now, past the cooldown that spaces requested refreshes."""
         self._force_refresh = True
         self._index_fetched_at = None
-        await self.async_request_refresh()
+        if wait:
+            await self.async_refresh()
+        else:
+            await self.async_request_refresh()
 
     @property
     def failures(self) -> int:

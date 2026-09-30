@@ -39,7 +39,7 @@ the next tick.
 
 | Card | Raised when |
 | --- | --- |
-| `snapshot_stale` | The card is a week old or a week past its month. Fixable: fetch again. |
+| `snapshot_stale` | The card is a week old or a week past its month. Fixable: fetch again, the card staying while the fetch fails. |
 | `extractor_failed` | Two fetches in a row failed for a reason a retry will not fix. |
 | `card_unreadable` | The supplier published its card as images and the card archive holds no reading of it for the month. |
 | `card_read_by_ocr` | The entry prices on the card archive's OCR reading of a card published as images (Ecofix). Informational; clears by itself when the supplier publishes a readable card again. |

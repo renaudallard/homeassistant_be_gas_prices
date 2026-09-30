@@ -36,8 +36,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
+from homeassistant.components.repairs import repairs_flow_manager
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.be_gas_prices import providers
@@ -328,6 +331,38 @@ async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssis
     ranking = entry.runtime_data.daily_ranking
     assert ranking is not None and ranking.own_cost is not None
     assert ranking.saving == pytest.approx(ranking.own_cost - 100.0)
+
+
+@pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")
+async def test_the_stale_card_repair_stays_until_a_fetch_works(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    card = fetch.return_value
+    entry = await _setup(hass)
+    fetch.side_effect = ExtractorError("HTTP 500 fetching x")
+    for _ in range(8 * 24):
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    issue_id = f"snapshot_stale_{entry.entry_id}"
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
+    assert await async_setup_component(hass, "repairs", {})
+    flows = repairs_flow_manager(hass)
+    assert flows is not None
+    # The fetch still fails: the flow aborts and the card stays.
+    result = await flows.async_init(DOMAIN, data={"issue_id": issue_id})
+    result = await flows.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "still_stale"
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
+    # It works again: the flow ends and the card goes.
+    fetch.side_effect = None
+    fetch.return_value = card
+    result = await flows.async_init(DOMAIN, data={"issue_id": issue_id})
+    result = await flows.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
 
 
 async def test_setup_retries_when_there_is_no_card_at_all(

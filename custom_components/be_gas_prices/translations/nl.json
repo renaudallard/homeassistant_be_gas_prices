@@ -418,6 +418,9 @@
             "title": "Tariefkaart van {supplier} is verouderd",
             "description": "De kaart waarop {entry} rekent is al een week niet vernieuwd, of is voor een maand die voorbij is, dus de prijzen kunnen fout zijn. Laatste fout: {error}. Druk op verzenden om ze nu opnieuw op te halen."
           }
+        },
+        "abort": {
+          "still_stale": "De kaart kon nog steeds niet vernieuwd worden. Laatste fout: {error}. Ze wordt elk uur opnieuw geprobeerd, en deze reparatie blijft staan tot dat lukt."
         }
       }
     },
