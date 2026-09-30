@@ -39,4 +39,5 @@ reloads the entry.
 - **Record a change of contract**: the first day of the new contract; the
   current settings become an earlier contract ending the day before
   (`contract_periods.record_switch`) and the supplier steps set up the new
-  one. The date must be after the last recorded change and not in the future.
+  one, without the old contract's card month, end date or typed figures.
+  The date must be after the last recorded change and not in the future.

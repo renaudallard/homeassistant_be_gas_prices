@@ -39,6 +39,7 @@ from custom_components.be_gas_prices.const import (
     CALIBER_Q10,
     CONF_CALIBER,
     CONF_CONTRACT,
+    CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
     CONF_CUSTOM_CONNECTION_FEE,
     CONF_CUSTOM_EXCISE_HIGH,
@@ -107,6 +108,20 @@ def test_recording_a_switch_keeps_the_old_contract_until_the_day_before() -> Non
     today = date(2026, 9, 1)
     assert periods_this_year(data, today) == [(period, date(2026, 1, 1), date(2026, 6, 14))]
     assert current_period_start(data, date(2026, 1, 1), today) == date(2026, 6, 15)
+
+
+def test_a_switch_leaves_the_old_contract_answers_behind() -> None:
+    """The steps after a switch set up the new contract: they must not offer
+    the old one's end date or the figures typed from its contract."""
+    old = {
+        **ENTRY,
+        CONF_CONTRACT_END_DATE: "2028-02-29",
+        CONF_MANUAL_PRICE: 6.5,
+        CONF_MANUAL_FEE: 80.0,
+    }
+    data = record_switch(old, date(2026, 6, 1))
+    for key in (CONF_CONTRACT_END_DATE, CONF_MANUAL_PRICE, CONF_MANUAL_FEE):
+        assert key not in data
 
 
 def test_a_contract_that_ended_last_year_is_not_billed_this_year() -> None:

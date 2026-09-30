@@ -44,6 +44,7 @@ from .bill import month_key
 from .const import (
     CONF_CALIBER,
     CONF_CONTRACT,
+    CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
     CONF_DSO,
     CONF_PREVIOUS_CONTRACTS,
@@ -52,6 +53,7 @@ from .const import (
     CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
     DEFAULT_CALIBER,
+    MANUAL_RATE_KEYS,
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card
 from .pricing import PricingError
@@ -99,7 +101,10 @@ def record_switch(data: dict[str, Any], switched: date) -> dict[str, Any]:
     new = dict(data)
     new[CONF_PREVIOUS_CONTRACTS] = [*previous_contracts(data), period]
     new[CONF_CONTRACT_START_DATE] = switched.isoformat()
-    new.pop(CONF_TARIFF_CARD_DATE, None)
+    # The old contract's card month, end date and typed figures are not the
+    # new one's: left in, the next steps would offer them for it.
+    for key in (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE, *MANUAL_RATE_KEYS):
+        new.pop(key, None)
     # The year now starts with the earlier contract, so counting it from the
     # new contract's start would drop the days the earlier one supplied.
     new.pop(CONF_YTD_FROM_CONTRACT_START, None)
