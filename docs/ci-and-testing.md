@@ -156,9 +156,10 @@ test suite, like an installation, runs on 3.13.
 
 `--backfill N` also mirrors the N closed months before this one, at most
 `--keep-months`, from every supplier archive, for months not held yet.
-`--only` restricts to a supplier, `--index-only` refreshes the index tables
-alone. A supplier is given up for the day after three network failures in a
-row.
+`--only` restricts to a supplier. `--index-only` fetches nothing and only
+rewrites the coverage sheets from what is on disk, which the workflow does
+after the upload so the sheets link the PDFs just kept. A supplier is given
+up for the day after three network failures in a row.
 
 `scripts/card_texts.py` is the render cache both scripts share: each PDF
 source of a row names the pypdf and pdfplumber versions that rendered its
