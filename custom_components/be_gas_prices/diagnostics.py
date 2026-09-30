@@ -72,6 +72,7 @@ async def async_get_config_entry_diagnostics(
             "current_month_cost": data.current_month_cost,
             "ytd_kwh": data.ytd_kwh,
             "months_on_current_card": list(data.months_on_current_card),
+            "unpriced_periods": list(data.unpriced_periods),
             "rolling_year_kwh": data.rolling_year_kwh,
             "projected_year_cost": data.projected_year_cost,
             "projected_year_end_cost": data.projected_year_end_cost,

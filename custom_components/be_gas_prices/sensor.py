@@ -133,6 +133,9 @@ def _year_attributes(data: CoordinatorData) -> dict[str, Any]:
             for bill in data.months
         ],
         "months_on_current_card": list(data.months_on_current_card),
+        # Earlier contracts of the year whose supplier or card could not
+        # price them: their days are not in the cost.
+        "unpriced_contracts": list(data.unpriced_periods),
         "meter": data.meter,
     }
 

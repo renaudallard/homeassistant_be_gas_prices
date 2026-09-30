@@ -12,7 +12,7 @@ Every entity of an entry hangs off one device named after the entry.
 | `fixed_costs_eur_per_year` | EUR | Supplier fee, distribution fixed term, metering and Brussels levy for a year, each an attribute. |
 | `supplier_fixed_fee_eur_per_year` | EUR | The supplier's part alone. |
 | `conversion_factor` | kWh/m³ | The factor in use and where it comes from. |
-| `current_year_cost` | EUR, `TOTAL`, monetary | The year's running bill, each month on its own card; `months` attribute with each month's parts. |
+| `current_year_cost` | EUR, `TOTAL`, monetary | The year's running bill, each month on its own card; `months` attribute with each month's parts, `unpriced_contracts` naming any earlier contract of the year that could not be priced (its days are left out). |
 | `current_month_cost` | EUR, `TOTAL`, monetary | The running month. |
 | `year_to_date_consumption` | kWh | What the meter recorded this year. |
 | `projected_year_cost` | EUR | Shown as *Rolling year cost*. The rolling year: the last 365 days' volume at today's price plus a year of fixed costs. |

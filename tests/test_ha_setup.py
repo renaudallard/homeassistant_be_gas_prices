@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import replace
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -47,6 +47,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
     CONF_DSO,
+    CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_SUPPLIER,
     CONVERSION_MANUAL,
@@ -174,6 +175,29 @@ async def test_a_card_fetched_at_setup_is_kept_against_its_probe_key(
             async_fire_time_changed(hass)
             await hass.async_block_till_done()
     assert fetch.await_count == 1
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_earlier_contract_that_cannot_be_priced_is_named(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Its days are missing from the year's cost, which the sensor says."""
+    days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(258)}
+    gone = {
+        CONF_SUPPLIER: "dats24",
+        CONF_CONTRACT: "dats24_variable",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-05-31",
+    }
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [gone]})
+    cost = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert cost is not None and cost.state != "unknown"
+    assert cost.attributes["unpriced_contracts"] == ["dats24"]
 
 
 async def test_setup_retries_when_there_is_no_card_at_all(

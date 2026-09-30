@@ -172,7 +172,7 @@ All sensors share one device per entry, named after the contract.
 | `fixed_costs_eur_per_year` | Supplier fee, distribution fixed term, metering and Brussels levy for a year. |
 | `supplier_fixed_fee_eur_per_year` | The supplier's part alone. |
 | `conversion_factor` | The kWh a cubic metre is worth this month, and where it comes from. |
-| `current_year_cost` | The year's running bill, each month on its own card, with a per-month breakdown attribute. `TOTAL` and monetary, so the Energy dashboard can use it. |
+| `current_year_cost` | The year's running bill, each month on its own card, with a per-month breakdown attribute and the earlier contracts of the year that could not be priced. `TOTAL` and monetary, so the Energy dashboard can use it. |
 | `current_month_cost` | The running month's bill. |
 | `year_to_date_consumption` | kWh the meter recorded this year. |
 | `projected_year_cost` | Shown as *Rolling year cost*. The last 365 days' volume at today's price plus a year of fixed costs: roughly what a year on this contract costs. |
