@@ -86,16 +86,6 @@
           "conversion_factor": "Omrekeningsfactor"
         }
       },
-      "user": {
-        "title": "Waar is de gasaansluiting?",
-        "description": "Geef de postcode van de aansluiting om de distributienetbeheerder voor gas te vinden. Laat leeg om zelf het gewest en de netbeheerder te kiezen.",
-        "data": {
-          "postcode": "Postcode"
-        },
-        "data_description": {
-          "postcode": "Belgische postcode van 4 cijfers."
-        }
-      },
       "signed_rate": {
         "title": "Tarief bij ondertekening",
         "description": "Alleen voor een contract waarvan de cijfers afwijken van de kaart van de maand van ondertekening, of waarvan het archief die kaart niet heeft: laat anders leeg. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
@@ -260,16 +250,6 @@
         "description": "Geef de eerste dag waarop het nieuwe contract leverde. De huidige instellingen blijven bewaard als het vorige contract tot de dag ervoor, berekend volgens de kaarten van die leverancier, en de volgende stappen stellen het nieuwe contract in.",
         "data": {
           "switch_date": "Eerste dag van het nieuwe contract"
-        }
-      },
-      "settings": {
-        "title": "Waar is de gasaansluiting?",
-        "description": "Geef de postcode van de aansluiting om de distributienetbeheerder voor gas te vinden. Laat leeg om zelf het gewest en de netbeheerder te kiezen.",
-        "data": {
-          "postcode": "Postcode"
-        },
-        "data_description": {
-          "postcode": "Belgische postcode van 4 cijfers."
         }
       },
       "signed_rate": {

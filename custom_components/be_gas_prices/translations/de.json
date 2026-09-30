@@ -86,16 +86,6 @@
           "conversion_factor": "Umrechnungsfaktor"
         }
       },
-      "user": {
-        "title": "Wo ist der Gasanschluss?",
-        "description": "Geben Sie die Postleitzahl des Anschlusses ein, um den Gasverteilnetzbetreiber zu finden. Leer lassen, um Region und Netzbetreiber selbst zu wählen.",
-        "data": {
-          "postcode": "Postleitzahl"
-        },
-        "data_description": {
-          "postcode": "Vierstellige belgische Postleitzahl."
-        }
-      },
       "signed_rate": {
         "title": "Tarif bei Vertragsabschluss",
         "description": "Nur für einen Vertrag, dessen Zahlen von der Karte seines Abschlussmonats abweichen oder dessen Karte das Archiv nicht hat: sonst leer lassen. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
@@ -260,16 +250,6 @@
         "description": "Geben Sie den ersten Liefertag des neuen Vertrags ein. Die aktuellen Einstellungen bleiben als früherer Vertrag bis zum Vortag erhalten, nach den Karten seines Lieferanten berechnet, und die nächsten Schritte richten den neuen Vertrag ein.",
         "data": {
           "switch_date": "Erster Tag des neuen Vertrags"
-        }
-      },
-      "settings": {
-        "title": "Wo ist der Gasanschluss?",
-        "description": "Geben Sie die Postleitzahl des Anschlusses ein, um den Gasverteilnetzbetreiber zu finden. Leer lassen, um Region und Netzbetreiber selbst zu wählen.",
-        "data": {
-          "postcode": "Postleitzahl"
-        },
-        "data_description": {
-          "postcode": "Vierstellige belgische Postleitzahl."
         }
       },
       "signed_rate": {

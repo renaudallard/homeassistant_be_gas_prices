@@ -86,16 +86,6 @@
           "conversion_factor": "Conversion factor"
         }
       },
-      "user": {
-        "title": "Where is the gas connection?",
-        "description": "Enter the postcode of the connection to find its gas distribution network operator. Leave it blank to pick the region and the operator yourself.",
-        "data": {
-          "postcode": "Postcode"
-        },
-        "data_description": {
-          "postcode": "4-digit Belgian postcode."
-        }
-      },
       "signed_rate": {
         "title": "Signing rate",
         "description": "Only for a contract whose figures differ from the supplier's card for its signing month, or whose card the archive cannot reach: leave empty otherwise. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
@@ -260,16 +250,6 @@
         "description": "Enter the first day the new contract supplied. The current settings are kept as the earlier contract up to the day before, billed on their own supplier's cards, and the next steps set up the new contract.",
         "data": {
           "switch_date": "First day of the new contract"
-        }
-      },
-      "settings": {
-        "title": "Where is the gas connection?",
-        "description": "Enter the postcode of the connection to find its gas distribution network operator. Leave it blank to pick the region and the operator yourself.",
-        "data": {
-          "postcode": "Postcode"
-        },
-        "data_description": {
-          "postcode": "4-digit Belgian postcode."
         }
       },
       "signed_rate": {

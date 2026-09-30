@@ -86,16 +86,6 @@
           "conversion_factor": "Facteur de conversion"
         }
       },
-      "user": {
-        "title": "Où se trouve le raccordement au gaz ?",
-        "description": "Indiquez le code postal du raccordement pour trouver son gestionnaire de réseau de distribution de gaz. Laissez vide pour choisir vous-même la région et le gestionnaire.",
-        "data": {
-          "postcode": "Code postal"
-        },
-        "data_description": {
-          "postcode": "Code postal belge à 4 chiffres."
-        }
-      },
       "signed_rate": {
         "title": "Tarif à la signature",
         "description": "Uniquement pour un contrat dont les chiffres diffèrent de la carte du mois de sa signature, ou dont l'archive n'a pas cette carte : laissez vide sinon. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
@@ -260,16 +250,6 @@
         "description": "Indiquez le premier jour de fourniture du nouveau contrat. Les paramètres actuels sont conservés comme contrat précédent jusqu'à la veille, calculé sur les cartes de son fournisseur, et les étapes suivantes configurent le nouveau contrat.",
         "data": {
           "switch_date": "Premier jour du nouveau contrat"
-        }
-      },
-      "settings": {
-        "title": "Où se trouve le raccordement au gaz ?",
-        "description": "Indiquez le code postal du raccordement pour trouver son gestionnaire de réseau de distribution de gaz. Laissez vide pour choisir vous-même la région et le gestionnaire.",
-        "data": {
-          "postcode": "Code postal"
-        },
-        "data_description": {
-          "postcode": "Code postal belge à 4 chiffres."
         }
       },
       "signed_rate": {
