@@ -321,18 +321,21 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         A card from the Store or a stand-in from the card archive is due at
         once; the archive's reading of an unreadable card is the card of the
         month, and is asked for again when the supplier's card changes or
-        has aged, like a card read here.
+        has aged, like a card read here. The probe is asked either way, so
+        a card fetched for another reason is kept against the key it was
+        fetched under rather than fetched again on the next tick.
         """
+        key = None
+        if self.extractor.probe is not None:
+            key = await self.extractor.probe(self._session, self.contract, self.region)
         if (
             self._snapshot is None
             or self._force_refresh
             or self._card_source not in ("live", "ocr")
         ):
-            return True, None
-        if self.extractor.probe is not None:
-            key = await self.extractor.probe(self._session, self.contract, self.region)
-            if key is not None:
-                return key != self._probe_key, key
+            return True, key
+        if key is not None:
+            return key != self._probe_key, key
         age = self.snapshot_age()
         return age is None or age >= SNAPSHOT_TTL, None
 

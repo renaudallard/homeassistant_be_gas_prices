@@ -160,6 +160,22 @@ async def test_a_card_the_probe_finds_unchanged_does_not_go_stale(
     assert issue is None
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_card_fetched_at_setup_is_kept_against_its_probe_key(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The first tick fetches without comparing keys, and still records the
+    one it fetched under, so an unchanged card is not fetched twice."""
+    stub = replace(providers.EXTRACTORS["engie"], probe=AsyncMock(return_value="etag-1"))
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        await _setup(hass)
+        for _ in range(3):
+            freezer.tick(timedelta(hours=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
+    assert fetch.await_count == 1
+
+
 async def test_setup_retries_when_there_is_no_card_at_all(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
