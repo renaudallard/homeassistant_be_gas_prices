@@ -57,7 +57,8 @@ not migrated: everything in it is re-derivable.
 ## Staleness
 
 `snapshot_stale()` is true once the card is a week old (a week without a
-successful fetch) or a week past the last day it prices (a supplier that has
+successful fetch, or a probe answering the key of the card in hand, which
+counts as one) or a week past the last day it prices (a supplier that has
 not published a new month). It raises the `snapshot_stale` Repairs card,
 whose fix flow fetches again, and it is what lets the card archive stand in.
 

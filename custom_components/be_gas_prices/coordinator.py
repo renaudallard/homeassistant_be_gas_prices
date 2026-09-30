@@ -346,6 +346,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             return
         due, key = await self._card_is_due()
         if not due:
+            if key is not None:
+                # The supplier still serves the card in hand: as good as a
+                # fetch, and what keeps a month's card from ageing into
+                # staleness between two publications.
+                self._fetched_at = dt_util.utcnow()
             return
         try:
             snapshot, source = await current_card(

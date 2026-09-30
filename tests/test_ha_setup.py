@@ -140,6 +140,26 @@ async def test_a_failing_supplier_keeps_the_last_card(
     assert issue is not None
 
 
+@pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")
+async def test_a_card_the_probe_finds_unchanged_does_not_go_stale(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A supplier publishes once a month: a week of probes answering the same
+    key is a week of confirmations, not a week without a card."""
+    stub = replace(providers.EXTRACTORS["engie"], probe=AsyncMock(return_value="etag-1"))
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        for _ in range(8 * 24):
+            freezer.tick(timedelta(hours=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
+    coordinator = entry.runtime_data
+    assert not coordinator.snapshot_stale()
+    assert coordinator.snapshot_age() <= timedelta(hours=1)
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"snapshot_stale_{entry.entry_id}")
+    assert issue is None
+
+
 async def test_setup_retries_when_there_is_no_card_at_all(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
