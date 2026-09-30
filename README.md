@@ -69,8 +69,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 - **The levies from the law**: for the delivery months the law is known for,
   the special excise, the energy contribution and the Walloon connection fee
   are what the law sets, whatever a stale or wrong card prints.
-- **Cubic metres to kWh**: the monthly calorific value of your gas reception
-  station, published by Atrias, or the factor printed on your bill.
+- **Cubic metres to kWh**: the factor printed on your bill, or without one
+  the monthly calorific value of your gas reception station, published by
+  Atrias.
 
 **Costs over time**
 
@@ -214,8 +215,8 @@ Home Assistant installs them from the manifest.
    how cubic metres become kWh, whether the project's card archive may be
    read (an Ecofix entry prices on it), and whether to compare every
    contract daily.
-5. **Reception station** (Atrias's calorific value) or **conversion factor**
-   (from your bill).
+5. **Conversion factor** (from your bill, the default) or **reception
+   station** (Atrias's calorific value).
 
 **Settings, Devices & services, Belgian Gas Prices, Configure** opens a menu:
 edit the settings, quote another contract, rank every contract, or record a
@@ -268,8 +269,12 @@ data:
 ## Known limitations
 
 - **The calorific value is per normal cubic metre.** The DSO also corrects the
-  metered volume for pressure and temperature, which is not published; where
-  your bill prints its conversion factor, typing it is exact.
+  metered volume for the pressure and temperature at the meter, which the
+  station value leaves out, so it counts more kWh than the bill: under 1% to
+  about 4%, depending on the gas pressure at the meter. The factor printed on
+  the bill includes that correction, which is why it is the default. It is a
+  fixed figure, though, while a station's calorific value moves by about 0,3%
+  in a typical month.
 - **Welcome credits are not deducted.** Mega's first-year ristourne, OCTA+'s
   credit note after a year, Luminus's new-customer discounts and Frank's
   cashbacks (HV, JN, Korting) are not read, so the running cost is the bill

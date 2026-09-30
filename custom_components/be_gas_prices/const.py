@@ -222,14 +222,16 @@ DEFAULT_ANNUAL_CONSUMPTION_KWH: Final = 17_000.0
 # The household's gas meter: a cumulative sensor in m3 or in kWh.
 CONF_GAS_METER: Final = "gas_meter"
 
-# How a volume in m3 becomes energy in kWh. "station" reads the monthly gross
-# calorific value of one gas reception station from Atrias; "manual" takes the
-# factor printed on the household's bill.
+# How a volume in m3 becomes energy in kWh. "manual" takes the factor printed
+# on the household's bill, which carries the DSO's correction for the pressure
+# and temperature at the meter, and comes first; "station" reads the monthly
+# gross calorific value of one gas reception station from Atrias, per normal
+# cubic metre, without that correction.
 CONF_CONVERSION_MODE: Final = "conversion_mode"
 CONVERSION_STATION: Final = "station"
 CONVERSION_MANUAL: Final = "manual"
-CONVERSION_MODES: Final = (CONVERSION_STATION, CONVERSION_MANUAL)
-DEFAULT_CONVERSION_MODE: Final = CONVERSION_STATION
+CONVERSION_MODES: Final = (CONVERSION_MANUAL, CONVERSION_STATION)
+DEFAULT_CONVERSION_MODE: Final = CONVERSION_MANUAL
 CONF_STATION: Final = "station"
 CONF_CONVERSION_FACTOR: Final = "conversion_factor"
 

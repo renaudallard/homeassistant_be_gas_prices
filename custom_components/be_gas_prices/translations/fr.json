@@ -67,13 +67,14 @@
           "annual_consumption_kwh": "En kWh, comme sur votre dernière facture annuelle.",
           "caliber": "La redevance bruxelloise dépend du débit maximal du compteur, indiqué sur le compteur (les compteurs G4 et G6 font 6 ou 10 m³/h).",
           "gas_meter": "Un capteur de gaz cumulatif en m³ ou en kWh.",
+          "conversion_mode": "Le facteur de votre facture est celui avec lequel votre gestionnaire de réseau facture. Le pouvoir calorifique de la station ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur et compte jusqu'à quelques pour cent de kWh en plus : choisissez-le si vous n'avez pas de facture sous la main.",
           "card_archive": "Quand la carte d'un fournisseur ne peut pas être lue, utiliser la dernière carte que l'archive quotidienne du projet a conservée. La requête ne mentionne que le fournisseur et le contrat.",
           "daily_compare": "Récupère une fois par jour les cartes de tous les fournisseurs de votre région et publie la meilleure économie comme capteur."
         }
       },
       "station": {
         "title": "Station de réception du gaz",
-        "description": "Le gestionnaire de réseau convertit les mètres cubes en kWh avec le pouvoir calorifique supérieur de la station de réception qui alimente votre raccordement, publié chaque mois par Atrias. Choisissez la station la plus proche ; certaines factures l'indiquent.",
+        "description": "Le gestionnaire de réseau convertit les mètres cubes en kWh avec le pouvoir calorifique supérieur de la station de réception qui alimente votre raccordement, publié chaque mois par Atrias. Il ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur, et compte donc jusqu'à quelques pour cent de kWh de plus que votre facture. Choisissez la station la plus proche ; certaines factures l'indiquent.",
         "data": {
           "station": "Station de réception"
         }
@@ -205,13 +206,14 @@
           "annual_consumption_kwh": "En kWh, comme sur votre dernière facture annuelle.",
           "caliber": "La redevance bruxelloise dépend du débit maximal du compteur, indiqué sur le compteur (les compteurs G4 et G6 font 6 ou 10 m³/h).",
           "gas_meter": "Un capteur de gaz cumulatif en m³ ou en kWh.",
+          "conversion_mode": "Le facteur de votre facture est celui avec lequel votre gestionnaire de réseau facture. Le pouvoir calorifique de la station ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur et compte jusqu'à quelques pour cent de kWh en plus : choisissez-le si vous n'avez pas de facture sous la main.",
           "card_archive": "Quand la carte d'un fournisseur ne peut pas être lue, utiliser la dernière carte que l'archive quotidienne du projet a conservée. La requête ne mentionne que le fournisseur et le contrat.",
           "daily_compare": "Récupère une fois par jour les cartes de tous les fournisseurs de votre région et publie la meilleure économie comme capteur."
         }
       },
       "station": {
         "title": "Station de réception du gaz",
-        "description": "Le gestionnaire de réseau convertit les mètres cubes en kWh avec le pouvoir calorifique supérieur de la station de réception qui alimente votre raccordement, publié chaque mois par Atrias. Choisissez la station la plus proche ; certaines factures l'indiquent.",
+        "description": "Le gestionnaire de réseau convertit les mètres cubes en kWh avec le pouvoir calorifique supérieur de la station de réception qui alimente votre raccordement, publié chaque mois par Atrias. Il ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur, et compte donc jusqu'à quelques pour cent de kWh de plus que votre facture. Choisissez la station la plus proche ; certaines factures l'indiquent.",
         "data": {
           "station": "Station de réception"
         }
@@ -342,8 +344,8 @@
     },
     "conversion_mode": {
       "options": {
-        "station": "Le pouvoir calorifique de ma station de réception (Atrias)",
-        "manual": "Le facteur indiqué sur ma facture"
+        "manual": "Le facteur indiqué sur ma facture",
+        "station": "Le pouvoir calorifique de ma station de réception (Atrias)"
       }
     }
   },

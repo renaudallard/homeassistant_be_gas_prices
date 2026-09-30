@@ -37,9 +37,9 @@ The key is the public one Atrias's own site carries in ``runtime-config.js``;
 it is read from there rather than copied into this file. A month's file lands
 in the first days of the next month. The value is in kWh per normal cubic
 metre: the DSO also corrects the metered volume for pressure and temperature
-(9 C is assumed without a volume converter), and that correction is not
-published, so a household that knows the factor printed on its bill can use
-that instead.
+(9 C is assumed without a volume converter), which this value leaves out,
+so the factor printed on the bill is the default and this is for a household
+without one at hand.
 
 api.atrias.be does not send its intermediate certificate, so a plain TLS
 handshake fails verification. The public "Go Daddy Secure Certificate

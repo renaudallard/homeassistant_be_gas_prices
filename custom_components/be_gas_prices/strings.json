@@ -67,13 +67,14 @@
           "annual_consumption_kwh": "In kWh, as printed on your last yearly bill.",
           "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
           "gas_meter": "A cumulative gas sensor in m³ or kWh.",
+          "conversion_mode": "The factor on your bill is the one your network operator bills with. The station's calorific value leaves out the operator's correction for the pressure and temperature at the meter and counts up to a few percent more kWh: pick it when you have no bill at hand.",
           "card_archive": "When a supplier's card cannot be read, use the last card the project's daily archive captured. The request names the supplier and the contract and nothing else.",
           "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
         }
       },
       "station": {
         "title": "Gas reception station",
-        "description": "The network operator converts cubic metres to kWh with the calorific value of the reception station your connection is fed from, published monthly by Atrias. Pick the station closest to you; some bills name it.",
+        "description": "The network operator converts cubic metres to kWh with the calorific value of the reception station your connection is fed from, published monthly by Atrias. It leaves out the operator's correction for the pressure and temperature at the meter, so it counts up to a few percent more kWh than your bill. Pick the station closest to you; some bills name it.",
         "data": {
           "station": "Reception station"
         }
@@ -205,13 +206,14 @@
           "annual_consumption_kwh": "In kWh, as printed on your last yearly bill.",
           "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
           "gas_meter": "A cumulative gas sensor in m³ or kWh.",
+          "conversion_mode": "The factor on your bill is the one your network operator bills with. The station's calorific value leaves out the operator's correction for the pressure and temperature at the meter and counts up to a few percent more kWh: pick it when you have no bill at hand.",
           "card_archive": "When a supplier's card cannot be read, use the last card the project's daily archive captured. The request names the supplier and the contract and nothing else.",
           "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
         }
       },
       "station": {
         "title": "Gas reception station",
-        "description": "The network operator converts cubic metres to kWh with the calorific value of the reception station your connection is fed from, published monthly by Atrias. Pick the station closest to you; some bills name it.",
+        "description": "The network operator converts cubic metres to kWh with the calorific value of the reception station your connection is fed from, published monthly by Atrias. It leaves out the operator's correction for the pressure and temperature at the meter, so it counts up to a few percent more kWh than your bill. Pick the station closest to you; some bills name it.",
         "data": {
           "station": "Reception station"
         }
@@ -342,8 +344,8 @@
     },
     "conversion_mode": {
       "options": {
-        "station": "The calorific value of my reception station (Atrias)",
-        "manual": "The factor printed on my bill"
+        "manual": "The factor printed on my bill",
+        "station": "The calorific value of my reception station (Atrias)"
       }
     }
   },

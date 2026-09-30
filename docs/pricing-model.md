@@ -114,9 +114,15 @@ cards (`contract_periods.py`) and added.
 ## Cubic metres and kWh
 
 A meter in kWh needs nothing. A meter in m³ is converted per month: by the
-calorific value of the household's reception station for that month (Atrias,
-kWh per m³(n)), the latest published before it while the month's own is not
-out, or by the factor typed from the bill. The station value is per normal
-cubic metre: the DSO also corrects the metered volume for pressure and
-temperature, which is not published, so the bill's own factor is the exact
-one where the household has it.
+factor typed from the bill, the default, or by the calorific value of the
+household's reception station for that month (Atrias, kWh per m³(n)), the
+latest published before it while the month's own is not out. The station
+value is per normal cubic metre and leaves out the DSO's correction for the
+pressure and temperature at the meter: Fluvius takes 9 °C without a volume
+converter, which alone is 273,15 / 282,15 = 0,968, and the pressure terms
+only take back part of it (Pa 1016,20 mbar, PHgos 1,54 to 10,74 mbar, and a
+gas pressure at the meter taken between 0 and 25 mbar, the one Fluvius uses
+not verified), so the station value bills under 1% to about 4% more kWh than
+the bill's factor, which includes the correction. That factor is fixed,
+while a station's value moves by a median 0,29% from its own mean (1,0% at
+the 95th percentile, 60 stations over January 2025 to August 2026).

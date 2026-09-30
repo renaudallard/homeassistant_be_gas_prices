@@ -67,13 +67,14 @@
           "annual_consumption_kwh": "In kWh, zoals op je laatste jaarafrekening.",
           "caliber": "De Brusselse heffing hangt af van het maximale debiet van de meter, dat op de meter staat (G4- en G6-meters zijn 6 of 10 m³/u).",
           "gas_meter": "Een cumulatieve gassensor in m³ of kWh.",
+          "conversion_mode": "De factor op je factuur is die waarmee je netbeheerder factureert. De calorische bovenwaarde van het station laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt tot enkele procent meer kWh: kies ze als je geen factuur bij de hand hebt.",
           "card_archive": "Als de tariefkaart van een leverancier niet gelezen kan worden, de laatste kaart gebruiken die het dagelijkse archief van het project heeft opgeslagen. Het verzoek vermeldt de leverancier en het contract en verder niets.",
           "daily_compare": "Haalt één keer per dag de kaarten van alle leveranciers in je gewest op en publiceert de beste besparing als sensor."
         }
       },
       "station": {
         "title": "Gasontvangststation",
-        "description": "De netbeheerder rekent kubieke meter om naar kWh met de calorische bovenwaarde van het ontvangststation dat je aansluiting voedt, maandelijks gepubliceerd door Atrias. Kies het station dat het dichtst bij je ligt; sommige facturen vermelden het.",
+        "description": "De netbeheerder rekent kubieke meter om naar kWh met de calorische bovenwaarde van het ontvangststation dat je aansluiting voedt, maandelijks gepubliceerd door Atrias. Ze laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt dus tot enkele procent meer kWh dan je factuur. Kies het station dat het dichtst bij je ligt; sommige facturen vermelden het.",
         "data": {
           "station": "Ontvangststation"
         }
@@ -205,13 +206,14 @@
           "annual_consumption_kwh": "In kWh, zoals op je laatste jaarafrekening.",
           "caliber": "De Brusselse heffing hangt af van het maximale debiet van de meter, dat op de meter staat (G4- en G6-meters zijn 6 of 10 m³/u).",
           "gas_meter": "Een cumulatieve gassensor in m³ of kWh.",
+          "conversion_mode": "De factor op je factuur is die waarmee je netbeheerder factureert. De calorische bovenwaarde van het station laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt tot enkele procent meer kWh: kies ze als je geen factuur bij de hand hebt.",
           "card_archive": "Als de tariefkaart van een leverancier niet gelezen kan worden, de laatste kaart gebruiken die het dagelijkse archief van het project heeft opgeslagen. Het verzoek vermeldt de leverancier en het contract en verder niets.",
           "daily_compare": "Haalt één keer per dag de kaarten van alle leveranciers in je gewest op en publiceert de beste besparing als sensor."
         }
       },
       "station": {
         "title": "Gasontvangststation",
-        "description": "De netbeheerder rekent kubieke meter om naar kWh met de calorische bovenwaarde van het ontvangststation dat je aansluiting voedt, maandelijks gepubliceerd door Atrias. Kies het station dat het dichtst bij je ligt; sommige facturen vermelden het.",
+        "description": "De netbeheerder rekent kubieke meter om naar kWh met de calorische bovenwaarde van het ontvangststation dat je aansluiting voedt, maandelijks gepubliceerd door Atrias. Ze laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt dus tot enkele procent meer kWh dan je factuur. Kies het station dat het dichtst bij je ligt; sommige facturen vermelden het.",
         "data": {
           "station": "Ontvangststation"
         }
@@ -342,8 +344,8 @@
     },
     "conversion_mode": {
       "options": {
-        "station": "De calorische bovenwaarde van mijn ontvangststation (Atrias)",
-        "manual": "De factor op mijn factuur"
+        "manual": "De factor op mijn factuur",
+        "station": "De calorische bovenwaarde van mijn ontvangststation (Atrias)"
       }
     }
   },

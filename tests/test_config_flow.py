@@ -118,6 +118,13 @@ async def test_postcode_resolves_the_region_and_the_dso(hass: HomeAssistant) -> 
     assert result["step_id"] == "dso"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
     assert result["step_id"] == "household"
+    # The bill's factor carries the DSO's pressure and temperature correction
+    # the station value leaves out, so it is the one offered first.
+    schema = result["data_schema"]
+    assert schema is not None
+    mode = next(key for key in schema.schema if key == CONF_CONVERSION_MODE)
+    assert mode.default() == CONVERSION_MANUAL
+    assert schema.schema[mode].config["options"][0] == CONVERSION_MANUAL
     with patch(
         "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
     ):

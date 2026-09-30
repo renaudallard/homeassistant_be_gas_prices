@@ -67,13 +67,14 @@
           "annual_consumption_kwh": "In kWh, wie auf Ihrer letzten Jahresabrechnung.",
           "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
           "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
+          "conversion_mode": "Der Faktor auf Ihrer Rechnung ist der, mit dem Ihr Netzbetreiber abrechnet. Der Brennwert der Station lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt bis zu einige Prozent mehr kWh: Wählen Sie ihn, wenn Sie keine Rechnung zur Hand haben.",
           "card_archive": "Wenn die Karte eines Lieferanten nicht gelesen werden kann, die letzte Karte verwenden, die das tägliche Archiv des Projekts gespeichert hat. Die Anfrage nennt nur den Lieferanten und den Vertrag.",
           "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
         }
       },
       "station": {
         "title": "Gasübernahmestation",
-        "description": "Der Netzbetreiber rechnet Kubikmeter mit dem Brennwert der Übernahmestation, die Ihren Anschluss versorgt, in kWh um; Atrias veröffentlicht ihn monatlich. Wählen Sie die nächstgelegene Station; manche Rechnungen nennen sie.",
+        "description": "Der Netzbetreiber rechnet Kubikmeter mit dem Brennwert der Übernahmestation, die Ihren Anschluss versorgt, in kWh um; Atrias veröffentlicht ihn monatlich. Er lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt daher bis zu einige Prozent mehr kWh als Ihre Rechnung. Wählen Sie die nächstgelegene Station; manche Rechnungen nennen sie.",
         "data": {
           "station": "Übernahmestation"
         }
@@ -205,13 +206,14 @@
           "annual_consumption_kwh": "In kWh, wie auf Ihrer letzten Jahresabrechnung.",
           "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
           "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
+          "conversion_mode": "Der Faktor auf Ihrer Rechnung ist der, mit dem Ihr Netzbetreiber abrechnet. Der Brennwert der Station lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt bis zu einige Prozent mehr kWh: Wählen Sie ihn, wenn Sie keine Rechnung zur Hand haben.",
           "card_archive": "Wenn die Karte eines Lieferanten nicht gelesen werden kann, die letzte Karte verwenden, die das tägliche Archiv des Projekts gespeichert hat. Die Anfrage nennt nur den Lieferanten und den Vertrag.",
           "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
         }
       },
       "station": {
         "title": "Gasübernahmestation",
-        "description": "Der Netzbetreiber rechnet Kubikmeter mit dem Brennwert der Übernahmestation, die Ihren Anschluss versorgt, in kWh um; Atrias veröffentlicht ihn monatlich. Wählen Sie die nächstgelegene Station; manche Rechnungen nennen sie.",
+        "description": "Der Netzbetreiber rechnet Kubikmeter mit dem Brennwert der Übernahmestation, die Ihren Anschluss versorgt, in kWh um; Atrias veröffentlicht ihn monatlich. Er lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt daher bis zu einige Prozent mehr kWh als Ihre Rechnung. Wählen Sie die nächstgelegene Station; manche Rechnungen nennen sie.",
         "data": {
           "station": "Übernahmestation"
         }
@@ -342,8 +344,8 @@
     },
     "conversion_mode": {
       "options": {
-        "station": "Dem Brennwert meiner Übernahmestation (Atrias)",
-        "manual": "Dem Faktor auf meiner Rechnung"
+        "manual": "Dem Faktor auf meiner Rechnung",
+        "station": "Dem Brennwert meiner Übernahmestation (Atrias)"
       }
     }
   },
