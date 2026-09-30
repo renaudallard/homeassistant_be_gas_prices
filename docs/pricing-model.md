@@ -105,9 +105,10 @@ entry bills from it) month by month: the meter's kWh of the month's days,
 billed on the month's own card, or on the current card when the month's own
 card cannot be read or cannot price the household. Earlier contracts of the
 year recorded at a switch are walked the same way on their own suppliers'
-cards (`contract_periods.py`), each on its own signing card and typed
-figures (a contract on the custom supplier on the card typed for it), and
-added.
+cards (`contract_periods.py`) and added: each from 1 January or the day
+after the one before it, or from its own contract start when the entry
+billed from it, on its own signing card and typed figures (a contract on
+the custom supplier on the card typed for it).
 
 - `rolling_year_kwh`: the last 365 days, up to 15 missing days scaled across;
   more missing and it is unknown. Gas is too seasonal for a shorter window to

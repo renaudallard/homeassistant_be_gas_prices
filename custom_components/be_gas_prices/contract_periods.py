@@ -80,6 +80,7 @@ PERIOD_KEYS = (
     CONF_CALIBER,
     CONF_CONTRACT_START_DATE,
     CONF_TARIFF_CARD_DATE,
+    CONF_YTD_FROM_CONTRACT_START,
     *MANUAL_RATE_KEYS,
     *CUSTOM_KEYS,
 )
@@ -141,14 +142,19 @@ def record_switch(data: dict[str, Any], switched: date) -> dict[str, Any]:
 
 def periods_this_year(data: dict[str, Any], today: date) -> list[tuple[dict[str, Any], date, date]]:
     """Each earlier contract that supplied part of this year, with the first
-    and last day of it that falls in the year."""
+    and last day of it that falls in the year. One the entry billed from its
+    contract start is billed from that day, as it was before the switch."""
     year_start = date(today.year, 1, 1)
     out: list[tuple[dict[str, Any], date, date]] = []
     start = year_start
     for period in previous_contracts(data):
         until = date.fromisoformat(str(period["until"]))
-        if until >= year_start and until >= start:
-            out.append((period, start, min(until, today)))
+        first = start
+        began = parse_date(period.get(CONF_CONTRACT_START_DATE))
+        if period.get(CONF_YTD_FROM_CONTRACT_START) and began is not None:
+            first = max(start, began)
+        if until >= year_start and until >= first:
+            out.append((period, first, min(until, today)))
         start = max(start, until + timedelta(days=1))
     return out
 

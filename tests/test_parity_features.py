@@ -117,6 +117,20 @@ def test_recording_a_switch_keeps_the_old_contract_until_the_day_before() -> Non
     assert current_period_start(data, date(2026, 1, 1), today) == date(2026, 6, 15)
 
 
+def test_an_earlier_contract_billed_from_its_start_keeps_that_start() -> None:
+    """Counting the year from the contract start left January and February
+    out before the switch; the switch must not bill them afterwards."""
+    started = {**ENTRY, CONF_CONTRACT_START_DATE: "2026-03-01"}
+    data = record_switch(started, date(2026, 7, 1))
+    [period] = previous_contracts(data)
+    assert periods_this_year(data, date(2026, 9, 1)) == [
+        (period, date(2026, 3, 1), date(2026, 6, 30))
+    ]
+    # Without the option the year still starts on 1 January.
+    data = record_switch({**started, CONF_YTD_FROM_CONTRACT_START: False}, date(2026, 7, 1))
+    assert periods_this_year(data, date(2026, 9, 1))[0][1] == date(2026, 1, 1)
+
+
 def test_a_switch_leaves_the_old_contract_answers_behind() -> None:
     """The steps after a switch set up the new contract: they must not offer
     the old one's end date or the figures typed from its contract."""
