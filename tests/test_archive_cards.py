@@ -88,8 +88,8 @@ class _Response:
     def __init__(self, body: bytes) -> None:
         self._body = body
 
-    async def text(self) -> str:
-        return self._body.decode("utf-8")
+    async def text(self, errors: str = "strict") -> str:
+        return self._body.decode("utf-8", errors=errors)
 
     async def read(self) -> bytes:
         return self._body

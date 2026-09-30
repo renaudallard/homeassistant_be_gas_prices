@@ -567,7 +567,10 @@ async def fetch_text(
         ) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
-            body = await resp.text()
+            # Not strict: a page in another charset than it declares (a
+            # maintenance page in Latin-1) is then refused by the parser as
+            # an ExtractorError rather than raised as a UnicodeDecodeError.
+            body = await resp.text(errors="replace")
             # Only a success is memoised. A failure is re-attempted by the
             # next caller, which is what the negative cache one layer up is
             # for; caching it here would give it a second, untracked lifetime.
