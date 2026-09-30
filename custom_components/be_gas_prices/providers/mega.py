@@ -172,14 +172,10 @@ def _region_code(contract: _ContractDef, region: str) -> str:
     return _REGION_TO_CODE[region]
 
 
-def card_url(listing: str, contract_id: str, region: str) -> str:
-    """The URL of the card the listing links for ``contract_id`` in ``region``.
-
-    Pinned to the residential gas segment of the region, so the electricity
-    card and the other regions' links of the same product never match.
-    """
-    contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Mega")
-    code = _region_code(contract, region)
+def _listed_url(listing: str, contract: _ContractDef, code: str) -> str | None:
+    """The link the listing carries for ``contract``'s gas card in the
+    region ``code``, pinned to that segment, so the electricity card and
+    the other regions' links of the same product never match."""
     match = re.search(
         r'data-product-element="' + re.escape(contract.listing_name) + r'"[^>]*?'
         r'href="(https://my\.mega\.be/resources/tarif/Mega-FR-NG-B2C-'
@@ -187,9 +183,29 @@ def card_url(listing: str, contract_id: str, region: str) -> str:
         + r'-\d{6}-[^"]+\.pdf)"',
         listing,
     )
-    if match is None:
-        raise ExtractorError(f"Mega {contract_id}: no {code} card on the listing")
-    return match.group(1)
+    return None if match is None else match.group(1)
+
+
+def card_url(listing: str, contract_id: str, region: str) -> str:
+    """The URL of the card the listing links for ``contract_id`` in ``region``.
+
+    Mega drops one region's block of a product from the listing now and then
+    while still publishing its card: the electricity listing lost Dynamic
+    Wallonia overnight in July 2026. The regional cards differ only by their
+    -B2C-<code>- segment, so another region's link is rewritten for it. That
+    is a guess at the URL: a card not published there fails its download,
+    and a card of another region fails ``require_region``.
+    """
+    contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Mega")
+    code = _region_code(contract, region)
+    url = _listed_url(listing, contract, code)
+    if url is not None:
+        return url
+    for other in _REGION_TO_CODE.values():
+        sibling = None if other == code else _listed_url(listing, contract, other)
+        if sibling is not None:
+            return sibling.replace(f"-NG-B2C-{other}-", f"-NG-B2C-{code}-", 1)
+    raise ExtractorError(f"Mega {contract_id}: no {code} card on the listing")
 
 
 _URL_MONTH_RE = re.compile(r"-(\d{2})(\d{4})-(?=[^/]*\.pdf$)")

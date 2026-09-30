@@ -16,7 +16,11 @@ cannot be predicted, and it is not the electricity suffix (Online Flex is
 `Online0109` for gas, `Online0109-Green` for electricity), so `fetch` reads
 the listing, https://www.mega.be/fr/energie/cartes-tarifaires, and takes the
 `href` of the anchor carrying `data-product-element="<Product>"` whose URL is
-in the `Mega-FR-NG-B2C-<region>-` segment.
+in the `Mega-FR-NG-B2C-<region>-` segment. When the listing drops one
+region's anchor of a product while the card is still published (the
+electricity listing lost Dynamic Wallonia overnight in July 2026), another
+region's URL is rewritten to the region's segment; a card not published
+there fails on the CDN's stub, one for another region on `require_region`.
 
 The CDN answers a card it does not have with a 200 HTML page (11721 bytes in
 September 2026). `fetch_pdf_text` refuses it by its magic bytes.

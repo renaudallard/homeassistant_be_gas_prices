@@ -344,6 +344,18 @@ def test_every_contract_is_on_the_listing_where_it_is_sold() -> None:
         mega.card_url(_listing(), "mega_offpeak_impact", REGION_FLANDERS)
 
 
+def test_a_region_left_off_the_listing_is_rewritten_from_another() -> None:
+    """The Walloon Smart Flex block gone for a day: the card is still where
+    the other regions' links say, with the Walloon segment."""
+    listing = _listing().replace(
+        'href="https://my.mega.be/resources/tarif/Mega-FR-NG-B2C-WL-092026-Smart0109.pdf"',
+        'href="https://my.mega.be/resources/tarif/removed.pdf"',
+    )
+    assert mega.card_url(listing, "mega_smart_flex", REGION_WALLONIA) == (
+        f"{_CDN}Mega-FR-NG-B2C-WL-092026-Smart0109.pdf"
+    )
+
+
 @pytest.mark.parametrize(
     ("current", "month", "expected"),
     [
