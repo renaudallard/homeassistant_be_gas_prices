@@ -46,7 +46,8 @@ supplier's fee follows the energy leg, since it is part of the offer signed.
 Metering is Fluvius's data management fee in Flanders, Sibelga's yearly
 reading fee in Brussels, nothing in Wallonia. The Brussels levy depends on
 the meter caliber, and for the smallest caliber on whether the standardised
-annual consumption is above 5 000 kWh.
+annual consumption is above 5 000 kWh. A card whose levy table leaves out
+the household's caliber cannot price it, like a card missing its DSO.
 
 ## The energy price of a month
 

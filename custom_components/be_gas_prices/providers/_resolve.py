@@ -185,16 +185,17 @@ def resolve_for_delivery(snapshot: SupplierSnapshot, delivery: date) -> Supplier
     )
 
 
-def brussels_levy(osp: dict[str, float] | None, caliber: str, annual_kwh: float) -> float:
+def brussels_levy(osp: dict[str, float] | None, caliber: str, annual_kwh: float) -> float | None:
     """The Brussels per-meter levy for a meter caliber, in EUR/year.
 
     The smallest caliber pays one of two amounts by whether the standardised
     annual consumption is above 5 000 kWh. 0.0 outside Brussels, where the
-    card carries no table, and for a caliber the card does not print.
+    card carries no table; None for a caliber the card's table does not
+    print, which the card cannot price rather than one that pays nothing.
     """
     if osp is None:
         return 0.0
     if caliber == CALIBER_Q10:
         key = OSP_Q10_LOW if annual_kwh <= OSP_Q10_SPLIT_KWH else OSP_Q10_HIGH
-        return osp.get(key, 0.0)
-    return osp.get(caliber, 0.0)
+        return osp.get(key)
+    return osp.get(caliber)

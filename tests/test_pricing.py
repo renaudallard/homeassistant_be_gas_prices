@@ -33,6 +33,7 @@ from datetime import date
 import pytest
 
 from custom_components.be_gas_prices.const import (
+    CALIBER_GT160,
     CALIBER_Q10,
     CALIBER_Q16,
     DSO_FLUVIUS_KEMPEN,
@@ -150,6 +151,21 @@ def test_brussels_levy_by_caliber_and_volume() -> None:
     assert brussels_levy(osp, CALIBER_Q10, 17_000.0) == pytest.approx(12.59)
     assert brussels_levy(osp, CALIBER_Q16, 17_000.0) == pytest.approx(30.40)
     assert brussels_levy(None, CALIBER_Q10, 17_000.0) == 0.0
+    # A caliber the card does not print is not a caliber that pays nothing.
+    assert brussels_levy(osp, CALIBER_GT160, 17_000.0) is None
+
+
+def test_a_caliber_the_card_leaves_out_cannot_be_priced() -> None:
+    card = engie.parse_snapshot(
+        "engie_easy_variable",
+        REGION_BRUSSELS,
+        fixture_text("engie", "G_EASY_R_GREY_C_I_36_B_F_202609.pdf"),
+    )
+    osp = dict(card.taxes.osp_by_caliber or {})
+    del osp[CALIBER_GT160]
+    card = replace(card, taxes=replace(card.taxes, osp_by_caliber=osp))
+    with pytest.raises(PricingError, match="Brussels levy"):
+        fixed_costs(card, DSO_SIBELGA, 17_000.0, CALIBER_GT160)
 
 
 def _flow_wallonia() -> SupplierSnapshot:

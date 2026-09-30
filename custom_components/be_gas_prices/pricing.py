@@ -146,9 +146,12 @@ def fixed_costs(
     overlay = _overlay(snapshot, dso)
     tier = _tier(overlay, annual_kwh, dso)
     vat = _vat(snapshot.taxes)
+    levy = brussels_levy(snapshot.taxes.osp_by_caliber, caliber, annual_kwh)
+    if levy is None:
+        raise PricingError(f"{snapshot.supplier} card has no Brussels levy for a {caliber} meter")
     return FixedCosts(
         supplier=snapshot.energy.yearly_fixed_fee * vat,
         distribution=tier.fixed_per_year * vat,
         metering=overlay.metering_per_year * vat,
-        levy=brussels_levy(snapshot.taxes.osp_by_caliber, caliber, annual_kwh) * vat,
+        levy=levy * vat,
     )
