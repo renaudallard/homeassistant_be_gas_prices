@@ -41,22 +41,32 @@ from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.be_gas_prices import providers
+from custom_components.be_gas_prices.compare import Quote
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
+    CONF_CUSTOM_EXCISE_LOW,
+    CONF_CUSTOM_PRICE,
+    CONF_CUSTOM_T1_FIXED,
+    CONF_CUSTOM_T1_PROP,
+    CONF_CUSTOM_T2_FIXED,
+    CONF_CUSTOM_T2_PROP,
+    CONF_CUSTOM_TRANSPORT,
     CONF_DAILY_COMPARE,
     CONF_DSO,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_SUPPLIER,
     CONVERSION_MANUAL,
+    CUSTOM_CONTRACT,
     DOMAIN,
     DSO_ORES,
     DSO_SIBELGA,
     REGION_WALLONIA,
+    SUPPLIER_CUSTOM,
 )
 from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
@@ -288,6 +298,36 @@ async def test_a_ranking_stored_for_another_contract_is_not_served(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.daily_ranking is None
+
+
+async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssistant) -> None:
+    """The custom supplier is not among the suppliers ranked: its own card
+    is quoted beside them, so the saving is known."""
+    cheaper = Quote("engie", "engie_flow", "Engie Flow", 100.0, 0.08, 190.0, True, False)
+    data = {
+        **DATA,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_DAILY_COMPARE: True,
+        CONF_CUSTOM_PRICE: 7.5,
+        CONF_CUSTOM_T1_FIXED: 15.0,
+        CONF_CUSTOM_T1_PROP: 2.0,
+        CONF_CUSTOM_T2_FIXED: 80.0,
+        CONF_CUSTOM_T2_PROP: 1.0,
+        CONF_CUSTOM_TRANSPORT: 0.165,
+        CONF_CUSTOM_EXCISE_LOW: 1.09286,
+    }
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.rank",
+            AsyncMock(return_value=([cheaper], 0)),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+    ):
+        entry = await _setup(hass, data)
+    ranking = entry.runtime_data.daily_ranking
+    assert ranking is not None and ranking.own_cost is not None
+    assert ranking.saving == pytest.approx(ranking.own_cost - 100.0)
 
 
 async def test_setup_retries_when_there_is_no_card_at_all(

@@ -20,7 +20,7 @@ Every entity of an entry hangs off one device named after the entry.
 | `projected_year_consumption` | kWh | The year so far plus last year's remaining days. |
 | `rolling_year_consumption` | kWh | The last 365 days. |
 | `contract_end_date` | timestamp | Only with an end date set. |
-| `potential_saving` | EUR | Only with the daily ranking on: the cheapest contract's saving against the household's own, the ranking as an attribute. |
+| `potential_saving` | EUR | Only with the daily ranking on: the cheapest contract's saving against the household's own (on the custom supplier, its typed card, quoted beside the ranking), the ranking as an attribute. |
 
 The running costs report `unknown` until a gas meter is readable.
 

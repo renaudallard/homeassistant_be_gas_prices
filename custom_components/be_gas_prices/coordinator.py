@@ -55,7 +55,7 @@ from homeassistant.util import dt as dt_util
 
 from . import calorific
 from .bill import IndexValue, bill_month, contract_leg, month_key
-from .compare import rank
+from .compare import IndexCache, quote_contract, rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CALIBER,
@@ -668,6 +668,22 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 month_key(today),
                 use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
             )
+            if self.extractor.id == SUPPLIER_CUSTOM and self._snapshot is not None:
+                # The typed card is not among the suppliers ranked: quoted on
+                # its own, it gives the saving the household's own cost.
+                quotes.append(
+                    await quote_contract(
+                        self._session,
+                        self.extractor,
+                        self.contract,
+                        self.region,
+                        household,
+                        month_key(today),
+                        IndexCache(),
+                        use_archive=False,
+                        card=self._snapshot,
+                    )
+                )
         except Exception:
             # A background job with nobody watching: log it, and let the next
             # tick try again rather than leave an unretrieved exception.

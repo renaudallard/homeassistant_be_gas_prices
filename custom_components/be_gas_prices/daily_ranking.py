@@ -67,12 +67,15 @@ class DailyRanking:
 
     @classmethod
     def from_quotes(cls, day: date, quotes: list[Quote], own: tuple[str, str]) -> DailyRanking:
-        rows = tuple(
-            RankedRow(q.supplier, q.contract, q.label, q.annual_cost)
-            for q in quotes
-            if q.annual_cost is not None
+        rows = sorted(
+            (
+                RankedRow(q.supplier, q.contract, q.label, q.annual_cost)
+                for q in quotes
+                if q.annual_cost is not None
+            ),
+            key=lambda row: (row.annual_cost, row.label),
         )
-        return cls(day=day, rows=rows, own=own)
+        return cls(day=day, rows=tuple(rows), own=own)
 
     @property
     def own_cost(self) -> float | None:
