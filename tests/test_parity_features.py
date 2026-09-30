@@ -28,11 +28,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from custom_components.be_gas_prices import providers
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.compare_table import quote_table
 from custom_components.be_gas_prices.const import (
@@ -69,6 +71,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
 )
 from custom_components.be_gas_prices.contract_periods import (
+    PeriodBilling,
     current_period_start,
     periods_this_year,
     previous_contracts,
@@ -76,13 +79,14 @@ from custom_components.be_gas_prices.contract_periods import (
 )
 from custom_components.be_gas_prices.daily_ranking import DailyRanking, ranking_minute
 from custom_components.be_gas_prices.manual_rate import manual_leg
+from custom_components.be_gas_prices.month_cards import MonthCardCache
 from custom_components.be_gas_prices.pricing import compute_breakdown, fixed_costs
 from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers._resolve import resolve_network
-from custom_components.be_gas_prices.providers.base import CardNotReadableError
+from custom_components.be_gas_prices.providers.base import CardNotReadableError, SupplierSnapshot
 from custom_components.be_gas_prices.providers.custom import build_snapshot
-from custom_components.be_gas_prices.running_costs import Household
+from custom_components.be_gas_prices.running_costs import Household, RunningCosts
 from tests import approx, fixture_text
 
 ENTRY = {
@@ -122,6 +126,58 @@ def test_a_switch_leaves_the_old_contract_answers_behind() -> None:
     data = record_switch(old, date(2026, 6, 1))
     for key in (CONF_CONTRACT_END_DATE, CONF_MANUAL_PRICE, CONF_MANUAL_FEE):
         assert key not in data
+
+
+def _flow_card() -> SupplierSnapshot:
+    return engie.parse_snapshot(
+        "engie_flow", "wallonia", fixture_text("engie", "G_FLOW_R_GREY_C_I_24_W_F_202609.pdf")
+    )
+
+
+async def _bill_earlier(data: dict[str, Any], cards: dict[str, float]) -> list[RunningCosts]:
+    """The earlier contracts of ``data`` billed at the end of September 2026,
+    each month's card printing the price ``cards`` names for it (0.07 when
+    it names none) and 10 kWh used a day."""
+    base = _flow_card()
+
+    def card(month: str) -> SupplierSnapshot:
+        return replace(base, energy=FixedRates(price=cards.get(month, 0.07)))
+
+    async def fetch_for_month(
+        session: object, contract: str, region: str, first: date
+    ) -> SupplierSnapshot:
+        return card(f"{first:%Y-%m}")
+
+    stub = replace(
+        engie.EXTRACTOR,
+        fetch=AsyncMock(return_value=card("2026-09")),
+        fetch_for_month=fetch_for_month,
+        fetch_index=None,
+    )
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(273)}
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        costs, missing = await PeriodBilling(MonthCardCache()).bill(
+            AsyncMock(), data, date(2026, 9, 30), kwh_days, 5_000.0, use_archive=False
+        )
+    assert missing == []
+    return costs
+
+
+def _energy_price(costs: RunningCosts) -> float:
+    return sum(bill.energy_cost for bill in costs.months) / costs.ytd_kwh
+
+
+async def test_an_earlier_contract_is_billed_on_its_signing_card() -> None:
+    """A fixed contract signed in October 2025 and left on 1 July is billed
+    at the price it was signed at, not at what each month offered new
+    signers; typed figures still win over the card."""
+    fixed = {**ENTRY, CONF_CONTRACT: "engie_easy_fixed", CONF_CONTRACT_START_DATE: "2025-10-15"}
+    [earlier] = await _bill_earlier(record_switch(fixed, date(2026, 7, 1)), {"2025-10": 0.10})
+    assert earlier.months[-1].month == "2026-06"
+    assert _energy_price(earlier) == pytest.approx(0.10)
+    typed = record_switch({**fixed, CONF_MANUAL_PRICE: 9.0}, date(2026, 7, 1))
+    [earlier] = await _bill_earlier(typed, {"2025-10": 0.10})
+    assert _energy_price(earlier) == pytest.approx(0.09 * 1.06)
 
 
 def test_a_contract_that_ended_last_year_is_not_billed_this_year() -> None:

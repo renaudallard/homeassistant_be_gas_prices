@@ -70,7 +70,6 @@ from .const import (
     CONF_REGION,
     CONF_STATION,
     CONF_SUPPLIER,
-    CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
     CONVERSION_MANUAL,
     DEFAULT_ANNUAL_CONSUMPTION_KWH,
@@ -83,7 +82,13 @@ from .const import (
     SUPPLIER_CUSTOM,
     UPDATE_INTERVAL_MINUTES,
 )
-from .contract_periods import PeriodBilling, current_period_start, periods_this_year
+from .contract_periods import (
+    PeriodBilling,
+    current_period_start,
+    parse_date,
+    periods_this_year,
+    signing_month,
+)
 from .coordinator_data import Conversion, CoordinatorData
 from .daily_ranking import DailyRanking, ranking_minute
 from .gas_meter import (
@@ -130,15 +135,6 @@ SNAPSHOT_STALE_AGE = timedelta(days=7)
 SNAPSHOT_STALE_AFTER_VALIDITY = timedelta(days=7)
 # The card archive is asked back this many months for a card to stand in.
 _ARCHIVE_MONTHS_BACK = 12
-
-
-def _parse_date(value: Any) -> date | None:
-    if not value:
-        return None
-    try:
-        return date.fromisoformat(str(value))
-    except ValueError:
-        return None
 
 
 class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
@@ -207,13 +203,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def region(self) -> str:
         return str(self._data[CONF_REGION])
 
-    def _signing_month(self) -> str | None:
-        """The month of the card the household signed, if the entry says."""
-        signed = _parse_date(self._data.get(CONF_TARIFF_CARD_DATE)) or _parse_date(
-            self._data.get(CONF_CONTRACT_START_DATE)
-        )
-        return None if signed is None else month_key(signed)
-
     def window_start(self, today: date) -> date:
         """The first day the running costs cover: 1 January, or the contract
         start when the entry bills from it and records no earlier contract
@@ -221,7 +210,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         start = date(today.year, 1, 1)
         if periods_this_year(self._data, today):
             return start
-        contract_start = _parse_date(self._data.get(CONF_CONTRACT_START_DATE))
+        contract_start = parse_date(self._data.get(CONF_CONTRACT_START_DATE))
         if self._data.get(CONF_YTD_FROM_CONTRACT_START) and contract_start is not None:
             return max(start, min(contract_start, today))
         return start
@@ -516,7 +505,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         while f"{year}-{month:02d}" < current:
             months.append(f"{year}-{month:02d}")
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-        signing = self._signing_month()
+        signing = signing_month(self._data)
         if signing is not None and signing < current and signing not in months:
             months.append(signing)
         return months
@@ -548,7 +537,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         contract holds its figures, with the figures the household typed
         from its contract laid over it."""
         signed: SupplierSnapshot | None = None
-        signing = self._signing_month()
+        signing = signing_month(self._data)
         if signing is not None:
             today_month = month_key(dt_util.now().date())
             signed = self._snapshot if signing == today_month else self._month_card(signing)

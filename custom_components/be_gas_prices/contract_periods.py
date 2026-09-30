@@ -40,7 +40,7 @@ from typing import Any
 
 import aiohttp
 
-from .bill import month_key
+from .bill import contract_leg, month_key
 from .const import (
     CONF_CALIBER,
     CONF_CONTRACT,
@@ -57,14 +57,16 @@ from .const import (
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card
 from .pricing import PricingError
+from .providers._rates import EnergyRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
 from .running_costs import Household, RunningCosts, running_costs
 from .running_costs import months_between as _months_between
 
 _LOGGER = logging.getLogger(__name__)
 
-# What an earlier contract keeps of the entry: enough to price it, nothing
-# about the meter, which stays the household's.
+# What an earlier contract keeps of the entry: enough to price it the way
+# the current one is, on its signing card and the figures typed from it,
+# nothing about the meter, which stays the household's.
 PERIOD_KEYS = (
     CONF_SUPPLIER,
     CONF_CONTRACT,
@@ -73,7 +75,27 @@ PERIOD_KEYS = (
     CONF_CALIBER,
     CONF_CONTRACT_START_DATE,
     CONF_TARIFF_CARD_DATE,
+    *MANUAL_RATE_KEYS,
 )
+
+
+def parse_date(value: Any) -> date | None:
+    """An ISO date from the entry, or None for a missing or malformed one."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def signing_month(data: Mapping[str, Any]) -> str | None:
+    """The month of the card a contract was signed on, if its settings say:
+    the tariff card month, else the month the contract started."""
+    signed = parse_date(data.get(CONF_TARIFF_CARD_DATE)) or parse_date(
+        data.get(CONF_CONTRACT_START_DATE)
+    )
+    return None if signed is None else month_key(signed)
 
 
 def previous_contracts(data: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -210,7 +232,11 @@ class PeriodBilling:
                 continue
             contract = str(period[CONF_CONTRACT])
             region = str(period[CONF_REGION])
-            for month in _months_between(start, end):
+            signing = signing_month(period)
+            wanted = _months_between(start, end)
+            if signing is not None and signing not in wanted:
+                wanted.append(signing)
+            for month in wanted:
                 if month < current:
                     try:
                         await self._months.card(
@@ -233,6 +259,25 @@ class PeriodBilling:
             if end_card is None:
                 missing.append(extractor.label)
                 continue
+            table = await self._table(session, extractor, today)
+            signed: SupplierSnapshot | None = None
+            if signing is not None:
+                signed = (
+                    month_card(signing)
+                    if signing < current
+                    else await self._current_card(
+                        session, extractor, contract, region, today, use_archive
+                    )
+                )
+
+            def energy_for(
+                card: SupplierSnapshot,
+                _signed: EnergyRates | None = None if signed is None else signed.energy,
+                _table: IndexTable | None = table,
+                _data: dict[str, Any] = period,
+            ) -> EnergyRates:
+                return contract_leg(card.energy, _signed, _table, _data)
+
             household = Household(
                 dso=str(period[CONF_DSO]),
                 caliber=str(period.get(CONF_CALIBER, DEFAULT_CALIBER)),
@@ -247,8 +292,8 @@ class PeriodBilling:
                         household=household,
                         current_card=end_card,
                         month_card=month_card,
-                        energy_for=lambda card: card.energy,
-                        table=await self._table(session, extractor, today),
+                        energy_for=energy_for,
+                        table=table,
                     )
                 )
             except PricingError as err:
