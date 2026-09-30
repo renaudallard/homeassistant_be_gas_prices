@@ -46,6 +46,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CONTRACT,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
+    CONF_DAILY_COMPARE,
     CONF_DSO,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
@@ -198,6 +199,34 @@ async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     cost = hass.states.get("sensor.engie_flow_current_year_cost")
     assert cost is not None and cost.state != "unknown"
     assert cost.attributes["unpriced_contracts"] == ["dats24"]
+
+
+@pytest.mark.freeze_time("2026-09-15 23:05:00+02:00")
+async def test_the_daily_ranking_starts_at_its_minute(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """An entry ranking at 23:46 does not wait for an hourly tick, which
+    lands at 23:05 here and at 00:05 the next day."""
+    ranked = AsyncMock(return_value=([], 0))
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Engie Flow",
+        data={**DATA, CONF_DAILY_COMPARE: True},
+        entry_id="rank0044",
+    )
+    entry.add_to_hass(hass)
+    with patch("custom_components.be_gas_prices.coordinator.rank", ranked):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        # Setup's own follow-up refresh, which would otherwise run late.
+        freezer.tick(timedelta(minutes=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert ranked.await_count == 0
+        freezer.move_to("2026-09-15 23:46:00+02:00")
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert ranked.await_count == 1
 
 
 async def test_setup_retries_when_there_is_no_card_at_all(

@@ -27,11 +27,20 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+    callback,
+)
 from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
@@ -40,6 +49,7 @@ from homeassistant.util.json import JsonValueType
 from .backfill import backfill_once_a_year, backfill_prices
 from .const import DOMAIN, PLATFORMS, STORAGE_VERSION
 from .coordinator import GasCoordinator
+from .daily_ranking import ranking_minute
 from .issues import clear_issues
 from .providers.base import ExtractorError
 
@@ -139,6 +149,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
 
     entry.async_on_unload(coordinator.async_add_listener(_maybe_backfill))
     _maybe_backfill()
+
+    # The hourly tick alone would miss a minute late in the day's last hour
+    # whenever it lands earlier in that hour, day after day.
+    minute = ranking_minute(entry.entry_id)
+
+    @callback
+    def _rank_at_its_minute(_now: datetime) -> None:
+        coordinator.maybe_rank(dt_util.now().date())
+
+    entry.async_on_unload(
+        async_track_time_change(
+            hass, _rank_at_its_minute, hour=minute // 60, minute=minute % 60, second=0
+        )
+    )
     return True
 
 

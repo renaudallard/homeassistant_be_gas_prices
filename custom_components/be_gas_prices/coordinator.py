@@ -626,14 +626,17 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # missing, for this month or for one the running costs bill.
             self.last_error = str(err)
             raise UpdateFailed(str(err)) from err
-        self._maybe_rank(today)
+        self.maybe_rank(today)
         await self._save_persistent()
         return data
 
-    def _maybe_rank(self, today: date) -> None:
+    def maybe_rank(self, today: date) -> None:
         """Start the day's ranking once its minute has come, when the entry
         asked for one. The minute is derived from the entry id so that
-        installations do not all fetch every supplier at the same time."""
+        installations do not all fetch every supplier at the same time.
+
+        A listener calls this at the minute itself, and every tick after it
+        catches a day the minute was missed on (Home Assistant was down)."""
         if not self._data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE):
             return
         if self.daily_ranking is not None and self.daily_ranking.day == today:

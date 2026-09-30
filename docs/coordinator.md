@@ -44,8 +44,10 @@ cards (`issues.sync_issues`).
    month whose own card cannot price the household is billed on the current
    card; when the current card cannot either (its DSO row or the tier is
    missing), the tick records `last_error` and raises `UpdateFailed`.
-7. **The daily ranking** (`_maybe_rank`), when the entry asks for it, once a
-   day at a minute derived from the entry id, in the background.
+7. **The daily ranking** (`maybe_rank`), when the entry asks for it, once a
+   day at a minute derived from the entry id, in the background. A time
+   listener starts it at that minute; a tick after it catches a day the
+   minute was missed on.
 8. The Store is written.
 
 ## What is kept, and where
