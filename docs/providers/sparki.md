@@ -81,7 +81,8 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 
 - The listing keeps every month since April 2026. `fetch_for_month` reads
   each link named after the month, newest first, and returns the first card
-  dated that month; a month ahead of today (Home Assistant's clock) is not
+  dated that month, reading past one it cannot read (another year's card of
+  the same name); a month ahead of today (Home Assistant's clock) is not
   asked for, a transient failure raises.
 
 ## Known quirks and card errors
@@ -102,5 +103,6 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 the card's own figures, At Your Service's fee, the Flanders table and levies
 (Antwerpen and Zenne-Dijle rows), the Walloon card (ORES, RESA, connection
 fee), product and region refusals, a Walloon card without its connection fee,
-the listing order, `fetch`, and `fetch_for_month` (August by name, another
-month, before the listing, transient, future).
+the listing order, `fetch`, and `fetch_for_month` (August by name, past
+another year's unreadable card, another month, before the listing,
+transient, future).

@@ -49,7 +49,7 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.providers import sparki
 from custom_components.be_gas_prices.providers._rates import VariableRates
-from custom_components.be_gas_prices.providers.base import ExtractorError
+from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from tests import approx, fixture_page, fixture_text
 
 SS_NL = "Sparki_Tariefkaart_september_Particulier_SelfService_Gas_NL.pdf"
@@ -228,6 +228,29 @@ async def test_fetch_for_month_finds_the_month_by_name() -> None:
     assert card.call_args.args[1] == (
         f"{UPLOADS}/2026/08/Sparki_Tariefkaart_augustus_Particulier_SelfService_Gas_NL.pdf"
     )
+
+
+async def test_fetch_for_month_reads_past_another_year_s_unreadable_card() -> None:
+    """In September 2027 the listing links a September card for each year;
+    the 2027 one failing to read does not hide the 2026 one."""
+    name = "Sparki_Tariefkaart_september_Particulier_SelfService_Gas_NL.pdf"
+    listing = "".join(f'<a href="{UPLOADS}/{year}/09/{name}">x</a>' for year in (2027, 2026))
+
+    async def pdf(_session: object, url: str) -> str:
+        if "/2027/" in url:
+            raise CardNotReadableError("card has no text layer")
+        return _card(SS_NL)
+
+    with (
+        freeze_time(datetime(2027, 9, 15, 12)),
+        patch.object(sparki, "fetch_text", AsyncMock(return_value=listing)),
+        patch.object(sparki, "fetch_pdf_text_layout", AsyncMock(side_effect=pdf)),
+    ):
+        snap = await sparki.fetch_for_month(
+            AsyncMock(), "sparki_self_service", REGION_FLANDERS, date(2026, 9, 1)
+        )
+    assert snap is not None
+    assert snap.valid_until == date(2026, 9, 30)
 
 
 async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:

@@ -83,6 +83,7 @@ from ._pdf import (
     NL_MONTHS,
     fetch_pdf_text_layout,
     fetch_text,
+    is_transient_fetch_error,
     printed_vat_rate,
 )
 from ._rates import Contract, VariableRates
@@ -160,10 +161,18 @@ async def _read_month(
     name = NL_MONTHS[year_month.month - 1]
     wanted = end_of_month(year_month.year, year_month.month)
     for month, url in listed_cards(await fetch_text(session, _LISTING_URL), contract, region):
-        if month == name:
+        if month != name:
+            continue
+        try:
             snapshot = await _read(session, contract.contract_id, region, url)
-            if snapshot.valid_until == wanted:
-                return snapshot
+        except ExtractorError as err:
+            if is_transient_fetch_error(str(err)):
+                raise
+            # Another year's card of the same name that cannot be read: the
+            # one asked for may still be further down the listing.
+            continue
+        if snapshot.valid_until == wanted:
+            return snapshot
     return None
 
 
