@@ -62,6 +62,7 @@ from custom_components.be_gas_prices.const import (
     DSO_SIBELGA,
     REGION_BRUSSELS,
     REGION_WALLONIA,
+    SUPPLIER_CUSTOM,
 )
 
 STATIONS = [
@@ -347,6 +348,11 @@ async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> Non
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "compare"}
     )
+    # The custom supplier has no card to quote, so it is not offered.
+    schema = result["data_schema"]
+    assert schema is not None
+    offered = [o["value"] for o in schema.schema[CONF_SUPPLIER].config["options"]]
+    assert "engie" in offered and SUPPLIER_CUSTOM not in offered
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_SUPPLIER: "engie"}
     )

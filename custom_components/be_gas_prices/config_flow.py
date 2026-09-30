@@ -607,7 +607,9 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         if user_input is not None:
             self._compare_supplier = user_input[CONF_SUPPLIER]
             return await self.async_step_compare_contract()
-        schema = vol.Schema({vol.Required(CONF_SUPPLIER): _select(_suppliers_for(region))})
+        # The custom supplier has no card of its own to quote.
+        options = [o for o in _suppliers_for(region) if o["value"] != SUPPLIER_CUSTOM]
+        schema = vol.Schema({vol.Required(CONF_SUPPLIER): _select(options)})
         return self.async_show_form(step_id="compare", data_schema=schema)
 
     async def async_step_compare_contract(

@@ -27,7 +27,8 @@ reloads the entry.
 ## The options menu
 
 - **Edit settings**: the setup steps, pre-filled.
-- **Compare another contract**: pick a supplier and a contract; both it and
+- **Compare another contract**: pick a supplier (the custom supplier, with
+  no card of its own, is not offered) and a contract; both it and
   the household's own contract are quoted (`compare.quote_contract`) and
   shown side by side. Nothing is saved.
 - **Compare every contract**: a progress step ranks every contract sold in
