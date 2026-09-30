@@ -75,15 +75,16 @@ jobs:
         # from, the index tables, the manifest and the sheets. None of it
         # belongs in the integration's repository, and three years of daily
         # commits certainly do not belong in every HACS download. Cloned
-        # shallow under tmp/, which .gitignore covers.
+        # shallow under tmp/, which .gitignore covers, and without the token:
+        # the repository is public, and the walk that follows runs third-party
+        # code, which must not find on disk a token that writes to the cards
+        # of three integrations. Only the push is given it.
         env:
           CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
           CARDS_REPO: renaudallard/be_price_cards
         run: |
           [ -n "$CARDS_TOKEN" ] || { echo "BE_GAS_CARDS is not set" >&2; exit 1; }
-          git clone -q --depth=1 \
-            "https://x-access-token:${CARDS_TOKEN}@github.com/${CARDS_REPO}.git" \
-            tmp/cards
+          git clone -q --depth=1 "https://github.com/${CARDS_REPO}.git" tmp/cards
           mkdir -p tmp/cards/gas
 
       - name: Store today's cards
@@ -208,8 +209,13 @@ jobs:
 
       - name: Commit and push what changed
         id: push
+        env:
+          CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
         run: |
           cd tmp/cards
+          # The token as an authorization header on each call that needs it,
+          # as actions/checkout passes its own, never written to .git/config.
+          auth="http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "${CARDS_TOKEN:-}" | base64 -w0)"
           git add -A
           if git diff --cached --quiet; then
             echo "no card changed today"
@@ -227,10 +233,10 @@ jobs:
           # texts drift, -X theirs (the commit being replayed) keeps this
           # job's, which lists all three namespaces.
           for attempt in 1 2 3 4 5; do
-            git push -q origin HEAD:main && exit 0
+            git -c "$auth" push -q origin HEAD:main && exit 0
             [ "$attempt" -lt 5 ] || break
             sleep $((attempt * 3))
-            git pull -q --rebase -X theirs origin main
+            git -c "$auth" pull -q --rebase -X theirs origin main
           done
           exit 1
 

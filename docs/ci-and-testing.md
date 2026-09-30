@@ -194,7 +194,7 @@ a day, and a failure that changes shape is posted at once.
 | `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
 | `live_check.yml` | daily, and on pull requests that touch a provider or the check | `live_check.py --texts` against a read-only clone of be_price_cards; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels |
-| `archive_cards.yml` | daily at 05:53 UTC, before the live check | on Python 3.14 with the OCR engine, clones be_price_cards with `BE_GAS_CARDS`, archives into `gas/`, uploads the PDFs as `gas-<YYYY-MM>` releases and prunes those past 12 months, writes the root and `gas/` READMEs, pushes with a rebase retry, warns 14 days before the token expires, files an issue when a step failed |
+| `archive_cards.yml` | daily at 05:53 UTC, before the live check | on Python 3.14 with the OCR engine, clones be_price_cards without credentials, archives into `gas/`, uploads the PDFs as `gas-<YYYY-MM>` releases and prunes those past 12 months, writes the root and `gas/` READMEs, pushes with `BE_GAS_CARDS` passed as a header, never stored, and a rebase retry, then warns 14 days before the token expires, files an issue when a step failed |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
 
 ### What the repositories need
