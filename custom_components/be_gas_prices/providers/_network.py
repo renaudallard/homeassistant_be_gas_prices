@@ -36,6 +36,7 @@ columns as its card's header does, and this module turns the cells into
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import date
 from itertools import pairwise
 
 from ..const import (
@@ -55,6 +56,7 @@ from ..const import (
     DSO_FLUVIUS_WEST,
     DSO_FLUVIUS_ZENNE_DIJLE,
     DSO_ORES,
+    ENERGY_CONTRIBUTION_ZEROED_FROM,
     EXCISE_BAND_KWH,
     OSP_Q10_HIGH,
     OSP_Q10_LOW,
@@ -63,7 +65,7 @@ from ..const import (
     TIER_T2,
     TIER_T3,
 )
-from ._parse import cell_value, table_row
+from ._parse import cell_value, table_row, to_float
 from .base import DsoOverlay, DsoTier, ExtractorError
 
 # Column roles a DSO table can carry. Proportional terms and transport are
@@ -226,6 +228,19 @@ def excise_bands(low: float, high: float | None) -> tuple[tuple[float | None, fl
     if high is None:
         return ((None, low),)
     return ((EXCISE_BAND_KWH, low), (None, high))
+
+
+def printed_contribution(figure: str | None, card_month: date, *, supplier: str) -> float:
+    """The energy contribution a card prints in c EUR/kWh, in EUR/kWh.
+
+    The law set the residential levy to zero from August 2026 and the cards
+    dropped the row then, so only a card from before has to print it.
+    """
+    if figure is not None:
+        return to_float(figure) / 100.0
+    if (card_month.year, card_month.month) >= ENERGY_CONTRIBUTION_ZEROED_FROM:
+        return 0.0
+    raise ExtractorError(f"{supplier}: energy contribution row not found")
 
 
 # The Brussels per-meter levy rows in the order every card prints them: the

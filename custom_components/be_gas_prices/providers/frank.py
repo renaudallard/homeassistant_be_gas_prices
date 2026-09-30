@@ -67,7 +67,7 @@ from typing import Any
 
 import aiohttp
 
-from ..const import ENERGY_CONTRIBUTION_ZEROED_FROM, REGION_FLANDERS
+from ..const import REGION_FLANDERS
 from ._network import (
     FLUVIUS_LABELS,
     METERING,
@@ -77,6 +77,7 @@ from ._network import (
     T2_PROP,
     TRANSPORT,
     excise_bands,
+    printed_contribution,
     read_dsos,
     require_region,
 )
@@ -410,18 +411,12 @@ def _excise(text: str) -> tuple[tuple[float | None, float], ...]:
 
 
 def _energy_contribution(text: str, card_month: date) -> float:
-    """The energy contribution as printed.
-
-    Frank dropped the row from its August 2026 cards, the month the law set
-    the residential levy to zero, so only a card from before then has to
-    carry it.
-    """
+    """The energy contribution as printed; Frank dropped the row from its
+    August 2026 cards."""
     match = _CONTRIBUTION_RE.search(text)
-    if match is not None:
-        return to_float(match.group(1)) / 100.0
-    if (card_month.year, card_month.month) >= ENERGY_CONTRIBUTION_ZEROED_FROM:
-        return 0.0
-    raise ExtractorError("Frank Energie: energy contribution row not found")
+    return printed_contribution(
+        None if match is None else match.group(1), card_month, supplier="Frank Energie"
+    )
 
 
 # ---- index values ------------------------------------------------------------

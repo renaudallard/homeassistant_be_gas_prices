@@ -48,6 +48,7 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
+from custom_components.be_gas_prices.providers._resolve import resolve_for_delivery
 from custom_components.be_gas_prices.providers.base import ExtractorError
 from tests import approx, fixture_page, fixture_text
 
@@ -151,6 +152,28 @@ def test_wallonia_levies() -> None:
     )
     assert snap.taxes.energy_contribution == 0.0
     assert snap.taxes.osp_by_caliber is None
+
+
+def test_a_july_card_prints_the_energy_contribution() -> None:
+    """Up to July 2026 the cards print "Cotisation sur l'énergie 0,10577",
+    which a July delivery is billed on; the August law zeroed it."""
+    snap = engie.parse_snapshot(
+        "engie_easy_variable", REGION_WALLONIA, _card("G_EASY_R_GREY_C_I_12_W_F_202607.pdf")
+    )
+    assert snap.publication_label == "2026-07"
+    assert snap.taxes.energy_contribution == pytest.approx(0.0010577)
+    assert snap.taxes.excise_bands == (
+        (12000.0, pytest.approx(0.0087238)),
+        (None, pytest.approx(0.0098914)),
+    )
+    july = resolve_for_delivery(snap, date(2026, 7, 1))
+    assert july.taxes.energy_contribution == pytest.approx(0.0010577)
+
+
+def test_a_card_before_august_without_the_contribution_is_refused() -> None:
+    text = _card("G_EASY_R_GREY_C_I_12_W_F_202607.pdf").replace("Cotisation sur l", "Cotis")
+    with pytest.raises(ExtractorError, match="energy contribution"):
+        engie.parse_snapshot("engie_easy_variable", REGION_WALLONIA, text)
 
 
 def test_flanders_table_carries_the_data_management_fee() -> None:

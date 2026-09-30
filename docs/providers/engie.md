@@ -57,6 +57,9 @@ configured region's card is read.
   ORES rows collapse into one and must agree.
 - Excise: "Consommation entre 0 & 12.000 kWh" and "Consommation > 12.000
   kWh".
+- Energy contribution: "Cotisation sur l'énergie 0,10577" on the cards up to
+  July 2026; a card from before August 2026 without it is refused. The
+  August cards dropped the row, the month the law set the levy to zero.
 - Walloon connection fee: "Redevance raccordement(3) 0,00750"; a Walloon
   card without it is refused rather than read as zero.
 - Brussels levy: the amounts under "Obligations de Service Public", one per
@@ -96,7 +99,9 @@ today, and refuses a card naming another month than the one asked for.
 - FLOW: ZTPDAM, not settled, the formula at 61,537.
 - Empty House: its own formula and no fee. EASY Fixe and Empower Fixe.
 - Wallonia: the ORES collapse and RESA row in full, the connection fee, the
-  August 2026 excise, no energy contribution.
+  August 2026 excise, no energy contribution. The July 2026 EASY Variable
+  card: its energy contribution and excise, billed on for a July delivery,
+  and refused without the contribution row.
 - Flanders: the Kempen row with data management. Brussels: the Sibelga row
   and the nine levy amounts.
 - Refusals: another region's card, an unknown contract, a lost formula.

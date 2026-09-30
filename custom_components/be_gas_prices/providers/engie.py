@@ -80,6 +80,7 @@ from ._network import (
     TRANSPORT,
     excise_bands,
     osp_table,
+    printed_contribution,
     read_dsos,
     require_region,
 )
@@ -257,6 +258,7 @@ def parse_snapshot(contract_id: str, region: str, text: str) -> SupplierSnapshot
         dsos=dsos,
         taxes=TaxOverlay(
             excise_bands=_excise(text),
+            energy_contribution=_energy_contribution(text, card_month),
             connection_fee=_connection_fee(text) if region == REGION_WALLONIA else 0.0,
             osp_by_caliber=_osp(text) if region == REGION_BRUSSELS else None,
             card_vat_rate=vat_rate,
@@ -374,6 +376,17 @@ def _excise(text: str) -> tuple[tuple[float | None, float], ...]:
     if low is None or high is None:
         raise ExtractorError("Engie: federal excise rows not found")
     return excise_bands(to_float(low.group(1)) / 100.0, to_float(high.group(1)) / 100.0)
+
+
+_CONTRIBUTION_RE = re.compile(r"Cotisation sur l['’]énergie\s+(\d+,\d+)")
+
+
+def _energy_contribution(text: str, card_month: date) -> float:
+    """The energy contribution as printed, up to the July 2026 cards."""
+    match = _CONTRIBUTION_RE.search(text)
+    return printed_contribution(
+        None if match is None else match.group(1), card_month, supplier="Engie"
+    )
 
 
 _CONNECTION_FEE_RE = re.compile(r"Redevance raccordement\(\d+\)\s+(\d+,\d+)")
