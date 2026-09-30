@@ -580,11 +580,11 @@ def test_main_fails_the_run_only_when_nothing_was_archived(
 
 
 def test_the_push_survives_another_archive_rewriting_the_readme(tmp_path: Path) -> None:
-    """The electricity and water workflows push to the same main and each
-    rewrites the root README with its own text. One of them landing between
-    this job's clone and its push, README included, must not lose the run:
-    the push step rebases, keeps this job's README, which lists every
-    namespace, and lands."""
+    """The electricity and water workflows push to the same main and write
+    the root README too, with the same text. Should one of them drift and
+    land between this job's clone and its push, README included, the run
+    must not be lost: the push step rebases, keeps this job's README, which
+    lists every namespace, and lands."""
 
     def git(*args: str, cwd: Path) -> str:
         return subprocess.run(

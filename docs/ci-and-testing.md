@@ -189,7 +189,7 @@ a day, and a failure that changes shape is posted at once.
 
 - `BE_GAS_CARDS`: a fine-grained token with contents read and write on
   be_price_cards.
-- The electricity and water archive workflows each rewrite be_price_cards's
-  root README with their own text. The gas workflow writes one that lists
-  `electricity/`, `gas/` and `water/`; until the other two write the same
-  text, the gas push keeps its own on a conflict.
+- The electricity, gas and water archive workflows all write
+  be_price_cards's root README with the same text, listing the three
+  namespaces, so none rewrites another's. Should one of them drift, the gas
+  push keeps its own text on a conflict.
