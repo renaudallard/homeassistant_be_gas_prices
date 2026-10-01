@@ -40,6 +40,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun import freeze_time
 
+from custom_components.be_gas_prices.compare import IndexCache, quote_contract
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_KEMPEN,
     DSO_FLUVIUS_WEST,
@@ -57,6 +58,7 @@ from custom_components.be_gas_prices.providers import octaplus
 from custom_components.be_gas_prices.providers._pdf import render_through
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import ExtractorError
+from custom_components.be_gas_prices.running_costs import Household
 from tests import fixture_page, fixture_text
 
 _LISTING = "https://srv.octaplus.be/websiterest/getTarifArchive"
@@ -291,6 +293,23 @@ def test_regions_and_kinds() -> None:
     assert {c.regions for c in by_id.values()} == {frozenset({REGION_FLANDERS, REGION_WALLONIA})}
     assert by_id["octaplus_smartvariable"].kind == "indexed"
     assert by_id["octaplus_boostfix"].kind == "fixed"
+
+
+async def test_a_withdrawn_contract_is_quoted_under_its_label() -> None:
+    """An entry on Flux is not loaded: the comparison quotes it by name, and
+    its row reads as the contract it was."""
+    quote = await quote_contract(
+        AsyncMock(),
+        octaplus.EXTRACTOR,
+        "octaplus_flux",
+        REGION_FLANDERS,
+        Household(dso="fluvius_imewo", caliber="q10", annual_kwh=17000.0),
+        "2026-10",
+        IndexCache(),
+        use_archive=False,
+    )
+    assert quote.label == octaplus.EXTRACTOR.withdrawn["octaplus_flux"]
+    assert quote.error
 
 
 async def test_fetch_uses_the_file_name_the_tariff_page_links() -> None:

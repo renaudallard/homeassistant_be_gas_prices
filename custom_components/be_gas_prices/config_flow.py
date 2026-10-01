@@ -557,9 +557,7 @@ def _title(data: dict[str, Any]) -> str:
     """The title the wizard gives an entry: its contract's label, that of a
     contract the supplier withdrew included."""
     extractor = get_extractor(data[CONF_SUPPLIER])
-    contract = data[CONF_CONTRACT]
-    label = next((c.label for c in extractor.contracts if c.id == contract), "")
-    return label or extractor.withdrawn.get(contract) or extractor.label
+    return extractor.contract_label(data[CONF_CONTRACT]) or extractor.label
 
 
 class BeGasPricesConfigFlow(_FlowSteps, ConfigFlow, domain=DOMAIN):

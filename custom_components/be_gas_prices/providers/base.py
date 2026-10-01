@@ -176,6 +176,11 @@ class SupplierExtractor:
             out |= contract.regions
         return frozenset(out)
 
+    def contract_label(self, contract: str) -> str | None:
+        """The label of ``contract``, a withdrawn one's included."""
+        label = next((c.label for c in self.contracts if c.id == contract), None)
+        return label or self.withdrawn.get(contract)
+
 
 class ExtractorError(Exception):
     """Raised when a supplier's source cannot be fetched or parsed."""

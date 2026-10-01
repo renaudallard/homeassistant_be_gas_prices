@@ -141,7 +141,7 @@ async def quote_contract(
     ``read_by_ocr`` says the card archive read off its image).
     ``use_archive`` lets a card published as page images be priced on the
     card archive's reading of it, as the entry itself is."""
-    label = next((c.label for c in extractor.contracts if c.id == contract), contract)
+    label = extractor.contract_label(contract) or contract
     source = "ocr" if read_by_ocr else "live"
     if card is None:
         try:
