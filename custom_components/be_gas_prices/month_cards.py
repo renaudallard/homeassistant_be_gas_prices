@@ -44,7 +44,7 @@ import aiohttp
 from homeassistant.util import dt as dt_util
 
 from .const import CARD_ARCHIVE_URL
-from .providers._pdf import USER_AGENT, error_text
+from .providers._pdf import USER_AGENT, error_text, is_transient_fetch_error
 from .providers.base import (
     CardNotReadableError,
     ExtractorError,
@@ -155,7 +155,9 @@ async def current_card(
 
     A card put up before its month began (OCTA+'s, on the last day of the
     month before) is not yet in force: the running month's own card, from
-    the supplier's archive, stands in where it has one.
+    the supplier's archive, stands in where it has one. An archive that
+    fails to answer raises, so the card is asked for again, rather than the
+    month being priced on the next one's.
     """
     try:
         snapshot = await extractor.fetch(session, contract, region)
@@ -183,6 +185,8 @@ async def current_card(
                 session, contract, region, date(year, number, 1)
             )
         except ExtractorError as err:
+            if is_transient_fetch_error(str(err)):
+                raise
             _LOGGER.debug("%s card for %s not read: %s", extractor.label, month, err)
             running = None
         # Only the running month's own card: a supplier archive answering

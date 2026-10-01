@@ -421,6 +421,28 @@ async def test_a_card_put_up_early_is_kept_when_the_archive_has_none() -> None:
     assert snap.publication_label == "2026-10"
 
 
+async def test_an_archive_down_is_no_reason_to_price_the_month_on_the_next_card() -> None:
+    """September's card from the archive is asked again on the next tick,
+    rather than the rest of September being priced on October's."""
+    online = AsyncMock(return_value=_card(SMARTVARIABLE_WL))
+    stub = replace(
+        octaplus.EXTRACTOR,
+        fetch_for_month=AsyncMock(side_effect=ExtractorError("HTTP 503 fetching x")),
+    )
+    with (
+        patch.object(octaplus, "fetch_pdf_text_layout", online),
+        pytest.raises(ExtractorError, match="503"),
+    ):
+        await current_card(
+            AsyncMock(),
+            stub,
+            "octaplus_smartvariable",
+            REGION_WALLONIA,
+            "2026-09",
+            use_archive=False,
+        )
+
+
 def test_index_table_reads_ztp_rlp_by_delivery_month() -> None:
     table = octaplus.parse_index(fixture_text("octaplus", "paramètres_gaz_fr.pdf", "layout"))
     values = table["ZTP RLP M"]
