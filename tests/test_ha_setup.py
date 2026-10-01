@@ -95,6 +95,17 @@ DATA = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _no_card_archive_rows() -> Iterator[None]:
+    """An entry that lets the card archive be read asks it for its past
+    months' cards in the background; no test here may reach the network."""
+    with patch(
+        "custom_components.be_gas_prices.month_cards.fetch_archived_card",
+        AsyncMock(return_value=None),
+    ):
+        yield
+
+
 @pytest.fixture
 def fetch() -> Iterator[AsyncMock]:
     snapshot = engie.parse_snapshot(
@@ -664,13 +675,14 @@ async def test_a_stored_card_of_another_region_is_not_restored(
     """The household moves from Wallonia to Flanders while the supplier is
     down: the Walloon card in the store cannot price a Fluvius DSO, so the
     card archive is asked instead."""
-    entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
-    await entry.runtime_data.async_save()
     walloon = fetch.return_value
     flemish = replace(walloon, dsos={DSO_FLUVIUS_IMEWO: walloon.dsos[DSO_ORES]})
-    fetch.side_effect = ExtractorError("network error fetching engie: timeout")
     archived = AsyncMock(return_value=flemish)
     with patch("custom_components.be_gas_prices.coordinator.fetch_archived_card", archived):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        await entry.runtime_data.async_save()
+        archived.reset_mock()
+        fetch.side_effect = ExtractorError("network error fetching engie: timeout")
         hass.config_entries.async_update_entry(
             entry, data={**entry.data, CONF_REGION: REGION_FLANDERS, CONF_DSO: DSO_FLUVIUS_IMEWO}
         )
