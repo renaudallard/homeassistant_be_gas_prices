@@ -62,6 +62,7 @@ from .const import (
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card
 from .pricing import PricingError
+from .providers._pdf import is_transient_fetch_error
 from .providers._rates import EnergyRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
 from .providers.custom import build_snapshot as build_custom_snapshot
@@ -173,10 +174,12 @@ def current_period_start(data: dict[str, Any], default: date, today: date) -> da
 class PeriodBilling:
     """Prices the earlier contracts of the year on their own suppliers' cards.
 
-    Their current cards and index tables are read once a day and kept here,
-    and asked again on the next tick after a failure; their past months come
-    from the entry's month card cache, which is keyed by supplier and
-    contract already.
+    Their current cards and index tables are read once a day and kept here;
+    a card not read, and an index table a failure a retry may cure (network,
+    storage, HTTP 5xx, 403, 408, 429) kept from a supplier with none held,
+    are asked again on the next tick. Their past
+    months come from the entry's month card cache, which is keyed by
+    supplier and contract already.
     """
 
     def __init__(self, months: MonthCardCache) -> None:
@@ -218,9 +221,14 @@ class PeriodBilling:
             try:
                 table = await extractor.fetch_index(session)
             except ExtractorError as err:
-                # Kept unstamped, like a card not read: asked again next tick.
                 _LOGGER.debug("%s index values not read: %s", extractor.label, err)
-                return None if held is None else held[1]
+                if (held is None or held[1] is None) and is_transient_fetch_error(str(err)):
+                    # Nothing held, and the source may answer the next time:
+                    # asked again next tick, like a card not read.
+                    return None
+                # A held table keeps pricing, and a page the parser refuses
+                # will be refused next hour too: asked again tomorrow.
+                table = None if held is None else held[1]
         self._tables[extractor.id] = (today, table)
         return table
 

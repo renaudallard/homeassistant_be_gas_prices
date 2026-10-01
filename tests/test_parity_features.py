@@ -267,6 +267,36 @@ async def test_an_earlier_contract_s_index_is_asked_again_after_a_failure() -> N
     assert fetch_index.await_count == 2
 
 
+async def test_an_earlier_contract_s_index_page_refused_waits_a_day() -> None:
+    """A page the parser refuses fails the same way next hour: not read
+    every tick, as a network failure with nothing held is."""
+    fetch_index = AsyncMock(side_effect=ExtractorError("Belvus: no card states a TTF_RLP value"))
+    extractor = replace(providers.EXTRACTORS["engie"], fetch_index=fetch_index)
+    billing = PeriodBilling(MonthCardCache())
+    today = date(2026, 9, 15)
+    for _ in range(3):
+        assert await billing._table(AsyncMock(), extractor, today) is None
+    assert fetch_index.await_count == 1
+
+
+async def test_a_network_failure_after_a_refused_page_is_asked_again_next_tick() -> None:
+    """Refused on Monday, so nothing held; a timeout on Tuesday is retried
+    the next tick all the same."""
+    table = {"ZTP101": {"2026-08": 61.768}}
+    fetch_index = AsyncMock(
+        side_effect=[
+            ExtractorError("Engie: index table not found"),
+            ExtractorError("network error fetching x: timeout"),
+            table,
+        ]
+    )
+    extractor = replace(providers.EXTRACTORS["engie"], fetch_index=fetch_index)
+    billing = PeriodBilling(MonthCardCache())
+    assert await billing._table(AsyncMock(), extractor, date(2026, 9, 15)) is None
+    assert await billing._table(AsyncMock(), extractor, date(2026, 9, 16)) is None
+    assert await billing._table(AsyncMock(), extractor, date(2026, 9, 16)) == table
+
+
 async def test_earlier_contracts_on_one_supplier_read_its_index_once() -> None:
     """Two earlier Engie contracts and the index source down: one attempt
     per tick, not one per contract."""
