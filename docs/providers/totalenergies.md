@@ -68,7 +68,8 @@ takes about 10 s per card on a Raspberry Pi 4 (`sweep_cost_s`).
   "Consommation (c€/kWh)".
 - Variable energy:
   - `7,41 Tarif mensuel` is the estimate made with the Vlaamse Nutsregulator
-    method. It is not stored. The line under it (`90,00`) is the yearly fee.
+    method. It is not stored while the indicative price below is printed.
+    The line under it (`90,00`, from October 2026 `100`) is the yearly fee.
   - `0.1007 * TTF_M_RLP + 0.704 Formule tarifaire` is the formula in c€/kWh
     excluding VAT, with the index in €/MWh. The March 2026 cards print it as
     `0.1007*TTFM_RLP+0,67`, and February 2026 uses comma decimals. The
@@ -77,7 +78,9 @@ takes about 10 s per card on a Raspberry Pi 4 (`sweep_cost_s`).
   - `Compteur Simple : 7,33 € cent/kWh`, printed under "A titre indicatif, ...
     la dernière valeur connue du TTF_M_RLP (du mois précédent)", is
     `IndexedRates.price`. `settled` is False, because TTF_M_RLP is only known
-    once the delivery month is over.
+    once the delivery month is over. The October 2026 Gaz Variable cards
+    leave it blank (`Compteur Simple : € cent/kWh`), and the estimate is then
+    the price.
 - DSO table: it runs from `Coûts de distribution - Terme variable` to
   `Accise fédérale`. The columns are all proportional terms first (0-5000,
   5001-150.000 and 150.001-400.000 kWh, c€/kWh), then the three fixed terms

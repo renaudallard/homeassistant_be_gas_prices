@@ -136,6 +136,21 @@ def test_variable_products(
     assert snap.publication_label == "2026-09"
 
 
+def test_october_gaz_variable_leaves_its_indicative_price_blank() -> None:
+    """From October 2026 the card prints "Compteur Simple : € cent/kWh"
+    with no figure, and its fee as "100": the estimate, "8,12 Tarif
+    mensuel", is the only price it prints."""
+    text = _card("2026_10_GAZ-VARIABLE_GAS_WAL_FR.pdf")
+    snap = totalenergies.parse_snapshot("totalenergies_gaz_variable", REGION_WALLONIA, text)
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.price == pytest.approx(0.0812)
+    assert energy.yearly_fixed_fee == pytest.approx(100.0)
+    assert energy.factor == pytest.approx(0.1007 / 100 * 1.06)
+    assert energy.base == pytest.approx(0.704 / 100 * 1.06)
+    assert snap.publication_label == "2026-10"
+
+
 @pytest.mark.parametrize(
     ("contract", "region", "name", "price", "fee"),
     [
@@ -357,7 +372,7 @@ def test_unknown_contract_is_refused() -> None:
     [
         ("TVA % incluse", "TVA incluse"),
         ("Formule tarifaire", "Formule"),
-        ("Compteur Simple", "Compteur"),
+        ("Tarif mensuel", "Tarif"),
         ("> 12.000 kWh", "plus de 12.000 kWh"),
         ("RESA SA", "RESA"),
     ],

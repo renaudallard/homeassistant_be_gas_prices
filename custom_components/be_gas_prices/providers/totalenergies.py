@@ -299,11 +299,11 @@ def _vat_rate(text: str) -> float:
 _INDEX = "TTF_M_RLP"
 # The fixed card prints the yearly fee then the price on one row: "90,00 8,45
 # Tarif annuel". The variable one prints the estimate with the fee on the
-# line below ("7,41 Tarif mensuel", "90,00"), then the formula in c EUR/kWh
-# excluding VAT with the index in EUR/MWh. The March 2026 cards wrote it
-# "0.1007*TTFM_RLP+0,67".
+# line below ("7,41 Tarif mensuel", "90,00", and from October 2026 "100"),
+# then the formula in c EUR/kWh excluding VAT with the index in EUR/MWh. The
+# March 2026 cards wrote it "0.1007*TTFM_RLP+0,67".
 _FIXED_RE = re.compile(r"^(\d+,\d+) (\d+,\d+) Tarif annuel$", re.MULTILINE)
-_FEE_RE = re.compile(r"^\d+,\d+ Tarif mensuel\n(\d+,\d+)$", re.MULTILINE)
+_FEE_RE = re.compile(r"^(\d+,\d+) Tarif mensuel\n(\d+(?:,\d+)?)$", re.MULTILINE)
 _FORMULA_RE = re.compile(
     rf"^((\d+[.,]\d+)\s*\*\s*TTF_?M_RLP\s*([{SIGN_CHARS}])\s*(\d+[.,]\d+)) Formule tarifaire$",
     re.MULTILINE,
@@ -322,17 +322,21 @@ def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | Index
         )
     fee = _FEE_RE.search(text)
     formula = _FORMULA_RE.search(text)
-    indicative = _INDICATIVE_RE.search(text)
-    if fee is None or formula is None or indicative is None:
+    if fee is None or formula is None:
         raise ExtractorError("TotalEnergies: variable price block or formula not found")
+    # The indicative price is the formula at the previous month's value.
+    # From October 2026 the card leaves it blank ("Compteur Simple : € cent/
+    # kWh"), and its estimate, the only price it then prints, stands in.
+    indicative = _INDICATIVE_RE.search(text)
+    price = fee.group(1) if indicative is None else indicative.group(1)
     # TTF_M_RLP is only known once the delivery month is over, so the
     # indicative price is not settled.
     return IndexedRates(
         factor=to_float(formula.group(2)) / 100.0 * vat,
         base=parse_sign(formula.group(3)) * to_float(formula.group(4)) / 100.0 * vat,
         index=_INDEX,
-        price=to_float(indicative.group(1)) / 100.0,
-        yearly_fixed_fee=to_float(fee.group(1)),
+        price=to_float(price) / 100.0,
+        yearly_fixed_fee=to_float(fee.group(2)),
         formula=formula.group(1),
     )
 
