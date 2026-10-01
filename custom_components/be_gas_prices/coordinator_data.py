@@ -28,7 +28,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 from .bill import IndexValue, MonthBill
 from .pricing import FixedCosts, PriceBreakdown
@@ -71,6 +71,10 @@ class CoordinatorData:
     snapshot_age_hours: float | None
     snapshot_stale: bool
     last_error: str
+    # The day the record was built for. The cost sensors' last_reset follows
+    # it, not the clock: a state written after midnight but before the next
+    # tick still holds the day before's figures.
+    day: date
     # Running costs, None until a gas meter is readable.
     current_year_cost: float | None = None
     current_month_cost: float | None = None

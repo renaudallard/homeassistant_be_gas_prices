@@ -839,6 +839,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             snapshot_age_hours=None if age is None else age.total_seconds() / 3600,
             snapshot_stale=self.snapshot_stale(),
             last_error=self.last_error,
+            day=today,
             current_year_cost=None if costs is None else costs.current_year_cost + earlier_cost,
             current_month_cost=(
                 None if costs is None else sum(b.total for b in all_bills if b.month == month)

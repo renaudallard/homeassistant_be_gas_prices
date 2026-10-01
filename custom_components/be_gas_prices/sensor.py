@@ -370,7 +370,8 @@ class GasSensor(CoordinatorEntity[GasCoordinator], SensorEntity):
     def last_reset(self) -> datetime | None:
         if self.entity_description.state_class != SensorStateClass.TOTAL:
             return None
-        today = dt_util.now().date()
+        data = self.coordinator.data
+        today = dt_util.now().date() if data is None else data.day
         if self.entity_description.key == "current_month_cost":
             return dt_util.start_of_local_day(date(today.year, today.month, 1))
         return dt_util.start_of_local_day(self.coordinator.window_start(today))

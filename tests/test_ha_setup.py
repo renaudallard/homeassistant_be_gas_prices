@@ -219,6 +219,27 @@ async def test_a_card_whose_month_is_over_is_asked_for_again(
         assert fetch.await_count == count
 
 
+@pytest.mark.freeze_time("2026-09-30 23:40:00+02:00")
+async def test_the_month_cost_resets_with_the_tick_not_the_clock(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The daily ranking writes the states at its own minute, which can come
+    after midnight and before the first tick of the day: September's figures
+    must not go out with October's last_reset."""
+    entry = await _setup(hass)
+    freezer.move_to("2026-10-01 00:06:00+02:00")
+    entry.runtime_data.async_update_listeners()
+    await hass.async_block_till_done()
+    month = hass.states.get("sensor.engie_flow_current_month_cost")
+    assert month is not None
+    assert month.attributes["last_reset"].startswith("2026-09-01T00:00:00")
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    month = hass.states.get("sensor.engie_flow_current_month_cost")
+    assert month is not None
+    assert month.attributes["last_reset"].startswith("2026-10-01T00:00:00")
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock
