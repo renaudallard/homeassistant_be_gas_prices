@@ -87,8 +87,8 @@ class DailyRanking:
     @property
     def saving(self) -> float | None:
         """What the cheapest contract would save a year against the
-        household's own; negative when nothing beats it. None when the own
-        contract could not be quoted."""
+        household's own, which is among the rows: zero when nothing beats it.
+        None when the own contract could not be quoted."""
         own = self.own_cost
         if own is None or not self.rows:
             return None
