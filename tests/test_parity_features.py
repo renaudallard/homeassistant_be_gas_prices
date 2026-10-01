@@ -523,6 +523,11 @@ async def test_the_own_contract_is_priced_on_the_entry_s_index_values() -> None:
     indices = IndexCache(own)
     assert await indices.table(AsyncMock(), engie_down) == {"ZTPDAM": {"2026-09": 70.0}}
     failing.assert_not_called()
+    # An entry that holds no table yet leaves the supplier's to be fetched.
+    fetched = AsyncMock(return_value={"ZTPDAM": {"2026-09": 71.0}})
+    engie_up = replace(engie.EXTRACTOR, fetch_index=fetched)
+    indices = IndexCache(OwnContract(engie_up, "engie_flow", card, table=None))
+    assert await indices.table(AsyncMock(), engie_up) == {"ZTPDAM": {"2026-09": 71.0}}
 
 
 async def test_a_stored_signing_card_past_the_archive_s_reach_is_kept() -> None:

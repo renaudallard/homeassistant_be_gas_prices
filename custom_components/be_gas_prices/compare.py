@@ -102,7 +102,9 @@ class IndexCache:
 
     def __init__(self, own: OwnContract | None = None) -> None:
         self._tables: dict[str, IndexTable | None] = {}
-        if own is not None:
+        # The entry's own table where it holds one; without one, the
+        # supplier's is fetched like any other.
+        if own is not None and own.table is not None:
             self._tables[own.extractor.id] = own.table
         self._lock = asyncio.Lock()
 
