@@ -521,6 +521,33 @@ async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssis
     assert ranking.saving == pytest.approx(ranking.own_cost - 100.0)
 
 
+@pytest.mark.freeze_time("2026-01-01 10:30:00+01:00")
+async def test_a_custom_entry_prices_last_year_on_its_typed_card(hass: HomeAssistant) -> None:
+    """A backfill reaching before the window prices a custom entry's months
+    on its typed card, the only card it has, and fetches nothing for them."""
+    data = {
+        **DATA,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_CUSTOM_PRICE: 7.5,
+        CONF_CUSTOM_T1_FIXED: 15.0,
+        CONF_CUSTOM_T1_PROP: 2.0,
+        CONF_CUSTOM_T2_FIXED: 80.0,
+        CONF_CUSTOM_T2_PROP: 1.0,
+        CONF_CUSTOM_TRANSPORT: 0.165,
+        CONF_CUSTOM_EXCISE_LOW: 1.09286,
+    }
+    entry = await _setup(hass, data)
+    coordinator = entry.runtime_data
+    archived = AsyncMock(return_value=None)
+    with patch("custom_components.be_gas_prices.month_cards.fetch_archived_card", archived):
+        await coordinator.async_fill_month_cards(["2025-12"])
+    archived.assert_not_called()
+    december = coordinator.month_price("2025-12", own_card=True)
+    assert december is not None
+    assert december[0].energy == pytest.approx(0.075)
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_custom_entry_ignores_signing_figures_left_from_an_earlier_flow(
     hass: HomeAssistant,

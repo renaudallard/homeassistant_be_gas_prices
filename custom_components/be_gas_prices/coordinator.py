@@ -537,6 +537,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         return months
 
     async def async_fill_month_cards(self, months: list[str]) -> None:
+        if self.extractor.id == SUPPLIER_CUSTOM:
+            # Nothing to fetch: the typed card is every month's.
+            return
         use_archive = bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
         for month in months:
             # The cache answers a held month at once, and asks again for one
@@ -584,7 +587,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if snapshot is None or household is None:
             return None
         cards = [snapshot]
-        if month != month_key(dt_util.now().date()):
+        # The custom supplier's typed card prices every month.
+        if month != month_key(dt_util.now().date()) and self.extractor.id != SUPPLIER_CUSTOM:
             held = self._month_card(month)
             cards = ([] if held is None else [held]) + ([] if own_card else [snapshot])
         for card in cards:
