@@ -730,6 +730,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # tick try again rather than leave an unretrieved exception.
             _LOGGER.exception("daily ranking failed")
             return
+        if all(quote.annual_cost is None for quote in quotes):
+            # Nothing could be priced, the network down most likely: not kept
+            # as the day's ranking, so the next tick tries again.
+            _LOGGER.warning("daily ranking priced no contract; trying again")
+            return
         self.daily_ranking = DailyRanking.from_quotes(
             today, quotes, (self.extractor.id, self.contract)
         )

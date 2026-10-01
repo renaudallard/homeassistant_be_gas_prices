@@ -520,6 +520,27 @@ async def test_a_ranking_made_under_other_settings_is_ranked_again(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_ranking_that_priced_nothing_is_tried_again(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    failed = Quote("luminus", "x", "Cheap", None, None, None, False, False, "timeout")
+    cheaper = Quote("luminus", "x", "Cheap", 1000.0, 0.08, 100.0, True, False)
+    ranked = AsyncMock(side_effect=[([failed], 0), ([cheaper], 0)])
+    with (
+        patch("custom_components.be_gas_prices.coordinator.rank", ranked),
+        patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_DAILY_COMPARE: True})
+        assert entry.runtime_data.daily_ranking is None
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert ranked.await_count == 2
+    ranking = entry.runtime_data.daily_ranking
+    assert ranking is not None and ranking.rows
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_falls_back_like_the_running_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
