@@ -27,7 +27,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import os
 from functools import cache
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any, cast
 
@@ -39,6 +42,7 @@ from custom_components.be_gas_prices.providers._pdf import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
+_ROOT = Path(__file__).resolve().parent.parent
 
 _READERS = {
     "plain": extract_pdf_text,
@@ -46,14 +50,56 @@ _READERS = {
 }
 
 
+def _text_cache_dir() -> Path:
+    """Where ``fixture_text`` keeps what it read, across runs.
+
+    One directory per reader code: the digest covers ``providers/_pdf.py``
+    and the pypdf and pdfplumber versions, so a change to either reads every
+    card afresh instead of serving text the current code would not produce.
+    Under ``tmp/`` by default, which git ignores; ``BE_FIXTURE_TEXT_CACHE``
+    moves it, which the gate does so its throwaway worktree reuses the main
+    checkout's.
+    """
+    readers = hashlib.sha256(
+        (_ROOT / "custom_components" / "be_gas_prices" / "providers" / "_pdf.py").read_bytes()
+    )
+    for dist in ("pypdf", "pdfplumber"):
+        readers.update(f"{dist} {version(dist)}".encode())
+    base = os.environ.get("BE_FIXTURE_TEXT_CACHE") or _ROOT / "tmp" / "fixture_text"
+    return Path(base).resolve() / readers.hexdigest()[:16]
+
+
+_TEXT_CACHE = _text_cache_dir()
+
+
 @cache
 def fixture_text(supplier: str, name: str, reader: str = "plain") -> str:
     """The text of a fixture card, read the way the extractor reads it.
 
-    Cached because pdfplumber takes seconds per card on a Raspberry Pi and
-    several tests read the same one.
+    Reading the cards is most of what the suite spends: a Frank or Bolt card
+    takes 40 to 50 seconds of pdfplumber on a Raspberry Pi. The text is kept
+    on disk (``_text_cache_dir``), keyed on the card's own digest and the
+    reader, so a run after the first reads none of them again, and a card
+    that fails to read raises as before and leaves nothing behind. Stored as
+    bytes, so the text comes back exactly, carriage returns included.
+
+    Also cached in memory for the life of the process, so a worker reads a
+    file off the disk once. Tests must not mutate the returned string.
     """
-    return _READERS[reader]((FIXTURES / supplier / name).read_bytes())
+    payload = (FIXTURES / supplier / name).read_bytes()
+    kept = _TEXT_CACHE / f"{hashlib.sha256(payload).hexdigest()}.{reader}.txt"
+    try:
+        return kept.read_bytes().decode("utf-8", "surrogatepass")
+    except FileNotFoundError:
+        pass
+    text = _READERS[reader](payload)
+    # Written aside and renamed into place: the xdist workers read and write
+    # the same directory, and a reader must never see half a file.
+    kept.parent.mkdir(parents=True, exist_ok=True)
+    partial = kept.with_name(f"{kept.name}.{os.getpid()}")
+    partial.write_bytes(text.encode("utf-8", "surrogatepass"))
+    os.replace(partial, kept)
+    return text
 
 
 def fixture_page(supplier: str, name: str) -> str:

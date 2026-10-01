@@ -11,6 +11,15 @@ pytest tests/ -q -n auto --dist loadfile
 several tests of one file is rendered once (`tests.fixture_text` is cached per
 process).
 
+Reading the fixture cards is most of what the suite spends, a Frank or Bolt
+card 40 to 50 seconds of pdfplumber on a Raspberry Pi, so `fixture_text`
+also keeps each card's text on disk under `tmp/fixture_text/`. A directory
+per reader code, named by a digest of `providers/_pdf.py` and the pypdf and
+pdfplumber versions, holds one file per card digest and reader, so a changed
+card, reader or version is read afresh. `BE_FIXTURE_TEXT_CACHE` moves the
+directory. On a Raspberry Pi the whole suite took 630 seconds with an empty
+cache and 54 seconds with a full one.
+
 ### Layout
 
 - `tests/test_<supplier>.py`: one per extractor module, against real cards
@@ -57,8 +66,9 @@ offset bug a Belgian integration can have.
 
 pdfplumber takes 20 to 60 seconds a page on some cards on a Raspberry Pi
 (Bolt, Frank), so `test_bolt.py` and `test_frank.py` raise the per-test
-timeout to 180 seconds. The full suite takes 4 to 7 minutes on a Raspberry Pi
-with three workers (`-n 3`).
+timeout to 180 seconds. The full suite takes 4 to 10 minutes on a Raspberry Pi
+with three workers (`-n 3`) while the text cache is empty, under a minute once
+it is full.
 
 ### Linting and typing
 
