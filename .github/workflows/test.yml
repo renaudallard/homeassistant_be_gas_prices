@@ -28,6 +28,31 @@ jobs:
           # The oldest Python the Home Assistant release hacs.json names
           # accepts (2026.2 requires 3.13.2 or later).
           python-version: "3.13"
+          # The downloaded wheels, Home Assistant's among them, kept between
+          # runs for as long as the pins stay the same.
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Restore the type checkers' caches
+        # mypy checks every cached module against its source, so a cache
+        # restored from an older commit only saves work, never hides any.
+        uses: actions/cache@v6
+        with:
+          path: |
+            .mypy_cache_strict
+            .mypy_cache_all
+          key: mypy-${{ hashFiles('requirements-dev.txt') }}-${{ github.sha }}
+          restore-keys: mypy-${{ hashFiles('requirements-dev.txt') }}-
+      - name: Restore the text read out of the fixture PDFs
+        # Reading the cards is most of what the suite spends. fixture_text
+        # keys every entry on the PDF's digest, the reader code and the pypdf
+        # and pdfplumber versions, so an older cache restored through
+        # restore-keys can only serve text the current code would read; what
+        # no longer matches is simply not used.
+        uses: actions/cache@v6
+        with:
+          path: tmp/fixture_text
+          key: fixture-text-${{ hashFiles('tests/fixtures/**/*.pdf', 'custom_components/be_gas_prices/providers/_pdf.py', 'requirements-dev.txt') }}
+          restore-keys: fixture-text-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
