@@ -56,6 +56,7 @@ from custom_components.be_gas_prices.const import (
     CONF_STATION,
     CONF_SUPPLIER,
     CONF_SWITCH_DATE,
+    CONF_YTD_FROM_CONTRACT_START,
     CONVERSION_MANUAL,
     CONVERSION_STATION,
     CUSTOM_CONTRACT,
@@ -471,6 +472,9 @@ async def test_options_switch_keeps_the_earlier_contract(hass: HomeAssistant) ->
     assert schema is not None
     start = next(key for key in schema.schema if key == CONF_CONTRACT_START_DATE)
     assert start.description == {"suggested_value": "2026-06-01"}
+    # The year starts with the earlier contract: counting from this one's
+    # start is not offered, since it could not apply.
+    assert CONF_YTD_FROM_CONTRACT_START not in schema.schema
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
         {CONF_CONTRACT: "engie_easy_fixed", CONF_CONTRACT_START_DATE: "2026-06-01"},

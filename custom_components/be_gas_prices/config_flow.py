@@ -96,7 +96,7 @@ from .const import (
     REGIONS,
     SUPPLIER_CUSTOM,
 )
-from .contract_periods import parse_date, previous_contracts, record_switch
+from .contract_periods import parse_date, periods_this_year, previous_contracts, record_switch
 from .providers import all_extractors
 from .providers import get as get_extractor
 from .providers._rates import Contract
@@ -261,6 +261,10 @@ class _FlowSteps:
     ) -> ConfigFlowResult:
         contracts = _contracts_for(self._data[CONF_SUPPLIER], self._data[CONF_REGION])
         errors: dict[str, str] = {}
+        # With a change of contract recorded this year, the year's cost starts
+        # with the earlier contract: counting from this one's start would
+        # leave its days out, so the choice is not offered.
+        switched = bool(periods_this_year(self._data, dt_util.now().date()))
         if user_input is not None:
             start = user_input.get(CONF_CONTRACT_START_DATE)
             end = user_input.get(CONF_CONTRACT_END_DATE)
@@ -271,7 +275,7 @@ class _FlowSteps:
                     if not user_input.get(key):
                         self._data.pop(key, None)
                 self._data.update({k: v for k, v in user_input.items() if v not in (None, "")})
-                if not self._data.get(CONF_CONTRACT_START_DATE):
+                if not self._data.get(CONF_CONTRACT_START_DATE) or switched:
                     self._data.pop(CONF_YTD_FROM_CONTRACT_START, None)
                 # The custom card is the household's own figures already.
                 if self._data[CONF_SUPPLIER] != SUPPLIER_CUSTOM and (
@@ -294,11 +298,14 @@ class _FlowSteps:
             vol.Optional(CONF_CONTRACT_START_DATE): DateSelector(),
             vol.Optional(CONF_TARIFF_CARD_DATE): DateSelector(),
             vol.Optional(CONF_CONTRACT_END_DATE): DateSelector(),
-            vol.Optional(
-                CONF_YTD_FROM_CONTRACT_START,
-                default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
-            ): BooleanSelector(),
         }
+        if not switched:
+            fields[
+                vol.Optional(
+                    CONF_YTD_FROM_CONTRACT_START,
+                    default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
+                )
+            ] = BooleanSelector()
         schema = self.add_suggested_values_to_schema(
             vol.Schema(fields),
             {key: self._data.get(key) for key in _DATE_FIELDS}

@@ -12,7 +12,7 @@ once in `_FlowSteps` over `self._data`.
 | `unpriced_network` | Nothing | A warning: part of the postcode is on a network no Belgian card prices (Baarle-Hertog's Enexis), so continue only on the postcode's Belgian DSO. |
 | `region` | Region | Only when no postcode resolved. |
 | `supplier` | Supplier | Suppliers with a contract in the region, withdrawn ones hidden, the custom supplier last. |
-| `contract` | Contract, start date, tariff card month, end date, count from start | End before start is refused. Blanked dates are removed. |
+| `contract` | Contract, start date, tariff card month, end date, count from start | End before start is refused. Blanked dates are removed. Count from start is not offered while a change of contract is recorded this year, since the year then starts with the earlier contract. |
 | `signed_rate` | Price or factor and base, yearly fee | Only when a start date or card month is set, and never for the custom supplier, whose card is already the typed figures; all optional. See `manual_rate.py`. |
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Walloon fee and the Brussels levy only in their region. |
