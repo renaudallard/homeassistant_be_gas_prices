@@ -294,10 +294,11 @@ def parse_snapshot(
     )
 
 
-# The first line of the card, "Luminus ComfyFlex Gaz(septembre 2026)". The
-# 2021 cards of the quarterly products name a quarter ("juillet-septembre
-# 2021"), which is no month and is refused.
-_TITLE_RE = re.compile(r"^Luminus (.+?) Gaz\s*\(\s*(\S+)\s+(\d{4})\s*\)", re.MULTILINE)
+# The title of the card, "Luminus ComfyFlex Gaz(septembre 2026)", and from
+# October 2026 without the brand, "ComfyFlex Gaz(octobre 2026)". The 2021
+# cards of the quarterly products name a quarter ("juillet-septembre 2021"),
+# which is no month and is refused.
+_TITLE_RE = re.compile(r"^(?:Luminus )?(\S.*?) Gaz\s*\(\s*(\S+)\s+(\d{4})\s*\)", re.MULTILINE)
 
 
 def _title(text: str) -> tuple[str, date]:

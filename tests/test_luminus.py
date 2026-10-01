@@ -23,7 +23,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Luminus gas card extractor, against the September 2026 cards."""
+"""Luminus gas card extractor, against the September and October 2026 cards."""
 
 from __future__ import annotations
 
@@ -70,6 +70,8 @@ _COMFYFLEX_2025 = (
 _BASICFIX_2025 = (
     "LUMINUS_PL_202512_ZGR1B2D_FR_FLA_BasicFix_Gas_2_year_Direct_Mail_Archive_Price_Lists.pdf"
 )
+_COMFYFLEX_W_OCTOBER = "current_ComfyFlex_Gaz_Wallonia_2026-10.pdf"
+_BASICFIX_V_OCTOBER = "current_BasicFix_Gaz_Flanders_2026-10.pdf"
 _ARCHIVE_AUGUST = "archive_ComfyFlex_Gaz_Wallonia_2026-08.pdf"
 _ARCHIVE_FEBRUARY = "archive_ComfyFlex_Gaz_Wallonia_2026-02.pdf"
 _ARCHIVE_PRODUCTS = "archive_products_Gas_Wallonia_2026-08.json"
@@ -205,6 +207,27 @@ def test_basicflex_indexes_on_the_rlp_weighted_month() -> None:
 def test_fixed_cards(contract: str, name: str, price: float, fee: float) -> None:
     snap = luminus.parse_snapshot(contract, REGION_WALLONIA, _card(name))
     assert snap.energy == FixedRates(price=approx(price), yearly_fixed_fee=fee)
+
+
+def test_october_2026_titles_without_the_brand_are_read() -> None:
+    """From October 2026 the title drops the brand: "ComfyFlex Gaz(octobre
+    2026)", "BasicFix Online Gaz(octobre 2026)"."""
+    text = _card(_COMFYFLEX_W_OCTOBER)
+    assert "ComfyFlex Gaz(octobre 2026)" in text
+    assert "Luminus ComfyFlex Gaz(" not in text
+    snap = luminus.parse_snapshot("luminus_comfyflex", REGION_WALLONIA, text)
+    assert snap.publication_label == "2026-10"
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.price == pytest.approx(0.0700)
+    assert energy.yearly_fixed_fee == 50.0
+    # "0,1004 x TTF DAHW + 0,0000 x TTF 1-0-3 + 2,0204", excluding VAT.
+    assert energy.base == pytest.approx(0.020204 * 1.06)
+    snap = luminus.parse_snapshot("luminus_basicfix", REGION_FLANDERS, _card(_BASICFIX_V_OCTOBER))
+    assert snap.publication_label == "2026-10"
+    assert snap.energy == FixedRates(price=approx(0.0870), yearly_fixed_fee=20.0)
+    with pytest.raises(ExtractorError, match="card is for"):
+        luminus.parse_snapshot("luminus_maxxfix", REGION_FLANDERS, _card(_BASICFIX_V_OCTOBER))
 
 
 @pytest.mark.parametrize(

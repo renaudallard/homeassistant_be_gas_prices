@@ -46,7 +46,8 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
 
 ## How each figure is read (pypdf text)
 
-- Title, first line of the card body: "Luminus ComfyFlex Gaz(septembre 2026)".
+- Title, first line of the card body: "Luminus ComfyFlex Gaz(septembre 2026)",
+  and from October 2026 without the brand, "ComfyFlex Gaz(octobre 2026)".
   It gives the product (checked with brand, "Gaz" and "Online" stripped, since
   the 2025 cards title "BasicFix Gaz" what the 2026 ones title "BasicFix
   Online Gaz") and the month for `publication_label` and `valid_until`.
