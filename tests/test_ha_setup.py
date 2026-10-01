@@ -263,6 +263,41 @@ async def test_a_refresh_outliving_the_entry_leaves_nothing_behind(
     assert f"{DOMAIN}.{entry.entry_id}" not in hass_storage
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_refresh_outliving_a_reload_leaves_the_new_coordinator_alone(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The old coordinator's slow refresh ends after a reload: it raises no
+    card over the new coordinator's state."""
+    entry = await _setup(hass)
+    old = entry.runtime_data
+    started = asyncio.Event()
+    release = asyncio.Event()
+    card = fetch.return_value
+
+    async def slow(*_args: Any, **_kwargs: Any) -> Any:
+        started.set()
+        await release.wait()
+        raise ExtractorError("Engie: variable price block or formula not found")
+
+    fetch.side_effect = slow
+    old._failures = 1
+    freezer.tick(timedelta(seconds=11))
+    call = hass.async_create_task(
+        hass.services.async_call(DOMAIN, "refresh", {"entry_id": entry.entry_id}, blocking=True)
+    )
+    await asyncio.wait_for(started.wait(), 5)
+    fetch.side_effect = None
+    fetch.return_value = card
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    assert entry.runtime_data is not old
+    release.set()
+    await call
+    await hass.async_block_till_done()
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
 @pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")
 async def test_a_card_the_probe_finds_unchanged_does_not_go_stale(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory

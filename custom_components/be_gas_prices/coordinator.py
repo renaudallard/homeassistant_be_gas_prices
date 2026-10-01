@@ -696,13 +696,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 sync_issues(self.hass, self)
 
     def _set_up(self) -> bool:
-        """Whether the entry is still set up, or being set up: a refresh
-        that outlives an unload or a removal of the entry leaves no Repairs
-        card or store behind it."""
+        """Whether the entry is still set up, or being set up, with this
+        coordinator: a refresh that outlives an unload, a removal or a
+        reload of the entry leaves no Repairs card or store behind it."""
         entry = self.hass.config_entries.async_get_entry(self.entry.entry_id)
-        return entry is not None and entry.state in (
-            ConfigEntryState.LOADED,
-            ConfigEntryState.SETUP_IN_PROGRESS,
+        return (
+            entry is not None
+            and entry.state in (ConfigEntryState.LOADED, ConfigEntryState.SETUP_IN_PROGRESS)
+            and getattr(entry, "runtime_data", None) is self
         )
 
     async def _tick(self) -> CoordinatorData:
