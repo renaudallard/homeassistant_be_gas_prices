@@ -807,7 +807,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.extractor,
             self.contract,
             replace(snapshot, energy=self._energy_for(snapshot)),
-            read_by_ocr=self._card_source == "ocr",
+            read_by_ocr=self.card_read_by_ocr,
             table=self._index_table,
         )
 
