@@ -121,7 +121,14 @@ from .providers.base import (
     SupplierSnapshot,
 )
 from .providers.custom import build_snapshot as build_custom_snapshot
-from .running_costs import Household, RunningCosts, rolling_year_kwh, running_costs, to_kwh
+from .running_costs import (
+    Household,
+    RunningCosts,
+    meter_start,
+    rolling_year_kwh,
+    running_costs,
+    to_kwh,
+)
 from .snapshot_codec import SnapshotDecodeError, snapshot_from_json, snapshot_to_json
 
 _LOGGER = logging.getLogger(__name__)
@@ -843,9 +850,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             kind = await statistic_kind(self.hass, self.meter)
             if kind is None:
                 return None, {}
-            days = await daily_consumption(
-                self.hass, self.meter, kind, date(today.year - 1, 1, 1), today
-            )
+            days = await daily_consumption(self.hass, self.meter, kind, meter_start(today), today)
         except RecorderUnavailable as err:
             self.meter_error = str(err)
             _LOGGER.warning("gas meter not read: %s", err)
