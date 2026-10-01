@@ -619,14 +619,18 @@ async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None
     assert entry.title == "My house"
 
 
+@pytest.mark.parametrize(
+    ("before", "after"), [("OCTA+ Flux", "OCTA+ Boost Flex"), ("My house", "My house")]
+)
 async def test_settings_retitle_an_entry_whose_contract_was_withdrawn(
-    hass: HomeAssistant,
+    hass: HomeAssistant, before: str, after: str
 ) -> None:
     """The entry was titled "OCTA+ Flux" by the wizard; Flux was withdrawn,
-    and the contract picked instead gives the title."""
+    and the contract picked instead gives the title. One the user typed
+    stays."""
     entry = MockConfigEntry(
         domain=DOMAIN,
-        title="OCTA+ Flux",
+        title=before,
         data={
             CONF_REGION: REGION_WALLONIA,
             CONF_DSO: DSO_ORES,
@@ -654,7 +658,7 @@ async def test_settings_retitle_an_entry_whose_contract_was_withdrawn(
         result["flow_id"], {CONF_CONVERSION_FACTOR: 11.5}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.title == "OCTA+ Boost Flex"
+    assert entry.title == after
 
 
 async def _household_options(hass: HomeAssistant, flow_id: str) -> ConfigFlowResult:

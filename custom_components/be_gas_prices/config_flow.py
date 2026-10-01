@@ -607,12 +607,17 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         entry = self.config_entry
         # The title the wizard gave follows the contract; one the user typed
         # is theirs and stays. A contract its supplier withdrew no longer
-        # gives the title it gave, so that one follows too.
+        # gives the title it gave, which was its label: the supplier's name
+        # and the product's.
         try:
-            made = entry.title if _withdrawn(dict(entry.data)) else _title(dict(entry.data))
+            old = dict(entry.data)
+            if _withdrawn(old):
+                made = entry.title.startswith(get_extractor(old[CONF_SUPPLIER]).label + " ")
+            else:
+                made = entry.title == _title(old)
         except ExtractorError:
-            made = entry.title
-        title = _title(self._data) if entry.title == made else entry.title
+            made = False
+        title = _title(self._data) if made else entry.title
         self.hass.config_entries.async_update_entry(entry, data=self._data, title=title)
         if entry.state is not ConfigEntryState.LOADED:
             # An entry stopped at setup (a contract its supplier withdrew)
