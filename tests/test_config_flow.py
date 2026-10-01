@@ -39,7 +39,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.be_gas_prices import calorific, postcodes
+from custom_components.be_gas_prices import calorific, config_flow, postcodes
 from custom_components.be_gas_prices.compare import Quote
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -316,6 +316,75 @@ async def test_atrias_down_falls_back_to_the_factor(hass: HomeAssistant) -> None
         result = await _household(hass, result["flow_id"], CONVERSION_STATION)
     assert result["step_id"] == "factor"
     assert result["errors"] == {"base": "stations_unavailable"}
+
+
+async def test_the_station_list_covers_atrias_two_latest_months(hass: HomeAssistant) -> None:
+    """A station listed at 0 in August, out of use that month only, can
+    still be picked from July's value."""
+    july, august = STATIONS[0], STATIONS[1]
+    files = {"GCV202607.txt": {july: 11.5, august: 11.4}, "GCV202608.txt": {august: 11.3}}
+
+    async def fetch_month(_session: Any, _context: Any, _key: Any, path: str) -> Any:
+        return files[path]
+
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(
+            calorific,
+            "list_months",
+            AsyncMock(
+                return_value={
+                    "2026-06": "GCV202606.txt",
+                    "2026-07": "GCV202607.txt",
+                    "2026-08": "GCV202608.txt",
+                }
+            ),
+        ),
+        patch.object(calorific, "fetch_month", fetch_month),
+    ):
+        stations = await config_flow._stations(hass)
+    assert {station.ean for station in stations} == {july.ean, august.ean}
+
+
+async def test_a_station_out_of_the_list_is_kept_on_offer(hass: HomeAssistant) -> None:
+    """An entry's station Atrias listed at 0 lately: its settings save with
+    it rather than asking for another one."""
+    entry = _entry(hass)
+    data = {k: v for k, v in entry.data.items() if k != CONF_CONVERSION_FACTOR}
+    hass.config_entries.async_update_entry(
+        entry, data={**data, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: "5414"}
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    with patch(
+        "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
+    ):
+        for user_input in (
+            {"next_step_id": "settings"},
+            {},
+            {CONF_REGION: REGION_WALLONIA},
+            {CONF_SUPPLIER: "engie"},
+            {CONF_CONTRACT: "engie_flow"},
+            {CONF_DSO: DSO_ORES},
+        ):
+            result = await hass.config_entries.options.async_configure(
+                result["flow_id"], user_input
+            )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_ANNUAL_CONSUMPTION_KWH: 15000,
+                CONF_CONVERSION_MODE: CONVERSION_STATION,
+                CONF_CARD_ARCHIVE: False,
+                CONF_DAILY_COMPARE: False,
+            },
+        )
+        assert result["step_id"] == "station"
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {CONF_STATION: "5414"}
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_STATION] == "5414"
 
 
 async def test_atrias_down_keeps_the_station_an_entry_names(hass: HomeAssistant) -> None:

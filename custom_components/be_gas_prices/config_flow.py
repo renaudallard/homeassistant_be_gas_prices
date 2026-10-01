@@ -149,14 +149,18 @@ def _default(data: dict[str, Any], key: str, fallback: Any = vol.UNDEFINED) -> A
 
 
 async def _stations(hass: HomeAssistant) -> list[calorific.Station]:
-    """The reception stations Atrias published a value for last, by name."""
+    """The reception stations Atrias published a value for in either of its
+    two latest months, by name: a station listed at 0 for a month is out of
+    use for it only."""
     session = async_get_clientsession(hass)
     context = await hass.async_add_executor_job(calorific.build_ssl_context)
     key = await calorific.subscription_key(session)
     months = await calorific.list_months(session, context, key)
-    latest = months[max(months)]
-    values = await calorific.fetch_month(session, context, key, latest)
-    return sorted(values, key=lambda station: station.name)
+    stations: dict[str, calorific.Station] = {}
+    for month in sorted(months)[-2:]:
+        for station in await calorific.fetch_month(session, context, key, months[month]):
+            stations[station.ean] = station
+    return sorted(stations.values(), key=lambda station: station.name)
 
 
 class _FlowSteps:
@@ -513,7 +517,11 @@ class _FlowSteps:
             for station in self._stations_cache
         ]
         current = self._data.get(CONF_STATION)
-        default = current if any(o["value"] == current for o in options) else vol.UNDEFINED
+        if current and not any(o["value"] == current for o in options):
+            # Out of use lately: still the entry's, priced on its last value,
+            # and kept on offer so its settings save without another pick.
+            options.append(SelectOptionDict(value=current, label=current))
+        default = current or vol.UNDEFINED
         schema = vol.Schema({vol.Required(CONF_STATION, default=default): _select(options)})
         return self.async_show_form(step_id="station", data_schema=schema, errors=errors)
 
