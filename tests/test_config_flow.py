@@ -350,10 +350,18 @@ async def test_the_station_list_covers_atrias_two_latest_months(hass: HomeAssist
     ):
         stations = await config_flow._stations(hass)
         assert {station.ean for station in stations} == {july.ean, august.ean}
-        # July unreadable: August's list all the same.
+        # Either month unreadable: the other's list all the same.
         files["GCV202607.txt"] = None
         stations = await config_flow._stations(hass)
-    assert {station.ean for station in stations} == {august.ean}
+        assert {station.ean for station in stations} == {august.ean}
+        files["GCV202607.txt"] = {july: 11.5, august: 11.4}
+        files["GCV202608.txt"] = None
+        stations = await config_flow._stations(hass)
+        assert {station.ean for station in stations} == {july.ean, august.ean}
+        # Neither: Atrias cannot be read.
+        files["GCV202607.txt"] = None
+        with pytest.raises(calorific.CalorificError):
+            await config_flow._stations(hass)
 
 
 async def test_a_station_out_of_the_list_is_kept_on_offer(hass: HomeAssistant) -> None:

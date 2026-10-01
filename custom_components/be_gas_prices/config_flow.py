@@ -9,7 +9,6 @@ options flow starts from the stored entry and writes it back.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -157,16 +156,20 @@ async def _stations(hass: HomeAssistant) -> list[calorific.Station]:
     context = await hass.async_add_executor_job(calorific.build_ssl_context)
     key = await calorific.subscription_key(session)
     months = await calorific.list_months(session, context, key)
-    *earlier, latest = sorted(months)[-2:]
     stations: dict[str, calorific.Station] = {}
-    for month in earlier:
-        # Only the stations it adds: a file that cannot be read must not
-        # hide the latest month's.
-        with contextlib.suppress(calorific.CalorificError):
-            for station in await calorific.fetch_month(session, context, key, months[month]):
-                stations[station.ean] = station
-    for station in await calorific.fetch_month(session, context, key, months[latest]):
-        stations[station.ean] = station
+    failure: calorific.CalorificError | None = None
+    for month in sorted(months)[-2:]:
+        # Each month on its own: a file that cannot be read must not hide
+        # the other's stations.
+        try:
+            values = await calorific.fetch_month(session, context, key, months[month])
+        except calorific.CalorificError as err:
+            failure = err
+            continue
+        for station in values:
+            stations[station.ean] = station
+    if failure is not None and not stations:
+        raise failure
     return sorted(stations.values(), key=lambda station: station.name)
 
 
