@@ -1434,11 +1434,13 @@ async def test_a_new_entry_on_last_month_s_ocr_reading_waits_for_the_archive(
     assert coordinator.data.card_source == "archive"
     assert coordinator.card_read_by_ocr and not coordinator.card_unreadable
     assert coordinator.failures == 0
+    assert not coordinator.snapshot_stale()
     own = coordinator.own_contract()
     assert own is not None and own.read_by_ocr
     issues = ir.async_get(hass)
     assert issues.async_get_issue(DOMAIN, f"card_read_by_ocr_{entry.entry_id}") is not None
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
+    assert issues.async_get_issue(DOMAIN, f"snapshot_stale_{entry.entry_id}") is None
 
 
 @pytest.mark.freeze_time("2026-10-01 08:00:00+02:00")

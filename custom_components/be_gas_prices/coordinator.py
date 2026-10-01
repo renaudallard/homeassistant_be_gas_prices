@@ -486,19 +486,22 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 held = self._snapshot
                 if held is None or (card.valid_until or date.min) > (held.valid_until or date.min):
                     self._snapshot = card
-                    self._fetched_at = dt_util.as_utc(
-                        dt_util.start_of_local_day(date(year, month, 1))
-                    )
                     self._card_source = "archive"
                     self._stand_in = True
                     self.card_read_by_ocr = read_by_ocr
-                    if read_by_ocr and self.card_unreadable:
+                    if read_by_ocr:
                         # The archive's reading of a card published as
-                        # images: what such a card is priced on, so the
-                        # card found unreadable is no failure while the
-                        # archive has not read the newest.
-                        self._failures = 0
-                        self.card_unreadable = False
+                        # images: what such a card is priced on, as good as
+                        # a fetch, so the card found unreadable is no
+                        # failure while the archive has not read the newest.
+                        self._fetched_at = dt_util.utcnow()
+                        if self.card_unreadable:
+                            self._failures = 0
+                            self.card_unreadable = False
+                    else:
+                        self._fetched_at = dt_util.as_utc(
+                            dt_util.start_of_local_day(date(year, month, 1))
+                        )
                 return
             year, month = (year - 1, 12) if month == 1 else (year, month - 1)
 
