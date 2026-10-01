@@ -149,9 +149,13 @@ async def current_card(
     leaving out every line on which the engine refused a mark, so a figure
     in the row was read whole. Raises the fetch's error where there is no
     such row, or the entry keeps the archive out.
+
+    A card put up before its month began (OCTA+'s, on the last day of the
+    month before) is not yet in force: the running month's own card, from
+    the supplier's archive, stands in where it has one.
     """
     try:
-        return await extractor.fetch(session, contract, region), "live"
+        snapshot = await extractor.fetch(session, contract, region)
     except CardNotReadableError as err:
         if not use_archive:
             raise
@@ -164,6 +168,23 @@ async def current_card(
             raise err from None
         snapshot, read_by_ocr = row
         return snapshot, "ocr" if read_by_ocr else "archive"
+    valid_until = snapshot.valid_until
+    if (
+        extractor.fetch_for_month is not None
+        and valid_until is not None
+        and f"{valid_until:%Y-%m}" > month
+    ):
+        year, number = (int(part) for part in month.split("-"))
+        try:
+            running = await extractor.fetch_for_month(
+                session, contract, region, date(year, number, 1)
+            )
+        except ExtractorError as err:
+            _LOGGER.debug("%s card for %s not read: %s", extractor.label, month, err)
+            running = None
+        if running is not None:
+            return running, "live"
+    return snapshot, "live"
 
 
 class MonthCardCache:

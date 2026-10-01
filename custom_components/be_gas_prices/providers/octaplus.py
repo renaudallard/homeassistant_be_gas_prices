@@ -94,7 +94,7 @@ from ._pdf import (
     render_pdf,
 )
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
-from ._validity import end_of_month, future_month, month_card
+from ._validity import end_of_month, month_card
 from .base import (
     DsoOverlay,
     ExtractorError,
@@ -154,8 +154,8 @@ async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -
 
     OCTA+ overwrites the card in place, so the header moves exactly when the
     card does. The month is in the key because the card for the next month
-    goes up on the last day of the one before (``fetch``), and must be read
-    again once its month begins.
+    may go up on the last day of the one before, when the running month's
+    card stands in for it, and must be read again once its month begins.
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     code = _REGION_TO_CODE.get(region)
@@ -166,21 +166,16 @@ async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -
 
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
-    """The configured region's card for the running month.
+    """The configured region's card as it stands online.
 
-    OCTA+ puts the next month's card up in the afternoon of the last day of
-    the month before. Until that month begins the running month's card is in
-    force, and the archive still serves it; the card online is taken only
-    when the archive has none.
+    OCTA+ may put the next month's card up on the last day of the month
+    before; an installation is then priced on the running month's card from
+    the archive (``month_cards.current_card``).
     """
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "OCTA+")
     url = _card_url(contract, _region_code(contract, region))
     text = await fetch_pdf_text_layout(session, url)
-    snapshot = parse_snapshot(contract_id, region, text, source_url=url)
-    if snapshot.valid_until is not None and future_month(snapshot.valid_until):
-        running = dt_util.now().date().replace(day=1)
-        return await fetch_for_month(session, contract_id, region, running) or snapshot
-    return snapshot
+    return parse_snapshot(contract_id, region, text, source_url=url)
 
 
 def _archive_json(body: str, what: str) -> Any:

@@ -19,7 +19,9 @@ cards (`issues.sync_issues`).
    images, which no reader here reads, is priced on the card archive's row
    for the running month, which the archive read with its OCR engine
    (`card_source` `ocr`, the `card_read_by_ocr` Repairs card); that reading
-   is asked for again on the same schedule. A failure keeps the card in
+   is asked for again on the same schedule. A card put up before its month
+   began gives way to the running month's own card from the supplier's
+   archive, where it has one. A failure keeps the card in
    hand and records `last_error`; a failure a retry will not fix counts
    towards the `extractor_failed` card. With no card at all, or a stale one,
    the card archive is asked for its latest row (`_adopt_archived_card`).
