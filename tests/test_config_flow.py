@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -48,6 +49,13 @@ from custom_components.be_gas_prices.const import (
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
+    CONF_CUSTOM_FEE,
+    CONF_CUSTOM_PRICE,
+    CONF_CUSTOM_T1_FIXED,
+    CONF_CUSTOM_T1_PROP,
+    CONF_CUSTOM_T2_FIXED,
+    CONF_CUSTOM_T2_PROP,
+    CONF_CUSTOM_TRANSPORT,
     CONF_DAILY_COMPARE,
     CONF_DSO,
     CONF_POSTCODE,
@@ -398,6 +406,53 @@ async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> Non
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "compare_done"
     assert entry.data[CONF_CONTRACT] == "engie_flow"
+
+
+async def test_compare_all_ranks_a_custom_household_s_own_card(hass: HomeAssistant) -> None:
+    """The typed card is handed to the ranking, so the household's own
+    contract is in the table, in bold."""
+    data = {
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_ANNUAL_CONSUMPTION_KWH: 17000.0,
+        CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+        CONF_CONVERSION_FACTOR: 11.5,
+        CONF_CARD_ARCHIVE: False,
+        CONF_CUSTOM_PRICE: 8.0,
+        CONF_CUSTOM_FEE: 60.0,
+        CONF_CUSTOM_T1_FIXED: 10.0,
+        CONF_CUSTOM_T1_PROP: 3.0,
+        CONF_CUSTOM_T2_FIXED: 50.0,
+        CONF_CUSTOM_T2_PROP: 2.0,
+        CONF_CUSTOM_TRANSPORT: 0.2,
+    }
+    entry = MockConfigEntry(domain=DOMAIN, title="Custom", data=data)
+    entry.add_to_hass(hass)
+    own = Quote(SUPPLIER_CUSTOM, CUSTOM_CONTRACT, "Custom", 1600.0, 0.09, 100.0, False, False)
+    cheaper = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.08, 100.0, True, False)
+    calls: list[dict[str, Any]] = []
+
+    async def ranked(*_args: Any, **kwargs: Any) -> tuple[list[Quote], int]:
+        calls.append(kwargs)
+        # Long enough for the flow to show its progress first, as a real
+        # ranking does.
+        await asyncio.sleep(0.01)
+        return [cheaper, own], 0
+
+    with patch("custom_components.be_gas_prices.config_flow.rank", ranked):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "compare_all"}
+        )
+        await hass.async_block_till_done()
+        result = await hass.config_entries.options.async_configure(result["flow_id"])
+    assert calls[0]["custom_card"] is not None
+    assert result["step_id"] == "compare_all_result"
+    placeholders = result["description_placeholders"]
+    assert placeholders is not None
+    assert "| 2 | **Custom** | 1,600.00 | +0.00 |" in placeholders["table"]
 
 
 _EARLIER = {

@@ -472,6 +472,39 @@ async def test_a_ranking_reads_what_a_supplier_s_contracts_share_once() -> None:
     assert web.asked == ["https://acme.test/listing"]
 
 
+async def test_a_ranking_quotes_a_typed_card_among_the_suppliers() -> None:
+    """A custom household's own contract is no supplier's: handed to the
+    ranking, it is quoted and sorted with the others."""
+    card = _flow_card()
+
+    async def fetch(_session: Any, contract: str, _region: str) -> SupplierSnapshot:
+        return replace(card, contract=contract)
+
+    acme = SupplierExtractor(
+        id="acme",
+        label="Acme",
+        contracts=(Contract(id="acme_a", label="Acme a", kind="indexed"),),
+        fetch=fetch,
+    )
+    data = {**_custom_data(), CONF_DSO: DSO_ORES}
+    household = Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0)
+    with patch("custom_components.be_gas_prices.compare.all_extractors", return_value=(acme,)):
+        quotes, _skipped = await rank(
+            AsyncMock(),
+            "wallonia",
+            household,
+            "2026-09",
+            use_archive=False,
+            custom_card=build_snapshot(data),
+        )
+    assert {(q.supplier, q.contract) for q in quotes} == {
+        ("acme", "acme_a"),
+        (SUPPLIER_CUSTOM, CUSTOM_CONTRACT),
+    }
+    costs = [q.annual_cost for q in quotes]
+    assert None not in costs and costs == sorted(costs)  # type: ignore[type-var]
+
+
 def test_quote_table_bolds_the_own_row_and_signs_the_gap() -> None:
     own = _quote("own", 1600.0)
     table = quote_table(

@@ -45,7 +45,7 @@ from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.be_gas_prices import providers
-from custom_components.be_gas_prices.compare import Quote
+from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CARD_ARCHIVE,
@@ -477,8 +477,27 @@ async def test_a_stored_card_of_another_region_is_not_restored(
 
 async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssistant) -> None:
     """The custom supplier is not among the suppliers ranked: its own card
-    is quoted beside them, so the saving is known."""
+    is handed to the ranking and quoted beside them, so the saving is known."""
     cheaper = Quote("engie", "engie_flow", "Engie Flow", 100.0, 0.08, 190.0, True, False)
+
+    async def ranked(
+        session: Any, region: str, household: Any, month: str, **kwargs: Any
+    ) -> tuple[list[Quote], int]:
+        card = kwargs["custom_card"]
+        assert card is not None
+        own = await quote_contract(
+            session,
+            providers.get(SUPPLIER_CUSTOM),
+            CUSTOM_CONTRACT,
+            region,
+            household,
+            month,
+            IndexCache(),
+            use_archive=False,
+            card=card,
+        )
+        return [cheaper, own], 0
+
     data = {
         **DATA,
         CONF_SUPPLIER: SUPPLIER_CUSTOM,
@@ -493,10 +512,7 @@ async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssis
         CONF_CUSTOM_EXCISE_LOW: 1.09286,
     }
     with (
-        patch(
-            "custom_components.be_gas_prices.coordinator.rank",
-            AsyncMock(return_value=([cheaper], 0)),
-        ),
+        patch("custom_components.be_gas_prices.coordinator.rank", ranked),
         patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
     ):
         entry = await _setup(hass, data)

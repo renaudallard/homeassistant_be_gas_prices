@@ -47,10 +47,11 @@ from dataclasses import dataclass
 import aiohttp
 
 from .bill import bill_month
-from .const import SUPPLIER_CUSTOM
+from .const import CUSTOM_CONTRACT, SUPPLIER_CUSTOM
 from .month_cards import current_card
 from .pricing import PricingError
 from .providers import all_extractors
+from .providers import get as get_extractor
 from .providers._pdf import memoise_text_fetches
 from .providers._rates import IndexedRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
@@ -180,12 +181,15 @@ async def rank(
     use_archive: bool,
     budget_s: float | None = None,
     progress: Callable[[int, int], None] | None = None,
+    custom_card: SupplierSnapshot | None = None,
 ) -> tuple[list[Quote], int]:
     """Every contract in ``region`` quoted and sorted cheapest first.
 
     ``budget_s`` bounds how long the ranking spends fetching: past it the
     remaining contracts are not started, and their count is returned beside
     the ranking so the page can say so. Failed quotes sort last.
+    ``custom_card`` is a household's typed card, which is no supplier's and
+    is quoted among them so the household sees where its own contract ranks.
     """
     pairs = candidates(region)
     indices = IndexCache()
@@ -229,5 +233,19 @@ async def rank(
             *(_supplier(extractor, contracts) for extractor, contracts in by_supplier.values())
         )
     quotes = [quote for group in results for quote in group if quote is not None]
+    if custom_card is not None:
+        quotes.append(
+            await quote_contract(
+                session,
+                get_extractor(SUPPLIER_CUSTOM),
+                CUSTOM_CONTRACT,
+                region,
+                household,
+                today_month,
+                indices,
+                use_archive=False,
+                card=custom_card,
+            )
+        )
     quotes.sort(key=lambda q: (q.annual_cost is None, q.annual_cost or 0.0, q.label))
     return quotes, skipped

@@ -710,6 +710,11 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                     month_key(dt_util.now().date()),
                     use_archive=bool(data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
                     budget_s=COMPARE_BUDGET_S,
+                    custom_card=(
+                        build_custom_snapshot(dict(data))
+                        if data[CONF_SUPPLIER] == SUPPLIER_CUSTOM
+                        else None
+                    ),
                 )
             )
         if not self._rank_task.done():

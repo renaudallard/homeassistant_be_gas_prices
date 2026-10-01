@@ -33,8 +33,9 @@ reloads the entry.
   shown side by side. Nothing is saved.
 - **Compare every contract**: a progress step ranks every contract sold in
   the region (`compare.rank`, 120 s budget, three cards at a time, one
-  supplier's in turn so a page or card they share is read once), then the
-  ranked table with the household's own row in bold. Nothing is saved.
+  supplier's in turn so a page or card they share is read once, and the
+  typed card of a custom household among them), then the ranked table with
+  the household's own row in bold. Nothing is saved.
 - In both tables a dagger marks a provisional price and `OCR` a card
   published as images, quoted on the card archive's reading of it when the
   entry lets the archive be read (`month_cards.current_card`).
