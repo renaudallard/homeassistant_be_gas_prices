@@ -127,8 +127,9 @@ async_setup_entry                       __init__.py
 - Index values are fetched twice a day, calorific values daily, both kept in
   the Store.
 - A month whose own card cannot be read is billed on the current card (for
-  an earlier contract, its last month's card while it is held) and named in
-  the year cost's `months_on_current_card` attribute.
+  an earlier contract, its last month's card while it is held and can price
+  the household) and named in the year cost's `months_on_current_card`
+  attribute.
 
 ## Adding a supplier
 
