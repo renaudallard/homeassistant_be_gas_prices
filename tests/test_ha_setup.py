@@ -583,7 +583,7 @@ async def test_a_withdrawn_contract_stops_the_entry_with_its_reason(
     entry.add_to_hass(hass)
     assert not await hass.config_entries.async_setup(entry.entry_id)
     assert entry.state is ConfigEntryState.SETUP_ERROR
-    assert entry.reason is not None and "octaplus_flux" in entry.reason
+    assert entry.reason is not None and "OCTA+ Flux" in entry.reason
 
 
 @pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")

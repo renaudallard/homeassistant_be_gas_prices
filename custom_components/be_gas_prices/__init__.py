@@ -145,7 +145,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
         raise ConfigEntryError(
             translation_domain=DOMAIN,
             translation_key="contract_withdrawn",
-            translation_placeholders={"contract": coordinator.contract},
+            translation_placeholders={
+                "contract": coordinator.extractor.withdrawn.get(
+                    coordinator.contract, coordinator.contract
+                )
+            },
         )
     await coordinator.async_load_persistent()
     entry.runtime_data = coordinator

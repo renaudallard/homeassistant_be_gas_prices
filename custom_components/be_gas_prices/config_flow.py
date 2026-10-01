@@ -543,16 +543,13 @@ class _FlowSteps:
         return self.async_show_form(step_id="factor", data_schema=schema, errors=errors or {})
 
 
-def _withdrawn(data: dict[str, Any]) -> bool:
-    """Whether the contract ``data`` names is one its supplier no longer
-    has."""
-    return all(c.id != data[CONF_CONTRACT] for c in get_extractor(data[CONF_SUPPLIER]).contracts)
-
-
 def _title(data: dict[str, Any]) -> str:
+    """The title the wizard gives an entry: its contract's label, that of a
+    contract the supplier withdrew included."""
     extractor = get_extractor(data[CONF_SUPPLIER])
-    label = next((c.label for c in extractor.contracts if c.id == data[CONF_CONTRACT]), "")
-    return label or extractor.label
+    contract = data[CONF_CONTRACT]
+    label = next((c.label for c in extractor.contracts if c.id == contract), "")
+    return label or extractor.withdrawn.get(contract) or extractor.label
 
 
 class BeGasPricesConfigFlow(_FlowSteps, ConfigFlow, domain=DOMAIN):
@@ -606,15 +603,9 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
     async def _async_finish(self) -> ConfigFlowResult:
         entry = self.config_entry
         # The title the wizard gave follows the contract; one the user typed
-        # is theirs and stays. A contract its supplier withdrew no longer
-        # gives the title it gave, which was its label: the supplier's name
-        # and the product's.
+        # is theirs and stays.
         try:
-            old = dict(entry.data)
-            if _withdrawn(old):
-                made = entry.title.startswith(get_extractor(old[CONF_SUPPLIER]).label + " ")
-            else:
-                made = entry.title == _title(old)
+            made = entry.title == _title(dict(entry.data))
         except ExtractorError:
             made = False
         title = _title(self._data) if made else entry.title

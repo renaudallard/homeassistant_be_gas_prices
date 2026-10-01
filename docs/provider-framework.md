@@ -18,6 +18,7 @@ A supplier module exposes `EXTRACTOR: SupplierExtractor` (`providers/base.py`):
 | `fetch_index(session)` | Optional. The supplier's own index publication as `{index name: {"YYYY-MM": EUR/MWh}}`. |
 | `deprecated_until`, `deprecated_successor` | A supplier leaving the market. |
 | `sweep_cost_s` | Roughly what one card costs to fetch and parse, for the comparison's scheduling. |
+| `withdrawn` | The labels of the contracts the supplier withdrew, by id: an entry naming one stops at setup with that reason, and its wizard title is known. |
 
 Each module also has a pure `parse_snapshot(contract, region, text, ...)`
 that the tests call on a fixture's text.

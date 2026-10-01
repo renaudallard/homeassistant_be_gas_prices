@@ -644,7 +644,12 @@ async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None
 
 
 @pytest.mark.parametrize(
-    ("before", "after"), [("OCTA+ Flux", "OCTA+ Boost Flex"), ("My house", "My house")]
+    ("before", "after"),
+    [
+        ("OCTA+ Flux", "OCTA+ Boost Flex"),
+        ("My house", "My house"),
+        ("OCTA+ at home", "OCTA+ at home"),
+    ],
 )
 async def test_settings_retitle_an_entry_whose_contract_was_withdrawn(
     hass: HomeAssistant, before: str, after: str

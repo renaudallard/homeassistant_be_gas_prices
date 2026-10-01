@@ -481,6 +481,12 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
+    withdrawn={
+        "octaplus_flux": "OCTA+ Flux",
+        "octaplus_ecoflux": "OCTA+ Eco Flux",
+        "octaplus_fixed": "OCTA+ Fixed",
+        "octaplus_ecofixed": "OCTA+ Eco Fixed",
+    },
     fetch_index=fetch_index,
     sweep_cost_s=4.5,
 )
