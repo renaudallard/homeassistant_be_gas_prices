@@ -438,7 +438,7 @@
     },
     "backfill_statistics": {
       "name": "Compléter l'historique des prix",
-      "description": "Écrire les statistiques horaires des capteurs de prix depuis une date de début jusqu'à maintenant.",
+      "description": "Écrire les statistiques horaires des capteurs de prix depuis une date de début jusqu'à la dernière heure complète.",
       "fields": {
         "entry_id": {
           "name": "Entrée",

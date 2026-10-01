@@ -87,7 +87,8 @@ hand is still stale, and it is what lets the card archive stand in.
   tick to fetch the card and the index values whatever their age.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
-  the hour before the last full one, which the recorder compiles itself,
+  the last full hour, or the one before it in the first minutes of an hour,
+  while the recorder compiles that one itself,
   never before a change of contract recorded this year: the hours before it
   were the earlier contract's. A month before the year's window is priced on
   its own card only, fetched for the occasion, and skipped where none is

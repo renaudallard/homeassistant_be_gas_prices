@@ -438,7 +438,7 @@
     },
     "backfill_statistics": {
       "name": "Preisverlauf nachtragen",
-      "description": "Die stündlichen Statistiken der Preissensoren von einem Startdatum bis jetzt schreiben.",
+      "description": "Die stündlichen Statistiken der Preissensoren von einem Startdatum bis zur letzten vollen Stunde schreiben.",
       "fields": {
         "entry_id": {
           "name": "Eintrag",

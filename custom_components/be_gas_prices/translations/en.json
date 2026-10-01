@@ -438,7 +438,7 @@
     },
     "backfill_statistics": {
       "name": "Backfill price history",
-      "description": "Write the price sensors' hourly statistics from a start date to now.",
+      "description": "Write the price sensors' hourly statistics from a start date to the last full hour.",
       "fields": {
         "entry_id": {
           "name": "Entry",

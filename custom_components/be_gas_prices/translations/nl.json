@@ -438,7 +438,7 @@
     },
     "backfill_statistics": {
       "name": "Prijsgeschiedenis aanvullen",
-      "description": "De uurstatistieken van de prijssensoren schrijven van een startdatum tot nu.",
+      "description": "De uurstatistieken van de prijssensoren schrijven van een startdatum tot het laatste volle uur.",
       "fields": {
         "entry_id": {
           "name": "Item",

@@ -225,15 +225,14 @@ async def test_the_year_is_billed_from_the_meter(
 async def test_the_price_history_is_written_hour_by_hour(
     recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
 ) -> None:
-    """From midnight to the hour before the last full one, which the
-    recorder compiles itself, every hour at the month's price, per kWh and
-    per m3 at the bill's factor."""
+    """From midnight to the last full hour, every hour at the month's price,
+    per kWh and per m3 at the bill's factor."""
     await _zone(hass)
     entry = await _setup_entry(hass)
     coordinator = entry.runtime_data
     counts = await backfill_prices(hass, coordinator, date(2026, 9, 15))
     kwh, m3 = "sensor.engie_flow_current_price", "sensor.engie_flow_current_price_per_m3"
-    assert counts[kwh] == counts[m3] == 9
+    assert counts[kwh] == counts[m3] == 10
     assert len(counts) == 5
     await async_wait_recording_done(hass)
     start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 9, 15)))
@@ -241,8 +240,8 @@ async def test_the_price_history_is_written_hour_by_hour(
         statistics_during_period, hass, start, None, {kwh, m3}, "hour", None, {"mean"}
     )
     price = coordinator.data.breakdown.all_in
-    assert [row["mean"] for row in stats[kwh]] == [pytest.approx(price)] * 9
-    assert [row["mean"] for row in stats[m3]] == [pytest.approx(price * 11.5)] * 9
+    assert [row["mean"] for row in stats[kwh]] == [pytest.approx(price)] * 10
+    assert [row["mean"] for row in stats[m3]] == [pytest.approx(price * 11.5)] * 10
     assert stats[kwh][0]["start"] == start.timestamp()
 
 
@@ -269,7 +268,7 @@ async def test_a_month_before_the_window_is_priced_on_its_own_card(
     counts = await backfill_prices(hass, coordinator, date(2025, 12, 31))
     assert [c.args[3] for c in months.await_args_list] == [date(2025, 12, 1)]
     kwh = "sensor.engie_flow_current_price"
-    assert counts[kwh] == (24 if held else 0) + 9
+    assert counts[kwh] == (24 if held else 0) + 10
     await async_wait_recording_done(hass)
     start = dt_util.as_utc(dt_util.start_of_local_day(date(2025, 12, 31)))
     stats = await get_instance(hass).async_add_executor_job(
@@ -277,9 +276,21 @@ async def test_a_month_before_the_window_is_priced_on_its_own_card(
     )
     means = [row["mean"] for row in stats[kwh]]
     price = coordinator.data.breakdown.all_in
-    assert means[-9:] == [pytest.approx(price)] * 9
+    assert means[-10:] == [pytest.approx(price)] * 10
     if held:
         assert means[0] == pytest.approx(price - card.energy.price + 0.05)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:02:00+02:00")
+async def test_the_hour_the_recorder_is_compiling_is_left_to_it(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Two minutes past ten the recorder may not have queued its compile of
+    nine to ten yet: an import before it would make it fail."""
+    await _zone(hass)
+    entry = await _setup_entry(hass)
+    counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 15))
+    assert counts["sensor.engie_flow_current_price"] == 9
 
 
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
@@ -300,7 +311,7 @@ async def test_the_price_history_stops_at_a_recorded_switch(
     coordinator = entry.runtime_data
     assert coordinator.switch_day(date(2026, 9, 15)) == date(2026, 9, 15)
     counts = await backfill_prices(hass, coordinator, date(2026, 9, 14))
-    assert counts["sensor.engie_flow_current_price"] == 9
+    assert counts["sensor.engie_flow_current_price"] == 10
 
 
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
