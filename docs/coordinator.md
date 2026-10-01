@@ -50,8 +50,9 @@ cards (`issues.sync_issues`).
 7. **The daily ranking** (`maybe_rank`), when the entry asks for it, once a
    day at a minute derived from the entry id, in the background. A time
    listener starts it at that minute; a tick after it catches a day the
-   minute was missed on. A stored ranking made for another contract is not
-   restored, so a change of contract ranks the day again.
+   minute was missed on. A stored ranking made for another contract, or
+   under other settings, is not restored, so a change of contract or of the
+   household's settings ranks the day again.
 8. The Store is written.
 
 ## What is kept, and where

@@ -39,6 +39,8 @@ Repairs cards say when either happens.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 import ssl
 from dataclasses import replace
@@ -275,8 +277,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
         ranking = DailyRanking.from_json(blob.get("ranking"))
         # A ranking made for another contract prices a saving against a
-        # contract the household left: the day is ranked again instead.
-        if ranking is not None and ranking.own == (self.extractor.id, self.contract):
+        # contract the household left, and one made under other settings
+        # (volume, DSO, caliber, typed figures) for another household: the
+        # day is ranked again instead.
+        if (
+            ranking is not None
+            and ranking.own == (self.extractor.id, self.contract)
+            and blob.get("ranking_for") == self._settings_digest()
+        ):
             self.daily_ranking = ranking
 
     async def _save_persistent(self) -> None:
@@ -289,8 +297,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "months": self._months.to_json(),
             "backfill": self.backfill_stamp,
             "ranking": None if self.daily_ranking is None else self.daily_ranking.to_json(),
+            "ranking_for": self._settings_digest(),
         }
         await self._store.async_save(payload)
+
+    def _settings_digest(self) -> str:
+        """The entry's settings, digested: what a stored ranking was made
+        under."""
+        blob = json.dumps(self._data, sort_keys=True, default=str)
+        return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
     async def async_save(self) -> None:
         """Write the store now, outside a tick."""

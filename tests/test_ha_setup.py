@@ -496,6 +496,30 @@ async def test_a_ranking_stored_for_another_contract_is_not_served(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_ranking_made_under_other_settings_is_ranked_again(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A reload keeps the day's ranking; a change of the yearly volume ranks
+    the day again, since the saving was priced for another household."""
+    cheaper = Quote("luminus", "x", "Cheap", 1000.0, 0.08, 100.0, True, False)
+    ranked = AsyncMock(return_value=([cheaper], 0))
+    with (
+        patch("custom_components.be_gas_prices.coordinator.rank", ranked),
+        patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_DAILY_COMPARE: True})
+        assert ranked.await_count == 1
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+        assert ranked.await_count == 1
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_ANNUAL_CONSUMPTION_KWH: 4000.0}
+        )
+        await hass.async_block_till_done()
+        assert ranked.await_count == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_falls_back_like_the_running_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
