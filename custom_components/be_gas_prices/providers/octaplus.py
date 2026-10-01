@@ -66,6 +66,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from ..const import DSO_RESA, REGION_FLANDERS, REGION_WALLONIA, VAT_RATE_REDUCED
 from ._network import (
@@ -93,7 +94,7 @@ from ._pdf import (
     render_pdf,
 )
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
-from ._validity import end_of_month, month_card
+from ._validity import end_of_month, future_month, month_card
 from .base import (
     DsoOverlay,
     ExtractorError,
@@ -149,21 +150,37 @@ def _card_url(contract: _ContractDef, code: str) -> str:
 
 
 async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -> str | None:
-    """The card's Last-Modified: OCTA+ overwrites it in place, so the header
-    moves exactly when the card does."""
+    """The card's Last-Modified, and the running month.
+
+    OCTA+ overwrites the card in place, so the header moves exactly when the
+    card does. The month is in the key because the card for the next month
+    goes up on the last day of the one before (``fetch``), and must be read
+    again once its month begins.
+    """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     code = _REGION_TO_CODE.get(region)
     if contract is None or code is None:
         return None
-    return await head_freshness_key(session, _card_url(contract, code))
+    key = await head_freshness_key(session, _card_url(contract, code))
+    return None if key is None else f"{key} {dt_util.now().date():%Y-%m}"
 
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
-    """The configured region's current card for ``contract_id``."""
+    """The configured region's card for the running month.
+
+    OCTA+ puts the next month's card up in the afternoon of the last day of
+    the month before. Until that month begins the running month's card is in
+    force, and the archive still serves it; the card online is taken only
+    when the archive has none.
+    """
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "OCTA+")
     url = _card_url(contract, _region_code(contract, region))
     text = await fetch_pdf_text_layout(session, url)
-    return parse_snapshot(contract_id, region, text, source_url=url)
+    snapshot = parse_snapshot(contract_id, region, text, source_url=url)
+    if snapshot.valid_until is not None and future_month(snapshot.valid_until):
+        running = dt_util.now().date().replace(day=1)
+        return await fetch_for_month(session, contract_id, region, running) or snapshot
+    return snapshot
 
 
 def _archive_json(body: str, what: str) -> Any:

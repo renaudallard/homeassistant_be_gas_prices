@@ -30,11 +30,12 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_KEMPEN,
@@ -265,13 +266,55 @@ async def test_fetch_uses_the_file_name_the_tariff_page_links() -> None:
 
 
 async def test_probe_heads_the_card() -> None:
-    with patch.object(
-        octaplus, "head_freshness_key", AsyncMock(return_value="Mon, 31 Aug 2026")
-    ) as head:
-        assert await octaplus.probe(AsyncMock(), "octaplus_flux", REGION_FLANDERS) == (
-            "Mon, 31 Aug 2026"
-        )
+    """The month is in the key, so a card read before its month began is
+    read again once it begins."""
+    with (
+        freeze_time(datetime(2026, 8, 31, 21, 59)),
+        patch.object(
+            octaplus, "head_freshness_key", AsyncMock(return_value="Mon, 31 Aug 2026")
+        ) as head,
+    ):
+        probed = AsyncMock(), "octaplus_flux", REGION_FLANDERS
+        assert await octaplus.probe(*probed) == "Mon, 31 Aug 2026 2026-08"
+        with freeze_time(datetime(2026, 8, 31, 22, 1)):
+            assert await octaplus.probe(*probed) == "Mon, 31 Aug 2026 2026-09"
     assert head.call_args.args[1] == "https://files.octaplus.be/tariffs/G_OCTA_FLUX_RE_VL_FR.pdf"
+
+
+async def test_fetch_takes_the_running_month_from_the_archive_on_the_last_day() -> None:
+    """On 31 August afternoon the card online is already September's."""
+    online = AsyncMock(return_value=_card("G_OCTA_FLUX_RE_WL_FR.pdf"))
+    pages = {
+        "AnneeMois=202608": "getTarifArchive_WL_202608_G_RE.json",
+        "RequestedPDF=2026-08+G+OCTA%2BFLUX+RE+WL+FR.pdf": "getTariffSheet_2026-08 G OCTA+FLUX RE WL FR.json",
+    }
+    archive = AsyncMock(side_effect=_archive(pages))
+    with (
+        patch.object(octaplus, "fetch_pdf_text_layout", online),
+        patch.object(octaplus, "fetch_text", archive),
+    ):
+        with freeze_time(datetime(2026, 8, 31, 13)):
+            snap = await octaplus.fetch(AsyncMock(), "octaplus_flux", REGION_WALLONIA)
+        assert snap.publication_label == "2026-08"
+        # "Coût du gaz (c€/kWh) 6,14" on the August card, 6,89 on September's.
+        assert snap.energy.price == pytest.approx(0.0614)
+        archive.reset_mock()
+        with freeze_time(datetime(2026, 9, 1, 8)):
+            snap = await octaplus.fetch(AsyncMock(), "octaplus_flux", REGION_WALLONIA)
+        assert snap.publication_label == "2026-09"
+        archive.assert_not_called()
+
+
+async def test_fetch_keeps_the_card_online_when_the_archive_has_none() -> None:
+    online = AsyncMock(return_value=_card("G_OCTA_FLUX_RE_WL_FR.pdf"))
+    archive = AsyncMock(side_effect=_archive({}))
+    with (
+        freeze_time(datetime(2026, 8, 31, 13)),
+        patch.object(octaplus, "fetch_pdf_text_layout", online),
+        patch.object(octaplus, "fetch_text", archive),
+    ):
+        snap = await octaplus.fetch(AsyncMock(), "octaplus_flux", REGION_WALLONIA)
+    assert snap.publication_label == "2026-09"
 
 
 def test_index_table_reads_ztp_rlp_by_delivery_month() -> None:

@@ -15,8 +15,14 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 - The page links the fixed product in mixed case, `G_OCTA_Fixed_RE_..`. The
   server answers `G_OCTA_FIXED_RE_..` too, with the same ETag, but the module
   uses the spelling the page links.
+- The next month's card goes up on the last day of the month before (31
+  August 2026 13:26, 30 September 2026 14:13, Brussels time). Until that
+  month begins, `fetch` takes the running month's card from the archive
+  instead, and the card online only when the archive has none.
 - Probe: HEAD Last-Modified of the card (for example "Mon, 31 Aug 2026
-  11:26:04 GMT" on the September cards). It moves when the card is replaced.
+  11:26:04 GMT" on the September cards), which moves when the card is
+  replaced, and the running month, so the card put up early is read again
+  once its month begins.
 - Reader: pdfplumber layout (`fetch_pdf_text_layout`), which gives one table
   row per line. pypdf puts each DSO value on its own line.
 
@@ -161,7 +167,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 - Levies on the WL and VL cards; a VL card read for Wallonia, Brussels,
   another product's card and a card without its formula all fail.
 - `parse_index` on `paramètres_gaz_fr.pdf`, and its heading check.
-- `fetch` and `probe` URLs.
+- `fetch` and `probe` URLs, the probe key moving with the month, and `fetch`
+  on the last day of a month taking the running month's card from the
+  archive.
 - `fetch_for_month` with the real archive replies: URLs built, render hook,
   FIXED spelling, FIXEDD and ECOFIXEDD in March, another month refused, the
   older template refused, transient failure raised, Brussels not asked.
