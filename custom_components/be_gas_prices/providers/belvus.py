@@ -92,10 +92,15 @@ def _card_url(contract: _ContractDef, year: int, month: int) -> str:
 
 def listed_months(page: str, contract: _ContractDef) -> list[date]:
     """Every month the listing links a card of ``contract`` for, newest first.
-    A folder whose month is no month ("-00", "-13") is skipped rather than
-    failing the listing."""
+    A folder whose name is no month ("2026-13", "0000-09") is skipped rather
+    than failing the listing."""
     pattern = rf"/public/tariefkaarten/(\d{{4}})-(\d{{2}})/Tariefkaart_{contract.file}_GAS\.pdf"
-    months = {date(int(y), int(m), 1) for y, m in re.findall(pattern, page) if 1 <= int(m) <= 12}
+    months: set[date] = set()
+    for year, month in re.findall(pattern, page):
+        try:
+            months.add(date(int(year), int(month), 1))
+        except ValueError:
+            continue
     return sorted(months, reverse=True)
 
 
