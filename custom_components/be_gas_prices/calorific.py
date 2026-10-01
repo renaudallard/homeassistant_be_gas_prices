@@ -184,8 +184,11 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
         start = next(i for i, line in enumerate(lines) if "ARSName" in line)
     except StopIteration:
         raise CalorificError("calorific value file has no header") from None
-    reader = csv.reader(io.StringIO("\n".join(lines[start:])))
-    header = [cell.strip().lstrip("﻿") for cell in next(reader)]
+    try:
+        rows = list(csv.reader(io.StringIO("\n".join(lines[start:]))))
+    except csv.Error as err:
+        raise CalorificError(f"calorific value file is not CSV: {err}") from None
+    header = [cell.strip().lstrip("﻿") for cell in rows[0]]
     try:
         name_at = header.index("ARSName")
         ean_at = header.index("ARSEanGSRN")
@@ -193,7 +196,7 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
     except ValueError:
         raise CalorificError(f"calorific value file has an unknown header {header}") from None
     out: dict[Station, float] = {}
-    for row in reader:
+    for row in rows[1:]:
         if len(row) <= max(name_at, ean_at, value_at):
             continue
         cell = row[value_at].strip()

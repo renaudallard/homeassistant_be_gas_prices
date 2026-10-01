@@ -52,3 +52,10 @@ def test_a_value_that_is_not_a_figure_is_a_calorific_error() -> None:
     broken = _FILE + "2026-08,GOS FLUVIUS - BEVEREN,541454827090000056,n/a\r\n"
     with pytest.raises(CalorificError, match="bad value"):
         parse_gcv_file(broken.encode())
+
+
+def test_a_file_that_is_no_csv_is_a_calorific_error() -> None:
+    """A quote that never closes runs past the csv field limit."""
+    payload = b'ARSName,ARSEanGSRN,GCVValue\n"X' + b"x" * 140_000 + b"\n"
+    with pytest.raises(CalorificError, match="not CSV"):
+        parse_gcv_file(payload)
