@@ -43,9 +43,12 @@ from custom_components.be_gas_prices.const import (
     CALIBER_Q10,
     CONF_MANUAL_BASE,
     CONF_MANUAL_FACTOR,
+    CONF_MANUAL_PRICE,
+    CONF_SUPPLIER,
     DSO_ORES,
     REGION_FLANDERS,
     REGION_WALLONIA,
+    SUPPLIER_CUSTOM,
 )
 from custom_components.be_gas_prices.providers import engie, sparki
 from custom_components.be_gas_prices.providers._network import excise_bands
@@ -132,6 +135,17 @@ def test_a_signed_formula_moves_with_the_index_its_month_card_implies() -> None:
     assert typed.price == pytest.approx((0.1 * 65.0 + 0.2) / 100.0 * 1.06)
     # No signing card and nothing typed: the card's own leg as printed.
     assert contract_leg(own, None, None, {}) is own
+
+
+def test_nothing_is_laid_over_a_typed_custom_card() -> None:
+    """Signing figures an earlier flow stored on a custom entry, carried
+    into an earlier contract by a recorded switch, leave its card alone."""
+    own = FixedRates(price=0.075, yearly_fixed_fee=60.0)
+    data = {CONF_SUPPLIER: SUPPLIER_CUSTOM, CONF_MANUAL_PRICE: 8.0}
+    assert contract_leg(own, None, None, data) is own
+    assert contract_leg(own, None, None, {**data, CONF_SUPPLIER: "engie"}).price == (
+        pytest.approx(0.08 * 1.06)
+    )
 
 
 def test_bill_month_applies_the_law_to_the_delivery_month() -> None:

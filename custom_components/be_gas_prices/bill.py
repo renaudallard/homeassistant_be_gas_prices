@@ -53,6 +53,7 @@ from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
 
+from .const import CONF_SUPPLIER, SUPPLIER_CUSTOM
 from .manual_rate import manual_leg
 from .pricing import PriceBreakdown, compute_breakdown, energy_price, fixed_costs
 from .providers._rates import EnergyRates, IndexedRates, VariableRates
@@ -106,7 +107,13 @@ def contract_leg(
     the card of the month, and a signed or typed formula is priced at it,
     so the month moves with the market rather than holding the signing
     month's figure.
+
+    The custom supplier's typed card is the contract itself: nothing is laid
+    over it, not even signing figures an earlier version of the flow asked
+    a custom entry for.
     """
+    if data.get(CONF_SUPPLIER) == SUPPLIER_CUSTOM:
+        return own
     leg = own if signed is None or isinstance(signed, VariableRates) else signed
     leg = manual_leg(leg, data)
     if (
