@@ -243,15 +243,17 @@ jobs:
           # goes. Only this integration's releases, and counted from the 1st
           # so no day of the month shifts the cutoff. Listed with an explicit
           # limit: gh stops at 30 by default, and the old ones would sit
-          # beyond it, never listed and never deleted.
+          # beyond it, never listed and never deleted. Listed into a variable
+          # first: piped into the loop, a failed listing would leave the loop
+          # nothing to read and the step would pass.
           cutoff="gas-$(date -u -d "$(date -u +%Y-%m-01) -12 months" +%Y-%m)"
-          gh release list --repo "$CARDS_REPO" --limit 1000 --json tagName --jq '.[].tagName' \
-            | while read -r tag; do
-              case "$tag" in gas-*) ;; *) continue ;; esac
-              if [ "$tag" \< "$cutoff" ]; then
-                gh release delete "$tag" --repo "$CARDS_REPO" --yes --cleanup-tag
-              fi
-            done
+          tags=$(gh release list --repo "$CARDS_REPO" --limit 1000 --json tagName --jq '.[].tagName')
+          while read -r tag; do
+            case "$tag" in gas-*) ;; *) continue ;; esac
+            if [ "$tag" \< "$cutoff" ]; then
+              gh release delete "$tag" --repo "$CARDS_REPO" --yes --cleanup-tag
+            fi
+          done <<< "$tags"
 
       - name: Index the kept cards for people
         # The walk wrote the coverage sheets before today's uploads were in
