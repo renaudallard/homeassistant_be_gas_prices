@@ -83,7 +83,7 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
 )
-from custom_components.be_gas_prices.providers import engie
+from custom_components.be_gas_prices.providers import engie, octaplus
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
@@ -487,6 +487,51 @@ async def test_a_withdrawn_contract_stops_the_entry_with_its_reason(
     assert not await hass.config_entries.async_setup(entry.entry_id)
     assert entry.state is ConfigEntryState.SETUP_ERROR
     assert entry.reason is not None and "octaplus_flux" in entry.reason
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_s_entry_is_set_up_once_another_is_picked(
+    hass: HomeAssistant,
+) -> None:
+    card = octaplus.parse_snapshot(
+        "octaplus_boostflex",
+        REGION_WALLONIA,
+        fixture_text("octaplus", "G_OCTA_BOOSTFLEX_RE_WL_FR.pdf", "layout"),
+    )
+    stub = replace(
+        octaplus.EXTRACTOR,
+        fetch=AsyncMock(return_value=card),
+        fetch_index=AsyncMock(return_value={}),
+        fetch_for_month=None,
+        probe=None,
+    )
+    data = {**DATA, CONF_SUPPLIER: "octaplus", CONF_CONTRACT: "octaplus_flux"}
+    entry = MockConfigEntry(domain=DOMAIN, title="OCTA+ Flux", data=data)
+    entry.add_to_hass(hass)
+    with patch.dict(providers.EXTRACTORS, {"octaplus": stub}):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        assert entry.state is ConfigEntryState.SETUP_ERROR
+        flows = hass.config_entries.options
+        result = await flows.async_init(entry.entry_id)
+        for user_input in (
+            {"next_step_id": "settings"},
+            {},
+            {CONF_REGION: REGION_WALLONIA},
+            {CONF_SUPPLIER: "octaplus"},
+            {CONF_CONTRACT: "octaplus_boostflex"},
+            {CONF_DSO: DSO_ORES},
+            {
+                CONF_ANNUAL_CONSUMPTION_KWH: 17000.0,
+                CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+                CONF_CARD_ARCHIVE: False,
+                CONF_DAILY_COMPARE: False,
+            },
+            {CONF_CONVERSION_FACTOR: 11.5},
+        ):
+            result = await flows.async_configure(result["flow_id"], user_input)
+        assert result["type"] is FlowResultType.CREATE_ENTRY
+        await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

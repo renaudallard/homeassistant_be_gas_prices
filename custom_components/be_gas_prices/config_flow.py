@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 import voluptuous as vol
 from homeassistant.config_entries import (
     ConfigEntry,
+    ConfigEntryState,
     ConfigFlow,
     ConfigFlowResult,
     OptionsFlow,
@@ -613,6 +614,10 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
             made = entry.title
         title = _title(self._data) if entry.title == made else entry.title
         self.hass.config_entries.async_update_entry(entry, data=self._data, title=title)
+        if entry.state is not ConfigEntryState.LOADED:
+            # An entry stopped at setup (a contract its supplier withdrew)
+            # has no update listener yet to set it up again.
+            self.hass.config_entries.async_schedule_reload(entry.entry_id)
         return self.async_create_entry(data={})
 
     # ---- comparison ----------------------------------------------------------
