@@ -182,7 +182,13 @@ async def current_card(
         except ExtractorError as err:
             _LOGGER.debug("%s card for %s not read: %s", extractor.label, month, err)
             running = None
-        if running is not None:
+        # Only the running month's own card: a supplier archive answering
+        # with another month's is no better than the card online.
+        if (
+            running is not None
+            and running.valid_until is not None
+            and f"{running.valid_until:%Y-%m}" == month
+        ):
             return running, "live"
     return snapshot, "live"
 

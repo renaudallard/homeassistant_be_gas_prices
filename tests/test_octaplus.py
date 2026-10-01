@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import date, datetime
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -321,6 +322,21 @@ async def test_the_running_month_s_card_stands_in_for_one_put_up_early() -> None
         )
         assert snap.publication_label == "2026-09"
         archive.assert_not_called()
+
+
+async def test_a_card_put_up_early_is_kept_over_another_month_s() -> None:
+    """The archive answering with another month's card is no stand-in."""
+    online = AsyncMock(return_value=_card("G_OCTA_FLUX_RE_WL_FR.pdf"))
+    july = octaplus.parse_snapshot(
+        "octaplus_flux", REGION_WALLONIA, _card("G_OCTA_FLUX_RE_WL_FR.pdf")
+    )
+    july = replace(july, publication_label="2026-07", valid_until=date(2026, 7, 31))
+    stub = replace(octaplus.EXTRACTOR, fetch_for_month=AsyncMock(return_value=july))
+    with patch.object(octaplus, "fetch_pdf_text_layout", online):
+        snap, _source = await current_card(
+            AsyncMock(), stub, "octaplus_flux", REGION_WALLONIA, "2026-08", use_archive=False
+        )
+    assert snap.publication_label == "2026-09"
 
 
 async def test_a_card_put_up_early_is_kept_when_the_archive_has_none() -> None:
