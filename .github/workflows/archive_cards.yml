@@ -215,6 +215,10 @@ jobs:
         run: |
           manifest=tmp/cards/gas/pdfs.json
           [ -s "$manifest" ] || echo '{}' > "$manifest"
+          # A manifest jq cannot read would have every run upload its cards
+          # and record none of them; it fails the step instead.
+          jq -e 'type == "object"' "$manifest" > /dev/null \
+            || { echo "$manifest is not a JSON object" >&2; exit 1; }
           for dir in tmp/pdfs/gas-*/; do
             [ -d "$dir" ] || continue
             tag=$(basename "$dir")
@@ -236,7 +240,10 @@ jobs:
             done
             if [ -s landed.txt ]; then
               jq -Rn '[inputs | split(" ") | {(.[0]): .[1]}] | add // {}' landed.txt > landed.json
-              jq -s '.[0] + .[1]' "$manifest" landed.json > "$manifest.tmp" && mv "$manifest.tmp" "$manifest"
+              # Two commands, not an && list: under bash -e a failure before
+              # the last command of a list does not stop the step.
+              jq -s '.[0] + .[1]' "$manifest" landed.json > "$manifest.tmp"
+              mv "$manifest.tmp" "$manifest"
             fi
           done
           # Same retention as the rows: a month more than twelve months back
