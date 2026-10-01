@@ -322,9 +322,14 @@ async def test_the_station_list_covers_atrias_two_latest_months(hass: HomeAssist
     """A station listed at 0 in August, out of use that month only, can
     still be picked from July's value."""
     july, august = STATIONS[0], STATIONS[1]
-    files = {"GCV202607.txt": {july: 11.5, august: 11.4}, "GCV202608.txt": {august: 11.3}}
+    files: dict[str, Any] = {
+        "GCV202607.txt": {july: 11.5, august: 11.4},
+        "GCV202608.txt": {august: 11.3},
+    }
 
     async def fetch_month(_session: Any, _context: Any, _key: Any, path: str) -> Any:
+        if files[path] is None:
+            raise calorific.CalorificError("calorific value file has a bad value 'n/a'")
         return files[path]
 
     with (
@@ -344,7 +349,11 @@ async def test_the_station_list_covers_atrias_two_latest_months(hass: HomeAssist
         patch.object(calorific, "fetch_month", fetch_month),
     ):
         stations = await config_flow._stations(hass)
-    assert {station.ean for station in stations} == {july.ean, august.ean}
+        assert {station.ean for station in stations} == {july.ean, august.ean}
+        # July unreadable: August's list all the same.
+        files["GCV202607.txt"] = None
+        stations = await config_flow._stations(hass)
+    assert {station.ean for station in stations} == {august.ean}
 
 
 async def test_a_station_out_of_the_list_is_kept_on_offer(hass: HomeAssistant) -> None:
