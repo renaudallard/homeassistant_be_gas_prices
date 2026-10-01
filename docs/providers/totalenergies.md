@@ -214,6 +214,8 @@ and the index history PDF. The tests pin:
 
 - the variable leg on myComfort Wallonia: index, factor, base, formula
   string, indicative price, fee, month and VAT;
+- the October 2026 Gaz Variable card, whose indicative price is blank,
+  priced at its estimate;
 - the base per region and the fee and formula of each variable product;
 - the price and fee of every fixed card fixture, in all three regions;
 - the formula check: on eight variable cards, the formula at the previous
@@ -227,7 +229,7 @@ and the index history PDF. The tests pin:
   0,01, and the nine Brussels OSP amounts;
 - refusals: another product's card, another region's card, Impact outside
   Wallonia, an unknown contract, and a card missing the VAT, the formula,
-  the indicative price, an excise row or a DSO row;
+  the estimate, an excise row or a DSO row;
 - the index history: values of all three indices, the quarter filling, an
   empty current quarter, the depth from 06/2024, and refusal of a reordered
   header;
