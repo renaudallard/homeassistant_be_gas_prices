@@ -26,14 +26,16 @@ Module: `custom_components/be_gas_prices/providers/sparki.py`. Tests:
   for Wallonia ("particuliers en Wallonie"). No Brussels card.
 - At Your Service XL is on the site but has no gas card on the listing.
 - The card's validity sentence names its product ("geldig voor het product
-  “Self Service”", "valable pour le produit “Self Service”") and region; a
-  card naming another is refused.
+  “Self Service”", "valable pour le produit “Self Service”", "Self service"
+  from October 2026, compared without case) and region; a card naming
+  another is refused.
 
 ## Why VariableRates
 
 The formula "((0,105*TTF)+0,8)*1,06" (c€/kWh, VAT inclusive) never says which
 TTF it means, and Sparki publishes no index values. Checked on 29 September
-2026:
+2026 (from October 2026 the card names it "TTF EGSI EEX DA", an EEX index
+whose values Sparki still does not publish):
 
 - the card defines nothing beyond the formula;
 - the B2C general conditions
@@ -58,11 +60,13 @@ pypdf lists the DSO labels apart from their rows; pdfplumber keeps each row
 on one line, so the card is read with `fetch_pdf_text_layout` (1,7 s to
 extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 
-- Month: "Tariefkaart september 2026" / "Carte tarifaire septembre 2026".
+- Month: "Tariefkaart september 2026" / "Carte tarifaire septembre 2026",
+  from October 2026 "Tariefkaart gas oktober 2026" / "Carte tarifaire gaz
+  octobre 2026".
 - Energy: "21,20 7,79 Geschatte maandprijs" / "21,20 7,79 Prix mensuel
   estimé": the yearly fee, then the price in c€/kWh.
-- Formula: "berekend volgens de formule ((0,105*TTF)+0,8)*1,06." (kept for
-  diagnostics).
+- Formula: "berekend volgens de formule ((0,105*TTF)+0,8)*1,06.", from
+  October 2026 "((0,105* TTF EGSI EEX DA)+0,8)*1,06." (kept for diagnostics).
 - VAT: "inclusief 6% BTW" / "TVA 6% comprise" into `card_vat_rate`.
 - Taxes, c€/kWh: "Bijdrage op de Energie (c€/kWh) 0,10577" / "Cotisation sur
   l’énergie (c€/kWh) 0,10577", "Verbruik tussen 0 & 12.000 kWh 0,87338" /

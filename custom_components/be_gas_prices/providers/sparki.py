@@ -40,8 +40,9 @@ Flanders, the FR card for Wallonia; there is no Brussels card.
 The energy price is VariableRates, not IndexedRates. The formula
 "((0,105*TTF)+0,8)*1,06" (c EUR/kWh, VAT inclusive) never says which TTF it
 means: neither the card, the general conditions (which defer to the card)
-nor the site name the assessment, the averaging or the month, and Sparki
-publishes no index values. The printed "Geschatte maandprijs" is not a
+nor the site name the assessment, the averaging or the month (from October
+2026 the card names "TTF EGSI EEX DA", an EEX index), and Sparki publishes no
+index values. The printed "Geschatte maandprijs" is not a
 month's settled value either. The NL card says it is based on the VNR
 methodology and prints the value used, "6,24 c€/kWh": 62,4 EUR/MWh gives the
 printed 7,79, and is the figure the Energy Together cards' twelve-month VNR
@@ -198,11 +199,15 @@ async def fetch_for_month(
     return await month_card(_read_month(session, contract, region, year_month), year_month)
 
 
-_CARD_MONTH_RE = re.compile(r"(?:tariefkaart|carte tarifaire)\s+([a-z]+)\s+(20\d{2})\b")
+_CARD_MONTH_RE = re.compile(
+    r"(?:tariefkaart|carte tarifaire)\s+(?:gas\s+|gaz\s+)?([a-z]+)\s+(20\d{2})\b"
+)
 
 
 def _card_month(text: str) -> date:
-    """ "Tariefkaart september 2026" or "Carte tarifaire septembre 2026"."""
+    """ "Tariefkaart september 2026" or "Carte tarifaire septembre 2026", and
+    from October 2026 "Tariefkaart gas oktober 2026" or "Carte tarifaire gaz
+    octobre 2026"."""
     match = _CARD_MONTH_RE.search(fold_accents(text))
     month = MONTH_NAMES.get(match.group(1)) if match else None
     if match is None or month is None:
@@ -215,7 +220,9 @@ _VAT_PATTERNS = (r"inclusief\s+(\d+)\s*%\s*BTW", r"TVA\s+(\d+)\s*%\s*comprise")
 _PRICE_RE = re.compile(
     r"^(\d+,\d+)\s+(\d+,\d+)\s+(?:Geschatte maandprijs|Prix mensuel estimé)", re.MULTILINE
 )
-_FORMULA_RE = re.compile(r"formule\s+(\S*TTF\S*?)\.(?:\s|$)")
+# "((0,105*TTF)+0,8)*1,06.", from October 2026 "((0,105* TTF EGSI EEX DA)+0,8)
+# *1,06.": up to the full stop.
+_FORMULA_RE = re.compile(r"formule\s+(\S.*?TTF.*?)\.(?:\s|$)")
 
 
 def _energy(text: str) -> VariableRates:
@@ -289,7 +296,8 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
     """
     contract = _contract(contract_id, region)
     product = _PRODUCT_RE.search(text)
-    if product is None or product.group(1) != contract.product:
+    # "Self Service" until September 2026, "Self service" from October.
+    if product is None or product.group(1).casefold() != contract.product.casefold():
         raise ExtractorError(f"Sparki: card is not for {contract.product!r}")
     if _REGION_TEXT[region] not in text:
         raise ExtractorError(f"Sparki: card is not for {region}")

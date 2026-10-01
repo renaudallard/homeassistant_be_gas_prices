@@ -56,6 +56,8 @@ SS_NL = "Sparki_Tariefkaart_september_Particulier_SelfService_Gas_NL.pdf"
 SS_FR = "Sparki_Tariefkaart_september_Particulier_SelfService_Gas_FR.pdf"
 AYS_NL = "Sparki_Tariefkaart_september_Particulier_AtYourService_Gas_NL.pdf"
 SS_NL_AUGUST = "Sparki_Tariefkaart_augustus_Particulier_SelfService_Gas_NL.pdf"
+SS_NL_OCTOBER = "Sparki_Tariefkaart_oktober_Particulier_SelfService_Gas_NL.pdf"
+AYS_FR_OCTOBER = "Sparki_Tariefkaart_oktober_Particulier_AtYourService_Gas_FR.pdf"
 UPLOADS = "https://sparki.be/wp-content/uploads"
 
 
@@ -74,6 +76,25 @@ def test_price_is_kept_as_printed() -> None:
     )
     assert snap.publication_label == "2026-09"
     assert snap.valid_until == date(2026, 9, 30)
+
+
+@pytest.mark.parametrize(
+    ("contract", "region", "name", "fee"),
+    [
+        ("sparki_self_service", REGION_FLANDERS, SS_NL_OCTOBER, 21.20),
+        ("sparki_at_your_service", REGION_WALLONIA, AYS_FR_OCTOBER, 89.04),
+    ],
+)
+def test_october_cards_reworded(contract: str, region: str, name: str, fee: float) -> None:
+    """October 2026: "Tariefkaart gas oktober 2026", the product "Self
+    service", and a formula that names its index with spaces in it."""
+    snap = sparki.parse_snapshot(contract, region, _card(name), "url")
+    assert snap.energy == VariableRates(
+        price=approx(0.0854),
+        yearly_fixed_fee=approx(fee),
+        formula="((0,105* TTF EGSI EEX DA)+0,8)*1,06",
+    )
+    assert snap.publication_label == "2026-10"
 
 
 def test_printed_price_is_the_formula_at_the_vnr_estimate() -> None:
