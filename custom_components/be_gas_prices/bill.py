@@ -146,8 +146,8 @@ class MonthBill:
     fixed_cost: float
     index: IndexValue | None
     # True while the energy price is not yet the one the month settles at:
-    # an indexed leg priced at another month's value, or at the card's own
-    # estimate because the supplier publishes no value at all.
+    # an indexed leg priced at another month's value, settled or not, or at
+    # the card's own estimate because the supplier publishes no value at all.
     provisional: bool
 
     @property
@@ -191,6 +191,5 @@ def bill_month(
         fixed_cost=fixed,
         index=index,
         provisional=isinstance(energy, IndexedRates)
-        and not energy.settled
-        and (index is None or index.month != month),
+        and (index.month != month if index is not None else not energy.settled),
     )

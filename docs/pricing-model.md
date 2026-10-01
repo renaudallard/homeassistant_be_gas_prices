@@ -63,7 +63,9 @@ publication (`SupplierExtractor.fetch_index`), because two publishers of
 "the same" market rarely publish the same figure. A quarterly index fills
 each month of its quarter. An index set before delivery (Engie's ZTP101, a
 month-ahead average) is `settled`: the card prices its month on it and the
-printed price is final.
+printed price is final. A settled month the supplier's table does not hold
+yet is still priced at the latest value it holds, and is provisional like
+any other.
 
 Which card's leg (`bill.contract_leg`): the card of month M by default, or
 the signing card when the entry names a contract start date or a tariff card

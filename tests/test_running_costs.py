@@ -33,6 +33,7 @@ from datetime import date, timedelta
 import pytest
 
 from custom_components.be_gas_prices.bill import (
+    MonthBill,
     bill_month,
     contract_leg,
     index_for,
@@ -173,6 +174,41 @@ def test_bill_month_applies_the_law_to_the_delivery_month() -> None:
     )
     assert july.breakdown.taxes == pytest.approx(0.008724 + 0.001058 + 0.000075)
     assert not july.provisional
+
+
+def test_a_settled_month_missing_from_the_table_is_provisional() -> None:
+    """Engie publishes October's ZTP101 on its index page hours after the
+    month starts; until then October is priced at September's value, which
+    is not the price the month settles at."""
+    card = engie.parse_snapshot(
+        "engie_easy_variable",
+        REGION_WALLONIA,
+        fixture_text("engie", "G_EASY_R_GREY_C_I_12_W_F_202609.pdf"),
+    )
+    assert isinstance(card.energy, IndexedRates) and card.energy.settled
+    table = {"ZTP101": {"2026-09": 61.768}}
+
+    def bill(month: str, table: dict[str, dict[str, float]] | None) -> MonthBill:
+        return bill_month(
+            month=month,
+            card=card,
+            energy=card.energy,
+            table=table,
+            dso=DSO_ORES,
+            annual_kwh=10_000.0,
+            caliber=CALIBER_Q10,
+            kwh=1000.0,
+            days=30,
+            days_in_year=365,
+        )
+
+    assert not bill("2026-09", table).provisional
+    october = bill("2026-10", table)
+    assert october.index is not None and october.index.month == "2026-09"
+    assert october.provisional
+    # No table at all: the card's own figure, which a settled card sets at
+    # its month's value.
+    assert not bill("2026-09", None).provisional
 
 
 def test_bill_month_accrues_the_fixed_costs_by_the_day() -> None:
