@@ -84,3 +84,25 @@ def test_an_ebem_link_that_is_no_month_is_skipped() -> None:
 def test_an_index_footnote_that_is_no_month_states_no_value() -> None:
     text = "laatst gekende waarde van TTF-DAM 8/0000: €61,729/MWh"
     assert last_known_index(text) is None
+
+
+@pytest.mark.parametrize(
+    "known",
+    [
+        "Geldig voor particuliere contracten afgesloten in oktober 2026. "
+        "De laatst gekende waarde is deze van september 0000 (61,72 €/MWh)",
+        "Geldig voor particuliere contracten afgesloten in januari 0001. "
+        "De laatst gekende waarde is deze van december 2025 (61,72 €/MWh)",
+    ],
+)
+def test_a_trevion_card_naming_no_month_names_no_index_value(known: str) -> None:
+    assert trevion.published_index(known) is None
+
+
+def test_a_trevion_card_names_the_month_before_its_own() -> None:
+    known = (
+        "Geldig voor particuliere contracten afgesloten in januari 2027. "
+        "De laatst gekende waarde is deze van december 2026 (61,72 €/MWh)"
+    )
+    assert trevion.published_index(known) == (date(2026, 12, 1), pytest.approx(61.72))
+

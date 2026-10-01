@@ -62,7 +62,7 @@ month.
 from __future__ import annotations
 
 import re
-from datetime import date, timedelta
+from datetime import date
 from urllib.parse import urljoin
 
 import aiohttp
@@ -262,12 +262,16 @@ def published_index(text: str) -> tuple[date, float] | None:
     """The TTF_RLP month and value in EUR/MWh a card names, or None where
     the card names none or names a month other than the one before its own.
     """
-    card_month = _card_month(text)
     match = _KNOWN_VALUE_RE.search(text)
-    if card_month is None or match is None:
+    try:
+        card_month = _card_month(text)
+        named = None if match is None else _month(match.group(1), match.group(2))
+    except ExtractorError:
+        # A month that is no month names no value.
         return None
-    named = _month(match.group(1), match.group(2))
-    if named != (card_month - timedelta(days=1)).replace(day=1):
+    if match is None or card_month is None or named is None:
+        return None
+    if named.year * 12 + named.month + 1 != card_month.year * 12 + card_month.month:
         return None
     return named, to_float(match.group(3))
 
