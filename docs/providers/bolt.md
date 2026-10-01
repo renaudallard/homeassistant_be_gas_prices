@@ -102,7 +102,7 @@ registered, and the module never contacts EEX.
   (0,0019706) gives 4,198 for T1 exactly and 2,114 for T2. Decision 1008's
   text rounds the T2 distribution term, so the last digit is not checkable.
 - RESA T2 proportional 2,259 where the grid says 2,52946 and every other card
-  2,529: most likely two digits swapped. RESA T1 4,640 and the fixed terms
+  but Ecofix's 2,529: most likely two digits swapped. RESA T1 4,640 and the fixed terms
   agree.
 - A single excise rate: 1,09286 is the law's first slice (10,31 EUR/MWh plus
   6%); the second slice (1,18296) is not printed.

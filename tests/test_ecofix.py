@@ -127,10 +127,11 @@ def test_flanders_table() -> None:
 
 
 def test_wallonia_table_as_printed() -> None:
-    """The five ORES rows agree and collapse. Two figures are the card's own
+    """The five ORES rows agree and collapse. Three figures are the card's own
     errors, read as printed: the ORES terms 4,198 and 2,115 (Bolt prints the
-    same, every other card 4,289 and 2,206) and RESA's mid-tier fixed term
-    140,93, which is ORES's (122,05 on the other cards)."""
+    same, every other card 4,289 and 2,206), RESA's mid-tier fixed term
+    140,93, which is ORES's (122,05 on the other cards), and RESA's mid-tier
+    term 2,259 (Bolt prints the same, every other card 2,529)."""
     snap = _parse(FLEXY, "ecofix_flexy", REGION_WALLONIA)
     assert set(snap.dsos) == {DSO_ORES, DSO_RESA}
     ores = snap.dsos[DSO_ORES]
@@ -141,6 +142,7 @@ def test_wallonia_table_as_printed() -> None:
     resa = snap.dsos[DSO_RESA]
     assert resa.tiers[TIER_T1].proportional == pytest.approx(0.0464)
     assert resa.tiers[TIER_T2].fixed_per_year == pytest.approx(140.93)
+    assert resa.tiers[TIER_T2].proportional == pytest.approx(0.02259)
     assert resa.tiers[TIER_T3].proportional == pytest.approx(0.02241)
 
 

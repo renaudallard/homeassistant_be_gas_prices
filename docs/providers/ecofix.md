@@ -100,6 +100,8 @@ them to it, which a misread digit of a base would break by several EUR/MWh.
   every other card prints 4,289 and 2,206.
 - RESA's mid-tier fixed term 140,93, which is ORES's; the other cards print
   122,05.
+- RESA's mid-tier term 2,259 c€/kWh, as Bolt prints it, where the grid says
+  2,52946 and every other card 2,529.
 - "TECTO - RESA" for TECTEO - RESA.
 
 ## What the tests pin
