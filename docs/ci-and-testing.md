@@ -85,6 +85,24 @@ cache: they check with different options, and through one shared cache each
 threw the other's away, about two minutes a run on a Raspberry Pi against a
 second or two once warm.
 
+### The gate
+
+`scripts/gate.sh` runs every check above at once against a throwaway git
+worktree of HEAD, so editing the tree meanwhile cannot reach it and what is
+checked is what a push would publish: commit first, then gate.
+
+```bash
+GATE_PYTHON=/path/to/venv/bin/python scripts/gate.sh   # the whole suite
+scripts/gate.sh tests/test_ebem.py                     # one file
+```
+
+pytest spreads over the cores and the other checks take one each. The text
+cache and the two mypy caches are the main checkout's, so a gate after the
+first reuses them: on a Raspberry Pi, every check and the whole suite took 69
+seconds with the caches full. The interpreter is `GATE_PYTHON`, else
+`.venv/bin/python`; actionlint runs over the workflows when its binary sits
+at `tmp/actionlint`.
+
 ## scripts/live_check.py
 
 Fetches every registered (supplier, contract, region) with the extractor the

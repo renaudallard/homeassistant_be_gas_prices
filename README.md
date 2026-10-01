@@ -310,6 +310,9 @@ mypy --cache-dir .mypy_cache_all tests/ scripts/
 pytest tests/
 ```
 
+`scripts/gate.sh` runs all of these at once against a snapshot of HEAD, which
+is what to use before a push.
+
 See [docs/](docs/) for the internals.
 
 ## License
