@@ -102,6 +102,10 @@ def read_stamp(archive: Path) -> str | None:
     return lines[0].strip() if lines else ""
 
 
+# The name of a render thread, so the tests can wait for one to wind down.
+RENDER_THREAD = "card-render"
+
+
 async def in_daemon_thread[T](func: Callable[[bytes], T], payload: bytes) -> T:
     """``func(payload)`` in a daemon thread of its own.
 
@@ -131,7 +135,7 @@ async def in_daemon_thread[T](func: Callable[[bytes], T], payload: bytes) -> T:
         with contextlib.suppress(RuntimeError):
             loop.call_soon_threadsafe(settle, *outcome)
 
-    threading.Thread(target=run, daemon=True).start()
+    threading.Thread(target=run, name=RENDER_THREAD, daemon=True).start()
     return await future
 
 

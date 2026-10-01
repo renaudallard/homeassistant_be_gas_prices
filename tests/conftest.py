@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -37,6 +38,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.card_texts import RENDER_THREAD
 
 
 @pytest.fixture(autouse=True)
@@ -65,3 +68,14 @@ def _force_brussels_timezone(request: pytest.FixtureRequest) -> Iterator[None]:
         yield
     finally:
         dt_util.set_default_time_zone(original)
+
+
+@pytest.fixture(autouse=True)
+def _render_threads_wound_down() -> Iterator[None]:
+    """A card render settles its awaited result from a daemon thread, which
+    may still be winding down when the test ends: waited for here, before
+    Home Assistant's check for threads a test left behind."""
+    yield
+    for thread in threading.enumerate():
+        if thread.name == RENDER_THREAD:
+            thread.join(timeout=10)
