@@ -233,18 +233,18 @@
       },
       "compare_contract": {
         "title": "Zu vergleichender Vertrag",
-        "description": "Beide Verträge werden für Ihren Haushalt berechnet: Ihr Jahresverbrauch, Netzbetreiber und Stufe, nach jeder Karte in ihrer heutigen Fassung. Solange dieser Eintrag läuft, wird Ihr eigener Vertrag stattdessen so berechnet, wie der Eintrag ihn abrechnet, mit dem Tarif bei Vertragsabschluss oder den von Ihnen eingegebenen Zahlen.",
+        "description": "Beide Verträge werden für Ihren Haushalt berechnet: Ihr Jahresverbrauch, Netzbetreiber und Stufe, nach jeder Karte in ihrer heutigen Fassung. Ihr eigener Vertrag wird stattdessen so berechnet, wie Ihr Eintrag ihn abrechnet, sobald der Eintrag seine Karte hat, mit dem Tarif bei Vertragsabschluss oder den von Ihnen eingegebenen Zahlen.",
         "data": {
           "contract": "Vertrag"
         }
       },
       "compare_result": {
         "title": "Angebot",
-        "description": "Ein Jahr mit {annual_kwh} kWh nach jeder Karte in ihrer heutigen Fassung, alle Kosten inbegriffen; solange dieser Eintrag läuft, Ihr eigener Vertrag so, wie der Eintrag ihn abrechnet. Ein Kreuz markiert einen vorläufigen Preis, zum letzten vom Lieferanten veröffentlichten Indexwert oder zum Preis auf seiner Karte, wenn er keinen veröffentlicht, den der Monat noch verändern kann. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs.\n\n{table}"
+        "description": "Ein Jahr mit {annual_kwh} kWh nach jeder Karte in ihrer heutigen Fassung, alle Kosten inbegriffen; Ihr eigener Vertrag so, wie Ihr Eintrag ihn abrechnet, sobald der Eintrag seine Karte hat. Ein Kreuz markiert einen vorläufigen Preis, zum letzten vom Lieferanten veröffentlichten Indexwert oder zum Preis auf seiner Karte, wenn er keinen veröffentlicht, den der Monat noch verändern kann. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs.\n\n{table}"
       },
       "compare_all_result": {
         "title": "Alle Verträge, geordnet",
-        "description": "Ein Jahr mit {annual_kwh} kWh nach jeder in Ihrer Region verkauften Karte in ihrer heutigen Fassung, der günstigste zuerst, Ihr Vertrag fett und, solange dieser Eintrag läuft, so berechnet, wie der Eintrag ihn abrechnet. Ein Kreuz markiert einen vorläufigen Preis, zum letzten veröffentlichten Indexwert oder zum Preis auf der Karte, wenn der Lieferant keinen veröffentlicht. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs. In der Zeit nicht erreicht: {skipped}.\n\n{table}"
+        "description": "Ein Jahr mit {annual_kwh} kWh nach jeder in Ihrer Region verkauften Karte in ihrer heutigen Fassung, der günstigste zuerst, Ihr Vertrag fett und, sobald Ihr Eintrag seine Karte hat, so berechnet, wie der Eintrag ihn abrechnet. Ein Kreuz markiert einen vorläufigen Preis, zum letzten veröffentlichten Indexwert oder zum Preis auf der Karte, wenn der Lieferant keinen veröffentlicht. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs. In der Zeit nicht erreicht: {skipped}.\n\n{table}"
       },
       "switch": {
         "title": "Einen Vertragswechsel erfassen",

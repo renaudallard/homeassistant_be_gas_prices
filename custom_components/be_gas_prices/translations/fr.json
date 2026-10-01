@@ -233,18 +233,18 @@
       },
       "compare_contract": {
         "title": "Contrat à comparer",
-        "description": "Les deux contrats sont calculés pour votre ménage : votre consommation annuelle, votre gestionnaire de réseau et votre tranche, sur chaque carte telle que publiée aujourd'hui. Tant que cette entrée est active, votre propre contrat est plutôt calculé comme l'entrée le facture, avec le tarif à la signature ou les chiffres que vous avez saisis.",
+        "description": "Les deux contrats sont calculés pour votre ménage : votre consommation annuelle, votre gestionnaire de réseau et votre tranche, sur chaque carte telle que publiée aujourd'hui. Votre propre contrat est plutôt calculé comme votre entrée le facture dès que l'entrée détient sa carte, avec le tarif à la signature ou les chiffres que vous avez saisis.",
         "data": {
           "contract": "Contrat"
         }
       },
       "compare_result": {
         "title": "Devis",
-        "description": "Une année de {annual_kwh} kWh sur chaque carte telle que publiée aujourd'hui, tous coûts compris ; tant que cette entrée est active, votre propre contrat comme l'entrée le facture. Une croix signale un prix provisoire, à la dernière valeur d'index publiée par le fournisseur ou au prix imprimé sur sa carte s'il n'en publie aucune, que le mois peut encore faire bouger. OCR signale une carte publiée sous forme d'images, calculée sur la lecture qu'en fait l'archive des cartes.\n\n{table}"
+        "description": "Une année de {annual_kwh} kWh sur chaque carte telle que publiée aujourd'hui, tous coûts compris ; votre propre contrat comme votre entrée le facture dès que l'entrée détient sa carte. Une croix signale un prix provisoire, à la dernière valeur d'index publiée par le fournisseur ou au prix imprimé sur sa carte s'il n'en publie aucune, que le mois peut encore faire bouger. OCR signale une carte publiée sous forme d'images, calculée sur la lecture qu'en fait l'archive des cartes.\n\n{table}"
       },
       "compare_all_result": {
         "title": "Tous les contrats, classés",
-        "description": "Une année de {annual_kwh} kWh sur chaque carte vendue dans votre région, telle que publiée aujourd'hui, du moins cher au plus cher, votre contrat en gras et, tant que cette entrée est active, calculé comme l'entrée le facture. Une croix signale un prix provisoire, à la dernière valeur d'index publiée ou au prix imprimé sur la carte si le fournisseur n'en publie aucune. OCR signale une carte publiée sous forme d'images, calculée sur la lecture qu'en fait l'archive des cartes. Non atteints dans le temps imparti : {skipped}.\n\n{table}"
+        "description": "Une année de {annual_kwh} kWh sur chaque carte vendue dans votre région, telle que publiée aujourd'hui, du moins cher au plus cher, votre contrat en gras et, dès que votre entrée détient sa carte, calculé comme l'entrée le facture. Une croix signale un prix provisoire, à la dernière valeur d'index publiée ou au prix imprimé sur la carte si le fournisseur n'en publie aucune. OCR signale une carte publiée sous forme d'images, calculée sur la lecture qu'en fait l'archive des cartes. Non atteints dans le temps imparti : {skipped}.\n\n{table}"
       },
       "switch": {
         "title": "Enregistrer un changement de contrat",
