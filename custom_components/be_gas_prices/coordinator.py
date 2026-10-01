@@ -369,8 +369,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
         A card from the Store or a stand-in from the card archive is due at
         once; the archive's reading of an unreadable card is the card of the
-        month, and is asked for again when the supplier's card changes or
-        has aged, like a card read here. The probe is asked either way, so
+        month, and is asked for again when the supplier's card changes and
+        once a day besides, since the archive reads a card reissued in the
+        month a day after the key moved. The probe is asked either way, so
         a card fetched for another reason is kept against the key it was
         fetched under rather than fetched again on the next tick.
         """
@@ -386,10 +387,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         valid_until = self._snapshot.valid_until
         if valid_until is not None and dt_util.now().date() > valid_until:
             return True, key
-        if key is not None:
+        if key is not None and (key != self._probe_key or not self.card_read_by_ocr):
             return key != self._probe_key, key
         age = self.snapshot_age()
-        return age is None or age >= SNAPSHOT_TTL, None
+        return age is None or age >= SNAPSHOT_TTL, key
 
     async def _refresh_snapshot(self) -> None:
         if self.extractor.id == SUPPLIER_CUSTOM:
@@ -402,7 +403,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             return
         due, key = await self._card_is_due()
         if not due:
-            if key is not None:
+            if key is not None and not self.card_read_by_ocr:
                 # The supplier still serves the card in hand: as good as a
                 # fetch, and what keeps a month's card from ageing into
                 # staleness between two publications.

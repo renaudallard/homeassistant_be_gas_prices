@@ -19,16 +19,17 @@ cards (`issues.sync_issues`).
    images, which no reader here reads, is priced on the card archive's row
    for the running month, which the archive read with its OCR engine
    (`card_source` `ocr`, the `card_read_by_ocr` Repairs card); that reading
-   is asked for again on the same schedule. Until the archive reads a new
-   month's card, its reading of an earlier one, held, restored from the
-   Store or standing in, is a wait rather than an unreadable card. A card put up before its month
-   began gives way to the running month's own card from the supplier's
-   archive, where it has one. A failure keeps the card in
-   hand and records `last_error`; a failure a retry will not fix counts
-   towards the `extractor_failed` card. With no card at all, or a stale one,
-   the card archive is asked for its latest row (`_adopt_archived_card`).
-   With still no card the tick raises `UpdateFailed`, which is what makes a
-   first setup retry. The expert custom supplier builds its card from the
+   is asked for again on the same schedule and once a day besides, since the
+   archive reads a card reissued in the month after its key moved. Until the
+   archive reads a new month's card, its reading of an earlier one, held,
+   restored from the Store or standing in, is a wait rather than an
+   unreadable card. A card put up before its month began gives way to the
+   running month's own card from the supplier's archive, where it has one.
+   A failure keeps the card in hand and records `last_error`; a failure a
+   retry will not fix counts towards the `extractor_failed` card. With no
+   card at all, or a stale one, the card archive is asked for its latest row
+   (`_adopt_archived_card`). With still no card the tick raises
+   `UpdateFailed`, which is what makes a first setup retry. The expert custom supplier builds its card from the
    entry instead.
 2. **Index values** (`_refresh_index`), twice a day, from the supplier's own
    publication. A failure keeps the table held.

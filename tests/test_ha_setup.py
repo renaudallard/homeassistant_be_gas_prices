@@ -1372,6 +1372,43 @@ async def test_waiting_for_the_archive_to_read_a_new_month_is_no_unreadable_card
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
 
 
+@pytest.mark.freeze_time("2026-09-15 20:00:00+02:00")
+async def test_an_image_card_reissued_in_the_month_is_read_again_by_the_next_day(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The supplier replaces its card under a new key; the archive reads the
+    new one the next morning, which the entry then takes within a day."""
+    old = fetch.return_value
+    new = replace(old, publication_label="reissued")
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    state = {"row": old, "key": "Mon, 31 Aug"}
+
+    async def row(_session: Any, _supplier: str, _contract: str, _region: str, month: str) -> Any:
+        return (state["row"], True) if month == "2026-09" else None
+
+    async def probe(_session: Any, _contract: str, _region: str) -> str:
+        return state["key"]
+
+    stub = replace(providers.EXTRACTORS["engie"], probe=probe)
+    with (
+        patch.dict(providers.EXTRACTORS, {"engie": stub}),
+        patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        coordinator = entry.runtime_data
+        state["key"] = "Tue, 15 Sep"
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        state["row"] = new
+        for _ in range(24):
+            freezer.tick(timedelta(hours=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
+    assert coordinator.data.snapshot.publication_label == "reissued"
+    assert coordinator.card_read_by_ocr
+
+
 @pytest.mark.freeze_time("2026-10-01 08:00:00+02:00")
 async def test_a_new_entry_on_last_month_s_ocr_reading_waits_for_the_archive(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
