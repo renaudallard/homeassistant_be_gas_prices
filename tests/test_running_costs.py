@@ -265,6 +265,26 @@ def test_a_signed_leg_is_final_only_on_a_settled_card_of_its_month() -> None:
 
     assert not provisional(settled)
     assert provisional(early)
+    # The comparisons quote the own contract on the card with its leg laid
+    # over it: the same answer.
+    for card, expected in ((settled, False), (early, True)):
+        leg = contract_leg(card.energy, july.energy, None, {CONF_SUPPLIER: "engie"})
+        quoted = replace(card, energy=leg)
+        assert (
+            bill_month(
+                month="2026-09",
+                card=quoted,
+                energy=quoted.energy,
+                table=None,
+                dso=DSO_ORES,
+                annual_kwh=10_000.0,
+                caliber=CALIBER_Q10,
+                kwh=1000.0,
+                days=30,
+                days_in_year=365,
+            ).provisional
+            is expected
+        )
 
 
 def test_bill_month_accrues_the_fixed_costs_by_the_day() -> None:

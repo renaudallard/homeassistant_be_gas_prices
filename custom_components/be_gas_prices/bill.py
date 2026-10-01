@@ -124,7 +124,8 @@ def contract_leg(
         and own.factor
         and not (table or {}).get(leg.index)
     ):
-        leg = replace(leg, price=leg.at((own.price - own.base) / own.factor))
+        # Priced off the card of the month, and settled only as that card is.
+        leg = replace(leg, price=leg.at((own.price - own.base) / own.factor), settled=own.settled)
     return leg
 
 
