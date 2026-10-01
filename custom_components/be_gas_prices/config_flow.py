@@ -419,19 +419,19 @@ class _FlowSteps:
     ) -> ConfigFlowResult:
         brussels = self._data[CONF_REGION] == REGION_BRUSSELS
         errors: dict[str, str] = {}
-        if (
-            user_input is not None
-            and get_extractor(self._data[CONF_SUPPLIER]).images_only
-            and not user_input.get(CONF_CARD_ARCHIVE)
-        ):
-            # Its cards are page images: the archive's reading is the only
-            # card the entry can be priced on. The rest is kept for the form.
-            self._data.update(user_input)
-            errors[CONF_CARD_ARCHIVE] = "card_archive_needed"
-        elif user_input is not None:
+        if user_input is not None:
             if not user_input.get(CONF_GAS_METER):
                 self._data.pop(CONF_GAS_METER, None)
             self._data.update(user_input)
+        if user_input is not None and (
+            get_extractor(self._data[CONF_SUPPLIER]).images_only
+            and not user_input.get(CONF_CARD_ARCHIVE)
+        ):
+            # Its cards are page images: the archive's reading is the only
+            # card the entry can be priced on. The form comes back with the
+            # rest as entered.
+            errors[CONF_CARD_ARCHIVE] = "card_archive_needed"
+        elif user_input is not None:
             if not brussels:
                 self._data.pop(CONF_CALIBER, None)
             if self._data[CONF_CONVERSION_MODE] == CONVERSION_MANUAL:

@@ -58,6 +58,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CUSTOM_TRANSPORT,
     CONF_DAILY_COMPARE,
     CONF_DSO,
+    CONF_GAS_METER,
     CONF_POSTCODE,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
@@ -440,6 +441,43 @@ async def test_an_images_only_supplier_needs_the_card_archive(hass: HomeAssistan
         },
     )
     assert result["step_id"] == "factor"
+
+
+async def test_the_archive_error_keeps_a_cleared_meter_cleared(hass: HomeAssistant) -> None:
+    """In the settings of an Ecofix entry the user clears its meter and
+    leaves the archive off: the form comes back without the old meter."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Ecofix Flexy",
+        data={
+            CONF_REGION: REGION_WALLONIA,
+            CONF_DSO: DSO_ORES,
+            CONF_SUPPLIER: "ecofix",
+            CONF_CONTRACT: "ecofix_flexy",
+            CONF_ANNUAL_CONSUMPTION_KWH: 12000.0,
+            CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+            CONF_CONVERSION_FACTOR: 11.5,
+            CONF_CARD_ARCHIVE: True,
+            CONF_GAS_METER: "sensor.old_meter",
+        },
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "ecofix"},
+        {CONF_CONTRACT: "ecofix_flexy"},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await _household_options(hass, result["flow_id"])
+    assert result["errors"] == {CONF_CARD_ARCHIVE: "card_archive_needed"}
+    schema = result["data_schema"]
+    assert schema is not None
+    meter = next(key for key in schema.schema if key == CONF_GAS_METER)
+    assert (meter.description or {}).get("suggested_value") is None
 
 
 async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> None:
