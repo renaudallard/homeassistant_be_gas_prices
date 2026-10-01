@@ -141,8 +141,6 @@ async def backfill_prices(
     present = {key: sid for key, sid in ids.items() if sid is not None}
     if not present:
         return {}
-    if clear:
-        get_instance(hass).async_clear_statistics(list(present.values()))
     # Up to the last full hour, unless it ended moments ago: the recorder
     # queues its compile of that hour at ten seconds past, and an import
     # queued first makes the whole compile fail, every entity's hour lost.
@@ -152,8 +150,14 @@ async def backfill_prices(
     if now - end < _COMPILE_MARGIN:
         end -= timedelta(hours=1)
     begin = dt_util.as_utc(dt_util.start_of_local_day(start))
-    window = month_key(coordinator.window_start(dt_util.now().date()))
     hours = _hours(begin, end)
+    if not hours:
+        # Asked from today in its first hour: nothing to write yet, and a
+        # clear would delete the history for nothing.
+        return {}
+    if clear:
+        get_instance(hass).async_clear_statistics(list(present.values()))
+    window = month_key(coordinator.window_start(dt_util.now().date()))
     early = sorted(
         {m for m in (month_key(dt_util.as_local(h).date()) for h in hours) if m < window}
     )

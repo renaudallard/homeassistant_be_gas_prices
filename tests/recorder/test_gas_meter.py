@@ -281,6 +281,21 @@ async def test_a_month_before_the_window_is_priced_on_its_own_card(
         assert means[0] == pytest.approx(price - card.energy.price + 0.05)
 
 
+@pytest.mark.freeze_time("2026-09-15 00:30:00+02:00")
+async def test_a_backfill_with_no_hour_to_write_clears_nothing(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Asked from today half an hour into it: no hour is compiled yet, so a
+    clear would delete the history and write nothing back."""
+    await _zone(hass)
+    entry = await _setup_entry(hass)
+    instance = get_instance(hass)
+    with patch.object(instance, "async_clear_statistics") as cleared:
+        counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 15), clear=True)
+    assert counts == {}
+    cleared.assert_not_called()
+
+
 @pytest.mark.freeze_time("2026-09-15 10:02:00+02:00")
 async def test_the_hour_the_recorder_is_compiling_is_left_to_it(
     recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
