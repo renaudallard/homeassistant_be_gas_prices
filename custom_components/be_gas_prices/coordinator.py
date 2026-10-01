@@ -757,6 +757,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         kwh_days = to_kwh(meter_days, self._factor_for(kind)) if meter_days else None
         costs: RunningCosts | None = None
         earlier: list[RunningCosts] = []
+        # Named afresh on every tick: last year's earlier contracts are no
+        # part of this year's cost.
+        self.unpriced_periods = []
         measured = False
         if kwh_days is not None:
             # A measured year picks the tier and the excise slices; the typed

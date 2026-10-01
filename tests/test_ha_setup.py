@@ -341,6 +341,32 @@ async def test_an_earlier_contract_s_last_month_falls_back_like_any_other(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_last_year_s_unpriced_contract_is_not_named_in_the_new_year(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    gone = {
+        CONF_SUPPLIER: "dats24",
+        CONF_CONTRACT: "dats24_variable",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-05-31",
+    }
+    days = {date(2025, 1, 1) + timedelta(days=n): 10.0 for n in range(800)}
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [gone]})
+        cost = hass.states.get("sensor.engie_flow_current_year_cost")
+        assert cost is not None and cost.attributes["unpriced_contracts"] == ["dats24"]
+        freezer.move_to("2027-01-02 10:00:00+01:00")
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+    cost = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert cost is not None and cost.attributes["unpriced_contracts"] == []
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
