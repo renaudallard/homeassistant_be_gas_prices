@@ -430,7 +430,7 @@
   "services": {
     "refresh": {
       "name": "Refresh",
-      "description": "Fetch the tariff card and the index values again now.",
+      "description": "Fetch the tariff card, the index values and the calorific values again now.",
       "fields": {
         "entry_id": {
           "name": "Entry",

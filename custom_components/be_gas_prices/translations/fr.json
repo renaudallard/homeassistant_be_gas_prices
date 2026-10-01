@@ -430,7 +430,7 @@
   "services": {
     "refresh": {
       "name": "Actualiser",
-      "description": "Récupérer maintenant la carte tarifaire et les valeurs d'index.",
+      "description": "Récupérer maintenant la carte tarifaire, les valeurs d'index et les pouvoirs calorifiques.",
       "fields": {
         "entry_id": {
           "name": "Entrée",

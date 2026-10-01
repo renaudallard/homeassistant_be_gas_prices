@@ -430,7 +430,7 @@
   "services": {
     "refresh": {
       "name": "Vernieuwen",
-      "description": "De tariefkaart en de indexwaarden nu opnieuw ophalen.",
+      "description": "De tariefkaart, de indexwaarden en de calorische bovenwaarden nu opnieuw ophalen.",
       "fields": {
         "entry_id": {
           "name": "Item",

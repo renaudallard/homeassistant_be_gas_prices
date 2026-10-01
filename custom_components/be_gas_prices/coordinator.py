@@ -533,7 +533,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         now = dt_util.utcnow()
         if self._gcv_fetched_at is not None and now - self._gcv_fetched_at < CALORIFIC_TTL:
             return
-        self._gcv_fetched_at = now
         try:
             if self._gcv_context is None:
                 self._gcv_context = await self.hass.async_add_executor_job(
@@ -543,8 +542,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             months = await calorific.list_months(self._session, self._gcv_context, key)
             wanted = [m for m in sorted(months) if m >= f"{dt_util.now().year - 1}-01"]
         except calorific.CalorificError as err:
+            # Asked again next tick: with no value held for the station,
+            # every running cost waits on it.
             _LOGGER.warning("calorific values not refreshed: %s", err)
             return
+        self._gcv_fetched_at = now
         for month in wanted:
             if month in self._gcv:
                 continue
@@ -696,10 +698,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     # ---- the tick -------------------------------------------------------------
 
     async def async_force_refresh(self, *, wait: bool = False) -> None:
-        """Fetch the card again on the next tick whatever its age, or with
-        ``wait`` now, past the cooldown that spaces requested refreshes."""
+        """Fetch the card, the index values and the calorific values again on
+        the next tick whatever their age, or with ``wait`` now, past the
+        cooldown that spaces requested refreshes."""
         self._force_refresh = True
         self._index_fetched_at = None
+        self._gcv_fetched_at = None
         if wait:
             await self.async_refresh()
         else:

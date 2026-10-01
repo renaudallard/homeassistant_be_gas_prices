@@ -266,7 +266,7 @@ when the entry is new or its signing date changes.
 ## Services
 
 ```yaml
-service: be_gas_prices.refresh           # fetch the card and the index values now
+service: be_gas_prices.refresh           # fetch the card, index and calorific values now
 data:
   entry_id: 01H...                       # optional; every entry when left out
 

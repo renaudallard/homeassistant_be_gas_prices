@@ -35,7 +35,8 @@ cards (`issues.sync_issues`).
    publication. A failure keeps the table held.
 3. **Calorific values** (`_refresh_calorific`), daily, for a household that
    converts on its reception station: every month Atrias lists since
-   January of last year, only the months not held yet.
+   January of last year, only the months not held yet. When Atrias cannot be
+   read at all it is asked again on the next tick.
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month, and
    (`PeriodBilling.fill`) the earlier contracts' own. The first tick does
@@ -89,7 +90,8 @@ hand is still stale, and it is what lets the card archive stand in.
 ## Services and the button
 
 - `be_gas_prices.refresh` and the *Refresh tariff card* button force the next
-  tick to fetch the card and the index values whatever their age.
+  tick to fetch the card, the index values and the calorific values whatever
+  their age.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
   the last full hour, or the one before it in the first minutes of an hour,

@@ -26,8 +26,8 @@ The running costs report `unknown` until a gas meter is readable.
 
 ## Button
 
-*Refresh tariff card* (diagnostic): fetch the card and the index values on
-the next tick.
+*Refresh tariff card* (diagnostic): fetch the card, the index values and the
+calorific values on the next tick.
 
 ## Services
 

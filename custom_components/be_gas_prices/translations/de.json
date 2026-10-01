@@ -430,7 +430,7 @@
   "services": {
     "refresh": {
       "name": "Aktualisieren",
-      "description": "Die Tarifkarte und die Indexwerte jetzt neu abrufen.",
+      "description": "Die Tarifkarte, die Indexwerte und die Brennwerte jetzt neu abrufen.",
       "fields": {
         "entry_id": {
           "name": "Eintrag",

@@ -931,6 +931,37 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_atrias_failing_at_setup_is_asked_again_next_tick(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """With no value held for the station every running cost waits on
+    Atrias: a failed first read is asked again on the next tick, not a day
+    later, and a forced refresh asks too."""
+    station = "541234"
+    months = {"2026-07": "GCV202607.txt", "2026-08": "GCV202608.txt"}
+    key = AsyncMock(side_effect=calorific.CalorificError("network error fetching x: timeout"))
+    fetch_month = AsyncMock(return_value={calorific.Station(ean=station, name="X"): 11.2})
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: station}
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", key),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "fetch_month", fetch_month),
+    ):
+        entry = await _setup(hass, data)
+        coordinator = entry.runtime_data
+        assert coordinator._m3_factor("2026-08") == (None, None)
+        key.side_effect = None
+        key.return_value = "k"
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+        assert coordinator._m3_factor("2026-08") == (pytest.approx(11.2), "2026-08")
+        assert key.await_count == 2
+        await coordinator.async_force_refresh(wait=True)
+        assert key.await_count == 3
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_month_before_the_rolling_year_without_a_factor_keeps_the_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
