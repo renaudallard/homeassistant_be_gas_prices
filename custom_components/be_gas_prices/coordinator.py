@@ -560,7 +560,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # every running cost waits on it.
             _LOGGER.warning("calorific values not refreshed: %s", err)
             return
-        self._gcv_fetched_at = now
+        failed = False
         for month in wanted:
             if month in self._gcv:
                 continue
@@ -572,10 +572,16 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 )
             except calorific.CalorificError as err:
                 _LOGGER.warning("calorific values of %s not read: %s", month, err)
+                failed = failed or is_transient_fetch_error(str(err))
                 continue
             for held_station, value in values.items():
                 if held_station.ean == station:
                     self._gcv[month] = value
+        if failed and not self._gcv:
+            # Still nothing for the station, and a file a retry may cure:
+            # asked again next tick. One the parser refuses waits a day.
+            return
+        self._gcv_fetched_at = now
 
     def _conversion_mode(self) -> str:
         return str(self._data.get(CONF_CONVERSION_MODE, DEFAULT_CONVERSION_MODE))

@@ -986,6 +986,56 @@ async def test_atrias_failing_at_setup_is_asked_again_next_tick(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_atrias_files_failing_with_nothing_held_are_asked_again_next_tick(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The list answers but every file fails: still nothing for the station,
+    so the next tick asks again rather than the next day."""
+    station = "541234"
+    months = {"2026-07": "GCV202607.txt", "2026-08": "GCV202608.txt"}
+    fetch_month = AsyncMock(side_effect=calorific.CalorificError("network error fetching x"))
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: station}
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "fetch_month", fetch_month),
+    ):
+        entry = await _setup(hass, data)
+        coordinator = entry.runtime_data
+        assert coordinator._m3_factor("2026-08") == (None, None)
+        fetch_month.side_effect = None
+        fetch_month.return_value = {calorific.Station(ean=station, name="X"): 11.2}
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+    assert coordinator._m3_factor("2026-08") == (pytest.approx(11.2), "2026-08")
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_atrias_files_the_parser_refuses_are_read_once_a_day(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A layout the parser refuses fails the same way next hour: the files
+    are not all downloaded again every tick."""
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: "541234"}
+    months = {"2026-07": "GCV202607.txt", "2026-08": "GCV202608.txt"}
+    fetch_month = AsyncMock(
+        side_effect=calorific.CalorificError("calorific value file has no header")
+    )
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "fetch_month", fetch_month),
+    ):
+        entry = await _setup(hass, data)
+        for _ in range(3):
+            freezer.tick(timedelta(hours=1))
+            await entry.runtime_data.async_refresh()
+    assert fetch_month.await_count == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize("first", ["2025-02", "2025-11"])
 async def test_a_month_before_the_rolling_year_without_a_factor_keeps_the_costs(
     hass: HomeAssistant, fetch: AsyncMock, first: str

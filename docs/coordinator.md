@@ -37,8 +37,9 @@ cards (`issues.sync_issues`).
    network failure is asked again on the next tick.
 3. **Calorific values** (`_refresh_calorific`), daily, for a household that
    converts on its reception station: every month Atrias lists since
-   January of last year, only the months not held yet. When Atrias cannot be
-   read at all it is asked again on the next tick.
+   January of last year, only the months not held yet. Atrias's key or month
+   list failing is asked again on the next tick; a month file failing is
+   too, while nothing is held for the station and a retry may cure it.
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month, and
    (`PeriodBilling.fill`) the earlier contracts' own. The first tick does
