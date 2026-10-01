@@ -496,17 +496,24 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             key = await calorific.subscription_key(self._session)
             months = await calorific.list_months(self._session, self._gcv_context, key)
             wanted = [m for m in sorted(months) if m >= f"{dt_util.now().year - 1}-01"]
-            for month in wanted:
-                if month in self._gcv:
-                    continue
+        except calorific.CalorificError as err:
+            _LOGGER.warning("calorific values not refreshed: %s", err)
+            return
+        for month in wanted:
+            if month in self._gcv:
+                continue
+            # Each month on its own: one file that cannot be read must not
+            # keep every later month from being read.
+            try:
                 values = await calorific.fetch_month(
                     self._session, self._gcv_context, key, months[month]
                 )
-                for held_station, value in values.items():
-                    if held_station.ean == station:
-                        self._gcv[month] = value
-        except calorific.CalorificError as err:
-            _LOGGER.warning("calorific values not refreshed: %s", err)
+            except calorific.CalorificError as err:
+                _LOGGER.warning("calorific values of %s not read: %s", month, err)
+                continue
+            for held_station, value in values.items():
+                if held_station.ean == station:
+                    self._gcv[month] = value
 
     def _conversion_mode(self) -> str:
         return str(self._data.get(CONF_CONVERSION_MODE, DEFAULT_CONVERSION_MODE))

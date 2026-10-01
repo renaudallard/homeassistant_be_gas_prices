@@ -45,7 +45,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.be_gas_prices import providers
+from custom_components.be_gas_prices import calorific, providers
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -68,8 +68,10 @@ from custom_components.be_gas_prices.const import (
     CONF_MANUAL_PRICE,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
+    CONF_STATION,
     CONF_SUPPLIER,
     CONVERSION_MANUAL,
+    CONVERSION_STATION,
     CUSTOM_CONTRACT,
     DOMAIN,
     DSO_FLUVIUS_IMEWO,
@@ -675,6 +677,31 @@ async def test_a_ranking_that_priced_only_the_household_is_tried_again(
         await hass.async_block_till_done()
     ranking = entry.runtime_data.daily_ranking
     assert ranking is not None and ranking.saving == pytest.approx(500.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_one_unreadable_calorific_month_leaves_the_others_read(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """March's file has a bad value: the months after it are read all the
+    same, and August converts on August's value."""
+    station = "541234"
+    months = {f"2026-{m:02d}": f"GCV2026{m:02d}.txt" for m in range(1, 9)}
+
+    async def fetch_month(_session: Any, _context: Any, _key: Any, path: str) -> Any:
+        if path == "GCV202603.txt":
+            raise calorific.CalorificError("calorific value file has a bad value 'n/a'")
+        return {calorific.Station(ean=station, name="X"): 11.0 + int(path[7:9]) / 100}
+
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: station}
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "fetch_month", fetch_month),
+    ):
+        entry = await _setup(hass, data)
+    assert entry.runtime_data._m3_factor("2026-08") == (pytest.approx(11.08), "2026-08")
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
