@@ -51,8 +51,9 @@ Some cells of the September 2026 distribution table are wrong: Limburg's
 mid tier prints its small tier's 2,240 c EUR/kWh where Engie and Sparki
 print 0,983 (the regulator's 0,98293), and the T3 proportional terms of
 Halle-Vilvoorde, Kempen and Midden-Vlaanderen repeat their T2 value
-(0,980, 0,882, 0,910 against 0,621, 0,552, 0,577 elsewhere). The table is
-read as printed.
+(0,980, 0,882, 0,910 against 0,621, 0,552, 0,577 elsewhere). Each repeats
+the tier before it, which is not degressive, so ``dso_overlay`` drops the
+tier with those above it.
 """
 
 from __future__ import annotations
