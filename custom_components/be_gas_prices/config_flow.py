@@ -272,8 +272,10 @@ class _FlowSteps:
                 self._data.update({k: v for k, v in user_input.items() if v not in (None, "")})
                 if not self._data.get(CONF_CONTRACT_START_DATE):
                     self._data.pop(CONF_YTD_FROM_CONTRACT_START, None)
-                if self._data.get(CONF_CONTRACT_START_DATE) or self._data.get(
-                    CONF_TARIFF_CARD_DATE
+                # The custom card is the household's own figures already.
+                if self._data[CONF_SUPPLIER] != SUPPLIER_CUSTOM and (
+                    self._data.get(CONF_CONTRACT_START_DATE)
+                    or self._data.get(CONF_TARIFF_CARD_DATE)
                 ):
                     return await self.async_step_signed_rate()
                 for key in MANUAL_RATE_KEYS:

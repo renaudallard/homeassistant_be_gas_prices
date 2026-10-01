@@ -57,6 +57,7 @@ from custom_components.be_gas_prices.const import (
     CONF_SWITCH_DATE,
     CONVERSION_MANUAL,
     CONVERSION_STATION,
+    CUSTOM_CONTRACT,
     DOMAIN,
     DSO_ORES,
     DSO_SIBELGA,
@@ -185,6 +186,28 @@ async def test_blank_postcode_asks_the_region(hass: HomeAssistant) -> None:
     assert result["data"][CONF_CALIBER] == "q16"
     assert result["data"][CONF_CONVERSION_FACTOR] == 11.4
     assert result["data"][CONF_CONTRACT_START_DATE] == "2026-03-01"
+
+
+async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssistant) -> None:
+    """Its card is the figures the household types; a start date must not
+    ask for a second price that would be laid over them."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_POSTCODE: ""})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REGION: REGION_WALLONIA}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: SUPPLIER_CUSTOM}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_CONTRACT: CUSTOM_CONTRACT, CONF_CONTRACT_START_DATE: "2026-03-01"},
+    )
+    assert result["step_id"] == "dso"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
+    assert result["step_id"] == "custom_energy"
 
 
 async def test_a_postcode_partly_on_an_unpriced_network_is_warned_about(

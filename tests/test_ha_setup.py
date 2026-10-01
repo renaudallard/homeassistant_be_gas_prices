@@ -49,6 +49,7 @@ from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
+    CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
     CONF_CUSTOM_EXCISE_LOW,
@@ -60,6 +61,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CUSTOM_TRANSPORT,
     CONF_DAILY_COMPARE,
     CONF_DSO,
+    CONF_MANUAL_PRICE,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_SUPPLIER,
@@ -355,6 +357,34 @@ async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssis
     ranking = entry.runtime_data.daily_ranking
     assert ranking is not None and ranking.own_cost is not None
     assert ranking.saving == pytest.approx(ranking.own_cost - 100.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_custom_entry_ignores_signing_figures_left_from_an_earlier_flow(
+    hass: HomeAssistant,
+) -> None:
+    """The flow once asked a custom entry with a start date for its signing
+    price too, and that price was laid over the typed card."""
+    data = {
+        **DATA,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_CONTRACT_START_DATE: "2026-03-01",
+        CONF_MANUAL_PRICE: 8.0,
+        CONF_CUSTOM_PRICE: 7.5,
+        CONF_CUSTOM_T1_FIXED: 15.0,
+        CONF_CUSTOM_T1_PROP: 2.0,
+        CONF_CUSTOM_T2_FIXED: 80.0,
+        CONF_CUSTOM_T2_PROP: 1.0,
+        CONF_CUSTOM_TRANSPORT: 0.165,
+        CONF_CUSTOM_EXCISE_LOW: 1.09286,
+    }
+    await _setup(hass, data)
+    energy = hass.states.get("sensor.engie_flow_current_price")
+    assert energy is not None
+    assert energy.attributes["card_source"] == "live"
+    component = hass.states.get("sensor.engie_flow_energy_component")
+    assert component is not None and float(component.state) == pytest.approx(0.075)
 
 
 @pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")

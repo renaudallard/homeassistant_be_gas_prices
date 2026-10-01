@@ -13,7 +13,7 @@ once in `_FlowSteps` over `self._data`.
 | `region` | Region | Only when no postcode resolved. |
 | `supplier` | Supplier | Suppliers with a contract in the region, withdrawn ones hidden, the custom supplier last. |
 | `contract` | Contract, start date, tariff card month, end date, count from start | End before start is refused. Blanked dates are removed. |
-| `signed_rate` | Price or factor and base, yearly fee | Only when a start date or card month is set; all optional. See `manual_rate.py`. |
+| `signed_rate` | Price or factor and base, yearly fee | Only when a start date or card month is set, and never for the custom supplier, whose card is already the typed figures; all optional. See `manual_rate.py`. |
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Walloon fee and the Brussels levy only in their region. |
 | `household` | Annual consumption, Brussels meter caliber, gas meter, conversion mode, card archive, daily ranking | The caliber only in Brussels. The conversion mode defaults to the bill's factor. |

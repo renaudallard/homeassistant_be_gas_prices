@@ -553,6 +553,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         when the entry names a signing month the archive can serve and the
         contract holds its figures, with the figures the household typed
         from its contract laid over it."""
+        if self.extractor.id == SUPPLIER_CUSTOM:
+            # The typed card is the contract; figures an earlier version of
+            # the flow also asked for are not laid over it.
+            return card.energy
         signed: SupplierSnapshot | None = None
         signing = signing_month(self._data)
         if signing is not None:
