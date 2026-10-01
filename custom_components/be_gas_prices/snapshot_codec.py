@@ -179,5 +179,5 @@ def snapshot_from_json(blob: Any) -> SupplierSnapshot:
             publication_label=str(blob.get("publication_label", "")),
             valid_until=None if valid_until is None else date.fromisoformat(valid_until),
         )
-    except (KeyError, TypeError, ValueError, AttributeError) as err:
+    except (KeyError, IndexError, TypeError, ValueError, AttributeError) as err:
         raise SnapshotDecodeError(f"malformed snapshot: {err}") from err

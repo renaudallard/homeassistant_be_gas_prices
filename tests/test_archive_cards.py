@@ -65,7 +65,7 @@ from custom_components.be_gas_prices.providers.base import (
     SupplierSnapshot,
     TaxOverlay,
 )
-from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json
+from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json, snapshot_to_json
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -247,6 +247,17 @@ async def test_a_row_is_what_the_integration_reads_for_a_past_month(
         {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": path.read_bytes()}
     )
     assert await fetch_archived_card(reader, "acme", "acme_fix", "wallonia", "2026-09") == expected  # type: ignore[arg-type]
+
+
+async def test_a_row_with_a_short_tier_pair_is_no_card() -> None:
+    row = snapshot_to_json(_snapshot("acme_fix", "2026-09", 0.08))
+    dso = next(iter(row["dsos"].values()))
+    tier = next(iter(dso["tiers"]))
+    dso["tiers"][tier] = dso["tiers"][tier][:1]
+    reader = _Session(
+        {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": json.dumps(row).encode()}
+    )
+    assert await fetch_archived_card(reader, "acme", "acme_fix", "wallonia", "2026-09") is None  # type: ignore[arg-type]
 
 
 async def test_a_card_is_filed_under_the_month_its_label_names(
