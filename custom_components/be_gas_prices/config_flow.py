@@ -542,6 +542,12 @@ class _FlowSteps:
         return self.async_show_form(step_id="factor", data_schema=schema, errors=errors or {})
 
 
+def _withdrawn(data: dict[str, Any]) -> bool:
+    """Whether the contract ``data`` names is one its supplier no longer
+    has."""
+    return all(c.id != data[CONF_CONTRACT] for c in get_extractor(data[CONF_SUPPLIER]).contracts)
+
+
 def _title(data: dict[str, Any]) -> str:
     extractor = get_extractor(data[CONF_SUPPLIER])
     label = next((c.label for c in extractor.contracts if c.id == data[CONF_CONTRACT]), "")
@@ -599,9 +605,10 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
     async def _async_finish(self) -> ConfigFlowResult:
         entry = self.config_entry
         # The title the wizard gave follows the contract; one the user typed
-        # is theirs and stays.
+        # is theirs and stays. A contract its supplier withdrew no longer
+        # gives the title it gave, so that one follows too.
         try:
-            made = _title(dict(entry.data))
+            made = entry.title if _withdrawn(dict(entry.data)) else _title(dict(entry.data))
         except ExtractorError:
             made = entry.title
         title = _title(self._data) if entry.title == made else entry.title

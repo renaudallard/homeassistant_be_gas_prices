@@ -461,6 +461,9 @@
     },
     "clear_needs_entry": {
       "message": "Das Löschen der Statistiken erfordert einen Eintrag: sie werden vollständig gelöscht."
+    },
+    "contract_withdrawn": {
+      "message": "Der Lieferant hat den Vertrag {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. Wählen Sie in den Einstellungen des Eintrags einen anderen Vertrag, oder geben Sie die Zahlen Ihres Vertrags unter „Expert: custom figures“ ein."
     }
   }
 }

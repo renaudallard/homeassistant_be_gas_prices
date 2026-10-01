@@ -461,6 +461,9 @@
     },
     "clear_needs_entry": {
       "message": "Clearing statistics needs an entry: it deletes them in full."
+    },
+    "contract_withdrawn": {
+      "message": "Its supplier withdrew the contract {contract}, whose card is no longer published. Pick another contract in the entry's settings, or type your contract's figures under \"Expert: custom figures\"."
     }
   }
 }

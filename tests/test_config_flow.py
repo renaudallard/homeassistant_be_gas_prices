@@ -618,6 +618,44 @@ async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None
     assert entry.title == "My house"
 
 
+async def test_settings_retitle_an_entry_whose_contract_was_withdrawn(
+    hass: HomeAssistant,
+) -> None:
+    """The entry was titled "OCTA+ Flux" by the wizard; Flux was withdrawn,
+    and the contract picked instead gives the title."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="OCTA+ Flux",
+        data={
+            CONF_REGION: REGION_WALLONIA,
+            CONF_DSO: DSO_ORES,
+            CONF_SUPPLIER: "octaplus",
+            CONF_CONTRACT: "octaplus_flux",
+            CONF_ANNUAL_CONSUMPTION_KWH: 17000.0,
+            CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+            CONF_CONVERSION_FACTOR: 11.5,
+            CONF_CARD_ARCHIVE: False,
+        },
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "octaplus"},
+        {CONF_CONTRACT: "octaplus_boostflex"},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await _household_options(hass, result["flow_id"])
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONVERSION_FACTOR: 11.5}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.title == "OCTA+ Boost Flex"
+
+
 async def _household_options(hass: HomeAssistant, flow_id: str) -> ConfigFlowResult:
     return await hass.config_entries.options.async_configure(
         flow_id,

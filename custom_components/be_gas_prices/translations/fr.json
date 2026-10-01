@@ -461,6 +461,9 @@
     },
     "clear_needs_entry": {
       "message": "Effacer les statistiques nécessite une entrée : elles sont effacées entièrement."
+    },
+    "contract_withdrawn": {
+      "message": "Le fournisseur a retiré le contrat {contract}, dont la carte tarifaire n'est plus publiée. Choisissez un autre contrat dans les paramètres de l'entrée, ou saisissez les chiffres de votre contrat sous « Expert: custom figures »."
     }
   }
 }

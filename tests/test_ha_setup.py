@@ -466,6 +466,22 @@ async def test_a_card_put_up_early_is_read_once_its_month_begins(
     assert entry.runtime_data.data.snapshot.publication_label == "2026-10"
 
 
+async def test_a_withdrawn_contract_stops_the_entry_with_its_reason(
+    hass: HomeAssistant,
+) -> None:
+    """OCTA+ Flux was withdrawn in October 2026: no card of it is read, and
+    the entry says so rather than retrying or blaming a layout change."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="OCTA+ Flux",
+        data={**DATA, CONF_SUPPLIER: "octaplus", CONF_CONTRACT: "octaplus_flux"},
+    )
+    entry.add_to_hass(hass)
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert entry.reason is not None and "octaplus_flux" in entry.reason
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock

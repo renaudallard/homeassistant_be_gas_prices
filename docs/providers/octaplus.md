@@ -40,7 +40,8 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 
 - OCTA+ withdrew Flux, Eco Flux, Fixed and Eco Fixed with the October 2026
   range, and they were removed; their card URLs went on serving the
-  September cards.
+  September cards. An entry on one of them stops at setup with that reason
+  (`contract_withdrawn`) until its settings name another contract.
 
 - Regions: flanders and wallonia for every product.
 - The VL and WL cards print the same energy figures. Both print the DSO tables
