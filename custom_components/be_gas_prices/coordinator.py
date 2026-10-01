@@ -90,6 +90,7 @@ from .contract_periods import (
     current_period_start,
     parse_date,
     periods_this_year,
+    previous_contracts,
     signing_month,
 )
 from .coordinator_data import Conversion, CoordinatorData
@@ -238,12 +239,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """The first day the current contract supplied this year."""
         return current_period_start(self._data, self.window_start(today), today)
 
-    def switch_day(self, today: date) -> date | None:
-        """The day the current contract took over from one recorded at a
-        switch this year, None when the year had no switch."""
-        if not periods_this_year(self._data, today):
+    def switch_day(self) -> date | None:
+        """The day the current contract took over from the last one recorded
+        at a switch, whatever its year, None when none is recorded."""
+        periods = previous_contracts(self._data)
+        if not periods:
             return None
-        return self.period_start(today)
+        return max(date.fromisoformat(str(p["until"])) for p in periods) + timedelta(days=1)
 
     # ---- persistence ------------------------------------------------------
 

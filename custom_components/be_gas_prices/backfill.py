@@ -130,11 +130,11 @@ async def backfill_prices(
     )
     from homeassistant.components.recorder.statistics import async_import_statistics
 
-    switched = coordinator.switch_day(dt_util.now().date())
+    switched = coordinator.switch_day()
     if switched is not None and start < switched:
-        # The hours before were an earlier contract's, which the price
-        # sensors showed then and which this, pricing the current contract,
-        # would overwrite.
+        # The hours before were an earlier contract's, this year's or last,
+        # which the price sensors showed then and which this, pricing the
+        # current contract, would overwrite.
         start = switched
     entry_id = coordinator.entry.entry_id
     ids = {key: _statistic_id(hass, entry_id, key) for key, _unit in _SERIES}

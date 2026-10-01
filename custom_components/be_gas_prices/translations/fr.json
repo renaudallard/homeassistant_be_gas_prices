@@ -448,7 +448,7 @@
         },
         "start_date": {
           "name": "Date de début",
-          "description": "Par défaut le début de la fenêtre de l'année. Jamais avant un changement de contrat enregistré cette année. Un mois antérieur à la fenêtre n'est écrit que si sa propre carte tarifaire est trouvée."
+          "description": "Par défaut le début de la fenêtre de l'année. Jamais avant le dernier changement de contrat enregistré. Un mois antérieur à la fenêtre n'est écrit que si sa propre carte tarifaire est trouvée."
         },
         "clear": {
           "name": "Effacer d'abord",

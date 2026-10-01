@@ -309,9 +309,27 @@ async def test_the_price_history_stops_at_a_recorded_switch(
     }
     entry = await _setup_entry(hass, extra={CONF_PREVIOUS_CONTRACTS: [earlier]})
     coordinator = entry.runtime_data
-    assert coordinator.switch_day(date(2026, 9, 15)) == date(2026, 9, 15)
+    assert coordinator.switch_day() == date(2026, 9, 15)
     counts = await backfill_prices(hass, coordinator, date(2026, 9, 14))
     assert counts["sensor.engie_flow_current_price"] == 10
+
+
+@pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
+async def test_the_price_history_stops_at_a_switch_recorded_last_year(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A start date reaching back before a change made last November leaves
+    the earlier contract's hours alone."""
+    await _zone(hass)
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_easy_fixed",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2025-11-14",
+    }
+    entry = await _setup_entry(hass, extra={CONF_PREVIOUS_CONTRACTS: [earlier]})
+    assert entry.runtime_data.switch_day() == date(2025, 11, 15)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
