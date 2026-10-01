@@ -202,6 +202,11 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     return {_INDEX: values}
 
 
+# "Trevion Gas Flex Particulier", bracketed from October 2026: "Trevion Gas
+# Flex (Particulier)".
+_PRODUCT_RE = re.compile(r"Trevion Gas Flex \(?Particulier\b")
+
+
 def parse_snapshot(
     contract_id: str,
     region: str,
@@ -212,7 +217,7 @@ def parse_snapshot(
     """Parse one card's text as pypdf extracts it."""
     _check(contract_id, region)
     # The Professioneel card shares the layout and prints excluding VAT.
-    if "Trevion Gas Flex Particulier" not in text:
+    if not _PRODUCT_RE.search(text):
         raise ExtractorError("Trevion: not the Gas Flex Particulier card")
     card_month = _card_month(text)
     if card_month is None:

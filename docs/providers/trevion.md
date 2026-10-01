@@ -29,12 +29,13 @@ year, open-ended, online only.
 
 Reader: pypdf (`fetch_pdf_text`). pdfplumber lays the header and energy
 block out one glyph per line on these Word exports (stray whitespace glyphs
-at almost every height); pypdf reads all seven cards from March to
-September 2026 cleanly.
+at almost every height); pypdf reads all eight cards from March to
+October 2026 cleanly.
 
 - Card month: "Geldig voor particuliere contracten afgesloten in
   `<maand> <jaar>`".
-- Product check: "Trevion Gas Flex Particulier" must be on the card.
+- Product check: "Trevion Gas Flex Particulier", or "Trevion Gas Flex
+  (Particulier)" from October 2026, must be on the card.
 - Energy: the line after "Energiekost Variabel (c€/kWh) Abonnementskost
   (€/jaar)" carries the price and the yearly fee ("7,20 39").
 - Formula: "Tariefformule fossiel gas: (0,102 x TTF_RLP + 0,50) x 1,06",

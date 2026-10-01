@@ -23,7 +23,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Trevion gas card extractor, against its March to September 2026 cards."""
+"""Trevion gas card extractor, against its March to October 2026 cards."""
 
 from __future__ import annotations
 
@@ -51,6 +51,7 @@ from tests import fixture_page, fixture_text
 _CONTRACT = "trevion_gas_flex"
 _SEPTEMBER = "Tariefkaart-Gas-Flex-Particulier-202609.pdf"
 _MARCH = "Tariefkaart-Gas-Flex-Particulier-202603.pdf"
+_OCTOBER = "Tariefkaart-Gas-Flex-Particulier-202610.pdf"
 
 
 def _card(name: str) -> str:
@@ -282,9 +283,27 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
         await trevion.fetch_for_month(AsyncMock(), _CONTRACT, REGION_FLANDERS, date(2026, 5, 1))
 
 
-def test_professional_card_is_refused() -> None:
-    text = _card(_SEPTEMBER).replace("Gas Flex Particulier", "Gas Flex Professioneel")
-    with pytest.raises(ExtractorError):
+def test_october_card_brackets_the_product() -> None:
+    """From October 2026 the title reads "Trevion Gas Flex (Particulier)"."""
+    text = _card(_OCTOBER)
+    assert "Trevion Gas Flex (Particulier)" in text
+    snap = trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text)
+    assert snap.publication_label == "2026-10"
+    assert snap.energy.price == pytest.approx(0.0868)
+    assert trevion.published_index(text) == (date(2026, 9, 1), 75.35)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("Gas Flex Particulier", "Gas Flex Professioneel"),
+        ("Gas Flex (Particulier)", "Gas Flex (Professioneel)"),
+    ],
+)
+def test_professional_card_is_refused(old: str, new: str) -> None:
+    name = _SEPTEMBER if "(" not in old else _OCTOBER
+    text = _card(name).replace(old, new)
+    with pytest.raises(ExtractorError, match="not the Gas Flex Particulier card"):
         trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text)
 
 
