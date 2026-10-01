@@ -42,6 +42,10 @@ jobs:
     timeout-minutes: 420
     steps:
       - uses: actions/checkout@v7
+        with:
+          # github.token can write issues; the card readers run third-party
+          # code, which must not find it on disk.
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           # 3.14 for ocr_price_cards, which needs it; the rest of the stack
