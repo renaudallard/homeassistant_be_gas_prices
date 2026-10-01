@@ -229,14 +229,21 @@ def _ocr_text(payload: bytes) -> str:
     return text
 
 
-def _ocr_failure(cards: _Cards, err: BaseException) -> bool:
+def _ocr_failure(cards: _Cards, memo: _RecordingMemo, err: BaseException) -> bool:
     """Whether a failed fetch is the OCR engine's: it could not read the
-    card, or what it read of the card failed the parse."""
+    card, or what it read of the card failed the parse. The reading may have
+    been made for this fetch or served from the memo, as a card two regions
+    share is."""
     if isinstance(err, CardNotReadableError):
         return True
-    return not is_transient(err) and any(
-        (variant, digest) in cards.ocr for variant, _url, digest, _text in cards.calls
-    )
+    if is_transient(err):
+        return False
+    read = {(variant, digest) for variant, _url, digest, _text in cards.calls}
+    for key in memo.touched:
+        variant, _, url = key.partition("\0")
+        if url and url in cards.digests:
+            read.add((variant, cards.digests[url]))
+    return any(key in cards.ocr for key in read)
 
 
 class _Cards(StoredTexts):
@@ -951,7 +958,7 @@ async def archive(
         except Exception as err:  # one card must not stop the walk
             line = f"{label}: {type(err).__name__}: {err}"
             summary.failed.append(line)
-            if _ocr_failure(cards, err):
+            if _ocr_failure(cards, memo, err):
                 summary.ocr_failed.append(line)
             if patience.note(ex.id, err):
                 summary.given_up.append(ex.id)

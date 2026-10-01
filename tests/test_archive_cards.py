@@ -754,6 +754,41 @@ async def test_a_card_the_ocr_cannot_read_is_listed_for_the_workflow(
     assert summary.failed and not summary.ocr_failed
 
 
+class _ImageAcmeTwoRegions(_ImageAcme):
+    """One card, read for both regions: the second is served the first's
+    reading from the run's memo."""
+
+    def extractor(self, **kwargs: Any) -> SupplierExtractor:
+        regions = frozenset({"wallonia", "flanders"})
+        return SupplierExtractor(
+            id="acme",
+            label="Acme",
+            contracts=(Contract(id="acme_fix", label="Acme Fix", kind="fixed", regions=regions),),
+            fetch=self.fetch,
+            **kwargs,
+        )
+
+
+async def test_an_ocr_reading_served_from_the_memo_is_listed_too(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+aaaaaaaaaaaa")
+    read: list[bytes] = []
+
+    def ocr(payload: bytes) -> str:
+        read.append(payload)
+        return "month 2026-09"
+
+    monkeypatch.setattr(ac, "_ocr_text", ocr)
+    acme = _ImageAcmeTwoRegions()
+    summary = await ac.archive(
+        tmp_path / "gas", extractors=[acme.extractor()], now=NOW, sleep=_no_sleep
+    )
+    assert len(read) == 1
+    assert len(summary.failed) == 2
+    assert summary.ocr_failed == summary.failed
+
+
 def test_main_writes_the_ocr_failures_one_a_line(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
