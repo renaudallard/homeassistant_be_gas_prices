@@ -178,7 +178,10 @@ with `--reparse`, every row is parsed again from its stored texts: the clock
 pinned to its capture day with freezegun, a session that refuses every
 request, the texts served through the memo and `render_through`. A card that
 arrived inside JSON (OCTA+'s archive) stores a `{{card:<sha256>}}` reference
-and gets its bytes back from the release.
+and gets its bytes back from the release. A row the parser now refuses, or
+reads as another month's, is removed, so no installation bills on the old
+reading; one that asks for something it never read, or whose contract the
+supplier withdrew, is left as it was.
 
 A card the text readers refuse as page images is read with the OCR engine,
 [ocr_price_cards](https://github.com/renaudallard/ocr_price_cards), from its

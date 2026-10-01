@@ -336,6 +336,9 @@ class _Summary:
     ocr_failed: list[str] = field(default_factory=list)
     given_up: list[str] = field(default_factory=list)
     unreplayable: list[str] = field(default_factory=list)
+    # Rows the parser now refuses outright: a misread an installation would
+    # otherwise go on billing, so they are removed.
+    refused: list[str] = field(default_factory=list)
 
 
 class _Patience:
@@ -830,6 +833,11 @@ async def _replay_row(
     if row is None or extractor is None:
         summary.unreplayable.append(f"{label}: no readable row or no extractor registered")
         return
+    if all(c.id != contract for c in extractor.contracts):
+        # A contract the supplier withdrew: its rows still price the months
+        # an earlier contract on it supplied, so they stay as they are.
+        summary.unreplayable.append(f"{label}: the contract is no longer sold")
+        return
     try:
         seen_on = date.fromisoformat(row["_seen_on"])
         sources = [s for s in row["_sources"] if isinstance(s, dict)]
@@ -876,11 +884,21 @@ async def _replay_row(
                 snapshot = await extractor.fetch_for_month(offline, contract, region, first)
             else:
                 snapshot = await extractor.fetch(offline, contract, region)
+        except ExtractorError as err:
+            if is_transient(err):
+                # Something the row never read, asked of the offline
+                # session: the row stays as it was.
+                summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
+            else:
+                path.unlink()
+                summary.refused.append(f"{label}: {err}")
+            return
         except Exception as err:  # reported, and the row stays as it was
             summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
             return
     if snapshot is None or _card_month(snapshot, seen_on) != path.stem:
-        summary.unreplayable.append(f"{label}: the parse no longer gives this month's card")
+        path.unlink()
+        summary.refused.append(f"{label}: the parse no longer gives this month's card")
         return
     summary.replayed += 1
     fresh = _row(
@@ -1049,7 +1067,7 @@ async def archive(
         f"{removed} pruned, {len(wanted)} cards asked; {cards.rendered} rendered, "
         f"{cards.served} served from stored text, {len(cards.saved)} new PDFs kept; "
         f"{summary.replayed} replayed, {summary.reparsed} reparsed, "
-        f"{len(summary.unreplayable)} not replayable"
+        f"{len(summary.unreplayable)} not replayable, {len(summary.refused)} refused and removed"
     )
     for line in summary.failed:
         print(f"  failed {line[:300]}")
@@ -1057,6 +1075,8 @@ async def archive(
         print(f"  gave up on {supplier} after {_GIVE_UP_AFTER} network failures in a row")
     for line in summary.unreplayable:
         print(f"  not replayable {line[:300]}")
+    for line in summary.refused:
+        print(f"  refused and removed {line[:300]}")
     return summary
 
 

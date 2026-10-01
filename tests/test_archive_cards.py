@@ -40,6 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -443,6 +444,47 @@ async def test_a_parser_change_replays_the_stored_months_on_their_capture_day(
     assert fixed.days[1:] == [date(2026, 9, 11), date(2026, 10, 2)]
     assert len(web.asked) == 4
     assert (out / "parser.txt").read_text().splitlines()[0] == "a parser that changed"
+
+
+async def test_a_row_the_parser_now_refuses_is_removed(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A parser fix that refuses a kind of card it once misread: the row
+    stored from the misread is removed, so no installation bills on it."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    assert (out / ROW / "2026-09.json").exists()
+
+    class _Stricter(_Acme):
+        async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+            await super().fetch(session, contract, region)
+            raise ExtractorError("Acme: this card prints the network table of 2025")
+
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        extractors=[_Stricter().extractor()],
+        now=datetime(2026, 9, 12, 6, tzinfo=UTC),
+        sleep=_no_sleep,
+    )
+    assert not (out / ROW / "2026-09.json").exists()
+    assert summary.refused and summary.refused[0].startswith("acme/acme_fix/wallonia/2026-09")
+
+
+async def test_a_row_of_a_withdrawn_contract_is_kept(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The supplier withdrew the contract: its rows still price an earlier
+    contract on it, and are not taken for rows the parser refuses."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    withdrawn = replace(_Acme().extractor(), contracts=())
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out, extractors=[withdrawn], now=datetime(2026, 9, 12, 6, tzinfo=UTC), sleep=_no_sleep
+    )
+    assert (out / ROW / "2026-09.json").exists()
+    assert not summary.refused
 
 
 async def test_a_row_the_parser_cannot_rebuild_offline_is_left_as_it_was(
