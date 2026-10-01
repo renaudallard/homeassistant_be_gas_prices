@@ -297,6 +297,50 @@ async def test_months_on_the_current_card_name_every_contract_s(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_earlier_contract_s_last_month_falls_back_like_any_other(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The earlier contract ends in June, and June's own card lists no ORES
+    row: June is billed on today's card and named, rather than the whole
+    contract going unpriced."""
+    card = fetch.return_value
+    june = replace(
+        card,
+        dsos={k: v for k, v in card.dsos.items() if k != DSO_ORES},
+        publication_label="2026-06",
+        valid_until=date(2026, 6, 30),
+    )
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        return june if month == date(2026, 6, 1) else None
+
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_flow",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-06-30",
+    }
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with (
+        patch.dict(providers.EXTRACTORS, {"engie": stub}),
+        patch(
+            "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+            AsyncMock(return_value=("energy", days)),
+        ),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]})
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+    cost = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert cost is not None
+    assert cost.attributes["unpriced_contracts"] == []
+    assert "2026-06" in cost.attributes["months_on_current_card"]
+    assert cost.attributes["ytd_kwh"] == pytest.approx(2580.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

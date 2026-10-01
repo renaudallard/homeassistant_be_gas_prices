@@ -33,8 +33,9 @@ supplier's cards, month by month, the way the current one is.
 
 from __future__ import annotations
 
+import contextlib
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
@@ -309,21 +310,47 @@ class PeriodBilling:
                 caliber=str(period.get(CONF_CALIBER, DEFAULT_CALIBER)),
                 annual_kwh=annual_kwh,
             )
-            try:
-                cost = running_costs(
+
+            def cost_on(
+                card: SupplierSnapshot,
+                _start: date = start,
+                _end: date = end,
+                _household: Household = household,
+                _month_card: Callable[[str], SupplierSnapshot | None] = month_card,
+                _energy_for: Callable[[SupplierSnapshot], EnergyRates] = energy_for,
+                _table: IndexTable | None = table,
+            ) -> RunningCosts:
+                return running_costs(
                     kwh_days=kwh_days,
-                    today=end,
-                    window_start=start,
-                    household=household,
-                    current_card=end_card,
-                    month_card=month_card,
-                    energy_for=energy_for,
-                    table=table,
+                    today=_end,
+                    window_start=_start,
+                    household=_household,
+                    current_card=card,
+                    month_card=_month_card,
+                    energy_for=_energy_for,
+                    table=_table,
                 )
+
+            cost: RunningCosts | None = None
+            try:
+                cost = cost_on(end_card)
             except PricingError as err:
-                _LOGGER.warning("%s: earlier contract not priced: %s", extractor.label, err)
-                missing.append(extractor.label)
-                continue
+                # The last month's own card cannot price the household (an
+                # archived card missing its DSO row or tier): today's card
+                # stands in, as it does for any other month.
+                fallback = None
+                if not custom and not end_on_current and month_key(end) < current:
+                    fallback = await self._current_card(
+                        session, extractor, contract, region, today, use_archive
+                    )
+                if fallback is not None:
+                    with contextlib.suppress(PricingError):
+                        cost = cost_on(fallback)
+                if cost is None:
+                    _LOGGER.warning("%s: earlier contract not priced: %s", extractor.label, err)
+                    missing.append(extractor.label)
+                    continue
+                end_on_current = True
             if end_on_current:
                 cost = replace(
                     cost,
