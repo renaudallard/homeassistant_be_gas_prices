@@ -398,7 +398,7 @@
         "step": {
           "confirm": {
             "title": "Die Tarifkarte von {supplier} ist veraltet",
-            "description": "Die Karte, nach der {entry} rechnet, wurde seit einer Woche nicht aktualisiert oder gilt für einen abgelaufenen Monat, daher können die Preise falsch sein. Letzter Fehler: {error}. Absenden, um sie jetzt neu abzurufen."
+            "description": "Die Karte, nach der {entry} rechnet, wurde seit einer Woche nicht aktualisiert oder gilt für einen Monat, der seit über einer Woche abgelaufen ist, daher können die Preise falsch sein. Letzter Fehler: {error}. Absenden, um sie jetzt neu abzurufen."
           }
         },
         "abort": {

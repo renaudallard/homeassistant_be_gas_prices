@@ -398,7 +398,7 @@
         "step": {
           "confirm": {
             "title": "{supplier} tariff card is out of date",
-            "description": "The card {entry} prices on has not been refreshed for a week, or is for a month that has ended, so the prices may be wrong. Last error: {error}. Press submit to fetch it again now."
+            "description": "The card {entry} prices on has not been refreshed for a week, or is for a month that ended over a week ago, so the prices may be wrong. Last error: {error}. Press submit to fetch it again now."
           }
         },
         "abort": {

@@ -398,7 +398,7 @@
         "step": {
           "confirm": {
             "title": "Tariefkaart van {supplier} is verouderd",
-            "description": "De kaart waarop {entry} rekent is al een week niet vernieuwd, of is voor een maand die voorbij is, dus de prijzen kunnen fout zijn. Laatste fout: {error}. Druk op verzenden om ze nu opnieuw op te halen."
+            "description": "De kaart waarop {entry} rekent is al een week niet vernieuwd, of is voor een maand die al meer dan een week voorbij is, dus de prijzen kunnen fout zijn. Laatste fout: {error}. Druk op verzenden om ze nu opnieuw op te halen."
           }
         },
         "abort": {

@@ -398,7 +398,7 @@
         "step": {
           "confirm": {
             "title": "La carte tarifaire de {supplier} n'est plus à jour",
-            "description": "La carte sur laquelle {entry} calcule n'a pas été actualisée depuis une semaine, ou porte sur un mois terminé : les prix peuvent être faux. Dernière erreur : {error}. Validez pour la récupérer maintenant."
+            "description": "La carte sur laquelle {entry} calcule n'a pas été actualisée depuis une semaine, ou porte sur un mois terminé depuis plus d'une semaine : les prix peuvent être faux. Dernière erreur : {error}. Validez pour la récupérer maintenant."
           }
         },
         "abort": {
