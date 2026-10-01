@@ -1273,6 +1273,47 @@ async def test_waiting_for_the_archive_to_read_a_new_month_is_no_unreadable_card
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
 
 
+@pytest.mark.freeze_time("2026-10-01 08:00:00+02:00")
+async def test_the_wait_for_the_archive_survives_a_restart(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """Restarted on 1 October with September's reading in the store and
+    October's card not read by the archive yet: still a wait."""
+    card = fetch.return_value
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_CARD_ARCHIVE: True}
+    )
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "snapshot": snapshot_to_json(card),
+            "fetched_at": "2026-09-30T06:00:00+00:00",
+            "read_by_ocr": True,
+        },
+    }
+    with (
+        patch(
+            "custom_components.be_gas_prices.month_cards.fetch_archived_row",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+            AsyncMock(return_value=None),
+        ),
+    ):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    coordinator = entry.runtime_data
+    assert coordinator.card_read_by_ocr and not coordinator.card_unreadable
+    assert coordinator.failures == 0
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_card_published_as_images_without_a_reading_is_unreadable(
     hass: HomeAssistant, fetch: AsyncMock

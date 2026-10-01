@@ -166,6 +166,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # Due at once, unlike a card read for the month, here or by the
         # card archive, which is due when it changes or ages.
         self._stand_in = False
+        # The card restored from the store is the archive's OCR reading.
+        self._restored_ocr = False
         self._force_refresh = False
         self._failures = 0
         self.last_error = ""
@@ -265,6 +267,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._fetched_at = fetched_at
             self._card_source = "cache"
             self._stand_in = True
+            self._restored_ocr = blob.get("read_by_ocr") is True
         # A price is only resolved against its own supplier's publication:
         # a table another supplier published, before a change of supplier,
         # is not restored, even under an index name the two share.
@@ -299,6 +302,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         payload: dict[str, Any] = {
             "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
             "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
+            "read_by_ocr": self.card_read_by_ocr,
             "index": self._index_table,
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
@@ -407,10 +411,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
             )
         except CardNotReadableError as err:
-            if self._card_source == "ocr" and not self._stand_in:
-                # The card archive's reading of last month's card is in hand
-                # and the archive has not read the new month's yet: it reads
-                # once a day, so this is a wait, not an unreadable card.
+            if (self._card_source == "ocr" and not self._stand_in) or (
+                self._card_source == "cache" and self._restored_ocr
+            ):
+                # The card archive's reading of last month's card is in hand,
+                # read here or restored from the store, and the archive has
+                # not read the new month's yet: it reads once a day, so this
+                # is a wait, not an unreadable card.
+                self.card_unreadable = False
+                self.card_read_by_ocr = True
                 self._fetch_failed(str(err), transient=True)
             else:
                 self.card_unreadable = True
