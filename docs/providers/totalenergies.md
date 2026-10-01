@@ -182,8 +182,10 @@ These were seen on the September 2026 cards and compared with
 
   The excise is replaced by the law's rates for the delivery months
   `const.py` knows the law for, August to December 2026
-  (`_resolve.resolve_federal_levies`). Transport, the connection fee and the
-  distribution terms are billed as printed.
+  (`_resolve.resolve_federal_levies`), and so is the Walloon connection fee,
+  billed at the law's 0,0075 c€/kWh where the card prints 0,01
+  (`_resolve.resolve_connection_fee`). Transport and the distribution terms
+  are billed as printed.
 - The energy contribution is still printed at 0,11 c€/kWh. It has been 0
   since 2026-08-01, and was 0,105767 before that. The law override sets it to
   zero for delivery months from August 2026.
