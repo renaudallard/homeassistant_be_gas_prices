@@ -1095,6 +1095,43 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
     assert fetch.await_count == 2
 
 
+@pytest.mark.freeze_time("2026-09-30 10:00:00+02:00")
+async def test_waiting_for_the_archive_to_read_a_new_month_is_no_unreadable_card(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """September's card was read off its image by the card archive. From 1
+    October it is asked for again every tick, and until the archive reads
+    October's, the entry keeps September's reading and its Repairs card."""
+    card = fetch.return_value
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+
+    async def row(_session: Any, _supplier: str, _contract: str, _region: str, month: str) -> Any:
+        return (card, True) if month == "2026-09" else None
+
+    stub = replace(providers.EXTRACTORS["engie"], probe=AsyncMock(return_value="Mon, 31 Aug"))
+    with (
+        patch.dict(providers.EXTRACTORS, {"engie": stub}),
+        patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row),
+        patch(
+            "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+            AsyncMock(return_value=None),
+        ),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        coordinator = entry.runtime_data
+        assert coordinator.card_read_by_ocr
+        freezer.move_to("2026-10-01 06:30:00+02:00")
+        for _ in range(4):
+            freezer.tick(timedelta(hours=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
+    assert coordinator.card_read_by_ocr and not coordinator.card_unreadable
+    assert coordinator.failures == 0
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"card_read_by_ocr_{entry.entry_id}") is not None
+    assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_card_published_as_images_without_a_reading_is_unreadable(
     hass: HomeAssistant, fetch: AsyncMock

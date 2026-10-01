@@ -405,9 +405,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
             )
         except CardNotReadableError as err:
-            self.card_unreadable = True
-            self.card_read_by_ocr = False
-            self._fetch_failed(str(err), transient=False)
+            if self._card_source == "ocr" and not self._stand_in:
+                # The card archive's reading of last month's card is in hand
+                # and the archive has not read the new month's yet: it reads
+                # once a day, so this is a wait, not an unreadable card.
+                self._fetch_failed(str(err), transient=True)
+            else:
+                self.card_unreadable = True
+                self.card_read_by_ocr = False
+                self._fetch_failed(str(err), transient=False)
         except ExtractorError as err:
             transient = is_transient_fetch_error(str(err))
             # A network failure says nothing about the card: one known to be
