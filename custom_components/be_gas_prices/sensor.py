@@ -141,16 +141,19 @@ def _year_attributes(data: CoordinatorData) -> dict[str, Any]:
 
 
 def _month_attributes(data: CoordinatorData) -> dict[str, Any]:
+    """The running month's bills, every contract that supplied in it, as
+    the state adds them up."""
     if not data.months:
         return {}
-    bill = data.months[-1]
+    month = data.months[-1].month
+    bills = [bill for bill in data.months if bill.month == month]
     return {
-        "kwh": round(bill.kwh, 1),
-        "energy_eur": round(bill.energy_cost, 2),
-        "network_eur": round(bill.network_cost, 2),
-        "taxes_eur": round(bill.taxes_cost, 2),
-        "fixed_eur": round(bill.fixed_cost, 2),
-        "provisional": bill.provisional,
+        "kwh": round(sum(bill.kwh for bill in bills), 1),
+        "energy_eur": round(sum(bill.energy_cost for bill in bills), 2),
+        "network_eur": round(sum(bill.network_cost for bill in bills), 2),
+        "taxes_eur": round(sum(bill.taxes_cost for bill in bills), 2),
+        "fixed_eur": round(sum(bill.fixed_cost for bill in bills), 2),
+        "provisional": any(bill.provisional for bill in bills),
     }
 
 

@@ -241,6 +241,34 @@ async def test_the_month_cost_resets_with_the_tick_not_the_clock(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_month_cost_attributes_cover_a_switch_month_whole(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """With a change of contract on 10 September, the month's state adds up
+    both contracts' bills, and its attributes do the same."""
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_flow",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-09-09",
+    }
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]})
+    september = [b for b in entry.runtime_data.data.months if b.month == "2026-09"]
+    assert len(september) == 2
+    state = hass.states.get("sensor.engie_flow_current_month_cost")
+    assert state is not None
+    assert state.attributes["kwh"] == pytest.approx(150.0)
+    parts = ("energy_eur", "network_eur", "taxes_eur", "fixed_eur")
+    assert sum(state.attributes[k] for k in parts) == pytest.approx(float(state.state), abs=0.03)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
