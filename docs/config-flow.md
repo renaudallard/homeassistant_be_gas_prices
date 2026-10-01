@@ -17,7 +17,7 @@ once in `_FlowSteps` over `self._data`.
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Walloon fee and the Brussels levy only in their region. |
 | `household` | Annual consumption, Brussels meter caliber, gas meter, conversion mode, card archive, daily ranking | The caliber only in Brussels. The conversion mode defaults to the bill's factor. |
-| `station` | Reception station | From Atrias's latest published month. If Atrias cannot be read the flow moves to `factor` with an error. |
+| `station` | Reception station | From Atrias's latest published month. If Atrias cannot be read, an entry that names its station already keeps it and saves; otherwise the flow moves to `factor` with an error. |
 | `factor` | Conversion factor | kWh/m³ from the bill. Optional and suggested rather than defaulted: left empty, the flow moves to `station`, since a form has no way back to the mode picked on `household`. |
 
 The entry's title is the contract's label. Everything is stored in

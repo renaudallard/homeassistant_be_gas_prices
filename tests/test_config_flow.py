@@ -317,6 +317,46 @@ async def test_atrias_down_falls_back_to_the_factor(hass: HomeAssistant) -> None
     assert result["errors"] == {"base": "stations_unavailable"}
 
 
+async def test_atrias_down_keeps_the_station_an_entry_names(hass: HomeAssistant) -> None:
+    """Editing the settings of an entry on a station while Atrias is down:
+    the station it has is kept rather than the edit being held up."""
+    entry = _entry(hass)
+    data = {k: v for k, v in entry.data.items() if k != CONF_CONVERSION_FACTOR}
+    hass.config_entries.async_update_entry(
+        entry,
+        data={**data, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: STATIONS[0].ean},
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    with patch(
+        "custom_components.be_gas_prices.config_flow._stations",
+        AsyncMock(side_effect=calorific.CalorificError("HTTP 503")),
+    ):
+        for user_input in (
+            {"next_step_id": "settings"},
+            {},
+            {CONF_REGION: REGION_WALLONIA},
+            {CONF_SUPPLIER: "engie"},
+            {CONF_CONTRACT: "engie_flow"},
+            {CONF_DSO: DSO_ORES},
+        ):
+            result = await hass.config_entries.options.async_configure(
+                result["flow_id"], user_input
+            )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_ANNUAL_CONSUMPTION_KWH: 15000,
+                CONF_CONVERSION_MODE: CONVERSION_STATION,
+                CONF_CARD_ARCHIVE: False,
+                CONF_DAILY_COMPARE: False,
+            },
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_STATION] == STATIONS[0].ean
+    assert entry.data[CONF_CONVERSION_MODE] == CONVERSION_STATION
+    assert entry.data[CONF_ANNUAL_CONSUMPTION_KWH] == 15000
+
+
 async def test_an_empty_factor_picks_the_station_instead(hass: HomeAssistant) -> None:
     """The factor is the default, and a household with no bill at hand has
     no way back to the household step: leaving it empty lists the stations."""

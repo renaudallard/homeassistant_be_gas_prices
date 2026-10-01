@@ -487,6 +487,12 @@ class _FlowSteps:
             except (calorific.CalorificError, TimeoutError):
                 self._stations_cache = None
                 errors["base"] = "stations_unavailable"
+        if not self._stations_cache and self._data.get(CONF_STATION):
+            # Atrias could not be read, but the entry names its station
+            # already: the list is only needed to pick another, so its
+            # settings save with the one it has.
+            self._data.pop(CONF_CONVERSION_FACTOR, None)
+            return await self._async_finish()
         if not self._stations_cache:
             # Atrias could not be read: a factor from the bill still works.
             self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
