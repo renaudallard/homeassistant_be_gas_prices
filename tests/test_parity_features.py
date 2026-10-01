@@ -251,6 +251,22 @@ def test_a_contract_that_ended_last_year_is_not_billed_this_year() -> None:
     assert current_period_start(data, date(2026, 1, 1), date(2026, 9, 1)) == date(2026, 1, 1)
 
 
+async def test_an_earlier_contract_s_index_is_asked_again_after_a_failure() -> None:
+    """A restart with the source down: the next tick reads the values once
+    it is back, rather than pricing the day on the card's printed figures."""
+    table = {"ZTP101": {"2026-08": 61.768}}
+    fetch_index = AsyncMock(
+        side_effect=[ExtractorError("network error fetching x: timeout"), table]
+    )
+    extractor = replace(providers.EXTRACTORS["engie"], fetch_index=fetch_index)
+    billing = PeriodBilling(MonthCardCache())
+    today = date(2026, 9, 15)
+    assert await billing._table(AsyncMock(), extractor, today) is None
+    assert await billing._table(AsyncMock(), extractor, today) == table
+    assert await billing._table(AsyncMock(), extractor, today) == table
+    assert fetch_index.await_count == 2
+
+
 def test_malformed_periods_are_left_out() -> None:
     data = {CONF_PREVIOUS_CONTRACTS: [{"until": "not a date"}, "nonsense", {"until": "2026-02-01"}]}
     assert previous_contracts(data) == []

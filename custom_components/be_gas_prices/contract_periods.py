@@ -212,12 +212,14 @@ class PeriodBilling:
         held = self._tables.get(extractor.id)
         if held is not None and held[0] == today:
             return held[1]
-        table = None if held is None else held[1]
+        table = None
         if extractor.fetch_index is not None:
             try:
                 table = await extractor.fetch_index(session)
             except ExtractorError as err:
+                # Kept unstamped, like a card not read: asked again next tick.
                 _LOGGER.debug("%s index values not read: %s", extractor.label, err)
+                return None if held is None else held[1]
         self._tables[extractor.id] = (today, table)
         return table
 
