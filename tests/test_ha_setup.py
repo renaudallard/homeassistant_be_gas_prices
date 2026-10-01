@@ -106,10 +106,17 @@ DATA = {
 @pytest.fixture(autouse=True)
 def _no_card_archive_rows() -> Iterator[None]:
     """An entry that lets the card archive be read asks it for its past
-    months' cards in the background; no test here may reach the network."""
-    with patch(
-        "custom_components.be_gas_prices.month_cards.fetch_archived_card",
-        AsyncMock(return_value=None),
+    months' cards in the background, and for a stand-in when its card cannot
+    be read; no test here may reach the network."""
+    with (
+        patch(
+            "custom_components.be_gas_prices.month_cards.fetch_archived_card",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            AsyncMock(return_value=None),
+        ),
     ):
         yield
 
@@ -1017,8 +1024,8 @@ async def test_a_stored_card_of_another_region_is_not_restored(
     card archive is asked instead."""
     walloon = fetch.return_value
     flemish = replace(walloon, dsos={DSO_FLUVIUS_IMEWO: walloon.dsos[DSO_ORES]})
-    archived = AsyncMock(return_value=flemish)
-    with patch("custom_components.be_gas_prices.coordinator.fetch_archived_card", archived):
+    archived = AsyncMock(return_value=(flemish, False))
+    with patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", archived):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         await entry.runtime_data.async_save()
         archived.reset_mock()
@@ -1252,8 +1259,8 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
     card = fetch.return_value
     fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
     with patch(
-        "custom_components.be_gas_prices.coordinator.fetch_archived_card",
-        AsyncMock(return_value=card),
+        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        AsyncMock(return_value=(card, False)),
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         assert entry.runtime_data.data.card_source == "archive"
@@ -1308,7 +1315,7 @@ async def test_waiting_for_the_archive_to_read_a_new_month_is_no_unreadable_card
         patch.dict(providers.EXTRACTORS, {"engie": stub}),
         patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):
@@ -1320,6 +1327,36 @@ async def test_waiting_for_the_archive_to_read_a_new_month_is_no_unreadable_card
             freezer.tick(timedelta(hours=1))
             async_fire_time_changed(hass)
             await hass.async_block_till_done()
+    assert coordinator.card_read_by_ocr and not coordinator.card_unreadable
+    assert coordinator.failures == 0
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"card_read_by_ocr_{entry.entry_id}") is not None
+    assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-10-01 08:00:00+02:00")
+async def test_a_new_entry_on_last_month_s_ocr_reading_waits_for_the_archive(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """Set up on 1 October, before the archive read October's card off its
+    image: September's reading stands in, and is waited on like one."""
+    card = fetch.return_value
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+
+    async def row(_session: Any, _supplier: str, _contract: str, _region: str, month: str) -> Any:
+        return (card, True) if month == "2026-09" else None
+
+    with (
+        patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row),
+        patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", row),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        coordinator = entry.runtime_data
+        for _ in range(3):
+            freezer.tick(timedelta(hours=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
+    assert coordinator.data.card_source == "archive"
     assert coordinator.card_read_by_ocr and not coordinator.card_unreadable
     assert coordinator.failures == 0
     issues = ir.async_get(hass)
@@ -1354,7 +1391,7 @@ async def test_the_wait_for_the_archive_survives_a_restart(
             AsyncMock(return_value=None),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):
@@ -1390,7 +1427,7 @@ async def test_a_restored_reading_stays_marked_through_a_network_failure(
         },
     }
     with patch(
-        "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
         AsyncMock(return_value=None),
     ):
         entry.add_to_hass(hass)
@@ -1411,7 +1448,7 @@ async def test_a_card_published_as_images_without_a_reading_is_unreadable(
             AsyncMock(return_value=None),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):

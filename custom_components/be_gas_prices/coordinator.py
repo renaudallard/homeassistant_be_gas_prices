@@ -106,7 +106,7 @@ from .month_cards import (
     ArchiveUnavailable,
     MonthCardCache,
     current_card,
-    fetch_archived_card,
+    fetch_archived_row,
 )
 from .pricing import PriceBreakdown, PricingError, fixed_costs
 from .providers import get as get_extractor
@@ -166,8 +166,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # Due at once, unlike a card read for the month, here or by the
         # card archive, which is due when it changes or ages.
         self._stand_in = False
-        # The card restored from the store is the archive's OCR reading.
-        self._restored_ocr = False
         self._force_refresh = False
         self._failures = 0
         self.last_error = ""
@@ -267,9 +265,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._fetched_at = fetched_at
             self._card_source = "cache"
             self._stand_in = True
-            self._restored_ocr = blob.get("read_by_ocr") is True
-            # So it is stored as such again, whatever the next check finds.
-            self.card_read_by_ocr = self._restored_ocr
+            # The archive's OCR reading, as the store says: stored as such
+            # again whatever the next check finds, and waited on like one.
+            self.card_read_by_ocr = blob.get("read_by_ocr") is True
         # A price is only resolved against its own supplier's publication:
         # a table another supplier published, before a change of supplier,
         # is not restored, even under an index name the two share.
@@ -413,13 +411,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
             )
         except CardNotReadableError as err:
-            if (self._card_source == "ocr" and not self._stand_in) or (
-                self._card_source == "cache" and self._restored_ocr
-            ):
+            if self.card_read_by_ocr and self._snapshot is not None:
                 # The card archive's reading of last month's card is in hand,
-                # read here or restored from the store, and the archive has
-                # not read the new month's yet: it reads once a day, so this
-                # is a wait, not an unreadable card.
+                # read here, restored from the store or taken as a stand-in,
+                # and the archive has not read the new month's yet: it reads
+                # once a day, so this is a wait, not an unreadable card.
                 self.card_unreadable = False
                 self.card_read_by_ocr = True
                 self._fetch_failed(str(err), transient=True)
@@ -471,21 +467,30 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         for _ in range(_ARCHIVE_MONTHS_BACK):
             key = f"{year}-{month:02d}"
             try:
-                row = await fetch_archived_card(
+                row = await fetch_archived_row(
                     self._session, self.extractor.id, self.contract, self.region, key
                 )
             except ArchiveUnavailable as err:
                 _LOGGER.debug("card archive unavailable: %s", err)
                 return
             if row is not None:
+                card, read_by_ocr = row
                 held = self._snapshot
-                if held is None or (row.valid_until or date.min) > (held.valid_until or date.min):
-                    self._snapshot = row
+                if held is None or (card.valid_until or date.min) > (held.valid_until or date.min):
+                    self._snapshot = card
                     self._fetched_at = dt_util.as_utc(
                         dt_util.start_of_local_day(date(year, month, 1))
                     )
                     self._card_source = "archive"
                     self._stand_in = True
+                    self.card_read_by_ocr = read_by_ocr
+                    if read_by_ocr and self.card_unreadable:
+                        # The archive's reading of a card published as
+                        # images: what such a card is priced on, so the
+                        # card found unreadable is no failure while the
+                        # archive has not read the newest.
+                        self._failures = 0
+                        self.card_unreadable = False
                 return
             year, month = (year - 1, 12) if month == 1 else (year, month - 1)
 
