@@ -65,12 +65,15 @@ with three workers (`-n 3`).
 ```bash
 ruff check .
 ruff format --check .
-mypy --strict custom_components/be_gas_prices
-mypy tests/ scripts/
+mypy --strict --cache-dir .mypy_cache_strict custom_components/be_gas_prices
+mypy --cache-dir .mypy_cache_all tests/ scripts/
 ```
 
 The tests and scripts are checked without `--strict`: the test harness has
-untyped helpers the integration never imports.
+untyped helpers the integration never imports. Each run keeps its own
+cache: they check with different options, and through one shared cache each
+threw the other's away, about two minutes a run on a Raspberry Pi against a
+second or two once warm.
 
 ## scripts/live_check.py
 

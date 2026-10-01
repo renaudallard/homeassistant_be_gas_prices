@@ -305,7 +305,8 @@ data:
 pip install -r requirements-dev.txt
 ruff check .
 ruff format --check .
-mypy --strict custom_components/be_gas_prices
+mypy --strict --cache-dir .mypy_cache_strict custom_components/be_gas_prices
+mypy --cache-dir .mypy_cache_all tests/ scripts/
 pytest tests/
 ```
 

@@ -37,14 +37,16 @@ jobs:
           ruff check .
           ruff format --check .
       - name: Type check (production code, --strict)
-        run: mypy --strict custom_components/be_gas_prices
+        # One cache per run: the two runs check with different options, and
+        # sharing one cache made each throw the other's away.
+        run: mypy --strict --cache-dir .mypy_cache_strict custom_components/be_gas_prices
       - name: Type check (tests and helper scripts, non-strict)
         # The tests are not --strict clean (the harness has untyped helpers
         # the integration never imports), but a plain mypy still catches the
         # optional index and the wrong argument. The scripts run as daily
         # workflows; checking them here surfaces a regression on the pull
         # request rather than in the next scheduled run.
-        run: mypy tests/ scripts/
+        run: mypy --cache-dir .mypy_cache_all tests/ scripts/
       - name: Tests
         # Split across the runner's cores by file, so a file's fixtures are
         # built once in one worker. Each worker costs one Home Assistant
