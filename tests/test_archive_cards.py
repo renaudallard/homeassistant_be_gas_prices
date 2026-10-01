@@ -37,6 +37,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import UTC, date, datetime, timedelta
@@ -580,42 +581,40 @@ def test_main_fails_the_run_only_when_nothing_was_archived(
     assert ac.main() == 0
 
 
-def test_the_push_survives_another_archive_rewriting_the_readme(tmp_path: Path) -> None:
-    """The electricity and water workflows push to the same main and write
-    the root README too, with the same text. Should one of them drift and
-    land between this job's clone and its push, README included, the run
-    must not be lost: the push step rebases, keeps this job's README, which
-    lists every namespace, and lands."""
+def _git(*args: str, cwd: Path) -> str:
+    return subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
 
-    def git(*args: str, cwd: Path) -> str:
-        return subprocess.run(
-            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
-            cwd=cwd,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout
 
+def _push_race(tmp_path: Path) -> tuple[Path, Path, str]:
+    """The cards repository, a job's clone of it with today's gas rows, and
+    the workflow's push step. Between the clone and the push, the
+    electricity archive pushed a commit that rewrote the README."""
     origin = tmp_path / "origin.git"
     seed = tmp_path / "seed"
     seed.mkdir()
-    git("init", "-q", "-b", "main", cwd=seed)
+    _git("init", "-q", "-b", "main", cwd=seed)
     (seed / "README.md").write_text("# Price cards\n")
-    git("add", "README.md", cwd=seed)
-    git("commit", "-q", "-m", "start", cwd=seed)
-    git("clone", "-q", "--bare", str(seed), str(origin), cwd=tmp_path)
+    _git("add", "README.md", cwd=seed)
+    _git("commit", "-q", "-m", "start", cwd=seed)
+    _git("clone", "-q", "--bare", str(seed), str(origin), cwd=tmp_path)
 
     work = tmp_path / "work"
     (work / "tmp").mkdir(parents=True)
-    git("clone", "-q", "--depth=1", f"file://{origin}", "tmp/cards", cwd=work)
+    _git("clone", "-q", "--depth=1", f"file://{origin}", "tmp/cards", cwd=work)
     other = tmp_path / "electricity"
-    git("clone", "-q", "--depth=1", f"file://{origin}", str(other), cwd=tmp_path)
+    _git("clone", "-q", "--depth=1", f"file://{origin}", str(other), cwd=tmp_path)
     (other / "README.md").write_text("# Price cards\n\nelectricity and water\n")
     (other / "electricity").mkdir()
     (other / "electricity" / "row.json").write_text("{}\n")
-    git("add", "-A", cwd=other)
-    git("commit", "-q", "-m", "Cards seen", cwd=other)
-    git("push", "-q", "origin", "HEAD:main", cwd=other)
+    _git("add", "-A", cwd=other)
+    _git("commit", "-q", "-m", "Cards seen", cwd=other)
+    _git("push", "-q", "origin", "HEAD:main", cwd=other)
 
     cards = work / "tmp" / "cards"
     (cards / "README.md").write_text("# Price cards\n\nelectricity, gas and water\n")
@@ -630,18 +629,56 @@ def test_the_push_survives_another_archive_rewriting_the_readme(tmp_path: Path) 
     stubs.mkdir()
     (stubs / "sleep").write_text("#!/bin/sh\nexit 0\n")
     (stubs / "sleep").chmod(0o755)
-    env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}"}
-    done = subprocess.run(
-        ["bash", "-e", "-c", step["run"]], cwd=work, env=env, capture_output=True, text=True
-    )
-    assert done.returncode == 0, done.stderr
-    log = git("log", "--format=%s", "main", cwd=origin).splitlines()
+    return origin, work, step["run"]
+
+
+def _assert_landed(origin: Path) -> None:
+    log = _git("log", "--format=%s", "main", cwd=origin).splitlines()
     assert log[:2] == [f"Gas cards seen on {datetime.now(UTC).date().isoformat()}", "Cards seen"]
     assert (
-        git("show", "main:README.md", cwd=origin) == "# Price cards\n\nelectricity, gas and water\n"
+        _git("show", "main:README.md", cwd=origin)
+        == "# Price cards\n\nelectricity, gas and water\n"
     )
-    assert git("show", "main:electricity/row.json", cwd=origin) == "{}\n"
-    assert git("show", "main:gas/row.json", cwd=origin) == "{}\n"
+    assert _git("show", "main:electricity/row.json", cwd=origin) == "{}\n"
+    assert _git("show", "main:gas/row.json", cwd=origin) == "{}\n"
+
+
+def test_the_push_survives_another_archive_rewriting_the_readme(tmp_path: Path) -> None:
+    """The electricity and water workflows push to the same main and write
+    the root README too, with the same text. Should one of them drift and
+    land between this job's clone and its push, README included, the run
+    must not be lost: the push step rebases, keeps this job's README, which
+    lists every namespace, and lands."""
+    origin, work, run = _push_race(tmp_path)
+    env = {**os.environ, "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"}
+    done = subprocess.run(
+        ["bash", "-e", "-c", run], cwd=work, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    _assert_landed(origin)
+
+
+def test_the_push_survives_a_pull_that_fails(tmp_path: Path) -> None:
+    """A network blip on the first pull is left to the next attempt."""
+    origin, work, run = _push_race(tmp_path)
+    real = shutil.which("git")
+    assert real is not None
+    stub = tmp_path / "bin" / "git"
+    stub.write_text(
+        "#!/bin/sh\n"
+        'case " $* " in *" pull "*)\n'
+        f'  if [ ! -e "{tmp_path}/pulled" ]; then touch "{tmp_path}/pulled"; exit 128; fi ;;\n'
+        "esac\n"
+        f'exec "{real}" "$@"\n'
+    )
+    stub.chmod(0o755)
+    env = {**os.environ, "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"}
+    done = subprocess.run(
+        ["bash", "-e", "-c", run], cwd=work, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    assert (tmp_path / "pulled").exists()
+    _assert_landed(origin)
 
 
 class _ImageAcme(_Acme):
