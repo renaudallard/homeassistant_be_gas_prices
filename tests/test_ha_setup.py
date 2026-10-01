@@ -86,6 +86,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.providers import engie, octaplus
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
+from custom_components.be_gas_prices.running_costs import Household
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import fixture_text
 
@@ -1143,6 +1144,33 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
         async_fire_time_changed(hass)
         await hass.async_block_till_done()
     assert fetch.await_count == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_own_contract_read_off_an_image_is_quoted_so(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The comparisons mark the own row OCR like any row read that way."""
+    card = fetch.return_value
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    row = AsyncMock(return_value=(card, True))
+    with patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+    own = entry.runtime_data.own_contract()
+    assert own is not None and own.read_by_ocr
+    quote = await quote_contract(
+        AsyncMock(),
+        own.extractor,
+        own.contract,
+        REGION_WALLONIA,
+        Household(dso=DSO_ORES, caliber="q10", annual_kwh=17000.0),
+        "2026-09",
+        IndexCache(),
+        use_archive=False,
+        card=own.card,
+        read_by_ocr=own.read_by_ocr,
+    )
+    assert quote.read_by_ocr
 
 
 @pytest.mark.freeze_time("2026-09-30 10:00:00+02:00")

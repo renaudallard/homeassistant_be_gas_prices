@@ -705,6 +705,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                     indices,
                     use_archive=use_archive,
                     card=None if held is None else held.card,
+                    read_by_ocr=held is not None and held.read_by_ocr,
                 ),
             )
             self._quotes = (own, other)

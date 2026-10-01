@@ -774,7 +774,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if snapshot is None:
             return None
         return OwnContract(
-            self.extractor, self.contract, replace(snapshot, energy=self._energy_for(snapshot))
+            self.extractor,
+            self.contract,
+            replace(snapshot, energy=self._energy_for(snapshot)),
+            read_by_ocr=self._card_source == "ocr",
         )
 
     def _filling(self) -> bool:

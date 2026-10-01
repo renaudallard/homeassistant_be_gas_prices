@@ -90,6 +90,8 @@ class OwnContract:
     extractor: SupplierExtractor
     contract: str
     card: SupplierSnapshot
+    # The card is the card archive's reading of one published as images.
+    read_by_ocr: bool = False
 
 
 class IndexCache:
@@ -125,13 +127,15 @@ async def quote_contract(
     *,
     use_archive: bool,
     card: SupplierSnapshot | None = None,
+    read_by_ocr: bool = False,
 ) -> Quote:
     """A year of the household's gas on ``contract``'s current card, or on
-    ``card`` when the caller holds it already (a typed custom card).
+    ``card`` when the caller holds it already (the household's own, which
+    ``read_by_ocr`` says the card archive read off its image).
     ``use_archive`` lets a card published as page images be priced on the
     card archive's reading of it, as the entry itself is."""
     label = next((c.label for c in extractor.contracts if c.id == contract), contract)
-    source = "live"
+    source = "ocr" if read_by_ocr else "live"
     if card is None:
         try:
             card, source = await current_card(
@@ -262,6 +266,7 @@ async def rank(
                 indices,
                 use_archive=False,
                 card=own.card,
+                read_by_ocr=own.read_by_ocr,
             )
         )
     quotes.sort(key=lambda q: (q.annual_cost is None, q.annual_cost or 0.0, q.label))
