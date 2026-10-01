@@ -56,8 +56,10 @@ class CoordinatorData:
 
     snapshot: SupplierSnapshot | None
     # Where the card in hand came from: "live" (fetched from the supplier),
-    # "cache" (restored from the entry's store), "archive" (the card archive
-    # stood in while the supplier could not be read).
+    # "cache" (restored from the entry's store), "archive" (a row of the card
+    # archive, standing in while the supplier could not be read or reading a
+    # card no reader here reads), "ocr" (the archive's OCR reading of a card
+    # published as images).
     card_source: str
     breakdown: PriceBreakdown | None
     fixed: FixedCosts | None

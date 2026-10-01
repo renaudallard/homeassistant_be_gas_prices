@@ -6,7 +6,7 @@ Every entity of an entry hangs off one device named after the entry.
 
 | Key | Unit | Value |
 | --- | --- | --- |
-| `current_price` | EUR/kWh | The all-in price of one kWh this month. Attributes: `tier`, `annual_kwh`, `annual_kwh_measured`, `index_value`, `index_month`, `price_provisional`, `card_month`, `valid_until`, `card_source` (`live`, `cache` from the Store, `archive` for a stand-in from the card archive, `ocr` for the card archive's reading of a card published as images), `source_url`, `snapshot_age_hours`, `snapshot_stale`, `last_error`. |
+| `current_price` | EUR/kWh | The all-in price of one kWh this month. Attributes: `tier`, `annual_kwh`, `annual_kwh_measured`, `index_value`, `index_month`, `price_provisional`, `card_month`, `valid_until`, `card_source` (`live`, `cache` from the Store, `archive` for a row of the card archive, either standing in while the supplier cannot be read or its reading of a card no reader here reads, `ocr` for the card archive's reading of a card published as images), `source_url`, `snapshot_age_hours`, `snapshot_stale`, `last_error`. |
 | `current_price_m3` | EUR/m³ | The same per cubic metre at this month's conversion factor. For an Energy dashboard gas source in m³. |
 | `energy_component`, `network_component`, `taxes_component` | EUR/kWh | The three parts of `current_price`, VAT inclusive. |
 | `fixed_costs_eur_per_year` | EUR | Supplier fee, distribution fixed term, metering and Brussels levy for a year, each an attribute. |
