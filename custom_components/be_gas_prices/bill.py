@@ -198,5 +198,20 @@ def bill_month(
         fixed_cost=fixed,
         index=index,
         provisional=isinstance(energy, IndexedRates)
-        and (index.month != month if index is not None else not energy.settled),
+        and (index.month != month if index is not None else not _settled_for(card, energy, month)),
+    )
+
+
+def _settled_for(card: SupplierSnapshot, energy: IndexedRates, month: str) -> bool:
+    """Whether a leg priced with no index value at all is priced at what
+    ``month`` settles at. Its price is then the card's, or a signed or typed
+    formula read back off it (``contract_leg``): final only where the card
+    is settled, on that index, and for its own month."""
+    own = card.energy
+    card_month = None if card.valid_until is None else f"{card.valid_until:%Y-%m}"
+    return (
+        isinstance(own, IndexedRates)
+        and own.settled
+        and own.index == energy.index
+        and card_month == month
     )

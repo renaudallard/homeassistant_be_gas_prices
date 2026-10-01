@@ -65,7 +65,8 @@ each month of its quarter. An index set before delivery (Engie's ZTP101, a
 month-ahead average) is `settled`: the card prices its month on it and the
 printed price is final. A settled month the supplier's table does not hold
 yet is still priced at the latest value it holds, and is provisional like
-any other.
+any other. With no table at all, a settled card's printed price is final for
+its own month only; another month priced on it is provisional.
 
 Which card's leg (`bill.contract_leg`): the card of month M by default, or
 the signing card when the entry names a contract start date or a tariff card

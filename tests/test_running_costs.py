@@ -223,8 +223,48 @@ def test_a_settled_month_missing_from_the_table_is_provisional() -> None:
     assert october.index is not None and october.index.month == "2026-09"
     assert october.provisional
     # No table at all: the card's own figure, which a settled card sets at
-    # its month's value.
+    # its month's value, and only its month's: August priced on it is not.
     assert not bill("2026-09", None).provisional
+    assert bill("2026-08", None).provisional
+
+
+def test_a_signed_leg_is_final_only_on_a_settled_card_of_its_month() -> None:
+    """With no index values, a signed formula is priced at the index the
+    month's card was set at: final where that card is settled, provisional
+    where it went out on the month before's value, whatever the signing card
+    was."""
+    july = engie.parse_snapshot(
+        "engie_easy_variable",
+        REGION_WALLONIA,
+        fixture_text("engie", "G_EASY_R_GREY_C_I_12_W_F_202607.pdf"),
+    )
+    text = fixture_text("engie", "G_EASY_R_GREY_C_I_12_W_F_202609.pdf")
+    settled = engie.parse_snapshot("engie_easy_variable", REGION_WALLONIA, text)
+    early = engie.parse_snapshot(
+        "engie_easy_variable",
+        REGION_WALLONIA,
+        text.replace("d’application pour Septembre\n2026", "d’application pour Août\n2026"),
+    )
+    assert isinstance(july.energy, IndexedRates) and july.energy.settled
+    assert isinstance(early.energy, IndexedRates) and not early.energy.settled
+
+    def provisional(card: SupplierSnapshot) -> bool:
+        leg = contract_leg(card.energy, july.energy, None, {CONF_SUPPLIER: "engie"})
+        return bill_month(
+            month="2026-09",
+            card=card,
+            energy=leg,
+            table=None,
+            dso=DSO_ORES,
+            annual_kwh=10_000.0,
+            caliber=CALIBER_Q10,
+            kwh=1000.0,
+            days=30,
+            days_in_year=365,
+        ).provisional
+
+    assert not provisional(settled)
+    assert provisional(early)
 
 
 def test_bill_month_accrues_the_fixed_costs_by_the_day() -> None:
