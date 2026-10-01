@@ -43,7 +43,7 @@ the next tick.
 | `extractor_failed` | Two fetches in a row failed for a reason a retry will not fix. |
 | `card_unreadable` | The supplier published its card as images and the card archive holds no reading of it for the month. |
 | `card_read_by_ocr` | The entry prices on the card archive's OCR reading of a card published as images (Ecofix). Informational; clears by itself when the supplier publishes a readable card again. |
-| `meter_unit` | The gas meter's statistics are in a unit that converts neither to a volume nor to energy. |
+| `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. |
 | `several_meters` | The Energy dashboard lists several gas meters and none is set in the options. |
 
 ## Diagnostics
