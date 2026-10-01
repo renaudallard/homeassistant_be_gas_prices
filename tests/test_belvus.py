@@ -180,6 +180,15 @@ def test_listing_gives_every_month_newest_first() -> None:
     assert belvus.listed_months(page, smart)[0] == date(2026, 9, 1)
 
 
+def test_a_folder_that_is_no_month_is_skipped() -> None:
+    flex = belvus._CONTRACTS_BY_ID["belvus_flex_online"]
+    page = "".join(
+        f'<a href="/public/tariefkaarten/{month}/Tariefkaart_FlexOnline_GAS.pdf">'
+        for month in ("2026-13", "2026-00", "2026-09")
+    )
+    assert belvus.listed_months(page, flex) == [date(2026, 9, 1)]
+
+
 async def test_fetch_reads_the_newest_listed_card() -> None:
     with (
         patch.object(
