@@ -180,7 +180,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._gcv_context: ssl.SSLContext | None = None
         self._months = MonthCardCache()
         # The release the store was written by: past months' cards read by
-        # another release are read again, so a parser fix reaches them.
+        # another release are read again, so a parser fix reaches them, and
+        # kept where no one serves them any more.
         self._release: str | None = None
         self._month_fill: asyncio.Task[None] | None = None
         self._first_tick = True
@@ -277,8 +278,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
-        if blob.get("release") == self._release:
-            self._months.load_json(blob.get("months"))
+        self._months.load_json(blob.get("months"), reread=blob.get("release") != self._release)
         stamp = blob.get("backfill")
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
         ranking = DailyRanking.from_json(blob.get("ranking"))

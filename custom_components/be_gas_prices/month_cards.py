@@ -36,7 +36,7 @@ may recover is not kept at all.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
@@ -69,6 +69,9 @@ class MonthCard:
     snapshot: SupplierSnapshot | None
     source: CardSource | None
     fetched_at: datetime
+    # Stored by another release, which may have read the card worse: read
+    # again once, and kept when no card is found any more.
+    reread: bool = False
 
 
 class ArchiveUnavailable(Exception):
@@ -225,7 +228,11 @@ class MonthCardCache:
         key = self._key(extractor.id, contract, region, month)
         now = dt_util.utcnow()
         held = self._rows.get(key)
-        if held is not None and (held.snapshot is not None or now - held.fetched_at < _ABSENT_TTL):
+        if (
+            held is not None
+            and not held.reread
+            and (held.snapshot is not None or now - held.fetched_at < _ABSENT_TTL)
+        ):
             return held
         year, number = (int(part) for part in month.split("-"))
         snapshot: SupplierSnapshot | None = None
@@ -250,6 +257,10 @@ class MonthCardCache:
         if snapshot is None and unavailable is not None:
             raise unavailable
         row = MonthCard(snapshot=snapshot, source=source, fetched_at=now)
+        if snapshot is None and held is not None and held.snapshot is not None:
+            # No one serves the month any more (a signing card past the
+            # archives' reach): the stored reading is all there is.
+            row = replace(held, reread=False)
         self._rows[key] = row
         return row
 
@@ -266,8 +277,10 @@ class MonthCardCache:
             if row.snapshot is not None
         }
 
-    def load_json(self, blob: Any) -> None:
-        """Restore what :meth:`to_json` wrote, dropping any row it cannot read."""
+    def load_json(self, blob: Any, *, reread: bool = False) -> None:
+        """Restore what :meth:`to_json` wrote, dropping any row it cannot read.
+        With ``reread`` (another release wrote it) each card is read again
+        the next time it is asked for."""
         if not isinstance(blob, dict):
             return
         for key, value in blob.items():
@@ -280,5 +293,5 @@ class MonthCardCache:
             if source not in ("supplier", "archive"):
                 continue
             self._rows[str(key)] = MonthCard(
-                snapshot=snapshot, source=source, fetched_at=fetched_at
+                snapshot=snapshot, source=source, fetched_at=fetched_at, reread=reread
             )

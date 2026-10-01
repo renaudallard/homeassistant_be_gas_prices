@@ -258,9 +258,9 @@ The archive keeps the running month and the twelve before it. A signing
 month older than that is read from the supplier's own archive where it still
 holds it; otherwise each month is priced on its own card rather than the one
 signed for, unless you type the figures of your contract. A card an
-installation has read is kept in its store until an update changes the
-stored card format, so this matters when the entry is new, its signing date
-changes, or such an update is installed.
+installation has read is kept in its store; an update reads it again where
+it is still served and keeps the stored one where it is not, so this
+matters when the entry is new or its signing date changes.
 
 ## Services
 

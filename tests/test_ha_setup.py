@@ -708,16 +708,21 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
-@pytest.mark.parametrize(("same_release", "read_again"), [(True, False), (False, True)])
+@pytest.mark.parametrize(
+    ("same_release", "served", "read_again"),
+    [(True, True, False), (False, True, True), (False, False, False)],
+)
 async def test_month_cards_stored_by_another_release_are_read_again(
     hass: HomeAssistant,
     fetch: AsyncMock,
     hass_storage: dict[str, Any],
     same_release: bool,
+    served: bool,
     read_again: bool,
 ) -> None:
     """A release may read a card better than the one that stored it: the
-    past months' cards another release stored are fetched afresh."""
+    past months' cards another release stored are fetched afresh, and kept
+    where no one serves the month any more."""
     card = fetch.return_value
     august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
     misread = replace(august, energy=replace(august.energy, price=1.0))
@@ -740,7 +745,7 @@ async def test_month_cards_stored_by_another_release_are_read_again(
     }
 
     async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
-        return august if month == date(2026, 8, 1) else None
+        return august if served and month == date(2026, 8, 1) else None
 
     stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
     with patch.dict(providers.EXTRACTORS, {"engie": stub}):
