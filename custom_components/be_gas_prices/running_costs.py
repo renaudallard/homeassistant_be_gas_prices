@@ -105,10 +105,14 @@ def to_kwh(
 
 
 def meter_start(today: date) -> date:
-    """The first day the costs read off the meter: 1 January, or the start
-    of the rolling year when it is earlier. A day before it has no use, and
-    a month of it without a conversion factor would void every cost."""
-    return min(date(today.year, 1, 1), today - timedelta(days=MEASURED_FULL_YEAR_DAYS - 1))
+    """The first day the costs read off the meter: today's date last year,
+    before this year's 1 January, the rolling year and the days the year-end
+    projection reads last year. A day before it has no use, and a month of
+    it without a conversion factor would void every cost."""
+    try:
+        return today.replace(year=today.year - 1)
+    except ValueError:  # 29 February has no twin
+        return date(today.year - 1, 2, 28)
 
 
 def rolling_year_kwh(days: Mapping[date, float], today: date) -> float | None:

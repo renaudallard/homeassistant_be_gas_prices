@@ -56,6 +56,8 @@ from custom_components.be_gas_prices.providers._rates import FixedRates, Indexed
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
 from custom_components.be_gas_prices.running_costs import (
     Household,
+    _remaining_days_last_year,
+    meter_start,
     rolling_year_kwh,
     running_costs,
     to_kwh,
@@ -318,3 +320,27 @@ def test_year_end_projection_uses_last_years_remaining_days() -> None:
     assert costs.projected_year_kwh == pytest.approx(costs.ytd_kwh + 11 * 30.0)
     assert costs.projected_year_end_cost is not None
     assert costs.projected_year_end_cost > costs.current_year_cost
+
+
+@pytest.mark.parametrize(
+    ("today", "start"),
+    [
+        (date(2026, 10, 1), date(2025, 10, 1)),
+        (date(2028, 6, 15), date(2027, 6, 15)),
+        (date(2028, 2, 29), date(2027, 2, 28)),
+        (date(2029, 1, 20), date(2028, 1, 20)),
+    ],
+)
+def test_the_meter_is_read_from_today_s_date_last_year(today: date, start: date) -> None:
+    assert meter_start(today) == start
+
+
+@pytest.mark.parametrize("today", [date(2028, 6, 15), date(2029, 1, 20), date(2027, 6, 15)])
+def test_the_days_read_project_the_year_end_across_a_29_february(today: date) -> None:
+    """Every day from meter_start to today on record: the rolling year and
+    the projection both find what they read, a 29 February in between or
+    not."""
+    start = meter_start(today)
+    days = {start + timedelta(days=n): 10.0 for n in range((today - start).days + 1)}
+    assert rolling_year_kwh(days, today) is not None
+    assert _remaining_days_last_year(days, today) is not None
