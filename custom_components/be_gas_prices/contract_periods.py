@@ -221,6 +221,42 @@ class PeriodBilling:
         self._tables[extractor.id] = (today, table)
         return table
 
+    async def fill(
+        self,
+        session: aiohttp.ClientSession,
+        data: dict[str, Any],
+        today: date,
+        *,
+        use_archive: bool,
+    ) -> None:
+        """Fetch the closed months' cards each earlier contract is billed on,
+        its signing month's included, into the month cache."""
+        from .providers import get as get_extractor
+
+        current = month_key(today)
+        for period, start, end in periods_this_year(data, today):
+            try:
+                extractor = get_extractor(str(period[CONF_SUPPLIER]))
+            except ExtractorError:
+                continue
+            if extractor.id == SUPPLIER_CUSTOM:
+                # The typed card prices every month the contract supplied.
+                continue
+            contract = str(period[CONF_CONTRACT])
+            region = str(period[CONF_REGION])
+            wanted = _months_between(start, end)
+            signing = signing_month(period)
+            if signing is not None and signing not in wanted:
+                wanted.append(signing)
+            for month in wanted:
+                if month < current:
+                    try:
+                        await self._months.card(
+                            session, extractor, contract, region, month, use_archive=use_archive
+                        )
+                    except (ExtractorError, ArchiveUnavailable) as err:
+                        _LOGGER.debug("%s card for %s not read: %s", extractor.label, month, err)
+
     async def bill(
         self,
         session: aiohttp.ClientSession,
@@ -230,11 +266,16 @@ class PeriodBilling:
         annual_kwh: float,
         *,
         use_archive: bool,
+        fill: bool = True,
     ) -> tuple[list[RunningCosts], list[str]]:
         """What each earlier contract of the year cost, and the ones that
-        could not be priced (their supplier is gone or its card unreadable)."""
+        could not be priced (their supplier is gone or its card unreadable).
+        ``fill`` fetches their months' cards first; without it, a month whose
+        card is not in the cache yet is priced on today's card for now."""
         from .providers import get as get_extractor
 
+        if fill:
+            await self.fill(session, data, today, use_archive=use_archive)
         costs: list[RunningCosts] = []
         missing: list[str] = []
         current = month_key(today)
@@ -252,17 +293,6 @@ class PeriodBilling:
                 missing.append(extractor.label)
                 continue
             signing = None if custom else signing_month(period)
-            wanted = [] if custom else _months_between(start, end)
-            if signing is not None and signing not in wanted:
-                wanted.append(signing)
-            for month in wanted:
-                if month < current:
-                    try:
-                        await self._months.card(
-                            session, extractor, contract, region, month, use_archive=use_archive
-                        )
-                    except (ExtractorError, ArchiveUnavailable) as err:
-                        _LOGGER.debug("%s card for %s not read: %s", extractor.label, month, err)
 
             def month_card(
                 month: str, _e: str = extractor.id, _c: str = contract, _r: str = region

@@ -33,10 +33,11 @@ cards (`issues.sync_issues`).
 3. **Calorific values** (`_refresh_calorific`), daily, for a household that
    converts on its reception station: every month Atrias lists since
    January of last year, only the months not held yet.
-4. **Past months' cards** (`_fill_month_cards`) for every closed month the
-   current contract supplied this year and the signing month. The first tick
-   does this in the background,
-   because it is what setup waits on, and requests a refresh when done.
+4. **Past months' cards** (`async_fill_month_cards`) for every closed month
+   the current contract supplied this year and the signing month, and
+   (`PeriodBilling.fill`) the earlier contracts' own. The first tick does
+   this in the background, because it is what setup waits on, and requests
+   a refresh when done.
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
    source of the Energy dashboard, read as daily changes from 1 January of
    last year.

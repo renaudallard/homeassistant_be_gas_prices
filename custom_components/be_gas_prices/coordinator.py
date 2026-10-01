@@ -669,14 +669,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         needed = self._months_needed(today)
         if self._first_tick:
             # The first tick is what setup waits on: fetch the past months'
-            # cards in the background and price them on the current card
-            # until they land.
+            # cards, the earlier contracts' too, in the background and price
+            # them on the current card until they land.
             self._first_tick = False
-            if needed:
+            if needed or periods_this_year(self._data, today):
                 self._month_fill = self.entry.async_create_background_task(
                     self.hass, self._fill_then_refresh(needed), f"{DOMAIN} month cards"
                 )
-        elif self._month_fill is None or self._month_fill.done():
+        elif not self._filling():
             await self.async_fill_month_cards(needed)
         try:
             data = await self._build(today)
@@ -741,8 +741,18 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         await self._save_persistent()
         self.async_update_listeners()
 
+    def _filling(self) -> bool:
+        """Whether the first tick's month cards are still being fetched."""
+        return self._month_fill is not None and not self._month_fill.done()
+
     async def _fill_then_refresh(self, months: list[str]) -> None:
         await self.async_fill_month_cards(months)
+        await self._periods.fill(
+            self._session,
+            self._data,
+            dt_util.now().date(),
+            use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
+        )
         await self.async_request_refresh()
 
     async def _meter(self) -> str | None:
@@ -817,6 +827,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     kwh_days,
                     household.annual_kwh,
                     use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
+                    fill=not self._filling(),
                 )
         month = month_key(today)
         now_bill = bill_month(

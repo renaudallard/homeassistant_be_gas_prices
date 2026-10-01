@@ -37,6 +37,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.repairs import repairs_flow_manager
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
@@ -383,6 +384,47 @@ async def test_last_year_s_unpriced_contract_is_not_named_in_the_new_year(
         await hass.async_block_till_done()
     cost = hass.states.get("sensor.engie_flow_current_year_cost")
     assert cost is not None and cost.attributes["unpriced_contracts"] == []
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_setup_does_not_wait_on_the_earlier_contract_s_month_cards(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The earlier contract's months are fetched in the background, like
+    the current one's, rather than inside the tick setup waits on."""
+    gate = asyncio.Event()
+    asked: list[date] = []
+
+    async def slow(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        asked.append(month)
+        await gate.wait()
+        return None
+
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_flow",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-06-30",
+    }
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=slow)
+    with (
+        patch.dict(providers.EXTRACTORS, {"engie": stub}),
+        patch(
+            "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+            AsyncMock(return_value=("energy", days)),
+        ),
+    ):
+        entry = MockConfigEntry(
+            domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]}
+        )
+        entry.add_to_hass(hass)
+        assert await asyncio.wait_for(hass.config_entries.async_setup(entry.entry_id), 5)
+        assert entry.state is ConfigEntryState.LOADED
+        gate.set()
+        await hass.async_block_till_done()
+    assert date(2026, 1, 1) in asked
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
