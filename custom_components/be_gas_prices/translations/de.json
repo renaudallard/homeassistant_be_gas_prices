@@ -42,7 +42,7 @@
         },
         "data_description": {
           "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
-          "ytd_from_contract_start": "Aus: die laufenden Kosten beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt."
+          "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt."
         }
       },
       "dso": {
@@ -172,7 +172,7 @@
         },
         "data_description": {
           "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
-          "ytd_from_contract_start": "Aus: die laufenden Kosten beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt."
+          "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt."
         }
       },
       "dso": {

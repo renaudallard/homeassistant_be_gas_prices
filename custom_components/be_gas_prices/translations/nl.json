@@ -42,7 +42,7 @@
         },
         "data_description": {
           "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
-          "ytd_from_contract_start": "Uit: de lopende kosten beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt."
+          "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt."
         }
       },
       "dso": {
@@ -172,7 +172,7 @@
         },
         "data_description": {
           "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
-          "ytd_from_contract_start": "Uit: de lopende kosten beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt."
+          "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt."
         }
       },
       "dso": {

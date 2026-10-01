@@ -14,10 +14,10 @@ Every entity of an entry hangs off one device named after the entry.
 | `conversion_factor` | kWh/m³ | The factor in use and where it comes from. |
 | `current_year_cost` | EUR, `TOTAL`, monetary | The year's running bill, each month on its own card; `months` attribute with each month's parts, `unpriced_contracts` naming any earlier contract of the year that could not be priced (its days are left out). |
 | `current_month_cost` | EUR, `TOTAL`, monetary | The running month. |
-| `year_to_date_consumption` | kWh | What the meter recorded this year. |
+| `year_to_date_consumption` | kWh | What the meter recorded this year, from the contract start when the entry counts the year from it. |
 | `projected_year_cost` | EUR | Shown as *Rolling year cost*. The rolling year: the last 365 days' volume at today's price plus a year of fixed costs. |
-| `projected_year_end_cost` | EUR | The year so far plus last year's remaining days at today's price. |
-| `projected_year_consumption` | kWh | The year so far plus last year's remaining days. |
+| `projected_year_end_cost` | EUR | The year so far (from the contract start when the entry counts from it) plus last year's remaining days at today's price. |
+| `projected_year_consumption` | kWh | The year so far (from the contract start when the entry counts from it) plus last year's remaining days. |
 | `rolling_year_consumption` | kWh | The last 365 days. |
 | `contract_end_date` | timestamp | Only with an end date set; removed when it is cleared. |
 | `potential_saving` | EUR | Only with the daily ranking on, removed when it is turned off: the cheapest contract's saving against the household's own (on the custom supplier, its typed card, quoted beside the ranking), the ranking as an attribute. |

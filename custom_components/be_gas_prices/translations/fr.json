@@ -42,7 +42,7 @@
         },
         "data_description": {
           "tariff_card_date": "Un jour du mois de la carte que vous avez signée, quand ce n'est pas le mois où la fourniture a commencé.",
-          "ytd_from_contract_start": "Désactivé : le coût courant commence au 1er janvier. Activé : il commence à la date de début du contrat quand elle est plus tardive."
+          "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive."
         }
       },
       "dso": {
@@ -172,7 +172,7 @@
         },
         "data_description": {
           "tariff_card_date": "Un jour du mois de la carte que vous avez signée, quand ce n'est pas le mois où la fourniture a commencé.",
-          "ytd_from_contract_start": "Désactivé : le coût courant commence au 1er janvier. Activé : il commence à la date de début du contrat quand elle est plus tardive."
+          "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive."
         }
       },
       "dso": {

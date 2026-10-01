@@ -42,7 +42,7 @@
         },
         "data_description": {
           "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
-          "ytd_from_contract_start": "Off: the running cost starts on 1 January. On: it starts at the contract start date when that is later."
+          "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later."
         }
       },
       "dso": {
@@ -172,7 +172,7 @@
         },
         "data_description": {
           "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
-          "ytd_from_contract_start": "Off: the running cost starts on 1 January. On: it starts at the contract start date when that is later."
+          "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later."
         }
       },
       "dso": {
