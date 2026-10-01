@@ -67,7 +67,8 @@ class Contract:
     # extractors narrow it for products that are not sold everywhere.
     regions: frozenset[str] = field(default_factory=lambda: ALL_REGIONS)
     # True when the supplier sells this product to businesses: its card is
-    # printed excluding VAT, so the setup flow asks how VAT is treated.
+    # printed excluding VAT, so the comparisons leave it out. No contract
+    # offered here is one.
     professional: bool = False
 
 
