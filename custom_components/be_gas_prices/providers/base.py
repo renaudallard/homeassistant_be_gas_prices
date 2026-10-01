@@ -152,8 +152,9 @@ class SupplierExtractor:
     # settle on. None for a supplier selling fixed prices only.
     fetch_index: IndexFetcher | None = None
     # Set when the supplier has announced it is leaving the residential
-    # market: the config flow stops offering it and existing entries get a
-    # Repairs card naming the successor. Nothing compares these to the clock.
+    # market: the config flow stops offering it and the comparisons leave it
+    # out. Nothing compares these to the clock, and nothing reads the
+    # successor yet.
     deprecated_until: date | None = None
     deprecated_successor: str | None = None
     # Roughly what one card costs to fetch and parse, in seconds, on the
