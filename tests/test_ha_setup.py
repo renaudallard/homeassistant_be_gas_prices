@@ -753,6 +753,34 @@ async def test_month_cards_stored_by_another_release_are_read_again(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_custom_entry_names_no_month_billed_on_another_card(
+    hass: HomeAssistant,
+) -> None:
+    """The typed card is every month's own: none is billed on a stand-in."""
+    data = {
+        **DATA,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_CUSTOM_PRICE: 7.5,
+        CONF_CUSTOM_T1_FIXED: 15.0,
+        CONF_CUSTOM_T1_PROP: 2.0,
+        CONF_CUSTOM_T2_FIXED: 80.0,
+        CONF_CUSTOM_T2_PROP: 1.0,
+        CONF_CUSTOM_TRANSPORT: 0.165,
+        CONF_CUSTOM_EXCISE_LOW: 1.09286,
+    }
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        await _setup(hass, data)
+    cost = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert cost is not None and cost.state != "unknown"
+    assert cost.attributes["months_on_current_card"] == []
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_stamp_moves_with_the_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

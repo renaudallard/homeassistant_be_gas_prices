@@ -596,6 +596,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 _LOGGER.debug("%s card for %s not read: %s", self.extractor.label, month, err)
 
     def _month_card(self, month: str) -> SupplierSnapshot | None:
+        if self.extractor.id == SUPPLIER_CUSTOM:
+            # The typed card is every month's own.
+            return self._snapshot
         row = self._months.get(self.extractor.id, self.contract, self.region, month)
         return None if row is None else row.snapshot
 

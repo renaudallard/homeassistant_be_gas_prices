@@ -294,17 +294,24 @@ class PeriodBilling:
                 continue
             signing = None if custom else signing_month(period)
 
+            # The typed card prices every month a custom contract supplied,
+            # as each month's own card.
+            typed = build_custom_snapshot(period) if custom else None
+
             def month_card(
-                month: str, _e: str = extractor.id, _c: str = contract, _r: str = region
+                month: str,
+                _e: str = extractor.id,
+                _c: str = contract,
+                _r: str = region,
+                _typed: SupplierSnapshot | None = typed,
             ) -> SupplierSnapshot | None:
+                if _typed is not None:
+                    return _typed
                 row = self._months.get(_e, _c, _r, month)
                 return None if row is None else row.snapshot
 
-            end_card: SupplierSnapshot | None = None
-            if custom:
-                # The typed card prices every month the contract supplied.
-                end_card = build_custom_snapshot(period)
-            elif month_key(end) < current:
+            end_card = typed
+            if end_card is None and month_key(end) < current:
                 end_card = month_card(month_key(end))
             # A closed last month without its own card is billed on today's,
             # and named with the other months billed that way.
