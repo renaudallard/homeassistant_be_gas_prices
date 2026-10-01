@@ -1234,6 +1234,23 @@ async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
     assert index.await_count == 2
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_index_page_the_parser_refuses_is_not_read_every_hour(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A changed layout fails the same way each time: with no table held it
+    still waits the usual twelve hours, rather than reading every document
+    of the source each hour."""
+    index = AsyncMock(side_effect=ExtractorError("Engie: index table not found"))
+    stub = replace(providers.EXTRACTORS["engie"], fetch_index=index)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        for _ in range(3):
+            freezer.tick(timedelta(hours=1))
+            await entry.runtime_data.async_refresh()
+    assert index.await_count == 1
+
+
 async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssistant) -> None:
     """The custom supplier is not among the suppliers ranked: its own card
     is handed to the ranking and quoted beside them, so the saving is known."""
