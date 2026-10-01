@@ -355,6 +355,15 @@ def test_index_is_found_by_name() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("parse", "key"), [(elegant.parse_index_id, "indexes"), (elegant.parse_rates, "rates")]
+)
+def test_an_index_answer_that_is_no_list_is_an_extractor_error(parse: Any, key: str) -> None:
+    body = json.dumps([{"result": {"data": {key: 2}}}])
+    with pytest.raises(ExtractorError, match="unexpected"):
+        parse(body)
+
+
 @pytest.mark.parametrize("value", [None, "x", [2]])
 def test_an_index_id_that_is_no_number_is_an_extractor_error(value: object) -> None:
     body = json.dumps([{"result": {"data": {"indexes": [{"name": "TTFDAM", "id": value}]}}}])

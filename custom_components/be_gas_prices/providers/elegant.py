@@ -225,6 +225,16 @@ def _trpc_data(body: str, label: str) -> dict[str, Any]:
     return data
 
 
+def _trpc_list(body: str, key: str, label: str) -> list[Any]:
+    """The list under ``key`` in a tRPC answer, empty where it is missing."""
+    items = _trpc_data(body, label).get(key)
+    if items is None:
+        return []
+    if not isinstance(items, list):
+        raise ExtractorError(f"Elegant: unexpected {label} answer")
+    return items
+
+
 def _archived_chart_path(body: str, contract: _ContractDef) -> str | None:
     """The ``tariffChartUrl`` of ``contract`` in an archive search answer,
     or None where the date has no offer for it."""
@@ -277,7 +287,7 @@ def parse_index_id(body: str) -> int:
     database key, and a renumbering would otherwise hand back another
     index's values without a word.
     """
-    for entry in _trpc_data(body, "index list").get("indexes") or ():
+    for entry in _trpc_list(body, "indexes", "index list"):
         if isinstance(entry, dict) and entry.get("name") == _INDEX and "id" in entry:
             try:
                 return int(entry["id"])
@@ -295,7 +305,7 @@ def parse_rates(body: str) -> IndexTable:
     would have replaced January's.
     """
     values: dict[str, float] = {}
-    for rate in _trpc_data(body, "index rates").get("rates") or ():
+    for rate in _trpc_list(body, "rates", "index rates"):
         try:
             start = datetime.fromisoformat(rate["startDate"]).date()
             end = datetime.fromisoformat(rate["endDate"]).date()
