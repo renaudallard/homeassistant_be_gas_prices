@@ -191,7 +191,13 @@ other. The engine needs Python 3.14, so the archive job runs on 3.14; the
 test suite, like an installation, runs on 3.13. `--ocr-failures FILE` lists
 the cards the engine could not read, or whose reading failed the parse; the
 workflow files them under `archive-cards-ocr`, since the live check has no
-reading of those bytes and only notes them.
+reading of those bytes and only notes them. The workflow also runs
+`ocr-price-cards unlearnt` on each card the run stored: a card published as
+images still embeds the fonts of the text set over its picture, so a glyph
+the library lacks shows before any card needs it read from pixels. The
+fonts and characters are filed under `archive-cards-glyphs`, naming the
+card to learn them from; a card the tool crashes on fails the step, which
+files nothing and lets the run go on.
 
 `--backfill N` also mirrors the N closed months before this one, at most
 `--keep-months`, from every supplier archive, for months not held yet.
@@ -229,7 +235,7 @@ a day, and a failure that changes shape is posted at once.
 | `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite; pip's downloads, the two mypy caches and the fixture text are kept between runs with `actions/cache` |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
 | `live_check.yml` | daily, and on pull requests that touch a provider or the check | `live_check.py --texts` against a read-only clone of be_price_cards; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels |
-| `archive_cards.yml` | daily at 05:53 UTC, before the live check | on Python 3.14 with the OCR engine, clones be_price_cards without credentials, archives into `gas/`, uploads the PDFs as `gas-<YYYY-MM>` releases and prunes those past 12 months, writes the root and `gas/` READMEs, pushes with `BE_GAS_CARDS` passed as a header, never stored, and a rebase retry, then warns 14 days before the token expires, files an issue when a step failed |
+| `archive_cards.yml` | daily at 05:53 UTC, before the live check | on Python 3.14 with the OCR engine, clones be_price_cards without credentials, archives into `gas/`, uploads the PDFs as `gas-<YYYY-MM>` releases and prunes those past 12 months, writes the root and `gas/` READMEs, pushes with `BE_GAS_CARDS` passed as a header, never stored, and a rebase retry, then warns 14 days before the token expires, files an issue when a step failed; files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`) |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
 
 ### What the repositories need
