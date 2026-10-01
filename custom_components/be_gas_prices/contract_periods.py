@@ -173,9 +173,10 @@ def current_period_start(data: dict[str, Any], default: date, today: date) -> da
 class PeriodBilling:
     """Prices the earlier contracts of the year on their own suppliers' cards.
 
-    Their current cards and index tables are fetched at most once a day and
-    kept here; their past months come from the entry's month card cache,
-    which is keyed by supplier and contract already.
+    Their current cards and index tables are read once a day and kept here,
+    and asked again on the next tick after a failure; their past months come
+    from the entry's month card cache, which is keyed by supplier and
+    contract already.
     """
 
     def __init__(self, months: MonthCardCache) -> None:
