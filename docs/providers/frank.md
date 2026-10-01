@@ -55,7 +55,8 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - Title, the first line, its parts set apart by dashes: "Tariefkaart gas
   variabel contract" and the month (standard), or "Frank Energie Variabel",
   the tier and the month. The tier reads "HV ZTP", "JN", "Slim" or "Korting
-  ZTP", and "SL" or "Slim ZTP" on older Slim cards. The tier word must be the
+  ZTP" ("VT ZTP" from October 2026), and "SL" or "Slim ZTP" on older Slim
+  cards. The tier word must be the
   contract's and nothing but "ZTP" may follow it, which keeps out the January
   2025 product whose title names both Korting and Slim. The card month comes from the title, not from the sentence
   below it: the Slim cards of January and February 2026 say "getekend in

@@ -133,8 +133,10 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef(
         "frank_variable_slim", "Frank Energie Gas Variabel Slim", ("Slim", "SL"), ("SL", "Slim")
     ),
+    # Titled "Korting ZTP" until September 2026, "VT ZTP" from October, as
+    # its file was named all along.
     _ContractDef(
-        "frank_variable_korting", "Frank Energie Gas Variabel Korting", ("Korting",), ("VT",)
+        "frank_variable_korting", "Frank Energie Gas Variabel Korting", ("Korting", "VT"), ("VT",)
     ),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}

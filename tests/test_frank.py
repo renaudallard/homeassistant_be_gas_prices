@@ -129,6 +129,21 @@ def test_each_tier_reads_its_formula(
     assert snap.taxes.vat_rate == 0.0
 
 
+def test_the_october_korting_card_is_titled_vt() -> None:
+    """ "Frank Energie Variabel — VT ZTP — oktober 2026": the tier is named as
+    its file always was, with the same formula and fee."""
+    text = _card(_PREFIX + "Gas ZTP VT Oktober 2026.pdf")
+    snap = frank.parse_snapshot("frank_variable_korting", REGION_FLANDERS, text)
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(0.1 / 100.0 * 1.06)
+    assert energy.base == pytest.approx(0.46 / 100.0 * 1.06)
+    assert energy.yearly_fixed_fee == pytest.approx(2.92 * 12)
+    assert snap.publication_label == "2026-10"
+    with pytest.raises(ExtractorError):
+        frank.parse_snapshot("frank_variable_hv", REGION_FLANDERS, text)
+
+
 @pytest.mark.parametrize("contract", sorted(SEPTEMBER_CARDS))
 @pytest.mark.parametrize("card", sorted(SEPTEMBER_CARDS))
 def test_a_tier_refuses_every_other_tiers_card(contract: str, card: str) -> None:
