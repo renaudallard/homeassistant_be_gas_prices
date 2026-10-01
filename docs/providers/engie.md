@@ -72,7 +72,9 @@ Two kinds of variable product:
 - EASY Variable indexes on ZTP101, the mean of month-ahead quotes taken in
   the month before delivery. It is known when the card is printed and the
   card prices the month on it ("ZTP101 (Heren) du mois = 61,7680 EUR/MWh,
-  d'application pour Septembre 2026"), so its price is `settled`.
+  d'application pour Septembre 2026"), so its price is `settled`, provided
+  the month named is the card's own. The October 2026 card first went out
+  on September's value, and such a card is not settled.
 - FLOW, EMPOWER, DIRECT ONLINE, BASIC ONLINE and Empty House index on
   ZTPDAM, the mean of the delivery month's day-ahead and weekend
   assessments, known only once the month is over. The printed price is the

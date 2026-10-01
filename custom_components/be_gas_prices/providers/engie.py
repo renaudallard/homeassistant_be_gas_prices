@@ -47,7 +47,7 @@ Two kinds of variable product:
     in the month BEFORE delivery. Its value is known when the card is
     printed, and the card prices the month on it ("ZTP101 (Heren) du mois =
     61,7680 EUR/MWh, d'application pour Septembre 2026"), so its price is
-    settled.
+    settled when the month it names is the card's own.
   - FLOW, EMPOWER, DIRECT ONLINE, BASIC ONLINE and the empty-house tariff
     index on ZTPDAM, the mean of the delivery month's day-ahead and weekend
     assessments, known only at month end. Their printed price is the formula
@@ -249,7 +249,7 @@ def parse_snapshot(contract_id: str, region: str, text: str) -> SupplierSnapshot
     _region_code(contract, region)
     card_month = _card_month(text)
     vat_rate = _vat_rate(text)
-    energy = _energy(text, contract, 1.0 + vat_rate)
+    energy = _energy(text, contract, 1.0 + vat_rate, card_month)
     dsos = _dsos(text, region)
     return SupplierSnapshot(
         supplier="engie",
@@ -302,7 +302,24 @@ _FORMULA_RE = re.compile(
 )
 
 
-def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | IndexedRates:
+# "Le prix ci-dessus a été calculé sur la base du paramètre ZTP101 (Heren) du
+# mois = 61,7680 €/MWh, d’application pour Septembre 2026."
+_APPLIES_RE = re.compile(r"d.application pour\s+([A-Za-zÀ-ÿ]+)\s+(\d{4})")
+
+
+def _priced_on_its_month(text: str, card_month: date) -> bool:
+    """Whether the card states its ZTP101 value applies to its own month.
+    The October 2026 card first went out priced on September's."""
+    match = _APPLIES_RE.search(text)
+    if match is None:
+        return False
+    month = MONTH_NAMES.get(fold_accents(match.group(1)))
+    return month is not None and date(int(match.group(2)), month, 1) == card_month
+
+
+def _energy(
+    text: str, contract: _ContractDef, vat: float, card_month: date
+) -> FixedRates | IndexedRates:
     if contract.kind == "fixed":
         match = _FIXED_RE.search(text)
         if match is None:
@@ -324,8 +341,9 @@ def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | Index
         yearly_fixed_fee=to_float(monthly.group(2)),
         formula=formula.group(0),
         # ZTP101 is set in the month before delivery and the card prices its
-        # month on it; ZTPDAM is only known once the month is over.
-        settled=index == "ZTP101",
+        # month on it, when it says so; ZTPDAM is only known once the month
+        # is over.
+        settled=index == "ZTP101" and _priced_on_its_month(text, card_month),
     )
 
 

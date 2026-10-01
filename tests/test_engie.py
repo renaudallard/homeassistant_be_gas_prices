@@ -57,6 +57,22 @@ def _card(name: str) -> str:
     return fixture_text("engie", name)
 
 
+def test_easy_variable_priced_on_another_month_is_not_settled() -> None:
+    """The October 2026 card first went out saying its price was "calculé
+    sur la base du paramètre ZTP101 (Heren) du mois = 61,7680 €/MWh,
+    d'application pour Septembre 2026": not its own month's value."""
+    text = _card("G_EASY_R_GREY_C_I_12_W_F_202609.pdf")
+    assert "d’application pour Septembre\n2026" in text
+    for stated in ("Août\n2026", "Septembre\n2025"):
+        snap = engie.parse_snapshot(
+            "engie_easy_variable",
+            REGION_WALLONIA,
+            text.replace("d’application pour Septembre\n2026", f"d’application pour {stated}"),
+        )
+        assert isinstance(snap.energy, IndexedRates)
+        assert not snap.energy.settled
+
+
 def test_easy_variable_is_settled_on_ztp101() -> None:
     """EASY Variable prices its month on ZTP101, known before delivery: the
     card's monthly price is the formula at that month's value, so it is final."""
