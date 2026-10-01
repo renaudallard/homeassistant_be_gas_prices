@@ -12,13 +12,13 @@ cards (`issues.sync_issues`).
 1. **The card** (`_refresh_snapshot`). It is fetched when there is none, when
    the refresh button or service forced it, when the card in hand came from
    the Store or the card archive, when the supplier's probe key changed, or,
-   without a probe, when it is 24 hours old. The probe is asked before every
-   fetch, so the key a card was fetched under is kept. It is read through
-   `month_cards.current_card`: a card published as page images, which no
-   reader here reads, is priced on the card archive's row for the running
-   month, which the archive read with its OCR engine (`card_source` `ocr`,
-   the `card_read_by_ocr` Repairs card); that reading is asked for again on
-   the same schedule. A failure keeps the card in
+   without a probe, when it is 24 hours old or its month is over. The probe
+   is asked before every fetch, so the key a card was fetched under is kept.
+   It is read through `month_cards.current_card`: a card published as page
+   images, which no reader here reads, is priced on the card archive's row
+   for the running month, which the archive read with its OCR engine
+   (`card_source` `ocr`, the `card_read_by_ocr` Repairs card); that reading
+   is asked for again on the same schedule. A failure keeps the card in
    hand and records `last_error`; a failure a retry will not fix counts
    towards the `extractor_failed` card. With no card at all, or a stale one,
    the card archive is asked for its latest row (`_adopt_archived_card`).

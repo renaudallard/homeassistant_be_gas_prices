@@ -193,6 +193,30 @@ async def test_a_card_fetched_at_setup_is_kept_against_its_probe_key(
     assert fetch.await_count == 1
 
 
+@pytest.mark.freeze_time("2026-09-30 23:30:00+02:00")
+async def test_a_card_whose_month_is_over_is_asked_for_again(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """Without a probe, September's card is not kept through 1 October for
+    the rest of its TTL: every tick asks until October's is out."""
+    await _setup(hass)
+    assert fetch.await_count == 1
+    for count in (2, 3):
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert fetch.await_count == count
+    september = fetch.return_value
+    fetch.return_value = replace(
+        september, publication_label="2026-10", valid_until=date(2026, 10, 31)
+    )
+    for count in (4, 4):
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert fetch.await_count == count
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock

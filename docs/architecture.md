@@ -118,7 +118,8 @@ async_setup_entry                       __init__.py
 
 - The coordinator ticks hourly. A supplier with a cheap freshness key (a
   HEAD `Content-MD5`, an ETag) is probed every tick; any other card is
-  fetched again after 24 hours.
+  fetched again after 24 hours, and on every tick once its month is over
+  until the next one is out.
 - A card that cannot be fetched never stops the pricing: the last good one
   keeps serving, from the Store across a restart. With no card at all, or a
   stale one (a week without a successful fetch, or a week past the month it
