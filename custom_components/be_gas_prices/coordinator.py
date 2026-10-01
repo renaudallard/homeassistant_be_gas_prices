@@ -319,15 +319,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         await self._save_persistent()
 
     def card_months_signature(self) -> str:
-        """What the year's past months are priced from: which months have
-        their own card, the latest index value and the latest calorific
-        value. It moves when any of them lands, which is when the price
-        history is worth drawing again."""
+        """What the year's past months are priced from: the entry's
+        settings, which months have their own card, the latest index value
+        and the latest calorific value. It moves when any of them changes or
+        lands, which is when the price history is worth drawing again."""
         today = dt_util.now().date()
         own = [m for m in self._months_needed(today) if self._month_card(m) is not None]
         index = max((max(v) for v in (self._index_table or {}).values() if v), default="")
         gcv = max(self._gcv, default="")
-        return f"{','.join(own)}|{index}|{gcv}|{self._snapshot_label()}"
+        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{self._snapshot_label()}"
 
     def _snapshot_label(self) -> str:
         return "" if self._snapshot is None else self._snapshot.publication_label

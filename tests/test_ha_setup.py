@@ -77,6 +77,7 @@ from custom_components.be_gas_prices.const import (
     DOMAIN,
     DSO_FLUVIUS_IMEWO,
     DSO_ORES,
+    DSO_RESA,
     DSO_SIBELGA,
     REGION_FLANDERS,
     REGION_WALLONIA,
@@ -749,6 +750,19 @@ async def test_month_cards_stored_by_another_release_are_read_again(
     held = entry.runtime_data._month_card("2026-08")
     assert held is not None
     assert held.energy.price == (august.energy.price if read_again else 1.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_stamp_moves_with_the_settings(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A change of DSO prices every past month otherwise, so the history is
+    worth drawing again."""
+    entry = await _setup(hass)
+    before = entry.runtime_data.card_months_signature()
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_DSO: DSO_RESA})
+    await hass.async_block_till_done()
+    assert entry.runtime_data.card_months_signature() != before
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

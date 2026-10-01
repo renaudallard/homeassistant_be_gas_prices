@@ -95,6 +95,6 @@ hand is still stale, and it is what lets the card archive stand in.
 
 `backfill.backfill_once_a_year` runs after setup and after each update, and
 does nothing unless what the year is drawn from has moved: the calendar year,
-which past months have their own card, the latest index value and calorific
-value, and the current card's month. It is stamped in the Store, and skipped
+the entry's settings, which past months have their own card, the latest index
+value and calorific value, and the current card's month. It is stamped in the Store, and skipped
 where Home Assistant runs no recorder.
