@@ -833,10 +833,11 @@ async def _replay_row(
     if row is None or extractor is None:
         summary.unreplayable.append(f"{label}: no readable row or no extractor registered")
         return
-    if all(c.id != contract for c in extractor.contracts):
-        # A contract the supplier withdrew: its rows still price the months
-        # an earlier contract on it supplied, so they stay as they are.
-        summary.unreplayable.append(f"{label}: the contract is no longer sold")
+    if not any(c.id == contract and region in c.regions for c in extractor.contracts):
+        # A contract the supplier withdrew, or no longer sells in the region:
+        # its rows still price the months an earlier contract on it supplied,
+        # so they stay as they are.
+        summary.unreplayable.append(f"{label}: the contract is no longer sold there")
         return
     try:
         seen_on = date.fromisoformat(row["_seen_on"])

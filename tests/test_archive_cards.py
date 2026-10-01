@@ -482,14 +482,26 @@ async def test_a_row_the_parser_now_refuses_is_removed(
     assert summary.refused and summary.refused[0].startswith("acme/acme_fix/wallonia/2026-09")
 
 
+@pytest.mark.parametrize(
+    "contracts",
+    [
+        (),
+        (Contract(id="acme_fix", label="Acme Fix", kind="fixed", regions=frozenset({"flanders"})),),
+    ],
+)
 async def test_a_row_of_a_withdrawn_contract_is_kept(
-    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch, contracts: tuple[Contract, ...]
 ) -> None:
-    """The supplier withdrew the contract: its rows still price an earlier
-    contract on it, and are not taken for rows the parser refuses."""
+    """The supplier withdrew the contract, or stopped selling it in the
+    region: its rows still price an earlier contract on it, and are not
+    taken for rows the parser refuses."""
     out = tmp_path / "gas"
     await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
-    withdrawn = replace(_Acme().extractor(), contracts=())
+
+    async def refuse(_session: Any, contract: str, region: str) -> SupplierSnapshot:
+        raise ExtractorError(f"Acme {contract}: not sold in region {region!r}")
+
+    withdrawn = replace(_Acme().extractor(), contracts=contracts, fetch=refuse)
     monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
     summary = await ac.archive(
         out, extractors=[withdrawn], now=datetime(2026, 9, 12, 6, tzinfo=UTC), sleep=_no_sleep
