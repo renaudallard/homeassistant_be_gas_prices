@@ -580,35 +580,37 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     ) -> tuple[PriceBreakdown, float | None] | None:
         """The all-in price of ``month`` and the kWh a cubic metre was worth
         in it, priced the way the running costs price it: the month's own
-        card where one is held, the current card otherwise, or with
-        ``own_card`` not at all. None before the first tick has priced the
-        household."""
+        card where one is held and prices the household, the current card
+        otherwise, or with ``own_card`` not at all. None before the first
+        tick has priced the household."""
         snapshot = self._snapshot
         household = self.household
         if snapshot is None or household is None:
             return None
-        card: SupplierSnapshot | None = snapshot
+        cards = [snapshot]
         if month != month_key(dt_util.now().date()):
             held = self._month_card(month)
-            card = held if held is not None or own_card else snapshot
-        if card is None:
-            return None
-        try:
-            bill = bill_month(
-                month=month,
-                card=card,
-                energy=self._energy_for(card),
-                table=self._index_table,
-                dso=household.dso,
-                annual_kwh=household.annual_kwh,
-                caliber=household.caliber,
-                kwh=0.0,
-                days=0,
-                days_in_year=365,
-            )
-        except PricingError:
-            return None
-        return bill.breakdown, self._m3_factor(month)[0]
+            cards = ([] if held is None else [held]) + ([] if own_card else [snapshot])
+        for card in cards:
+            try:
+                bill = bill_month(
+                    month=month,
+                    card=card,
+                    energy=self._energy_for(card),
+                    table=self._index_table,
+                    dso=household.dso,
+                    annual_kwh=household.annual_kwh,
+                    caliber=household.caliber,
+                    kwh=0.0,
+                    days=0,
+                    days_in_year=365,
+                )
+            except PricingError:
+                # A month's own card missing the household's DSO or tier is
+                # no better than none, as in the running costs.
+                continue
+            return bill.breakdown, self._m3_factor(month)[0]
+        return None
 
     # ---- the tick -------------------------------------------------------------
 

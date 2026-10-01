@@ -405,6 +405,35 @@ async def test_a_ranking_stored_for_another_contract_is_not_served(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_falls_back_like_the_running_costs(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """August's own card lists no ORES row: the running costs bill August on
+    today's card, and the price history draws it the same way rather than
+    leaving the month out."""
+    card = fetch.return_value
+    august = replace(
+        card,
+        dsos={k: v for k, v in card.dsos.items() if k != DSO_ORES},
+        publication_label="2026-08",
+        valid_until=date(2026, 8, 31),
+    )
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        return august if month == date(2026, 8, 1) else None
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    assert coordinator._month_card("2026-08") is august
+    priced, today = coordinator.month_price("2026-08"), coordinator.month_price("2026-09")
+    assert priced is not None and today is not None
+    assert priced[0] == today[0]
+    assert coordinator.month_price("2026-08", own_card=True) is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_stored_card_of_another_region_is_not_restored(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
