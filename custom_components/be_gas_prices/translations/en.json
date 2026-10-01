@@ -446,7 +446,7 @@
         },
         "start_date": {
           "name": "Start date",
-          "description": "Defaults to the start of the year's window. Never before a change of contract recorded this year."
+          "description": "Defaults to the start of the year's window. Never before a change of contract recorded this year. A month before the window is written only where its own card can be found."
         },
         "clear": {
           "name": "Clear first",

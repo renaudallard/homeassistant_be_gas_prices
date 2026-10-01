@@ -446,7 +446,7 @@
         },
         "start_date": {
           "name": "Startdatum",
-          "description": "Standaard het begin van het venster van dit jaar. Nooit vóór een contractwissel die dit jaar is vastgelegd."
+          "description": "Standaard het begin van het venster van dit jaar. Nooit vóór een contractwissel die dit jaar is vastgelegd. Een maand vóór het venster wordt alleen geschreven als de eigen tariefkaart ervan te vinden is."
         },
         "clear": {
           "name": "Eerst wissen",

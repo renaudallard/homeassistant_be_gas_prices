@@ -30,7 +30,9 @@ draw its price from the install moment only. This writes an hourly ``mean``
 row for each price sensor over a window, every month priced the way the
 running costs price it: on its own card where the month cards hold one, on
 the current card otherwise, the index value of the month where the supplier
-published one.
+published one. A month before the year's window, which a start date asked
+for can reach, is priced on its own card alone, fetched for the occasion,
+and left out where none is found: today's card says nothing of last year.
 
 Run once per calendar year by itself, and again on demand through the
 ``backfill_statistics`` service. The running costs are not backfilled: they
@@ -138,12 +140,19 @@ async def backfill_prices(
         get_instance(hass).async_clear_statistics(list(present.values()))
     now = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
     begin = dt_util.as_utc(dt_util.start_of_local_day(start))
+    window = month_key(coordinator.window_start(dt_util.now().date()))
+    hours = _hours(begin, now)
+    early = sorted(
+        {m for m in (month_key(dt_util.as_local(h).date()) for h in hours) if m < window}
+    )
+    if early:
+        await coordinator.async_fill_month_cards(early)
     rows: dict[str, list[Any]] = {key: [] for key in present}
     prices: dict[str, tuple[PriceBreakdown, float | None] | None] = {}
-    for hour in _hours(begin, now):
+    for hour in hours:
         month = month_key(dt_util.as_local(hour).date())
         if month not in prices:
-            prices[month] = coordinator.month_price(month)
+            prices[month] = coordinator.month_price(month, own_card=month < window)
         priced = prices[month]
         if priced is None:
             continue

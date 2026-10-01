@@ -446,7 +446,7 @@
         },
         "start_date": {
           "name": "Startdatum",
-          "description": "Standardmäßig der Beginn des Fensters dieses Jahres. Nie vor einem in diesem Jahr erfassten Vertragswechsel."
+          "description": "Standardmäßig der Beginn des Fensters dieses Jahres. Nie vor einem in diesem Jahr erfassten Vertragswechsel. Ein Monat vor dem Fenster wird nur geschrieben, wenn seine eigene Tarifkarte gefunden wird."
         },
         "clear": {
           "name": "Zuerst löschen",

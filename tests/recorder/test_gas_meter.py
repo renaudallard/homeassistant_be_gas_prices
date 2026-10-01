@@ -152,6 +152,7 @@ async def _setup_entry(
     hass: HomeAssistant,
     card: SupplierSnapshot | None = None,
     extra: dict[str, Any] | None = None,
+    fetch_for_month: AsyncMock | None = None,
 ) -> MockConfigEntry:
     """An Engie Flow entry in Wallonia, on the September card unless given
     another, read from the meter. The price history it writes at setup is
@@ -161,7 +162,7 @@ async def _setup_entry(
         engie.EXTRACTOR,
         fetch=AsyncMock(return_value=card or _card()),
         fetch_index=AsyncMock(return_value={"ZTPDAM": {"2026-08": 61.537}}),
-        fetch_for_month=None,
+        fetch_for_month=fetch_for_month,
     )
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -242,6 +243,42 @@ async def test_the_price_history_is_written_hour_by_hour(
     assert [row["mean"] for row in stats[kwh]] == [pytest.approx(price)] * 10
     assert [row["mean"] for row in stats[m3]] == [pytest.approx(price * 11.5)] * 10
     assert stats[kwh][0]["start"] == start.timestamp()
+
+
+@pytest.mark.freeze_time("2026-01-01 10:30:00+01:00")
+@pytest.mark.parametrize("held", [True, False])
+async def test_a_month_before_the_window_is_priced_on_its_own_card(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None, held: bool
+) -> None:
+    """Asked from 31 December, the backfill prices December on December's
+    card, fetched for it, and skips it where no card is found rather than
+    drawing it at today's price."""
+    await _zone(hass)
+    card = _card()
+    december = replace(
+        card,
+        energy=replace(card.energy, price=0.05),
+        publication_label="2025-12",
+        valid_until=date(2025, 12, 31),
+    )
+    months = AsyncMock(return_value=december if held else None)
+    entry = await _setup_entry(hass, fetch_for_month=months)
+    coordinator = entry.runtime_data
+    months.reset_mock()
+    counts = await backfill_prices(hass, coordinator, date(2025, 12, 31))
+    assert [c.args[3] for c in months.await_args_list] == [date(2025, 12, 1)]
+    kwh = "sensor.engie_flow_current_price"
+    assert counts[kwh] == (24 if held else 0) + 10
+    await async_wait_recording_done(hass)
+    start = dt_util.as_utc(dt_util.start_of_local_day(date(2025, 12, 31)))
+    stats = await get_instance(hass).async_add_executor_job(
+        statistics_during_period, hass, start, None, {kwh}, "hour", None, {"mean"}
+    )
+    means = [row["mean"] for row in stats[kwh]]
+    price = coordinator.data.breakdown.all_in
+    assert means[-10:] == [pytest.approx(price)] * 10
+    if held:
+        assert means[0] == pytest.approx(price - card.energy.price + 0.05)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")

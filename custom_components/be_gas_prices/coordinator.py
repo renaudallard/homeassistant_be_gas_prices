@@ -527,7 +527,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             months.append(signing)
         return months
 
-    async def _fill_month_cards(self, months: list[str]) -> None:
+    async def async_fill_month_cards(self, months: list[str]) -> None:
         use_archive = bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
         for month in months:
             # The cache answers a held month at once, and asks again for one
@@ -562,18 +562,24 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             card.energy, None if signed is None else signed.energy, self._index_table, self._data
         )
 
-    def month_price(self, month: str) -> tuple[PriceBreakdown, float | None] | None:
+    def month_price(
+        self, month: str, *, own_card: bool = False
+    ) -> tuple[PriceBreakdown, float | None] | None:
         """The all-in price of ``month`` and the kWh a cubic metre was worth
         in it, priced the way the running costs price it: the month's own
-        card where one is held, the current card otherwise. None before the
-        first tick has priced the household."""
+        card where one is held, the current card otherwise, or with
+        ``own_card`` not at all. None before the first tick has priced the
+        household."""
         snapshot = self._snapshot
         household = self.household
         if snapshot is None or household is None:
             return None
-        card = snapshot
+        card: SupplierSnapshot | None = snapshot
         if month != month_key(dt_util.now().date()):
-            card = self._month_card(month) or snapshot
+            held = self._month_card(month)
+            card = held if held is not None or own_card else snapshot
+        if card is None:
+            return None
         try:
             bill = bill_month(
                 month=month,
@@ -632,7 +638,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     self.hass, self._fill_then_refresh(needed), f"{DOMAIN} month cards"
                 )
         elif self._month_fill is None or self._month_fill.done():
-            await self._fill_month_cards(needed)
+            await self.async_fill_month_cards(needed)
         try:
             data = await self._build(today)
         except PricingError as err:
@@ -706,7 +712,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.async_update_listeners()
 
     async def _fill_then_refresh(self, months: list[str]) -> None:
-        await self._fill_month_cards(months)
+        await self.async_fill_month_cards(months)
         await self.async_request_refresh()
 
     async def _meter(self) -> str | None:
