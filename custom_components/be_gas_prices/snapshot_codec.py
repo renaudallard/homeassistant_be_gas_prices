@@ -28,7 +28,9 @@
 One format serves three stores: the entry's own ``.storage`` blob, the
 per-month card cache, and the card archive the ``archive_cards`` workflow
 writes to be_price_cards. A blob written under another schema version is
-refused rather than migrated: everything in it is re-derivable from a card.
+refused rather than migrated: everything in it is re-derivable from a card,
+except the archive's rows of contracts the supplier withdrew, which its
+replay keeps as they are. A schema bump must rewrite those by hand.
 """
 
 from __future__ import annotations
