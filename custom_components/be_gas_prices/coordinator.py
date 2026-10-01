@@ -57,7 +57,7 @@ from homeassistant.util import dt as dt_util
 
 from . import calorific
 from .bill import IndexValue, bill_month, contract_leg, month_key
-from .compare import rank
+from .compare import OwnContract, rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CALIBER,
@@ -723,24 +723,36 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 household,
                 month_key(today),
                 use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
-                # The typed card gives the saving the household's own cost.
-                custom_card=self._snapshot if self.extractor.id == SUPPLIER_CUSTOM else None,
+                own=self.own_contract(),
             )
         except Exception:
             # A background job with nobody watching: log it, and let the next
             # tick try again rather than leave an unretrieved exception.
             _LOGGER.exception("daily ranking failed")
             return
-        if all(quote.annual_cost is None for quote in quotes):
-            # Nothing could be priced, the network down most likely: not kept
-            # as the day's ranking, so the next tick tries again.
-            _LOGGER.warning("daily ranking priced no contract; trying again")
+        own = (self.extractor.id, self.contract)
+        if not any(q.annual_cost is not None for q in quotes if (q.supplier, q.contract) != own):
+            # No other contract could be priced, the network down most
+            # likely: not kept as the day's ranking, so the next tick tries
+            # again.
+            _LOGGER.warning("daily ranking priced no other contract; trying again")
             return
         self.daily_ranking = DailyRanking.from_quotes(
             today, quotes, (self.extractor.id, self.contract)
         )
         await self._save_persistent()
         self.async_update_listeners()
+
+    def own_contract(self) -> OwnContract | None:
+        """The household's contract as a comparison quotes it: on the card in
+        hand with the energy leg the entry is billed on. None before a card
+        is held."""
+        snapshot = self._snapshot
+        if snapshot is None:
+            return None
+        return OwnContract(
+            self.extractor, self.contract, replace(snapshot, energy=self._energy_for(snapshot))
+        )
 
     def _filling(self) -> bool:
         """Whether the first tick's month cards are still being fetched."""

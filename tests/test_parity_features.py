@@ -35,7 +35,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from custom_components.be_gas_prices import providers
-from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract, rank
+from custom_components.be_gas_prices.compare import (
+    IndexCache,
+    OwnContract,
+    Quote,
+    quote_contract,
+    rank,
+)
 from custom_components.be_gas_prices.compare_table import quote_table
 from custom_components.be_gas_prices.const import (
     CALIBER_Q10,
@@ -495,7 +501,7 @@ async def test_a_ranking_quotes_a_typed_card_among_the_suppliers() -> None:
             household,
             "2026-09",
             use_archive=False,
-            custom_card=build_snapshot(data),
+            own=OwnContract(providers.get(SUPPLIER_CUSTOM), CUSTOM_CONTRACT, build_snapshot(data)),
         )
     assert {(q.supplier, q.contract) for q in quotes} == {
         ("acme", "acme_a"),

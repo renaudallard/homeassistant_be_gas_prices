@@ -40,7 +40,7 @@ from homeassistant.util import dt as dt_util
 
 from . import calorific, postcodes
 from .bill import month_key
-from .compare import IndexCache, Quote, quote_contract, rank
+from .compare import IndexCache, OwnContract, Quote, quote_contract, rank
 from .compare_table import quote_table
 from .const import (
     CALIBERS,
@@ -629,6 +629,25 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
             annual_kwh=float(data.get(CONF_ANNUAL_CONSUMPTION_KWH, DEFAULT_ANNUAL_CONSUMPTION_KWH)),
         )
 
+    def _own_contract(self) -> OwnContract | None:
+        """The household's contract as the comparisons quote it: on the card
+        the loaded entry holds, with the energy leg it is billed on, else a
+        custom entry's typed card; None leaves it to the card of the month."""
+        own_contract = getattr(
+            getattr(self.config_entry, "runtime_data", None), "own_contract", None
+        )
+        held = own_contract() if callable(own_contract) else None
+        if isinstance(held, OwnContract):
+            return held
+        data = self.config_entry.data
+        if data[CONF_SUPPLIER] != SUPPLIER_CUSTOM:
+            return None
+        return OwnContract(
+            get_extractor(SUPPLIER_CUSTOM),
+            str(data[CONF_CONTRACT]),
+            build_custom_snapshot(dict(data)),
+        )
+
     async def async_step_compare(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -654,6 +673,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
             month = month_key(dt_util.now().date())
             indices = IndexCache()
             use_archive = bool(data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
+            held = self._own_contract()
             other, own = await asyncio.gather(
                 quote_contract(
                     session,
@@ -674,11 +694,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                     month,
                     indices,
                     use_archive=use_archive,
-                    card=(
-                        build_custom_snapshot(dict(data))
-                        if data[CONF_SUPPLIER] == SUPPLIER_CUSTOM
-                        else None
-                    ),
+                    card=None if held is None else held.card,
                 ),
             )
             self._quotes = (own, other)
@@ -723,11 +739,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                     month_key(dt_util.now().date()),
                     use_archive=bool(data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
                     budget_s=COMPARE_BUDGET_S,
-                    custom_card=(
-                        build_custom_snapshot(dict(data))
-                        if data[CONF_SUPPLIER] == SUPPLIER_CUSTOM
-                        else None
-                    ),
+                    own=self._own_contract(),
                 )
             )
         if not self._rank_task.done():

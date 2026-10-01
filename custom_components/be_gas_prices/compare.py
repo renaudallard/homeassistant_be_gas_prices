@@ -47,11 +47,10 @@ from dataclasses import dataclass
 import aiohttp
 
 from .bill import bill_month
-from .const import CUSTOM_CONTRACT, SUPPLIER_CUSTOM
+from .const import SUPPLIER_CUSTOM
 from .month_cards import current_card
 from .pricing import PricingError
 from .providers import all_extractors
-from .providers import get as get_extractor
 from .providers._pdf import memoise_text_fetches
 from .providers._rates import IndexedRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
@@ -79,6 +78,18 @@ class Quote:
     error: str | None = None
     # Priced on the card archive's OCR reading of a card published as images.
     read_by_ocr: bool = False
+
+
+@dataclass(frozen=True)
+class OwnContract:
+    """The household's own contract and the card it is quoted on: its card
+    of the month with the energy leg the entry is billed on (the signing
+    card's, the figures typed from the contract), or the typed card of a
+    custom entry."""
+
+    extractor: SupplierExtractor
+    contract: str
+    card: SupplierSnapshot
 
 
 class IndexCache:
@@ -181,17 +192,23 @@ async def rank(
     use_archive: bool,
     budget_s: float | None = None,
     progress: Callable[[int, int], None] | None = None,
-    custom_card: SupplierSnapshot | None = None,
+    own: OwnContract | None = None,
 ) -> tuple[list[Quote], int]:
     """Every contract in ``region`` quoted and sorted cheapest first.
 
     ``budget_s`` bounds how long the ranking spends fetching: past it the
     remaining contracts are not started, and their count is returned beside
-    the ranking so the page can say so. Failed quotes sort last.
-    ``custom_card`` is a household's typed card, which is no supplier's and
-    is quoted among them so the household sees where its own contract ranks.
+    the ranking so the page can say so. Failed quotes sort last. ``own`` is
+    the household's contract, quoted on its own card in place of the card
+    of the month a new customer signs on, so the household sees where what
+    it pays ranks; a custom entry's typed card is no supplier's and is only
+    there this way.
     """
-    pairs = candidates(region)
+    pairs = [
+        pair
+        for pair in candidates(region)
+        if own is None or (pair[0].id, pair[1]) != (own.extractor.id, own.contract)
+    ]
     indices = IndexCache()
     started = time.monotonic()
     semaphore = asyncio.Semaphore(_CONCURRENCY)
@@ -233,18 +250,18 @@ async def rank(
             *(_supplier(extractor, contracts) for extractor, contracts in by_supplier.values())
         )
     quotes = [quote for group in results for quote in group if quote is not None]
-    if custom_card is not None:
+    if own is not None:
         quotes.append(
             await quote_contract(
                 session,
-                get_extractor(SUPPLIER_CUSTOM),
-                CUSTOM_CONTRACT,
+                own.extractor,
+                own.contract,
                 region,
                 household,
                 today_month,
                 indices,
                 use_archive=False,
-                card=custom_card,
+                card=own.card,
             )
         )
     quotes.sort(key=lambda q: (q.annual_cost is None, q.annual_cost or 0.0, q.label))

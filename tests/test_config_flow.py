@@ -488,7 +488,8 @@ async def test_compare_all_ranks_a_custom_household_s_own_card(hass: HomeAssista
         )
         await hass.async_block_till_done()
         result = await hass.config_entries.options.async_configure(result["flow_id"])
-    assert calls[0]["custom_card"] is not None
+    own = calls[0]["own"]
+    assert (own.contract, own.card.energy.price) == (CUSTOM_CONTRACT, pytest.approx(0.08))
     assert result["step_id"] == "compare_all_result"
     placeholders = result["description_placeholders"]
     assert placeholders is not None

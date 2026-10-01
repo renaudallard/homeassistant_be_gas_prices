@@ -64,6 +64,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CUSTOM_TRANSPORT,
     CONF_DAILY_COMPARE,
     CONF_DSO,
+    CONF_MANUAL_FACTOR,
     CONF_MANUAL_PRICE,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
@@ -79,6 +80,7 @@ from custom_components.be_gas_prices.const import (
     SUPPLIER_CUSTOM,
 )
 from custom_components.be_gas_prices.providers import engie
+from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from tests import fixture_text
 
@@ -638,6 +640,44 @@ async def test_a_ranking_that_priced_nothing_is_tried_again(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_ranking_quotes_the_household_at_what_it_pays(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The own row is the entry's own price, typed figures included, not
+    the card of the month a new customer would sign."""
+    data = {**DATA, CONF_CONTRACT_START_DATE: "2026-03-01", CONF_MANUAL_FACTOR: 0.2}
+    entry = await _setup(hass, data)
+    own = entry.runtime_data.own_contract()
+    assert own is not None and own.contract == "engie_flow"
+    energy = own.card.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(0.2 / 100 * 1.06)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_ranking_that_priced_only_the_household_is_tried_again(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The network down at the ranking minute: the own row is priced on the
+    card in hand, every other quote fails, and the day is ranked again."""
+    own = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.09, 100.0, True, False)
+    failed = Quote("luminus", "x", "Cheap", None, None, None, False, False, "timeout")
+    cheaper = Quote("luminus", "x", "Cheap", 1000.0, 0.08, 100.0, True, False)
+    ranked = AsyncMock(side_effect=[([own, failed], 0), ([cheaper, own], 0)])
+    with (
+        patch("custom_components.be_gas_prices.coordinator.rank", ranked),
+        patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_DAILY_COMPARE: True})
+        assert entry.runtime_data.daily_ranking is None
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    ranking = entry.runtime_data.daily_ranking
+    assert ranking is not None and ranking.saving == pytest.approx(500.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_falls_back_like_the_running_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
@@ -745,18 +785,18 @@ async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssis
     async def ranked(
         session: Any, region: str, household: Any, month: str, **kwargs: Any
     ) -> tuple[list[Quote], int]:
-        card = kwargs["custom_card"]
-        assert card is not None
+        held = kwargs["own"]
+        assert held is not None and held.contract == CUSTOM_CONTRACT
         own = await quote_contract(
             session,
-            providers.get(SUPPLIER_CUSTOM),
-            CUSTOM_CONTRACT,
+            held.extractor,
+            held.contract,
             region,
             household,
             month,
             IndexCache(),
             use_archive=False,
-            card=card,
+            card=held.card,
         )
         return [cheaper, own], 0
 
