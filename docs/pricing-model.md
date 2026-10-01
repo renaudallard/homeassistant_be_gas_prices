@@ -91,7 +91,8 @@ the card was printed for:
   TotalEnergies a pre-August energy contribution.
 - The energy contribution, zero from 1 August 2026.
 - Fluvius's data management fee, 17,85 EUR/year excluding VAT for every area
-  in 2026, where a Flemish card prints none (Luminus's 2026 cards).
+  in 2026, where a Flemish card prints none (Luminus's 2026 cards), the
+  custom supplier's typed card with metering left at 0 included.
 - The Walloon connection fee, 0,000075 EUR/kWh (0,0075 c EUR/kWh) below
   1 GWh a year, VAT exempt, set by the Walloon order of 19 June 2003 (art. 2)
   and in force since 15 July 2003, on a card of the Walloon DSOs.

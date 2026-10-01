@@ -106,7 +106,7 @@
       },
       "custom_network": {
         "title": "Het tarief van je netbeheerder",
-        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns, de bijdrage op de energie en de Waalse aansluitingsvergoeding volgen de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden.",
+        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns, de bijdrage op de energie en de Waalse aansluitingsvergoeding volgen de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. Op een Fluvius-net wordt meting op 0 in 2026 aangerekend aan de gereguleerde vergoeding voor databeheer.",
         "data": {
           "custom_t1_fixed": "T1 vaste term (€ per jaar)",
           "custom_t1_prop": "T1 proportionele term (c€/kWh)",
@@ -272,7 +272,7 @@
       },
       "custom_network": {
         "title": "Het tarief van je netbeheerder",
-        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns, de bijdrage op de energie en de Waalse aansluitingsvergoeding volgen de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden.",
+        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns, de bijdrage op de energie en de Waalse aansluitingsvergoeding volgen de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. Op een Fluvius-net wordt meting op 0 in 2026 aangerekend aan de gereguleerde vergoeding voor databeheer.",
         "data": {
           "custom_t1_fixed": "T1 vaste term (€ per jaar)",
           "custom_t1_prop": "T1 proportionele term (c€/kWh)",
