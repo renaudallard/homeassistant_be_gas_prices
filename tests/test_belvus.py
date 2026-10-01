@@ -316,6 +316,38 @@ async def test_fetch_index_reads_the_newest_cards() -> None:
     }
 
 
+@pytest.mark.parametrize(
+    ("error", "kept"),
+    [("HTTP 404 fetching the July card", True), ("network error fetching x: timeout", False)],
+)
+async def test_fetch_index_passes_over_a_dead_card_link(error: str, kept: bool) -> None:
+    """A July card the listing links but the site no longer serves: August
+    and September still give their values. A site that is down fails."""
+
+    async def pdf(_session: object, url: str) -> str:
+        if "/2026-09/" in url:
+            return _card(SEPTEMBER)
+        if "/2026-08/" in url:
+            return _card(AUGUST)
+        raise ExtractorError(error)
+
+    with (
+        patch.object(belvus, "_INDEX_MONTHS", 3),
+        patch.object(
+            belvus,
+            "fetch_text",
+            AsyncMock(return_value=fixture_page("belvus", "historische-tariefkaarten.html")),
+        ),
+        patch.object(belvus, "fetch_pdf_text", AsyncMock(side_effect=pdf)),
+    ):
+        if not kept:
+            with pytest.raises(ExtractorError, match="network"):
+                await belvus.fetch_index(AsyncMock())
+            return
+        table = await belvus.fetch_index(AsyncMock())
+    assert set(table["TTF_RLP"]) == {"2026-08", "2026-07"}
+
+
 def test_extractor() -> None:
     extractor = belvus.EXTRACTOR
     assert extractor.id == "belvus"

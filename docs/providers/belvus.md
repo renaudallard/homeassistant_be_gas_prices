@@ -59,7 +59,8 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
   value, so it is the formula's TTF_RLP.
 - `fetch_index` reads the twelve newest Flex Online cards and keeps each
   card's value for the month before its own (`index_value`); a card naming
-  another month or none is skipped. Read on 29 September 2026: December 2025
+  another month or none is skipped, and so is a dead link or an unreadable
+  card, while a site that is down fails the fetch. Read on 29 September 2026: December 2025
   to August 2026, in 4 to 9 s on a Raspberry Pi. The values agree with Energy
   Together's publication within its two decimals.
 
@@ -93,4 +94,5 @@ check, the card month, both layouts mapping the labels alike (and giving the
 same table), the levies as printed, the January card refused, product and
 region refusals, `index_value` (September, August, January, a wrong month),
 the listing, `fetch`, `fetch_for_month` (folder URL, other month, 404,
-transient, future, Brussels time) and `fetch_index`.
+transient, future, Brussels time) and `fetch_index` (a dead card link
+skipped, a site down failing).

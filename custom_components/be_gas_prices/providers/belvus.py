@@ -63,7 +63,7 @@ import aiohttp
 from ..const import REGION_FLANDERS
 from ._energy_together import INDEX, card_month, last_known_index, parse_card
 from ._parse import require_contract
-from ._pdf import fetch_pdf_text, fetch_text
+from ._pdf import fetch_pdf_text, fetch_text, is_transient_fetch_error
 from ._rates import Contract
 from ._validity import future_month, month_card
 from .base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
@@ -183,9 +183,16 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     months = listed_months(await fetch_text(session, _LISTING_URL), contract)
     values: dict[str, float] = {}
     for month in months[:_INDEX_MONTHS]:
-        stated = index_value(
-            await fetch_pdf_text(session, _card_url(contract, month.year, month.month))
-        )
+        try:
+            stated = index_value(
+                await fetch_pdf_text(session, _card_url(contract, month.year, month.month))
+            )
+        except ExtractorError as err:
+            # One dead link or unreadable card is no reason to lose every
+            # other month; a supplier that is down is.
+            if is_transient_fetch_error(str(err)):
+                raise
+            continue
         if stated is not None:
             values[stated[0]] = stated[1]
     if not values:
