@@ -268,6 +268,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._card_source = "cache"
             self._stand_in = True
             self._restored_ocr = blob.get("read_by_ocr") is True
+            # So it is stored as such again, whatever the next check finds.
+            self.card_read_by_ocr = self._restored_ocr
         # A price is only resolved against its own supplier's publication:
         # a table another supplier published, before a change of supplier,
         # is not restored, even under an index name the two share.

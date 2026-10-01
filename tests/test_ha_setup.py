@@ -1368,6 +1368,38 @@ async def test_the_wait_for_the_archive_survives_a_restart(
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
 
 
+@pytest.mark.freeze_time("2026-10-01 08:00:00+02:00")
+async def test_a_restored_reading_stays_marked_through_a_network_failure(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """The first check after a restart fails on the network: the store
+    still says the card in hand is the archive's reading."""
+    card = fetch.return_value
+    fetch.side_effect = ExtractorError("network error fetching x: timeout")
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_CARD_ARCHIVE: True}
+    )
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "snapshot": snapshot_to_json(card),
+            "fetched_at": "2026-09-30T06:00:00+00:00",
+            "read_by_ocr": True,
+        },
+    }
+    with patch(
+        "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+        AsyncMock(return_value=None),
+    ):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    await entry.runtime_data.async_save()
+    assert hass_storage[key]["data"]["read_by_ocr"] is True
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_card_published_as_images_without_a_reading_is_unreadable(
     hass: HomeAssistant, fetch: AsyncMock
