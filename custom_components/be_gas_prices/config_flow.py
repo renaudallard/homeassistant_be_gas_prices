@@ -684,30 +684,36 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
             use_archive = bool(data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
             held = self._own_contract()
             indices = IndexCache(held)
-            other, own = await asyncio.gather(
-                quote_contract(
-                    session,
-                    get_extractor(supplier),
-                    user_input[CONF_CONTRACT],
-                    region,
-                    household,
-                    month,
-                    indices,
-                    use_archive=use_archive,
-                ),
-                quote_contract(
-                    session,
-                    get_extractor(data[CONF_SUPPLIER]),
-                    data[CONF_CONTRACT],
-                    region,
-                    household,
-                    month,
-                    indices,
-                    use_archive=use_archive,
-                    card=None if held is None else held.card,
-                    read_by_ocr=held is not None and held.read_by_ocr,
-                ),
+            mine = quote_contract(
+                session,
+                get_extractor(data[CONF_SUPPLIER]),
+                data[CONF_CONTRACT],
+                region,
+                household,
+                month,
+                indices,
+                use_archive=use_archive,
+                card=None if held is None else held.card,
+                read_by_ocr=held is not None and held.read_by_ocr,
             )
+            if (supplier, user_input[CONF_CONTRACT]) == (data[CONF_SUPPLIER], data[CONF_CONTRACT]):
+                # The household's own contract: one quote, at what it pays.
+                own = await mine
+                other = own
+            else:
+                other, own = await asyncio.gather(
+                    quote_contract(
+                        session,
+                        get_extractor(supplier),
+                        user_input[CONF_CONTRACT],
+                        region,
+                        household,
+                        month,
+                        indices,
+                        use_archive=use_archive,
+                    ),
+                    mine,
+                )
             self._quotes = (own, other)
             return await self.async_step_compare_result()
         schema = vol.Schema(
@@ -732,7 +738,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
             step_id="compare_result",
             data_schema=vol.Schema({}),
             description_placeholders={
-                "table": quote_table([own, other], own=own),
+                "table": quote_table([own] if other is own else [own, other], own=own),
                 "annual_kwh": f"{self._household().annual_kwh:.0f}",
             },
         )

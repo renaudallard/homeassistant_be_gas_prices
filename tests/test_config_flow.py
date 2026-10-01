@@ -448,6 +448,30 @@ async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> Non
     assert entry.data[CONF_CONTRACT] == "engie_flow"
 
 
+async def test_options_compare_the_own_contract_quotes_it_once(hass: HomeAssistant) -> None:
+    """Picking the household's own contract shows it once, at what it pays,
+    rather than beside a second quote on the card of the month."""
+    entry = _entry(hass)
+    own = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.08, 190.0, True, True)
+    quoted = AsyncMock(return_value=own)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "compare"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: "engie"}
+    )
+    with patch("custom_components.be_gas_prices.config_flow.quote_contract", quoted):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {CONF_CONTRACT: "engie_flow"}
+        )
+    assert quoted.await_count == 1
+    placeholders = result["description_placeholders"]
+    assert placeholders is not None
+    rows = [line for line in placeholders["table"].splitlines() if "Engie Flow" in line]
+    assert rows == ["| 1 | **Engie Flow †** | 1,500.00 | +0.00 | 0.0800 |"]
+
+
 async def test_compare_all_ranks_a_custom_household_s_own_card(hass: HomeAssistant) -> None:
     """The typed card is handed to the ranking, so the household's own
     contract is in the table, in bold."""
