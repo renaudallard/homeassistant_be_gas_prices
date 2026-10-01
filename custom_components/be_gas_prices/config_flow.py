@@ -100,6 +100,7 @@ from .contract_periods import previous_contracts, record_switch
 from .providers import all_extractors
 from .providers import get as get_extractor
 from .providers._rates import Contract
+from .providers.base import ExtractorError
 from .providers.custom import build_snapshot as build_custom_snapshot
 from .running_costs import Household
 
@@ -583,9 +584,15 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         return await self.async_step_postcode()
 
     async def _async_finish(self) -> ConfigFlowResult:
-        self.hass.config_entries.async_update_entry(
-            self.config_entry, data=self._data, title=_title(self._data)
-        )
+        entry = self.config_entry
+        # The title the wizard gave follows the contract; one the user typed
+        # is theirs and stays.
+        try:
+            made = _title(dict(entry.data))
+        except ExtractorError:
+            made = entry.title
+        title = _title(self._data) if entry.title == made else entry.title
+        self.hass.config_entries.async_update_entry(entry, data=self._data, title=title)
         return self.async_create_entry(data={})
 
     # ---- comparison ----------------------------------------------------------

@@ -449,6 +449,27 @@ async def test_options_switch_keeps_the_earlier_contract(hass: HomeAssistant) ->
     assert entry.title == "Engie Easy Fixe"
 
 
+async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, title="My house")
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+        {CONF_CONTRACT: "engie_flow"},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await _household_options(hass, result["flow_id"])
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONVERSION_FACTOR: 11.5}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.title == "My house"
+
+
 async def _household_options(hass: HomeAssistant, flow_id: str) -> ConfigFlowResult:
     return await hass.config_entries.options.async_configure(
         flow_id,
