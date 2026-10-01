@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import date, datetime
@@ -249,6 +250,16 @@ def test_brussels_is_not_sold() -> None:
 def test_card_of_another_product_is_refused(contract: str, name: str, named: str) -> None:
     with pytest.raises(ExtractorError, match=f"the card is for {named}"):
         octaplus.parse_snapshot(contract, REGION_WALLONIA, _card(name))
+
+
+def test_a_malformed_heading_line_is_passed_over_at_once() -> None:
+    """A line of a word run ended by a double space and another word, which
+    the heading pattern once took exponential time over, is no heading."""
+    text = "GAZ " + "a" * 40 + "  \tb\n" + _card(BOOSTFLEX_WL)
+    started = time.monotonic()
+    snap = octaplus.parse_snapshot("octaplus_boostflex", REGION_WALLONIA, text)
+    assert time.monotonic() - started < 1.0
+    assert snap.publication_label == "2026-10"
 
 
 def test_a_formula_printed_with_decimal_points_is_read_whole() -> None:

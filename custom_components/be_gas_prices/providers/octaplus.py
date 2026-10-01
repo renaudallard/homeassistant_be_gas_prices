@@ -324,7 +324,9 @@ def _check_product(text: str, contract: _ContractDef) -> None:
     """The card opens with its product, "GAZ SMARTVARIABLE", "GAZ BOOST FLEX"
     or "GAZ ECO BOOST FIX": its slug, spaced out. The archive match is loose
     enough to warrant making sure it found the product asked for."""
-    match = re.search(r"^GAZ ((?:\S+ ?)+?)\s*$", text, re.MULTILINE)
+    # Words split by single spaces, so a malformed line cannot send the
+    # match into backtracking.
+    match = re.search(r"^GAZ (\S+(?: \S+)*)[ \t]*$", text, re.MULTILINE)
     if match is None:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: product heading not found")
     if "".join(match.group(1).split()) != contract.slug:
