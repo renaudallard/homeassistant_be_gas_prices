@@ -97,7 +97,8 @@ hand is still stale, and it is what lets the card archive stand in.
   change of contract, whatever its year: the hours before it were the
   earlier contract's. A month before the year's window is priced on
   its own card only, fetched for the occasion, and skipped where none is
-  found.
+  found. A start date before 1 January of last year is refused: the card
+  archive keeps no older cards.
   `clear: true` deletes those statistics in full first, since the recorder
   has no windowed delete, and requires an `entry_id`.
 

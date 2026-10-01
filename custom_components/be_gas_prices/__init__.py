@@ -27,7 +27,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 import voluptuous as vol
 from homeassistant.config_entries import (
@@ -114,9 +114,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             raise ServiceValidationError(
                 translation_domain=DOMAIN, translation_key="clear_needs_entry"
             )
+        today = dt_util.now().date()
+        earliest = date(today.year - 1, 1, 1)
+        asked = call.data.get("start_date")
+        if asked is not None and asked < earliest:
+            # The card archive keeps a year of cards: an older month has no
+            # card to be priced on, and an absurd date would only stall.
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="start_date_too_early",
+                translation_placeholders={"earliest": earliest.isoformat()},
+            )
         written: dict[str, JsonValueType] = {}
         for coordinator in _loaded_coordinators(hass, entry_id):
-            start = call.data.get("start_date") or coordinator.window_start(dt_util.now().date())
+            start = asked or coordinator.window_start(today)
             written.update(
                 await backfill_prices(hass, coordinator, start, clear=call.data["clear"])
             )

@@ -448,7 +448,7 @@
         },
         "start_date": {
           "name": "Startdatum",
-          "description": "Standaard het begin van het venster van dit jaar. Nooit vóór de laatst vastgelegde contractwissel. Een maand vóór het venster wordt alleen geschreven als de eigen tariefkaart ervan te vinden is."
+          "description": "Standaard het begin van het venster van dit jaar. Nooit vóór de laatst vastgelegde contractwissel, noch vóór 1 januari van vorig jaar. Een maand vóór het venster wordt alleen geschreven als de eigen tariefkaart ervan te vinden is."
         },
         "clear": {
           "name": "Eerst wissen",
@@ -463,6 +463,9 @@
     },
     "clear_needs_entry": {
       "message": "Statistieken wissen vereist een item: ze worden volledig gewist."
+    },
+    "start_date_too_early": {
+      "message": "De startdatum mag niet vroeger zijn dan {earliest}: het kaartarchief bewaart geen oudere kaarten."
     },
     "contract_withdrawn": {
       "message": "De leverancier heeft het contract {contract} stopgezet en publiceert de tariefkaart ervan niet meer. Kies een ander contract in de instellingen van het item, of vul de cijfers van je contract in onder \"Expert: custom figures\"."

@@ -40,6 +40,7 @@ from homeassistant.components.repairs import repairs_flow_manager
 from homeassistant.config_entries import ConfigEntryDisabler, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.loader import async_get_integration
@@ -226,6 +227,26 @@ async def test_disabling_a_retrying_entry_clears_its_repairs_cards(
     await hass.config_entries.async_set_disabled_by(entry.entry_id, ConfigEntryDisabler.USER)
     await hass.async_block_till_done()
     assert issues.async_get_issue(DOMAIN, key) is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("start", ["0001-01-01", "1970-01-01", "2024-12-31"])
+async def test_a_backfill_before_last_year_is_refused(
+    hass: HomeAssistant, fetch: AsyncMock, start: str
+) -> None:
+    """The card archive keeps a year of cards: an older start has none to
+    price on, and year 1 used to crash the service."""
+    entry = await _setup(hass)
+    with pytest.raises(ServiceValidationError) as raised:
+        await hass.services.async_call(
+            DOMAIN,
+            "backfill_statistics",
+            {"entry_id": entry.entry_id, "start_date": start},
+            blocking=True,
+            return_response=True,
+        )
+    assert raised.value.translation_key == "start_date_too_early"
+    assert raised.value.translation_placeholders == {"earliest": "2025-01-01"}
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
