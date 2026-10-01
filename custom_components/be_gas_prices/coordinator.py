@@ -359,16 +359,17 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             key = await self.extractor.probe(self._session, self.contract, self.region)
         if self._snapshot is None or self._force_refresh or self._stand_in:
             return True, key
+        # A card whose month is over is asked for again on every tick until
+        # its successor is out, probe or not: the successor may have gone up
+        # before its month began, under the key the card in hand is kept
+        # against, and no later change of key would ever come for it.
+        valid_until = self._snapshot.valid_until
+        if valid_until is not None and dt_util.now().date() > valid_until:
+            return True, key
         if key is not None:
             return key != self._probe_key, key
         age = self.snapshot_age()
-        if age is None or age >= SNAPSHOT_TTL:
-            return True, None
-        # With no probe to say when the card changes, a card whose month is
-        # over is asked for again on every tick until its successor is out,
-        # rather than pricing the new month for up to a TTL.
-        valid_until = self._snapshot.valid_until
-        return valid_until is not None and dt_util.now().date() > valid_until, None
+        return age is None or age >= SNAPSHOT_TTL, None
 
     async def _refresh_snapshot(self) -> None:
         if self.extractor.id == SUPPLIER_CUSTOM:

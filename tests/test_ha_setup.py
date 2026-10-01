@@ -427,6 +427,34 @@ async def test_setup_does_not_wait_on_the_earlier_contract_s_month_cards(
     assert date(2026, 1, 1) in asked
 
 
+@pytest.mark.freeze_time("2026-09-30 18:00:00+02:00")
+async def test_a_card_put_up_early_is_read_once_its_month_begins(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """October's card is online on 30 September under a probe key that will
+    not change again: September's card stands in for it that evening, and
+    from 1 October the card is read again although the key is the same."""
+    september = fetch.return_value
+    october = replace(september, publication_label="2026-10", valid_until=date(2026, 10, 31))
+    fetch.return_value = october
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        return {date(2026, 9, 1): september, date(2026, 10, 1): october}.get(month)
+
+    stub = replace(
+        providers.EXTRACTORS["engie"],
+        fetch_for_month=for_month,
+        probe=AsyncMock(return_value="Wed, 30 Sep 2026 12:57:20 GMT"),
+    )
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        assert entry.runtime_data.data.snapshot.publication_label == "2026-09"
+        freezer.move_to("2026-10-01 10:00:00+02:00")
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert entry.runtime_data.data.snapshot.publication_label == "2026-10"
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock
