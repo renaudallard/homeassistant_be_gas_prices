@@ -241,7 +241,13 @@ A daily workflow stores every card it parses in the shared
 under `gas/`: the parsed card per supplier, contract, region and month, the
 text the parse read, the PDF itself as a release asset, and each supplier's
 index table. A card published as page images is read there with the OCR
-engine, and the row says so. An installation reads the archive for a month
+engine, and the row says so. The OCR reads a font only through the glyphs it
+has learnt, and no Ecofix card it learnt from sets a bold 4, 7, 8, 9, Q, X,
+Y or Z, which a gas formula set in bold would need; a card published as
+page images still embeds the fonts of the text set over its picture, so
+each run looks at the cards it stored and files `[archive-cards] a card
+embeds glyphs the OCR library has not learnt` when one carries such a glyph,
+naming the card to learn it from. An installation reads the archive for a month
 its supplier no longer serves, when its card cannot be read, and for the
 running month of a card published as images. The request names the
 supplier, the contract, the region and the month and nothing else; the
