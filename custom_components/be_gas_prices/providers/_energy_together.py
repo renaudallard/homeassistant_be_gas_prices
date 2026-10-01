@@ -146,10 +146,11 @@ def _energy(text: str, label: str) -> IndexedRates:
 
 # "laatst gekende waarde van TTF-DAM 8/2026: €61,72903/MWh". Belvus's cards
 # up to April 2026 read "Belpex TTF-DAM 12/2025: €27,652/MWh", and the April
-# one wraps after "TTF-" and drops the colon.
+# one wraps after "TTF-" and drops the colon. From October 2026 Belvus names
+# the same value "TTF RLP-M 9/2026: €75,35/MWh".
 _LAST_KNOWN_INDEX_RE = re.compile(
-    r"laatst\s+gekende\s+waarde\s+van\s+(?:Belpex\s+)?TTF-\s*DAM\s+(\d{1,2})/(\d{4}):?"
-    r"\s*€\s*(\d+,\d+)\s*/MWh"
+    r"laatst\s+gekende\s+waarde\s+van\s+(?:Belpex\s+)?TTF(?:-\s*DAM|\s+RLP-M)\s+"
+    r"(\d{1,2})/(\d{4}):?\s*€\s*(\d+,\d+)\s*/MWh"
 )
 
 

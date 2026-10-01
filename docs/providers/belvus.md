@@ -54,8 +54,9 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
 - The next month's card states the realised value its "**" price uses:
   "laatst gekende waarde van TTF-DAM 8/2026: €61,729/MWh" on the September
   card, "Belpex TTF-DAM 12/2025: €27,652/MWh" on January's, and on April's
-  "Belpex TTF-\nDAM 3/2026 €51,264/MWh" with no colon. The "**" price is the
-  formula at that value, so it is the formula's TTF_RLP.
+  "Belpex TTF-\nDAM 3/2026 €51,264/MWh" with no colon. From October 2026 it
+  reads "TTF RLP-M 9/2026: €75,35/MWh". The "**" price is the formula at that
+  value, so it is the formula's TTF_RLP.
 - `fetch_index` reads the twelve newest Flex Online cards and keeps each
   card's value for the month before its own (`index_value`); a card naming
   another month or none is skipped. Read on 29 September 2026: December 2025

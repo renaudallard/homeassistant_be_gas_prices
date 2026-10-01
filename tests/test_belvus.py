@@ -49,6 +49,7 @@ from tests import fixture_page, fixture_text
 
 VAT = 1.06
 SEPTEMBER = "Tariefkaart_FlexOnline_GAS_2026-09.pdf"
+OCTOBER = "Tariefkaart_FlexOnline_GAS_2026-10.pdf"
 AUGUST = "Tariefkaart_FlexOnline_GAS_2026-08.pdf"
 JANUARY = "Tariefkaart_FlexOnline_GAS_2026-01.pdf"
 
@@ -159,6 +160,8 @@ def test_index_value_is_the_month_before_the_card() -> None:
     # "laatst gekende waarde van Belpex TTF-DAM 12/2025: €27,652/MWh"; the
     # card's table is refused, its footnote is still the card's own.
     assert belvus.index_value(_card(JANUARY)) == ("2025-12", pytest.approx(27.652))
+    # From October 2026: "laatst gekende waarde van TTF RLP-M 9/2026: €75,35/MWh".
+    assert belvus.index_value(_card(OCTOBER)) == ("2026-09", pytest.approx(75.35))
 
 
 def test_index_value_naming_another_month_is_dropped() -> None:
