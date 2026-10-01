@@ -68,8 +68,10 @@ from custom_components.be_gas_prices.const import (
     CONVERSION_MANUAL,
     CUSTOM_CONTRACT,
     DOMAIN,
+    DSO_FLUVIUS_IMEWO,
     DSO_ORES,
     DSO_SIBELGA,
+    REGION_FLANDERS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
 )
@@ -400,6 +402,28 @@ async def test_a_ranking_stored_for_another_contract_is_not_served(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.daily_ranking is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_stored_card_of_another_region_is_not_restored(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The household moves from Wallonia to Flanders while the supplier is
+    down: the Walloon card in the store cannot price a Fluvius DSO, so the
+    card archive is asked instead."""
+    entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+    await entry.runtime_data.async_save()
+    walloon = fetch.return_value
+    flemish = replace(walloon, dsos={DSO_FLUVIUS_IMEWO: walloon.dsos[DSO_ORES]})
+    fetch.side_effect = ExtractorError("network error fetching engie: timeout")
+    archived = AsyncMock(return_value=flemish)
+    with patch("custom_components.be_gas_prices.coordinator.fetch_archived_card", archived):
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_REGION: REGION_FLANDERS, CONF_DSO: DSO_FLUVIUS_IMEWO}
+        )
+        await hass.async_block_till_done()
+    assert archived.await_count >= 1
+    assert entry.runtime_data.data.card_source == "archive"
 
 
 async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssistant) -> None:

@@ -245,9 +245,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         except (SnapshotDecodeError, KeyError, TypeError, ValueError):
             snapshot = None
             fetched_at = None
-        if snapshot is not None and (snapshot.supplier, snapshot.contract) == (
-            self.extractor.id,
-            self.contract,
+        # Only a card for this contract that prices this household's DSO: a
+        # move to another region keeps the supplier and the contract, and a
+        # card of the old region would stand in for the new one's.
+        if (
+            snapshot is not None
+            and (snapshot.supplier, snapshot.contract) == (self.extractor.id, self.contract)
+            and str(self._data.get(CONF_DSO)) in snapshot.dsos
         ):
             self._snapshot = snapshot
             self._fetched_at = fetched_at
