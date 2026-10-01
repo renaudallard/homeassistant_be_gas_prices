@@ -29,9 +29,11 @@ Elegant sells in Flanders only ("Sinds 2012 voor iedereen in Vlaanderen").
 Its listing page, https://www.elegant.be/tariefkaarten, is server-rendered
 Next.js and links the current residential cards as DatoCMS assets:
 
-    https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential-<MMYY>.pdf
+    https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential[-<MMYY>].pdf
 
-The upload id is opaque, so the listing is read rather than a URL built.
+The month suffix was dropped in October 2026. The upload id is the upload's
+Unix time and cannot be guessed, so the listing is read rather than a URL
+built.
 
 Three products: Flex (open-ended) and ComfortFlex (one year) print the same
 formula figure for figure, "(1,0250 x TTFDAM + 0,470) x 1,06", in c EUR/kWh
@@ -150,19 +152,17 @@ def _contract(contract_id: str, region: str) -> _ContractDef:
 
 
 def _card_url(html: str, contract: _ContractDef) -> str:
-    """The newest residential gas card the listing links for ``contract``.
+    """The newest residential gas card the listing links for ``contract``,
+    the one uploaded last.
 
     The upload id is directly followed by the token, so "flex" cannot pick
     up the ComfortFlex card.
     """
     pattern = re.compile(
         rf"(https://www\.datocms-assets\.com/198110/(\d+)-{contract.token}"
-        r"gas_residential-(\d{2})(\d{2})\.pdf)"
+        r"gas_residential(?:-\d{4})?\.pdf)"
     )
-    found: dict[tuple[int, int, int], str] = {
-        (int(year), int(month), int(upload)): url
-        for url, upload, month, year in pattern.findall(html)
-    }
+    found: dict[int, str] = {int(upload): url for url, upload in pattern.findall(html)}
     if not found:
         raise ExtractorError(f"Elegant: no {contract.name} gas card on the listing")
     return found[max(found)]

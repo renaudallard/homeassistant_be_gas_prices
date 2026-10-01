@@ -8,9 +8,10 @@ There is no electricity counterpart for Elegant.
 
 - Listing: https://www.elegant.be/tariefkaarten, server-rendered Next.js.
   It links the current residential cards as DatoCMS assets:
-  `https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential-<MMYY>.pdf`.
-  The upload id is opaque, so the listing is read. Where a product is linked
-  more than once the newest `MMYY`, then the highest upload id, wins.
+  `https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential[-<MMYY>].pdf`,
+  the `MMYY` suffix dropped since October 2026. The upload id is the upload's
+  Unix time, so the listing is read. Where a product is linked more than once
+  the highest upload id, the last uploaded, wins.
 - Probe: the listing's ETag.
 
 ## Products and regions

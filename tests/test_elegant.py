@@ -53,6 +53,7 @@ _FLEX = "1788722319-flexgas_residential-0926.pdf"
 _COMFORTFLEX = "1788722310-comfortflexgas_residential-0926.pdf"
 _ZEKER_VAST = "1788722331-zekervastgas_residential-0926.pdf"
 _ARCHIVED_FLEX = "archive_FlexGas_20260301.pdf"
+_FLEX_OCTOBER = "1790833226-flexgas_residential.pdf"
 
 
 def _card(name: str) -> str:
@@ -158,6 +159,41 @@ def test_listing_links_each_product(contract: str, name: str) -> None:
     assert elegant._card_url(html, elegant._CONTRACTS_BY_ID[contract]) == (
         "https://www.datocms-assets.com/198110/" + name
     )
+
+
+@pytest.mark.parametrize(
+    ("contract", "name"),
+    [
+        ("elegant_flex", "1790833226-flexgas_residential.pdf"),
+        ("elegant_comfortflex", "1790833226-comfortflexgas_residential.pdf"),
+        ("elegant_zeker_vast", "1790833226-zekervastgas_residential.pdf"),
+    ],
+)
+def test_listing_without_the_month_suffix(contract: str, name: str) -> None:
+    """Since October 2026 the links name no month."""
+    html = fixture_page("elegant", "tariefkaarten_2026-10.html")
+    assert elegant._card_url(html, elegant._CONTRACTS_BY_ID[contract]) == (
+        "https://www.datocms-assets.com/198110/" + name
+    )
+
+
+def test_the_last_upload_wins() -> None:
+    old = "https://www.datocms-assets.com/198110/1788722319-flexgas_residential-0926.pdf"
+    new = "https://www.datocms-assets.com/198110/1790833226-flexgas_residential.pdf"
+    contract = elegant._CONTRACTS_BY_ID["elegant_flex"]
+    assert elegant._card_url(f'"{new}" "{old}"', contract) == new
+    assert elegant._card_url(f'"{old}" "{new}"', contract) == new
+
+
+def test_october_flex_card() -> None:
+    snap = elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, _card(_FLEX_OCTOBER))
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    # "(c€/kWh) 8,68 Maandelijkse prijzen" at "september 2026. Deze bedroeg
+    # 7,531 c€/kWh".
+    assert energy.price == pytest.approx(0.0868)
+    assert energy.at(75.31) == pytest.approx(0.0868, abs=5e-5)
+    assert snap.publication_label == "2026-10"
 
 
 async def test_fetch_reads_the_card_the_listing_links() -> None:
