@@ -131,7 +131,10 @@ on today's card when it is not held or cannot price the household.
 A meter in kWh needs nothing. A meter in m³ is converted per month: by the
 factor typed from the bill, the default, or by the calorific value of the
 household's reception station for that month (Atrias, kWh per m³(n)), the
-latest published before it while the month's own is not out. The station
+latest published before it while the month's own is not out. A billed month
+without any is no bill at all; a day of last year without any, as before a
+station Atrias lists only since a later month, is left out of the rolling
+year and the projection, which take it as a missing day. The station
 value is per normal cubic metre and leaves out the DSO's correction for the
 pressure and temperature at the meter: Fluvius takes 9 °C without a volume
 converter, which alone is 273,15 / 282,15 = 0,968, and the pressure terms

@@ -83,14 +83,17 @@ def days_in_year(year: int) -> int:
 
 
 def to_kwh(
-    days: Mapping[date, float], factor_for: Callable[[str], float | None]
+    days: Mapping[date, float], factor_for: Callable[[str], float | None], billed_from: date
 ) -> dict[date, float] | None:
     """The meter's days in kWh, converting each by its month's factor.
 
     ``factor_for`` returns the kWh one meter unit is worth in a month: 1.0
-    for a meter that counts kWh already. None when a month that holds
-    consumption has no factor at all, since a bill missing a month's gas is
-    worse than no bill.
+    for a meter that counts kWh already. None when a month from
+    ``billed_from`` on that holds consumption has no factor at all, since a
+    bill missing a month's gas is worse than no bill. A day before it only
+    feeds the rolling year and the year-end projection, which take a
+    missing day for what it is: one without a factor is left out, as a
+    reception station Atrias lists only since a later month leaves it.
     """
     out: dict[date, float] = {}
     for day, value in days.items():
@@ -99,6 +102,8 @@ def to_kwh(
             continue
         factor = factor_for(month_key(day))
         if factor is None:
+            if day < billed_from:
+                continue
             return None
         out[day] = value * factor
     return out

@@ -986,14 +986,17 @@ async def test_atrias_failing_at_setup_is_asked_again_next_tick(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("first", ["2025-02", "2025-11"])
 async def test_a_month_before_the_rolling_year_without_a_factor_keeps_the_costs(
-    hass: HomeAssistant, fetch: AsyncMock
+    hass: HomeAssistant, fetch: AsyncMock, first: str
 ) -> None:
-    """Atrias has no value for the station in January 2025, a month no cost
-    of September 2026 reads: the costs are priced all the same."""
+    """Atrias lists the station only since a month after the meter's first
+    day read: January 2025, a month no cost of September 2026 reads, or
+    November 2025, a new station, whose earlier days only the rolling year
+    reads. This year's costs are priced all the same."""
     station = "541234"
     months = {f"{y}-{m:02d}": f"GCV{y}{m:02d}.txt" for y in (2025, 2026) for m in range(1, 13)}
-    months = {k: v for k, v in months.items() if "2025-02" <= k <= "2026-08"}
+    months = {k: v for k, v in months.items() if first <= k <= "2026-08"}
 
     async def fetch_month(_session: Any, _context: Any, _key: Any, path: str) -> Any:
         return {calorific.Station(ean=station, name="X"): 11.0}

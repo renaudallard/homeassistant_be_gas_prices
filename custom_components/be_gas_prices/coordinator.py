@@ -899,7 +899,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             ),
         )
         kind, meter_days = await self._read_meter(today)
-        kwh_days = to_kwh(meter_days, self._factor_for(kind)) if meter_days else None
+        kwh_days = (
+            to_kwh(meter_days, self._factor_for(kind), date(today.year, 1, 1))
+            if meter_days
+            else None
+        )
         costs: RunningCosts | None = None
         earlier: list[RunningCosts] = []
         # Named afresh on every tick: last year's earlier contracts are no

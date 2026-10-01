@@ -309,14 +309,26 @@ def test_bill_month_accrues_the_fixed_costs_by_the_day() -> None:
     )
 
 
-def test_to_kwh_needs_a_factor_for_every_month_that_used_gas() -> None:
+def test_to_kwh_needs_a_factor_for_every_billed_month_that_used_gas() -> None:
     days = {date(2026, 8, 31): 2.0, date(2026, 9, 1): 3.0, date(2026, 9, 2): 0.0}
-    assert to_kwh(days, lambda month: {"2026-08": 11.5, "2026-09": 11.0}.get(month)) == {
+    year = date(2026, 1, 1)
+    assert to_kwh(days, lambda month: {"2026-08": 11.5, "2026-09": 11.0}.get(month), year) == {
         date(2026, 8, 31): pytest.approx(23.0),
         date(2026, 9, 1): pytest.approx(33.0),
         date(2026, 9, 2): 0.0,
     }
-    assert to_kwh(days, lambda month: 11.5 if month == "2026-08" else None) is None
+    assert to_kwh(days, lambda month: 11.5 if month == "2026-08" else None, year) is None
+
+
+def test_a_day_before_the_billed_year_without_a_factor_is_left_out() -> None:
+    """A station Atrias lists only since March 2025: last year's days before
+    it are left out of the rolling year, this year's bill is whole."""
+    days = {date(2025, 2, 28): 2.0, date(2025, 3, 1): 3.0, date(2026, 3, 1): 4.0}
+    factors = {"2025-03": 11.5, "2026-03": 11.0}
+    assert to_kwh(days, factors.get, date(2026, 1, 1)) == {
+        date(2025, 3, 1): pytest.approx(34.5),
+        date(2026, 3, 1): pytest.approx(44.0),
+    }
 
 
 def test_rolling_year_scales_a_few_missing_days_and_refuses_more() -> None:
