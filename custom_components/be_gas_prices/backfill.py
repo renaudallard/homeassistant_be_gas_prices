@@ -23,7 +23,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""The price history in the recorder, back to 1 January.
+"""The price history in the recorder, back to the start of the year's window.
 
 A fresh entry has no statistics, so the History and Energy dashboards would
 draw its price from the install moment only. This writes an hourly ``mean``
