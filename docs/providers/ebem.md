@@ -60,7 +60,9 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
   only known later: `settled` is False.
 - `fetch_index` reads the newest `ebem_parameters_indexen-MM-YYYY.pdf` the
   listing links ("Download uitleg en waarden parameters en indexen"), page 4,
-  column "Argus ZTP-RPL". Page 4 prints it to the right of TTF101, one line
+  column "Argus ZTP-RLP" ("Argus ZTP-RPL" until September 2026; the bare
+  "ZTP-RLP" also names the simulator's table, so the whole heading is the
+  anchor). Page 4 prints it to the right of TTF101, one line
   per month for both ("juni 93,05595 31,32900 juni 34,08 35,66 44,70"); the
   values follow the month's second occurrence, one per year heading, dots
   for a month not over. pypdf scatters this table, so it is read with the
@@ -102,7 +104,7 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
   the named index to the fourth decimal.
 - March 2025 says "Deze transportkost van 1,44 €/MWh (excl BTW), 1,53 €/MWh
   (incl BTW)" above a table printing 1,62. The table is read.
-- The parameters page heads the column "Argus ZTP-RPL" but says the value is
+- The parameters page heads the column "Argus ZTP-RLP" but says the value is
   computed "aan de hand van de officiële slotkoersen ... van de EEX-beurs";
   which assessment it is was not verified.
 - The September 2026 card limits itself to "een maximum jaarverbruik van

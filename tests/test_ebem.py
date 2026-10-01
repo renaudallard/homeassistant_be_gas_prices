@@ -179,6 +179,17 @@ def test_parameters_document() -> None:
     assert len(values) == 32
 
 
+def test_october_parameters_document_corrects_the_heading() -> None:
+    """From October 2026 the column reads "Argus ZTP-RLP", which the
+    simulator's "Geschatte ZTP" table above it must not be taken for."""
+    text = fixture_text("ebem", "ebem_parameters_indexen-10-2026.pdf", "layout")
+    assert "Argus ZTP-RPL" not in text
+    values = ebem.parse_parameters(text)["ZTP-RLP0"]
+    # "september 232,04318 34,72795 september 36,25 31,95 75,26".
+    assert values["2026-09"] == pytest.approx(75.26)
+    assert values["2026-08"] == pytest.approx(61.82)
+
+
 def test_parameters_agree_with_the_cards() -> None:
     """Each card's "vorige maand" figure is the parameters' previous month."""
     values = ebem.parse_parameters(fixture_text("ebem", PARAMETERS, "layout"))["ZTP-RLP0"]

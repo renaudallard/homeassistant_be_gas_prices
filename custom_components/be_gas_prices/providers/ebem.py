@@ -48,8 +48,9 @@ figure at a known index and is what is read.
 
 The realised values are in EBEM's own parameters document, linked from the
 same page (``ebem_parameters_indexen-MM-YYYY.pdf``), page 4, column "Argus
-ZTP-RPL". Every month from December 2024 to August 2026 it holds is the
-figure the following card names as the previous month's.
+ZTP-RLP" ("Argus ZTP-RPL" until September 2026). Every month from December
+2024 to August 2026 it holds is the figure the following card names as the
+previous month's.
 
 The network table is printed VAT inclusive with transport in EUR/MWh.
 """
@@ -325,24 +326,27 @@ def _energy_contribution(network: str) -> float:
 
 # ---- index values ------------------------------------------------------------
 
-_INDEX_HEADING = "Argus ZTP-RPL"
+# "Argus ZTP-RPL" until the September 2026 document, "Argus ZTP-RLP" from
+# October. The bare "ZTP-RLP" is no anchor: it is in the text above the
+# table and would lead to the simulator's estimates.
+_INDEX_HEADING_RE = re.compile(r"Argus ZTP-R(?:PL|LP)\b")
 # "maand 2022 2023 maand 2024 2025 2026": the Argus table is the second one.
 _YEARS_RE = re.compile(r"^maand (?:\d{4} )+maand ((?:\d{4} ?)+)$", re.MULTILINE)
 _EMPTY_RE = re.compile(r"\.{3,}")
 
 
 def parse_parameters(text: str) -> IndexTable:
-    """The Argus ZTP-RPL table of EBEM's parameters document, in EUR/MWh.
+    """The Argus ZTP-RLP table of EBEM's parameters document, in EUR/MWh.
 
     Page 4 prints it to the right of the TTF101 table, one line per month
     for both: "juni 93,05595 31,32900 juni 34,08 35,66 44,70". Its values
     follow the month name's second occurrence, one per year heading, with a
     run of dots for a month not over yet.
     """
-    start = text.find(_INDEX_HEADING)
-    years = _YEARS_RE.search(text, start) if start >= 0 else None
+    heading = _INDEX_HEADING_RE.search(text)
+    years = _YEARS_RE.search(text, heading.start()) if heading is not None else None
     if years is None:
-        raise ExtractorError("EBEM: Argus ZTP-RPL table not found")
+        raise ExtractorError("EBEM: Argus ZTP-RLP table not found")
     headings = years.group(1).split()
     values: dict[str, float] = {}
     for line in text[years.end() :].splitlines():
@@ -354,12 +358,12 @@ def parse_parameters(text: str) -> IndexTable:
             continue
         cells = words[words.index(words[0], 1) + 1 :] if words.count(words[0]) == 2 else []
         if len(cells) != len(headings):
-            raise ExtractorError(f"EBEM: unexpected Argus ZTP-RPL row {line!r}")
+            raise ExtractorError(f"EBEM: unexpected Argus ZTP-RLP row {line!r}")
         for year, cell in zip(headings, cells, strict=True):
             if not _EMPTY_RE.fullmatch(cell):
                 values[f"{year}-{month:02d}"] = to_float(cell)
     if not values:
-        raise ExtractorError("EBEM: Argus ZTP-RPL table is empty")
+        raise ExtractorError("EBEM: Argus ZTP-RLP table is empty")
     return {_INDEX: values}
 
 
