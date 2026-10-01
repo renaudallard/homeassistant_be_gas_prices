@@ -545,6 +545,36 @@ async def test_a_stored_card_of_another_region_is_not_restored(
     assert entry.runtime_data.data.card_source == "archive"
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(("stored_for", "restored"), [("engie", True), ("energiebe", False)])
+async def test_a_stored_index_table_is_its_own_supplier_s_only(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    hass_storage: dict[str, Any],
+    stored_for: str,
+    restored: bool,
+) -> None:
+    """With the index fetch down, a table restored from the store prices the
+    entry only when its own supplier published it."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {"index": {"ZTPDAM": {"2026-09": 99.0}}, "index_supplier": stored_for},
+    }
+    down = replace(
+        providers.EXTRACTORS["engie"],
+        fetch_index=AsyncMock(side_effect=ExtractorError("HTTP 500 fetching x")),
+    )
+    with patch.dict(providers.EXTRACTORS, {"engie": down}):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    index = entry.runtime_data.data.index
+    assert (index is not None and index.value == 99.0) is restored
+
+
 async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssistant) -> None:
     """The custom supplier is not among the suppliers ranked: its own card
     is handed to the ranking and quoted beside them, so the saving is known."""

@@ -257,8 +257,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._fetched_at = fetched_at
             self._card_source = "cache"
             self._stand_in = True
+        # A price is only resolved against its own supplier's publication:
+        # a table another supplier published, before a change of supplier,
+        # is not restored, even under an index name the two share.
         table = blob.get("index")
-        if isinstance(table, dict):
+        if isinstance(table, dict) and blob.get("index_supplier") == self.extractor.id:
             self._index_table = {
                 str(name): {str(k): float(v) for k, v in values.items()}
                 for name, values in table.items()
@@ -281,6 +284,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
             "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
             "index": self._index_table,
+            "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
             "months": self._months.to_json(),
             "backfill": self.backfill_stamp,
