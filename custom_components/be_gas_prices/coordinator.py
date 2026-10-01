@@ -53,6 +53,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from . import calorific
@@ -178,6 +179,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._gcv_fetched_at: datetime | None = None
         self._gcv_context: ssl.SSLContext | None = None
         self._months = MonthCardCache()
+        # The release the store was written by: past months' cards read by
+        # another release are read again, so a parser fix reaches them.
+        self._release: str | None = None
         self._month_fill: asyncio.Task[None] | None = None
         self._first_tick = True
         self.meter: str | None = None
@@ -238,6 +242,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def async_load_persistent(self) -> None:
         """Restore the last card and the caches, so a restart while the
         supplier is down still prices on something real."""
+        self._release = str((await async_get_integration(self.hass, DOMAIN)).version)
         blob = await self._store.async_load()
         if not isinstance(blob, dict):
             return
@@ -272,7 +277,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
-        self._months.load_json(blob.get("months"))
+        if blob.get("release") == self._release:
+            self._months.load_json(blob.get("months"))
         stamp = blob.get("backfill")
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
         ranking = DailyRanking.from_json(blob.get("ranking"))
@@ -295,6 +301,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
             "months": self._months.to_json(),
+            "release": self._release,
             "backfill": self.backfill_stamp,
             "ranking": None if self.daily_ranking is None else self.daily_ranking.to_json(),
             "ranking_for": self._settings_digest(),

@@ -65,7 +65,9 @@ The entry's Store (`.storage/be_gas_prices.<entry_id>`) holds the last card
 and when it was fetched, the index table, the calorific values of the
 configured station, the past months' cards, the price-history stamp and the
 last daily ranking. A blob written under another snapshot schema is dropped,
-not migrated: everything in it is re-derivable.
+not migrated: everything in it is re-derivable. The past months' cards are
+also dropped when another release of the integration stored them, so a
+release that reads a card better reads them again.
 
 ## Staleness
 

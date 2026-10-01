@@ -42,6 +42,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
@@ -84,6 +85,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
+from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import fixture_text
 
 TABLE = {"ZTPDAM": {"2026-07": 53.116, "2026-08": 61.537}}
@@ -702,6 +704,51 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
     ):
         entry = await _setup(hass, data)
     assert entry.runtime_data._m3_factor("2026-08") == (pytest.approx(11.08), "2026-08")
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(("same_release", "read_again"), [(True, False), (False, True)])
+async def test_month_cards_stored_by_another_release_are_read_again(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    hass_storage: dict[str, Any],
+    same_release: bool,
+    read_again: bool,
+) -> None:
+    """A release may read a card better than the one that stored it: the
+    past months' cards another release stored are fetched afresh."""
+    card = fetch.return_value
+    august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
+    misread = replace(august, energy=replace(august.energy, price=1.0))
+    release = (await async_get_integration(hass, DOMAIN)).version
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "release": release if same_release else "0.0.1",
+            "months": {
+                "engie/engie_flow/wallonia/2026-08": {
+                    "snapshot": snapshot_to_json(misread),
+                    "source": "supplier",
+                    "fetched_at": "2026-09-01T00:00:00+00:00",
+                }
+            },
+        },
+    }
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        return august if month == date(2026, 8, 1) else None
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    held = entry.runtime_data._month_card("2026-08")
+    assert held is not None
+    assert held.energy.price == (august.energy.price if read_again else 1.0)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
