@@ -123,7 +123,7 @@
       }
     },
     "error": {
-      "unknown_postcode": "Diese belgische Postleitzahl ist der Integration nicht bekannt.",
+      "unknown_postcode": "Dies ist keine belgische Postleitzahl, die die Integration kennt.",
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
@@ -244,7 +244,7 @@
       },
       "compare_all_result": {
         "title": "Alle Verträge, geordnet",
-        "description": "Ein Jahr mit {annual_kwh} kWh nach jeder in Ihrer Region verkauften Karte in ihrer heutigen Fassung, der günstigste zuerst, Ihr Vertrag fett und, sobald Ihr Eintrag seine Karte hat, so berechnet, wie der Eintrag ihn abrechnet. Ein Kreuz markiert einen vorläufigen Preis, zum letzten veröffentlichten Indexwert oder zum Preis auf der Karte, wenn der Lieferant keinen veröffentlicht. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs. In der Zeit nicht erreicht: {skipped}.\n\n{table}"
+        "description": "Ein Jahr mit {annual_kwh} kWh nach jeder in Ihrer Region verkauften Karte in ihrer heutigen Fassung, die günstigste zuerst, Ihr Vertrag fett und, sobald Ihr Eintrag seine Karte hat, so berechnet, wie der Eintrag ihn abrechnet. Ein Kreuz markiert einen vorläufigen Preis, zum letzten veröffentlichten Indexwert oder zum Preis auf der Karte, wenn der Lieferant keinen veröffentlicht. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs. In der Zeit nicht erreicht: {skipped}.\n\n{table}"
       },
       "switch": {
         "title": "Einen Vertragswechsel erfassen",
@@ -290,7 +290,7 @@
       }
     },
     "error": {
-      "unknown_postcode": "Diese belgische Postleitzahl ist der Integration nicht bekannt.",
+      "unknown_postcode": "Dies ist keine belgische Postleitzahl, die die Integration kennt.",
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
@@ -358,13 +358,13 @@
         "name": "Umrechnungsfaktor"
       },
       "current_year_cost": {
-        "name": "Kosten dieses Jahr"
+        "name": "Kosten dieses Jahres"
       },
       "current_month_cost": {
-        "name": "Kosten dieser Monat"
+        "name": "Kosten dieses Monats"
       },
       "year_to_date_consumption": {
-        "name": "Verbrauch dieses Jahr"
+        "name": "Verbrauch dieses Jahres"
       },
       "projected_year_cost": {
         "name": "Kosten der letzten 12 Monate"
