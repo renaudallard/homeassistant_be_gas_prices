@@ -27,13 +27,17 @@
 
 Elegant sells in Flanders only ("Sinds 2012 voor iedereen in Vlaanderen").
 Its listing page, https://www.elegant.be/tariefkaarten, is server-rendered
-Next.js and links the current residential cards as DatoCMS assets:
+Next.js. Since 1 October 2026 it links the current residential cards at a
+stable address, overwritten in place:
+
+    https://cdn.elegant.be/Pricing/TariffCharts/Current/<Product>Gas_Residential.pdf
+
+Before, it linked them as DatoCMS assets, which is still understood:
 
     https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential[-<MMYY>].pdf
 
-The month suffix was dropped in October 2026. The upload id is the upload's
-Unix time and cannot be guessed, so the listing is read rather than a URL
-built.
+The upload id is the upload's Unix time and cannot be guessed, so the
+listing is read rather than a URL built.
 
 Three products: Flex (open-ended) and ComfortFlex (one year) print the same
 formula figure for figure, "(1,0250 x TTFDAM + 0,470) x 1,06", in c EUR/kWh
@@ -102,6 +106,7 @@ from .base import (
 
 _SITE = "https://www.elegant.be"
 _LISTING_URL = f"{_SITE}/tariefkaarten"
+_CURRENT_URL = "https://cdn.elegant.be/Pricing/TariffCharts/Current"
 _ARCHIVE_SEARCH_URL = f"{_SITE}/api/trpc/tariefArchief.search"
 _ARCHIVE_CHART_URL = f"{_SITE}/api/tarief-archief/tariff-chart"
 _LIST_INDEXES_URL = f"{_SITE}/api/trpc/energyExchanges.listIndexes"
@@ -116,9 +121,10 @@ class _ContractDef:
     kind: TariffKind
     # The product as the card's second line names it.
     name: str
-    # The file name token on the listing, "<token>gas_residential".
+    # The DatoCMS file name token, "<token>gas_residential".
     token: str
-    # The archive's product offer key, "<key>_<YYYYMMDD>".
+    # The archive's product offer key, "<key>_<YYYYMMDD>", and the current
+    # card's file name, "<key>_Residential.pdf".
     archive_key: str
 
 
@@ -151,13 +157,20 @@ def _contract(contract_id: str, region: str) -> _ContractDef:
     return contract
 
 
-def _card_url(html: str, contract: _ContractDef) -> str:
-    """The newest residential gas card the listing links for ``contract``,
-    the one uploaded last.
+def _current_url(contract: _ContractDef) -> str:
+    return f"{_CURRENT_URL}/{contract.archive_key}_Residential.pdf"
 
-    The upload id is directly followed by the token, so "flex" cannot pick
-    up the ComfortFlex card.
+
+def _card_url(html: str, contract: _ContractDef) -> str:
+    """The residential gas card the listing links for ``contract``: its
+    stable address, or else the DatoCMS asset uploaded last.
+
+    The address and the upload id are directly followed by the product, so
+    "Flex" cannot pick up the ComfortFlex card.
     """
+    current = _current_url(contract)
+    if current in html:
+        return current
     pattern = re.compile(
         rf"(https://www\.datocms-assets\.com/198110/(\d+)-{contract.token}"
         r"gas_residential(?:-\d{4})?\.pdf)"
@@ -184,10 +197,16 @@ async def _read(
 
 async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -> str | None:
     """The listing's ETag, which changes when the page is regenerated with
-    new card links."""
-    if contract_id not in _CONTRACTS_BY_ID or region != REGION_FLANDERS:
+    new card links, and the current card's Last-Modified, which changes when
+    the card at its stable address is overwritten."""
+    contract = _CONTRACTS_BY_ID.get(contract_id)
+    if contract is None or region != REGION_FLANDERS:
         return None
-    return await head_freshness_key(session, _LISTING_URL, prefer=("ETag",))
+    listing = await head_freshness_key(session, _LISTING_URL, prefer=("ETag",))
+    card = await head_freshness_key(session, _current_url(contract))
+    if listing is None and card is None:
+        return None
+    return f"{listing} {card}"
 
 
 def _trpc_params(query: dict[str, Any]) -> dict[str, str]:

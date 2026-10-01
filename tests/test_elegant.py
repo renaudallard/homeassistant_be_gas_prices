@@ -177,6 +177,40 @@ def test_listing_without_the_month_suffix(contract: str, name: str) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("contract", "name"),
+    [
+        ("elegant_flex", "FlexGas"),
+        ("elegant_comfortflex", "ComfortFlexGas"),
+        ("elegant_zeker_vast", "ZekerVastGas"),
+    ],
+)
+def test_listing_with_the_stable_addresses(contract: str, name: str) -> None:
+    """Later on 1 October 2026 the listing moved to fixed addresses."""
+    html = fixture_page("elegant", "tariefkaarten_cdn.html")
+    assert "datocms-assets.com/198110/1790833226-flexgas" not in html
+    assert elegant._card_url(html, elegant._CONTRACTS_BY_ID[contract]) == (
+        f"https://cdn.elegant.be/Pricing/TariffCharts/Current/{name}_Residential.pdf"
+    )
+
+
+async def test_probe_follows_the_listing_and_the_card() -> None:
+    keys = {
+        "https://www.elegant.be/tariefkaarten": "listing-1",
+        "https://cdn.elegant.be/Pricing/TariffCharts/Current/FlexGas_Residential.pdf": "card-1",
+    }
+
+    async def head(_session: Any, url: str, **_kwargs: Any) -> str | None:
+        return keys.get(url)
+
+    with patch.object(elegant, "head_freshness_key", head):
+        assert await elegant.probe(AsyncMock(), "elegant_flex", REGION_FLANDERS) == (
+            "listing-1 card-1"
+        )
+        keys.clear()
+        assert await elegant.probe(AsyncMock(), "elegant_flex", REGION_FLANDERS) is None
+
+
 def test_the_last_upload_wins() -> None:
     old = "https://www.datocms-assets.com/198110/1788722319-flexgas_residential-0926.pdf"
     new = "https://www.datocms-assets.com/198110/1790833226-flexgas_residential.pdf"

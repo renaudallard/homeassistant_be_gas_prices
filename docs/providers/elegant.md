@@ -7,12 +7,16 @@ There is no electricity counterpart for Elegant.
 ## Where the cards are
 
 - Listing: https://www.elegant.be/tariefkaarten, server-rendered Next.js.
-  It links the current residential cards as DatoCMS assets:
+  Since 1 October 2026 it links the current residential cards at a stable
+  address, overwritten in place:
+  `https://cdn.elegant.be/Pricing/TariffCharts/Current/<Product>Gas_Residential.pdf`,
+  with `FlexGas`, `ComfortFlexGas` and `ZekerVastGas` as the archive names
+  them. Before, it linked DatoCMS assets,
   `https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential[-<MMYY>].pdf`,
-  the `MMYY` suffix dropped since October 2026. The upload id is the upload's
-  Unix time, so the listing is read. Where a product is linked more than once
-  the highest upload id, the last uploaded, wins.
-- Probe: the listing's ETag.
+  still understood when the stable address is not linked: the upload id is
+  the upload's Unix time, so the listing is read, and where a product is
+  linked more than once the highest upload id, the last uploaded, wins.
+- Probe: the listing's ETag and the current card's Last-Modified.
 
 ## Products and regions
 
