@@ -452,6 +452,43 @@ async def test_a_card_published_as_images_prices_on_the_archive_reading(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_archive_reading_of_a_card_is_kept_like_a_card_read_here(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The card archive's reading of the month's card, OCR or not, is due
+    when it ages, not on every tick."""
+    card = fetch.return_value
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    row = AsyncMock(return_value=(card, False))
+    with patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        assert entry.runtime_data.data.card_source == "archive"
+        for _ in range(3):
+            freezer.tick(timedelta(hours=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
+    assert fetch.await_count == 1
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    card = fetch.return_value
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    with patch(
+        "custom_components.be_gas_prices.coordinator.fetch_archived_card",
+        AsyncMock(return_value=card),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        assert entry.runtime_data.data.card_source == "archive"
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert fetch.await_count == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_card_published_as_images_without_a_reading_is_unreadable(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

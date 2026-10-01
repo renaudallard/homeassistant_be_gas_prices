@@ -158,6 +158,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._fetched_at: datetime | None = None
         self._probe_key: str | None = None
         self._card_source = "live"
+        # The card in hand stands in for the one of the month: restored from
+        # the Store, or the card archive's latest row taken after a failure.
+        # Due at once, unlike a card read for the month, here or by the
+        # card archive, which is due when it changes or ages.
+        self._stand_in = False
         self._force_refresh = False
         self._failures = 0
         self.last_error = ""
@@ -247,6 +252,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._snapshot = snapshot
             self._fetched_at = fetched_at
             self._card_source = "cache"
+            self._stand_in = True
         table = blob.get("index")
         if isinstance(table, dict):
             self._index_table = {
@@ -328,11 +334,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         key = None
         if self.extractor.probe is not None:
             key = await self.extractor.probe(self._session, self.contract, self.region)
-        if (
-            self._snapshot is None
-            or self._force_refresh
-            or self._card_source not in ("live", "ocr")
-        ):
+        if self._snapshot is None or self._force_refresh or self._stand_in:
             return True, key
         if key is not None:
             return key != self._probe_key, key
@@ -351,6 +353,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._snapshot = build_custom_snapshot(self._data)
             self._fetched_at = dt_util.utcnow()
             self._card_source = "live"
+            self._stand_in = False
             self.last_error = ""
             return
         due, key = await self._card_is_due()
@@ -382,6 +385,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._fetched_at = dt_util.utcnow()
             self._probe_key = key
             self._card_source = source
+            self._stand_in = False
             self._force_refresh = False
             self._failures = 0
             self.card_unreadable = False
@@ -426,6 +430,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                         dt_util.start_of_local_day(date(year, month, 1))
                     )
                     self._card_source = "archive"
+                    self._stand_in = True
                 return
             year, month = (year - 1, 12) if month == 1 else (year, month - 1)
 
