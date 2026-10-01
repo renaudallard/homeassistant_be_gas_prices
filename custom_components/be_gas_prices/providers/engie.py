@@ -314,7 +314,12 @@ def _priced_on_its_month(text: str, card_month: date) -> bool:
     if match is None:
         return False
     month = MONTH_NAMES.get(fold_accents(match.group(1)))
-    return month is not None and month_date(match.group(2), month, "Engie") == card_month
+    if month is None:
+        return False
+    try:
+        return month_date(match.group(2), month, "Engie") == card_month
+    except ExtractorError:
+        return False
 
 
 def _energy(

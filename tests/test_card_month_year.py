@@ -106,3 +106,7 @@ def test_a_trevion_card_names_the_month_before_its_own() -> None:
     )
     assert trevion.published_index(known) == (date(2026, 12, 1), pytest.approx(61.72))
 
+
+def test_an_engie_settled_sentence_naming_no_month_leaves_the_price_provisional() -> None:
+    text = "d’application pour Septembre 0000."
+    assert engie._priced_on_its_month(text, date(2026, 9, 1)) is False
