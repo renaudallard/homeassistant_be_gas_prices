@@ -163,6 +163,25 @@ async def test_a_failing_supplier_keeps_the_last_card(
     assert issue is not None
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_network_failure_keeps_an_unreadable_card_marked(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A timeout between two fetches of a card published as images says
+    nothing about the card: its Repairs card is not swapped for the one about
+    a layout change."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    issues = ir.async_get(hass)
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    for _ in range(2):
+        await coordinator.async_force_refresh(wait=True)
+    fetch.side_effect = ExtractorError("network error fetching https://x: timeout")
+    await coordinator.async_force_refresh(wait=True)
+    assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is not None
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
 @pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")
 async def test_a_card_the_probe_finds_unchanged_does_not_go_stale(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory

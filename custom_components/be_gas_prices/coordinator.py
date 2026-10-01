@@ -386,8 +386,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.card_read_by_ocr = False
             self._fetch_failed(str(err), transient=False)
         except ExtractorError as err:
-            self.card_unreadable = False
-            self._fetch_failed(str(err), transient=is_transient_fetch_error(str(err)))
+            transient = is_transient_fetch_error(str(err))
+            # A network failure says nothing about the card: one known to be
+            # unreadable stays so, rather than its count of failures being
+            # read as a layout change.
+            if not transient:
+                self.card_unreadable = False
+            self._fetch_failed(str(err), transient=transient)
         else:
             self._snapshot = snapshot
             self._fetched_at = dt_util.utcnow()
