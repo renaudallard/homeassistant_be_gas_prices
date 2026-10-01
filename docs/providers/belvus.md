@@ -77,7 +77,7 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
   follow the positions the reader maps.
 - April 2026: refused. Same 2025 table, and the label wraps as "FLUVIUS" /
   "MIDDENVLAANDEREN", so the label order check fails.
-- May to September 2026 read.
+- May to October 2026 read.
 
 ## Known quirks and card errors
 
