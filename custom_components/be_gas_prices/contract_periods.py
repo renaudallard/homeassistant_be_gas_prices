@@ -282,6 +282,9 @@ class PeriodBilling:
             await self.fill(session, data, today, use_archive=use_archive)
         costs: list[RunningCosts] = []
         missing: list[str] = []
+        # One index read per supplier and tick, however many earlier
+        # contracts it supplied.
+        tables: dict[str, IndexTable | None] = {}
         current = month_key(today)
         for period, start, end in periods_this_year(data, today):
             try:
@@ -327,7 +330,9 @@ class PeriodBilling:
             if end_card is None:
                 missing.append(extractor.label)
                 continue
-            table = await self._table(session, extractor, today)
+            if extractor.id not in tables:
+                tables[extractor.id] = await self._table(session, extractor, today)
+            table = tables[extractor.id]
             signed: SupplierSnapshot | None = None
             if signing is not None:
                 signed = (

@@ -267,6 +267,23 @@ async def test_an_earlier_contract_s_index_is_asked_again_after_a_failure() -> N
     assert fetch_index.await_count == 2
 
 
+async def test_earlier_contracts_on_one_supplier_read_its_index_once() -> None:
+    """Two earlier Engie contracts and the index source down: one attempt
+    per tick, not one per contract."""
+    data = record_switch(record_switch(ENTRY, date(2026, 3, 1)), date(2026, 6, 1))
+    fetch_index = AsyncMock(side_effect=ExtractorError("network error fetching x: timeout"))
+    stub = replace(
+        engie.EXTRACTOR, fetch=AsyncMock(return_value=_flow_card()), fetch_index=fetch_index
+    )
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(273)}
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        costs, missing = await PeriodBilling(MonthCardCache()).bill(
+            AsyncMock(), data, date(2026, 9, 30), kwh_days, 5_000.0, use_archive=False, fill=False
+        )
+    assert missing == [] and len(costs) == 2
+    assert fetch_index.await_count == 1
+
+
 def test_malformed_periods_are_left_out() -> None:
     data = {CONF_PREVIOUS_CONTRACTS: [{"until": "not a date"}, "nonsense", {"until": "2026-02-01"}]}
     assert previous_contracts(data) == []
