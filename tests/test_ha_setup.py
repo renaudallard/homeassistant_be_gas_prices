@@ -202,6 +202,48 @@ async def test_a_network_failure_keeps_an_unreadable_card_marked(
     assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_refresh_outliving_the_entry_leaves_nothing_behind(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+    hass_storage: dict[str, Any],
+) -> None:
+    """A refresh the service asked for is still fetching when the entry is
+    removed: its Repairs card and its store are not brought back."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    for _ in range(2):
+        await coordinator.async_force_refresh(wait=True)
+    issues = ir.async_get(hass)
+    issue = f"extractor_failed_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, issue) is not None
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow(*_args: Any, **_kwargs: Any) -> Any:
+        started.set()
+        await release.wait()
+        raise ExtractorError("Engie: variable price block or formula not found")
+
+    fetch.side_effect = slow
+    freezer.tick(timedelta(seconds=11))
+    call = hass.async_create_task(
+        hass.services.async_call(DOMAIN, "refresh", {"entry_id": entry.entry_id}, blocking=True)
+    )
+    await asyncio.wait_for(started.wait(), 5)
+    await hass.config_entries.async_remove(entry.entry_id)
+    release.set()
+    await call
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(seconds=30))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, issue) is None
+    assert f"{DOMAIN}.{entry.entry_id}" not in hass_storage
+
+
 @pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")
 async def test_a_card_the_probe_finds_unchanged_does_not_go_stale(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory

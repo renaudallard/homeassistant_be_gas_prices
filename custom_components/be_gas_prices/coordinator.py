@@ -48,7 +48,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 import aiohttp
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
@@ -294,6 +294,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.daily_ranking = ranking
 
     async def _save_persistent(self) -> None:
+        if not self._set_up():
+            return
         payload: dict[str, Any] = {
             "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
             "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
@@ -681,7 +683,18 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         try:
             return await self._tick()
         finally:
-            sync_issues(self.hass, self)
+            if self._set_up():
+                sync_issues(self.hass, self)
+
+    def _set_up(self) -> bool:
+        """Whether the entry is still set up, or being set up: a refresh
+        that outlives an unload or a removal of the entry leaves no Repairs
+        card or store behind it."""
+        entry = self.hass.config_entries.async_get_entry(self.entry.entry_id)
+        return entry is not None and entry.state in (
+            ConfigEntryState.LOADED,
+            ConfigEntryState.SETUP_IN_PROGRESS,
+        )
 
     async def _tick(self) -> CoordinatorData:
         await self._refresh_snapshot()
