@@ -233,18 +233,18 @@
       },
       "compare_contract": {
         "title": "Contract to quote",
-        "description": "Both contracts are priced for your household: your annual volume, network operator and tier. The other contract is priced on its card as published today, yours as you are billed: on the card of its signing month and any signing rate you entered.",
+        "description": "Both contracts are priced for your household: your annual volume, network operator and tier, on each card as published today. While this entry is running, your own contract is priced as the entry bills it instead, with any signing rate or figures you entered.",
         "data": {
           "contract": "Contract"
         }
       },
       "compare_result": {
         "title": "Quote",
-        "description": "A year of {annual_kwh} kWh, all costs included: the other contract on its card as published today, yours as you are billed, on the card of its signing month and any signing rate you entered. A dagger marks a provisional price, at the last index value the supplier published or at the price its card prints where it publishes none, which the month may still move. OCR marks a card published as images, priced on the card archive's reading of it.\n\n{table}"
+        "description": "A year of {annual_kwh} kWh on each card as published today, all costs included; while this entry is running, your own contract as the entry bills it. A dagger marks a provisional price, at the last index value the supplier published or at the price its card prints where it publishes none, which the month may still move. OCR marks a card published as images, priced on the card archive's reading of it.\n\n{table}"
       },
       "compare_all_result": {
         "title": "Every contract, ranked",
-        "description": "A year of {annual_kwh} kWh on every card sold in your region as published today, cheapest first, your own contract in bold and as you are billed, on the card of its signing month and any signing rate you entered. A dagger marks a provisional price, at the last index value the supplier published or at the price its card prints where it publishes none. OCR marks a card published as images, priced on the card archive's reading of it. Not reached within the time budget: {skipped}.\n\n{table}"
+        "description": "A year of {annual_kwh} kWh on every card sold in your region as published today, cheapest first, your own contract in bold and, while this entry is running, priced as the entry bills it. A dagger marks a provisional price, at the last index value the supplier published or at the price its card prints where it publishes none. OCR marks a card published as images, priced on the card archive's reading of it. Not reached within the time budget: {skipped}.\n\n{table}"
       },
       "switch": {
         "title": "Record a change of contract",
