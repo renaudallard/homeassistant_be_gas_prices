@@ -39,6 +39,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.repairs import repairs_flow_manager
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
@@ -49,6 +50,7 @@ from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
+    CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
@@ -431,6 +433,24 @@ async def test_the_price_history_falls_back_like_the_running_costs(
     assert priced is not None and today is not None
     assert priced[0] == today[0]
     assert coordinator.month_price("2026-08", own_card=True) is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_optional_sensor_goes_with_its_option(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    with patch("custom_components.be_gas_prices.coordinator.rank", AsyncMock(return_value=([], 0))):
+        entry = await _setup(
+            hass, {**DATA, CONF_CONTRACT_END_DATE: "2027-05-31", CONF_DAILY_COMPARE: True}
+        )
+        registry = er.async_get(hass)
+        ids = ("sensor.engie_flow_contract_end_date", "sensor.engie_flow_potential_saving")
+        assert all(registry.async_get(entity_id) is not None for entity_id in ids)
+        data = {k: v for k, v in entry.data.items() if k != CONF_CONTRACT_END_DATE}
+        hass.config_entries.async_update_entry(entry, data={**data, CONF_DAILY_COMPARE: False})
+        await hass.async_block_till_done()
+    assert all(registry.async_get(entity_id) is None for entity_id in ids)
+    assert all(hass.states.get(entity_id) is None for entity_id in ids)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

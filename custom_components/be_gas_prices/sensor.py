@@ -40,6 +40,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -332,10 +333,26 @@ async def async_setup_entry(
 ) -> None:
     coordinator: GasCoordinator = entry.runtime_data
     entities: list[SensorEntity] = [GasSensor(coordinator, description) for description in SENSORS]
-    if entry.data.get(CONF_CONTRACT_END_DATE):
-        entities.append(ContractEndSensor(coordinator, _CONTRACT_END))
-    if entry.data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE):
-        entities.append(PotentialSavingSensor(coordinator, _POTENTIAL_SAVING))
+    registry = er.async_get(hass)
+    optional = (
+        (_CONTRACT_END, ContractEndSensor, bool(entry.data.get(CONF_CONTRACT_END_DATE))),
+        (
+            _POTENTIAL_SAVING,
+            PotentialSavingSensor,
+            bool(entry.data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE)),
+        ),
+    )
+    for description, sensor, wanted in optional:
+        if wanted:
+            entities.append(sensor(coordinator, description))
+            continue
+        # The option was turned off: its sensor goes, rather than staying
+        # in the registry as a restored entity nothing updates.
+        stale = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_{description.key}"
+        )
+        if stale is not None:
+            registry.async_remove(stale)
     async_add_entities(entities)
 
 
