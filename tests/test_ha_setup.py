@@ -1191,6 +1191,27 @@ async def test_a_stored_index_table_is_its_own_supplier_s_only(
     assert (index is not None and index.value == 99.0) is restored
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A new entry whose first index read fails prices every indexed month
+    at the card's printed figure: it asks again on the next tick, not twelve
+    hours later."""
+    index = AsyncMock(side_effect=[ExtractorError("network error fetching x: timeout"), TABLE])
+    stub = replace(providers.EXTRACTORS["engie"], fetch_index=index)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        assert coordinator.data.index is None
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+        assert coordinator.data.index is not None
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+    assert index.await_count == 2
+
+
 async def test_a_custom_entry_s_saving_is_against_its_typed_card(hass: HomeAssistant) -> None:
     """The custom supplier is not among the suppliers ranked: its own card
     is handed to the ranking and quoted beside them, so the saving is known."""

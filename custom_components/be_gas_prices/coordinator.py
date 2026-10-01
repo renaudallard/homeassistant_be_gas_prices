@@ -522,8 +522,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._index_table = await fetch(self._session)
         except ExtractorError as err:
             _LOGGER.warning("%s: index values not refreshed: %s", self.extractor.label, err)
-            # Not asked again before the TTL either way: a failing source is
-            # not worth an hourly retry, and the held table keeps pricing.
+            if self._index_table is None:
+                # Nothing held: every indexed month waits on it at the card's
+                # printed price, so it is asked again next tick.
+                return
+            # A held table keeps pricing: a failing source is not worth an
+            # hourly retry.
         self._index_fetched_at = now
 
     async def _refresh_calorific(self) -> None:
