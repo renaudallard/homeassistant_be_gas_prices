@@ -355,6 +355,13 @@ def test_index_is_found_by_name() -> None:
     )
 
 
+@pytest.mark.parametrize("value", [None, "x", [2]])
+def test_an_index_id_that_is_no_number_is_an_extractor_error(value: object) -> None:
+    body = json.dumps([{"result": {"data": {"indexes": [{"name": "TTFDAM", "id": value}]}}}])
+    with pytest.raises(ExtractorError, match="no usable id"):
+        elegant.parse_index_id(body)
+
+
 def test_index_rates_by_delivery_month() -> None:
     table = elegant.parse_rates(fixture_page("elegant", "energyExchanges.getRates_2.json"))
     values = table["TTFDAM"]

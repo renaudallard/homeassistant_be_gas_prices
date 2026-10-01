@@ -279,7 +279,10 @@ def parse_index_id(body: str) -> int:
     """
     for entry in _trpc_data(body, "index list").get("indexes") or ():
         if isinstance(entry, dict) and entry.get("name") == _INDEX and "id" in entry:
-            return int(entry["id"])
+            try:
+                return int(entry["id"])
+            except (TypeError, ValueError) as err:
+                raise ExtractorError(f"Elegant: {_INDEX} has no usable id") from err
     raise ExtractorError(f"Elegant: index list has no {_INDEX}")
 
 
