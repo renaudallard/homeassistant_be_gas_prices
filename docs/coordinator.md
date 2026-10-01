@@ -84,7 +84,8 @@ hand is still stale, and it is what lets the card archive stand in.
 - `be_gas_prices.refresh` and the *Refresh tariff card* button force the next
   tick to fetch the card and the index values whatever their age.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
-  statistics from a start date (default: the start of the year's window),
+  statistics from a start date (default: the start of the year's window) to
+  the hour before the last full one, which the recorder compiles itself,
   never before a change of contract recorded this year: the hours before it
   were the earlier contract's. A month before the year's window is priced on
   its own card only, fetched for the occasion, and skipped where none is

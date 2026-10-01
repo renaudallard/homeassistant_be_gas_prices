@@ -107,8 +107,8 @@ async def backfill_prices(
     clear: bool = False,
 ) -> dict[str, int]:
     """Write the hourly price rows from ``start``, or from the day the
-    current contract took over at a switch recorded this year, to the last
-    full hour.
+    current contract took over at a switch recorded this year, to the hour
+    before the last full one, which the recorder compiles itself.
 
     Returns the rows written per statistic id, none without a recorder.
     ``clear`` deletes the sensors' statistics first, whole, since the
@@ -138,10 +138,13 @@ async def backfill_prices(
         return {}
     if clear:
         get_instance(hass).async_clear_statistics(list(present.values()))
-    now = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+    # Up to the hour before the last full one: the recorder compiles that
+    # one from the sensors' own states seconds after it ends, and an import
+    # landing first makes the whole compile fail, every entity's hour lost.
+    end = dt_util.utcnow().replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
     begin = dt_util.as_utc(dt_util.start_of_local_day(start))
     window = month_key(coordinator.window_start(dt_util.now().date()))
-    hours = _hours(begin, now)
+    hours = _hours(begin, end)
     early = sorted(
         {m for m in (month_key(dt_util.as_local(h).date()) for h in hours) if m < window}
     )
