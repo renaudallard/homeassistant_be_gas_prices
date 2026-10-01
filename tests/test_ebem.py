@@ -217,6 +217,18 @@ async def test_fetch_takes_the_newest_gas_card() -> None:
     assert snap.source_url == fetched.call_args.args[1]
 
 
+def test_a_listing_name_whose_month_is_no_month_is_skipped() -> None:
+    """A name such as "...gas-13-2026.pdf" leaves the other cards readable
+    rather than raising out of the listing."""
+    page = fixture_page("ebem", "tarieven.html") + (
+        '<a href="/media/x/ebem_tariefkaart-gas-13-2026.pdf">x</a>'
+        '<a href="/media/x/ebem_tariefkaart-gas-00-2026.pdf">x</a>'
+    )
+    assert ebem._latest(page, ebem._CARD_RE, "gas card") == (
+        "https://www.ebem.be/media/y3vfcgeh/ebem_tariefkaart-gas-09-2026.pdf"
+    )
+
+
 async def test_fetch_for_month_resolves_the_card_of_that_month() -> None:
     with (
         patch.object(

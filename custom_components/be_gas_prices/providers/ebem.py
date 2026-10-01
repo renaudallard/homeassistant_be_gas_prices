@@ -123,9 +123,12 @@ _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 
 
 def _links(page: str, pattern: re.Pattern[str]) -> dict[date, str]:
-    """The listing's documents of one kind by month."""
+    """The listing's documents of one kind by month. A name whose month is
+    no month ("-00-", "-13-") is skipped rather than failing the listing."""
     return {
-        date(int(year), int(month), 1): _SITE + path for path, month, year in pattern.findall(page)
+        date(int(year), int(month), 1): _SITE + path
+        for path, month, year in pattern.findall(page)
+        if 1 <= int(month) <= 12
     }
 
 
