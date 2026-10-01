@@ -852,6 +852,39 @@ async def test_a_ranking_that_priced_only_the_household_is_tried_again(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_pricing_error_clears_once_the_card_prices_again(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The ORES row has no T1: a measured year falling into it fails the
+    tick, and the reason goes once the year is back in T2, though the card,
+    not due, is not fetched again."""
+    card = fetch.return_value
+    ores = card.dsos[DSO_ORES]
+    no_t1 = replace(ores, tiers={k: v for k, v in ores.tiers.items() if k != "t1"})
+    fetch.return_value = replace(card, dsos={**card.dsos, DSO_ORES: no_t1})
+
+    def days(per_day: float) -> dict[date, float]:
+        return {date(2025, 9, 15) + timedelta(days=n): per_day for n in range(366)}
+
+    meter = AsyncMock(return_value=("energy", days(50.0)))
+    with patch("custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter", meter):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        meter.return_value = ("energy", days(10.0))
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+        assert not coordinator.last_update_success
+        assert coordinator.last_error
+        meter.return_value = ("energy", days(50.0))
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+    assert coordinator.last_update_success
+    assert coordinator.last_error == ""
+    assert coordinator.data.last_error == ""
+    assert fetch.await_count == 1
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_one_unreadable_calorific_month_leaves_the_others_read(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

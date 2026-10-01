@@ -177,6 +177,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._force_refresh = False
         self._failures = 0
         self.last_error = ""
+        # The last error was the card failing to price the household.
+        self._pricing_error = ""
         self.card_unreadable = False
         # The card in hand is the card archive's OCR reading of a card
         # published as page images.
@@ -745,12 +747,17 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 )
         elif not self._filling():
             await self.async_fill_month_cards(needed)
+        if self._pricing_error and self.last_error == self._pricing_error:
+            # Asked again below, before the data the sensors show is built: a
+            # card not due for a fetch would keep it.
+            self.last_error = ""
+        self._pricing_error = ""
         try:
             data = await self._build(today)
         except PricingError as err:
             # The card cannot price this household: its DSO or its tier is
             # missing, for this month or for one the running costs bill.
-            self.last_error = str(err)
+            self.last_error = self._pricing_error = str(err)
             raise UpdateFailed(str(err)) from err
         self.maybe_rank(today)
         await self._save_persistent()
