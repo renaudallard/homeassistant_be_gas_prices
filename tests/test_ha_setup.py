@@ -269,6 +269,30 @@ async def test_the_month_cost_attributes_cover_a_switch_month_whole(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_months_on_the_current_card_name_every_contract_s(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """No month card is served: the earlier contract's months, its last one
+    included, are billed on today's card like the current contract's."""
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_flow",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-06-30",
+    }
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]})
+    state = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert state is not None
+    assert state.attributes["months_on_current_card"] == [f"2026-{m:02d}" for m in range(1, 9)]
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

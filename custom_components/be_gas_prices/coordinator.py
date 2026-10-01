@@ -846,7 +846,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             ),
             ytd_kwh=None if costs is None else costs.ytd_kwh + earlier_kwh,
             months=all_bills,
-            months_on_current_card=() if costs is None else costs.months_on_current_card,
+            # Every contract's months in order, one shared by two named once.
+            months_on_current_card=tuple(
+                dict.fromkeys(
+                    [m for period in earlier for m in period.months_on_current_card]
+                    + ([] if costs is None else list(costs.months_on_current_card))
+                )
+            ),
             rolling_year_kwh=rolling,
             projected_year_cost=(
                 None if rolling is None else rolling * now_bill.breakdown.all_in + fixed.total

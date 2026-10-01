@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -274,6 +275,9 @@ class PeriodBilling:
                 end_card = build_custom_snapshot(period)
             elif month_key(end) < current:
                 end_card = month_card(month_key(end))
+            # A closed last month without its own card is billed on today's,
+            # and named with the other months billed that way.
+            end_on_current = end_card is None and month_key(end) < current
             if end_card is None:
                 end_card = await self._current_card(
                     session, extractor, contract, region, today, use_archive
@@ -306,19 +310,24 @@ class PeriodBilling:
                 annual_kwh=annual_kwh,
             )
             try:
-                costs.append(
-                    running_costs(
-                        kwh_days=kwh_days,
-                        today=end,
-                        window_start=start,
-                        household=household,
-                        current_card=end_card,
-                        month_card=month_card,
-                        energy_for=energy_for,
-                        table=table,
-                    )
+                cost = running_costs(
+                    kwh_days=kwh_days,
+                    today=end,
+                    window_start=start,
+                    household=household,
+                    current_card=end_card,
+                    month_card=month_card,
+                    energy_for=energy_for,
+                    table=table,
                 )
             except PricingError as err:
                 _LOGGER.warning("%s: earlier contract not priced: %s", extractor.label, err)
                 missing.append(extractor.label)
+                continue
+            if end_on_current:
+                cost = replace(
+                    cost,
+                    months_on_current_card=(*cost.months_on_current_card, month_key(end)),
+                )
+            costs.append(cost)
         return costs, missing
