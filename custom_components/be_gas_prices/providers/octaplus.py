@@ -82,7 +82,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, fold_accents, parse_sign, require_contract, to_float
+from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     extract_pdf_text_layout,
@@ -343,7 +343,7 @@ def _card_month(text: str) -> date:
     month = MONTH_NAMES.get(fold_accents(match.group(1))) if match else None
     if match is None or month is None:
         raise ExtractorError("OCTA+: card month not found")
-    return date(int(match.group(2)), month, 1)
+    return month_date(match.group(2), month, "OCTA+")
 
 
 _FEE_RE = re.compile(r"Redevance fixe \(€/an\)\s+(\d+,\d+)")

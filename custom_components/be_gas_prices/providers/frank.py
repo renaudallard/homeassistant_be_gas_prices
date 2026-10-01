@@ -82,7 +82,15 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, fold_accents, html_rows, parse_sign, require_contract, to_float
+from ._parse import (
+    SIGN_CHARS,
+    fold_accents,
+    html_rows,
+    month_date,
+    parse_sign,
+    require_contract,
+    to_float,
+)
 from ._pdf import (
     MONTH_NAMES,
     NL_MONTHS,
@@ -345,7 +353,7 @@ def _card_month(text: str, contract: _ContractDef) -> date:
         raise ExtractorError(f"Frank Energie: card title {title!r} not understood")
     if (match.group(1) or "") not in contract.titles:
         raise _OtherTierError(f"Frank Energie: card {title!r} is not {contract.label}")
-    return date(int(match.group(3)), month, 1)
+    return month_date(match.group(3), month, "Frank Energie")
 
 
 _VAT_RE = re.compile(r"incl\.\s*(\d+)\s*%\s*btw")

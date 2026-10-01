@@ -92,7 +92,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, cell_value, parse_sign, require_contract, to_float
+from ._parse import SIGN_CHARS, cell_value, month_date, parse_sign, require_contract, to_float
 from ._pdf import (
     NL_MONTHS,
     fetch_pdf_rendered,
@@ -242,7 +242,7 @@ def _card_month(text: str) -> date:
     month = _NL_MONTH.get(match.group(1)) if match else None
     if match is None or month is None:
         raise ExtractorError("Eneco: card month not found")
-    return date(int(match.group(2)), month, 1)
+    return month_date(match.group(2), month, "Eneco")
 
 
 # Under the "VERBRUIK (€cent/kWh)" heading the yearly fee comes first. The

@@ -97,7 +97,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, html_cells, parse_sign, require_contract, to_float
+from ._parse import SIGN_CHARS, html_cells, month_date, parse_sign, require_contract, to_float
 from ._pdf import fetch_pdf_text, fetch_text, printed_vat_rate
 from ._rates import ALL_REGIONS, Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, future_month, month_card
@@ -339,7 +339,7 @@ def _card_month(flat: str) -> date:
     match = _CARD_MONTH_RE.search(flat)
     if match is None or not 1 <= int(match.group(1)) <= 12:
         raise ExtractorError("Mega: card month not found")
-    return date(int(match.group(2)), int(match.group(1)), 1)
+    return month_date(match.group(2), match.group(1), "Mega")
 
 
 _PRICE_RE = re.compile(rf"Coût énergie \(c€/kWh\)\s*\n\s*({_FIG})\s*\n")

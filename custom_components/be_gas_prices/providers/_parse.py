@@ -37,6 +37,7 @@ import html
 import re
 import unicodedata
 from collections.abc import Mapping
+from datetime import date
 from difflib import SequenceMatcher
 
 from .base import ExtractorError
@@ -61,6 +62,15 @@ SIGN_CHARS = r"+\-‐‑‒–—−"
 # carry thousands separators and a decimal part in either convention.
 _CELL = re.compile(r"^(?:\d+(?:[.,]\d+)*|[" + "".join(_DASHES) + r"])$")
 _FIGURE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def month_date(year: str | int, month: str | int, label: str) -> date:
+    """The first day of the month a card names, or an ExtractorError naming
+    ``label`` when the figures are no month ("0000", "13")."""
+    try:
+        return date(int(year), int(month), 1)
+    except ValueError:
+        raise ExtractorError(f"{label}: {year}-{month} is no month") from None
 
 
 def fold_accents(text: str) -> str:

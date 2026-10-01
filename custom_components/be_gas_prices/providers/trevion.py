@@ -80,7 +80,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import fold_accents, require_contract, to_float
+from ._parse import fold_accents, month_date, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text,
@@ -240,7 +240,7 @@ def parse_snapshot(
 
 def _month(name: str, year: str) -> date | None:
     month = MONTH_NAMES.get(fold_accents(name))
-    return None if month is None else date(int(year), month, 1)
+    return None if month is None else month_date(year, month, "Trevion")
 
 
 # "Geldig voor particuliere contracten afgesloten in september 2026".

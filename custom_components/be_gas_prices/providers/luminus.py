@@ -99,7 +99,15 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, cell_value, fold_accents, parse_sign, require_contract, to_float
+from ._parse import (
+    SIGN_CHARS,
+    cell_value,
+    fold_accents,
+    month_date,
+    parse_sign,
+    require_contract,
+    to_float,
+)
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_rendered,
@@ -306,7 +314,7 @@ def _title(text: str) -> tuple[str, date]:
     month = MONTH_NAMES.get(fold_accents(match.group(2))) if match else None
     if match is None or month is None:
         raise ExtractorError("Luminus: card title and month not found")
-    return match.group(1), date(int(match.group(3)), month, 1)
+    return match.group(1), month_date(match.group(3), month, "Luminus")
 
 
 _VAT_RE = re.compile(r"La TVA sur les prix indiqués[^%]{0,80}?(\d+(?:,\d+)?)\s*%")

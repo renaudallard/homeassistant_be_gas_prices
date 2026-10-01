@@ -87,7 +87,7 @@ from ..const import (
     VAT_RATE_REDUCED,
 )
 from ._network import T1_FIXED, T1_PROP, T2_FIXED, T2_PROP, dso_overlay, excise_bands
-from ._parse import fold_accents, split_row, to_float
+from ._parse import fold_accents, month_date, split_row, to_float
 from ._pdf import NL_MONTHS
 from ._rates import IndexedRates
 from ._validity import end_of_month
@@ -162,9 +162,13 @@ def last_known_index(text: str) -> tuple[date, float] | None:
     August 2026 card reads "7/2036".
     """
     match = _LAST_KNOWN_INDEX_RE.search(text)
-    if match is None or not 1 <= int(match.group(1)) <= 12:
+    if match is None:
         return None
-    return date(int(match.group(2)), int(match.group(1)), 1), to_float(match.group(3))
+    try:
+        month = month_date(match.group(2), match.group(1), "Energy Together")
+    except ExtractorError:
+        return None
+    return month, to_float(match.group(3))
 
 
 _EXCISE_RE = re.compile(

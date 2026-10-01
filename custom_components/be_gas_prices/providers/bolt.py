@@ -98,7 +98,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import cell_value, fold_accents, require_contract, to_float
+from ._parse import cell_value, fold_accents, month_date, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text_layout,
@@ -263,7 +263,7 @@ def _card_month(text: str, contract: _ContractDef) -> date:
     month = MONTH_NAMES.get(fold_accents(match.group(2)))
     if month is None:
         raise ExtractorError(f"Bolt: card month {match.group(2)!r} not understood")
-    return date(int(match.group(3)), month, 1)
+    return month_date(match.group(3), month, "Bolt")
 
 
 _PRICE_RE = re.compile(r"Prix mensuel\s+(\d+,\d+)")

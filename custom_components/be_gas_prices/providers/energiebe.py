@@ -86,7 +86,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, fold_accents, parse_sign, require_contract, to_float
+from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text,
@@ -264,7 +264,7 @@ def _card_month(text: str, contract: _ContractDef) -> date:
         raise ExtractorError("energie.be: card title not found")
     if bool(match.group(1)) != (contract.kind == "fixed"):
         raise ExtractorError(f"energie.be: card {match.group(0).strip()!r} is not {contract.label}")
-    return date(int(match.group(3)), month, 1)
+    return month_date(match.group(3), month, "energie.be")
 
 
 # The price sits alone at the start of the line under the "Energieprijs"

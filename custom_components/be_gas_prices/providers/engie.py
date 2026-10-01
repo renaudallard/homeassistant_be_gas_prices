@@ -84,7 +84,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import fold_accents, html_rows, require_contract, to_float
+from ._parse import fold_accents, html_rows, month_date, require_contract, to_float
 from ._pdf import MONTH_NAMES, fetch_pdf_text, fetch_text
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, month_card
@@ -278,7 +278,7 @@ def _card_month(text: str) -> date:
     month = MONTH_NAMES.get(fold_accents(match.group(1))) if match else None
     if match is None or month is None:
         raise ExtractorError("Engie: card month not found")
-    return date(int(match.group(2)), month, 1)
+    return month_date(match.group(2), month, "Engie")
 
 
 _VAT_RE = re.compile(r"Prix,\s*(\d+(?:,\d+)?)\s*%\s*de tva comprise")
@@ -314,7 +314,7 @@ def _priced_on_its_month(text: str, card_month: date) -> bool:
     if match is None:
         return False
     month = MONTH_NAMES.get(fold_accents(match.group(1)))
-    return month is not None and date(int(match.group(2)), month, 1) == card_month
+    return month is not None and month_date(match.group(2), month, "Engie") == card_month
 
 
 def _energy(

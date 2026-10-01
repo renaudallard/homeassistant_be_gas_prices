@@ -78,7 +78,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, fold_accents, parse_sign, require_contract, to_float
+from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text_layout,
@@ -123,13 +123,15 @@ _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 
 
 def _links(page: str, pattern: re.Pattern[str]) -> dict[date, str]:
-    """The listing's documents of one kind by month. A name whose month is
-    no month ("-00-", "-13-") is skipped rather than failing the listing."""
-    return {
-        date(int(year), int(month), 1): _SITE + path
-        for path, month, year in pattern.findall(page)
-        if 1 <= int(month) <= 12
-    }
+    """The listing's documents of one kind by month. A name that is no month
+    ("-13-2026", "-09-0000") is skipped rather than failing the listing."""
+    links: dict[date, str] = {}
+    for path, month, year in pattern.findall(page):
+        try:
+            links[month_date(year, month, "EBEM")] = _SITE + path
+        except ExtractorError:
+            continue
+    return links
 
 
 def _latest(page: str, pattern: re.Pattern[str], what: str) -> str:
@@ -248,7 +250,7 @@ def _card_month(block: str, contract: _ContractDef) -> date:
     month = MONTH_NAMES.get(fold_accents(match.group(1))) if match else None
     if match is None or month is None:
         raise ExtractorError(f"EBEM: {contract.title} card month not found")
-    return date(int(match.group(2)), month, 1)
+    return month_date(match.group(2), month, "EBEM")
 
 
 _VAT_RE = re.compile(r"INCL\.\s*BTW\s*(\d+)\s*%")
