@@ -448,7 +448,7 @@
         },
         "start_date": {
           "name": "Date de début",
-          "description": "Par défaut le début de la fenêtre de l'année. Jamais avant le dernier changement de contrat enregistré, ni avant le 1er janvier de l'année dernière. Un mois antérieur à la fenêtre n'est écrit que si sa propre carte tarifaire est trouvée."
+          "description": "Par défaut le début de la fenêtre de l'année. Jamais avant le dernier changement de contrat enregistré, ni avant le 1er janvier de l'année dernière, ni dans le futur. Un mois antérieur à la fenêtre n'est écrit que si sa propre carte tarifaire est trouvée."
         },
         "clear": {
           "name": "Effacer d'abord",
@@ -466,6 +466,9 @@
     },
     "start_date_too_early": {
       "message": "La date de début ne peut pas précéder le {earliest} : l'archive des cartes ne garde pas de cartes plus anciennes."
+    },
+    "start_date_in_future": {
+      "message": "La date de début ne peut pas être dans le futur."
     },
     "contract_withdrawn": {
       "message": "Le fournisseur a retiré le contrat {contract}, dont la carte tarifaire n'est plus publiée. Choisissez un autre contrat dans les paramètres de l'entrée, ou saisissez les chiffres de votre contrat sous « Expert: custom figures »."

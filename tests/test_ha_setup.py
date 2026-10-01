@@ -250,6 +250,28 @@ async def test_a_backfill_before_last_year_is_refused(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_backfill_from_the_future_is_refused_before_any_clear(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A date picked a year too late, with clear on, would delete the price
+    history and write nothing back."""
+    entry = await _setup(hass)
+    with (
+        patch("custom_components.be_gas_prices.backfill_prices") as backfill,
+        pytest.raises(ServiceValidationError) as raised,
+    ):
+        await hass.services.async_call(
+            DOMAIN,
+            "backfill_statistics",
+            {"entry_id": entry.entry_id, "start_date": "2026-09-16", "clear": True},
+            blocking=True,
+            return_response=True,
+        )
+    assert raised.value.translation_key == "start_date_in_future"
+    backfill.assert_not_called()
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_refresh_outliving_the_entry_leaves_nothing_behind(
     hass: HomeAssistant,
     fetch: AsyncMock,

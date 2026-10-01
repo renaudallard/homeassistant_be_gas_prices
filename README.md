@@ -273,7 +273,7 @@ data:
 service: be_gas_prices.backfill_statistics
 data:
   entry_id: 01H...                       # optional; required with clear
-  start_date: "2026-01-01"               # optional; not before 1 January of last year
+  start_date: "2026-01-01"               # optional; from 1 January of last year to today
   clear: false                           # true deletes the sensors' statistics in full first
 ```
 

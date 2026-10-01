@@ -448,7 +448,7 @@
         },
         "start_date": {
           "name": "Start date",
-          "description": "Defaults to the start of the year's window. Never before the last recorded change of contract, nor before 1 January of last year. A month before the window is written only where its own card can be found."
+          "description": "Defaults to the start of the year's window. Never before the last recorded change of contract, nor before 1 January of last year, nor in the future. A month before the window is written only where its own card can be found."
         },
         "clear": {
           "name": "Clear first",
@@ -466,6 +466,9 @@
     },
     "start_date_too_early": {
       "message": "The start date can be no earlier than {earliest}: the card archive keeps no older cards."
+    },
+    "start_date_in_future": {
+      "message": "The start date cannot be in the future."
     },
     "contract_withdrawn": {
       "message": "Its supplier withdrew the contract {contract}, whose card is no longer published. Pick another contract in the entry's settings, or type your contract's figures under \"Expert: custom figures\"."

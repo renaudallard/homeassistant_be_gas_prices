@@ -125,6 +125,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 translation_key="start_date_too_early",
                 translation_placeholders={"earliest": earliest.isoformat()},
             )
+        if asked is not None and asked > today:
+            # Nothing to write, and a clear first would delete the history
+            # for nothing.
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="start_date_in_future"
+            )
         written: dict[str, JsonValueType] = {}
         for coordinator in _loaded_coordinators(hass, entry_id):
             start = asked or coordinator.window_start(today)

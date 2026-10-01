@@ -448,7 +448,7 @@
         },
         "start_date": {
           "name": "Startdatum",
-          "description": "Standardmäßig der Beginn des Fensters dieses Jahres. Nie vor dem zuletzt erfassten Vertragswechsel und nicht vor dem 1. Januar des Vorjahres. Ein Monat vor dem Fenster wird nur geschrieben, wenn seine eigene Tarifkarte gefunden wird."
+          "description": "Standardmäßig der Beginn des Fensters dieses Jahres. Nie vor dem zuletzt erfassten Vertragswechsel und nicht vor dem 1. Januar des Vorjahres oder in der Zukunft. Ein Monat vor dem Fenster wird nur geschrieben, wenn seine eigene Tarifkarte gefunden wird."
         },
         "clear": {
           "name": "Zuerst löschen",
@@ -466,6 +466,9 @@
     },
     "start_date_too_early": {
       "message": "Das Startdatum darf nicht vor dem {earliest} liegen: das Kartenarchiv bewahrt keine älteren Karten auf."
+    },
+    "start_date_in_future": {
+      "message": "Das Startdatum darf nicht in der Zukunft liegen."
     },
     "contract_withdrawn": {
       "message": "Der Lieferant hat den Vertrag {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. Wählen Sie in den Einstellungen des Eintrags einen anderen Vertrag, oder geben Sie die Zahlen Ihres Vertrags unter „Expert: custom figures“ ein."
