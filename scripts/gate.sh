@@ -37,7 +37,20 @@ cleanup() {
   git worktree remove --force "$WORKTREE" >/dev/null 2>&1
   rm -rf "$LOGS"
 }
-trap cleanup EXIT INT TERM
+# An interrupt stops the checks before the worktree goes. They run in the
+# background of a script, so they ignore SIGINT and would go on in a
+# deleted directory while the script waited on them.
+stop() {
+  local pid
+  for pid in ${pids[@]+"${pids[@]}"}; do
+    pkill -TERM -P "$pid" 2>/dev/null
+    kill -TERM "$pid" 2>/dev/null
+  done
+  exit "$1"
+}
+trap cleanup EXIT
+trap 'stop 130' INT
+trap 'stop 143' TERM
 
 mkdir -p "$LOGS"
 git worktree add --detach --quiet "$WORKTREE" HEAD || exit 1
