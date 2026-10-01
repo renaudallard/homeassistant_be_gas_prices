@@ -66,9 +66,11 @@ and when it was fetched, the index table, the calorific values of the
 configured station, the past months' cards, the price-history stamp and the
 last daily ranking. A blob written under another snapshot schema is dropped,
 not migrated: everything in it is re-derivable. The past months' cards
-another release of the integration stored are read again, so a release that
-reads a card better reaches them, and kept where no one serves them any
-more.
+another release of the integration stored are read again, even across a
+restart, so a release that reads a card better reaches them. One of a month
+older than the card archive keeps is kept when no one serves it any more;
+within the archive's reach, no card means the month's card is now refused,
+and the old reading goes.
 
 ## Staleness
 

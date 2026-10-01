@@ -816,8 +816,8 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize(
-    ("same_release", "served", "read_again"),
-    [(True, True, False), (False, True, True), (False, False, False)],
+    ("same_release", "served", "price"),
+    [(True, True, 1.0), (False, True, 0.07643), (False, False, None)],
 )
 async def test_month_cards_stored_by_another_release_are_read_again(
     hass: HomeAssistant,
@@ -825,11 +825,12 @@ async def test_month_cards_stored_by_another_release_are_read_again(
     hass_storage: dict[str, Any],
     same_release: bool,
     served: bool,
-    read_again: bool,
+    price: float | None,
 ) -> None:
     """A release may read a card better than the one that stored it: the
-    past months' cards another release stored are fetched afresh, and kept
-    where no one serves the month any more."""
+    past months' cards another release stored are fetched afresh. August is
+    within the card archive's reach, so no card of it now means the old
+    reading is refused, and it goes."""
     card = fetch.return_value
     august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
     misread = replace(august, energy=replace(august.energy, price=1.0))
@@ -860,8 +861,9 @@ async def test_month_cards_stored_by_another_release_are_read_again(
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
     held = entry.runtime_data._month_card("2026-08")
-    assert held is not None
-    assert held.energy.price == (august.energy.price if read_again else 1.0)
+    assert (None if held is None else held.energy.price) == (
+        None if price is None else pytest.approx(price)
+    )
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

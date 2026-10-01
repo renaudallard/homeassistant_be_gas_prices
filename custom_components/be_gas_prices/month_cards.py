@@ -43,7 +43,7 @@ from typing import Any, Literal
 import aiohttp
 from homeassistant.util import dt as dt_util
 
-from .const import CARD_ARCHIVE_URL
+from .const import CARD_ARCHIVE_KEEP_MONTHS, CARD_ARCHIVE_URL
 from .providers._pdf import USER_AGENT, error_text
 from .providers.base import (
     CardNotReadableError,
@@ -196,6 +196,13 @@ async def current_card(
     return snapshot, "live"
 
 
+def _within_archive(month: str) -> bool:
+    """Whether the card archive still keeps ``month``."""
+    today = dt_util.now().date()
+    year, number = (int(part) for part in month.split("-"))
+    return (today.year - year) * 12 + today.month - number <= CARD_ARCHIVE_KEEP_MONTHS
+
+
 class MonthCardCache:
     """Past months' cards for one entry, in memory and in its store."""
 
@@ -257,9 +264,16 @@ class MonthCardCache:
         if snapshot is None and unavailable is not None:
             raise unavailable
         row = MonthCard(snapshot=snapshot, source=source, fetched_at=now)
-        if snapshot is None and held is not None and held.snapshot is not None:
-            # No one serves the month any more (a signing card past the
-            # archives' reach): the stored reading is all there is.
+        if (
+            snapshot is None
+            and held is not None
+            and held.snapshot is not None
+            and not _within_archive(month)
+        ):
+            # A month past the card archive's reach (a signing card), which
+            # no one serves any more: the stored reading is all there is.
+            # Within its reach no card means the month's card is refused
+            # now, and the old reading goes.
             row = replace(held, reread=False)
         self._rows[key] = row
         return row
@@ -272,6 +286,7 @@ class MonthCardCache:
                 "snapshot": snapshot_to_json(row.snapshot),
                 "source": row.source,
                 "fetched_at": row.fetched_at.isoformat(),
+                "reread": row.reread,
             }
             for key, row in self._rows.items()
             if row.snapshot is not None
@@ -293,5 +308,9 @@ class MonthCardCache:
             if source not in ("supplier", "archive"):
                 continue
             self._rows[str(key)] = MonthCard(
-                snapshot=snapshot, source=source, fetched_at=fetched_at, reread=reread
+                snapshot=snapshot,
+                source=source,
+                fetched_at=fetched_at,
+                # Still to be read again, from an update before a restart.
+                reread=reread or value.get("reread") is True,
             )

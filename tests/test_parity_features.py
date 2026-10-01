@@ -101,6 +101,7 @@ from custom_components.be_gas_prices.providers.base import (
 )
 from custom_components.be_gas_prices.providers.custom import build_snapshot
 from custom_components.be_gas_prices.running_costs import Household, RunningCosts
+from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import approx, fixture_text
 
 ENTRY = {
@@ -522,6 +523,31 @@ async def test_the_own_contract_is_priced_on_the_entry_s_index_values() -> None:
     indices = IndexCache(own)
     assert await indices.table(AsyncMock(), engie_down) == {"ZTPDAM": {"2026-09": 70.0}}
     failing.assert_not_called()
+
+
+async def test_a_stored_signing_card_past_the_archive_s_reach_is_kept() -> None:
+    """Another release stored June 2025's card, which no one serves now: it
+    is all there is, and stays; the flag to read it again outlives a
+    restart until it was read."""
+    card = replace(_flow_card(), publication_label="2025-06", valid_until=date(2025, 6, 30))
+    stored = {
+        "engie/engie_flow/wallonia/2025-06": {
+            "snapshot": snapshot_to_json(card),
+            "source": "supplier",
+            "fetched_at": "2025-07-01T00:00:00+00:00",
+        }
+    }
+    cache = MonthCardCache()
+    cache.load_json(stored, reread=True)
+    restarted = MonthCardCache()
+    restarted.load_json(cache.to_json())
+    held = restarted.get("engie", "engie_flow", "wallonia", "2025-06")
+    assert held is not None and held.reread
+    gone = replace(engie.EXTRACTOR, fetch_for_month=AsyncMock(return_value=None))
+    row = await restarted.card(
+        AsyncMock(), gone, "engie_flow", "wallonia", "2025-06", use_archive=False
+    )
+    assert row.snapshot == card and not row.reread
 
 
 def test_quote_table_bolds_the_own_row_and_signs_the_gap() -> None:
