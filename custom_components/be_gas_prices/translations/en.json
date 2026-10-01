@@ -126,7 +126,8 @@
       "unknown_postcode": "This is not a Belgian postcode the integration knows.",
       "no_gas_network": "No gas network operator is designated for this postcode. Clear the postcode to pick the operator yourself.",
       "end_before_start": "The contract end date must be after its start date.",
-      "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead."
+      "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
+      "card_archive_needed": "This supplier publishes its cards as images, which only the project's card archive reads: turn this option on."
     }
   },
   "options": {
@@ -293,7 +294,8 @@
       "no_gas_network": "No gas network operator is designated for this postcode. Clear the postcode to pick the operator yourself.",
       "end_before_start": "The contract end date must be after its start date.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
-      "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today."
+      "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today.",
+      "card_archive_needed": "This supplier publishes its cards as images, which only the project's card archive reads: turn this option on."
     },
     "abort": {
       "compare_done": "Comparison complete, nothing was changed."
@@ -410,7 +412,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} publishes its card as images",
-      "description": "The card for {entry} has no text layer, so it cannot be read. The last good card, or the project's card archive, keeps pricing."
+      "description": "The card for {entry} has no text layer, so it cannot be read here. The last good card keeps pricing; the project's card archive prices on its own reading of the card once it has one, where the entry lets it be read."
     },
     "card_read_by_ocr": {
       "title": "{supplier} card read from its image",
@@ -464,6 +466,9 @@
     },
     "contract_withdrawn": {
       "message": "Its supplier withdrew the contract {contract}, whose card is no longer published. Pick another contract in the entry's settings, or type your contract's figures under \"Expert: custom figures\"."
+    },
+    "card_archive_needed": {
+      "message": "{supplier} publishes its cards as images, which only the project's card archive reads, and this entry keeps the archive out. Turn the card archive option on in the entry's settings."
     }
   }
 }

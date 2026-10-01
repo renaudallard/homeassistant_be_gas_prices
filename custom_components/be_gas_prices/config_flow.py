@@ -418,7 +418,17 @@ class _FlowSteps:
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         brussels = self._data[CONF_REGION] == REGION_BRUSSELS
-        if user_input is not None:
+        errors: dict[str, str] = {}
+        if (
+            user_input is not None
+            and get_extractor(self._data[CONF_SUPPLIER]).images_only
+            and not user_input.get(CONF_CARD_ARCHIVE)
+        ):
+            # Its cards are page images: the archive's reading is the only
+            # card the entry can be priced on. The rest is kept for the form.
+            self._data.update(user_input)
+            errors[CONF_CARD_ARCHIVE] = "card_archive_needed"
+        elif user_input is not None:
             if not user_input.get(CONF_GAS_METER):
                 self._data.pop(CONF_GAS_METER, None)
             self._data.update(user_input)
@@ -471,7 +481,7 @@ class _FlowSteps:
         schema = self.add_suggested_values_to_schema(
             vol.Schema(fields), {CONF_GAS_METER: self._data.get(CONF_GAS_METER)}
         )
-        return self.async_show_form(step_id="household", data_schema=schema)
+        return self.async_show_form(step_id="household", data_schema=schema, errors=errors)
 
     async def async_step_station(
         self, user_input: dict[str, Any] | None = None

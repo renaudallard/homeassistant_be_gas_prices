@@ -126,7 +126,8 @@
       "unknown_postcode": "Diese belgische Postleitzahl ist der Integration nicht bekannt.",
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
-      "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein."
+      "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
+      "card_archive_needed": "Dieser Lieferant veröffentlicht seine Karten als Bilder, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     }
   },
   "options": {
@@ -293,7 +294,8 @@
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
-      "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute."
+      "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute.",
+      "card_archive_needed": "Dieser Lieferant veröffentlicht seine Karten als Bilder, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     },
     "abort": {
       "compare_done": "Vergleich abgeschlossen, nichts wurde geändert."
@@ -410,7 +412,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} veröffentlicht seine Karte als Bilder",
-      "description": "Die Karte für {entry} hat keine Textebene und kann daher nicht gelesen werden. Die letzte gute Karte oder das Kartenarchiv des Projekts rechnet weiter."
+      "description": "Die Karte für {entry} hat keine Textebene und kann hier daher nicht gelesen werden. Die letzte gute Karte rechnet weiter; das Kartenarchiv des Projekts rechnet mit seiner eigenen Lesung der Karte, sobald es eine hat, wenn der Eintrag es lesen lässt."
     },
     "card_read_by_ocr": {
       "title": "{supplier}-Tarifkarte aus ihrem Bild gelesen",
@@ -464,6 +466,9 @@
     },
     "contract_withdrawn": {
       "message": "Der Lieferant hat den Vertrag {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. Wählen Sie in den Einstellungen des Eintrags einen anderen Vertrag, oder geben Sie die Zahlen Ihres Vertrags unter „Expert: custom figures“ ein."
+    },
+    "card_archive_needed": {
+      "message": "{supplier} veröffentlicht seine Karten als Bilder, die nur das Kartenarchiv des Projekts liest, und dieser Eintrag schließt das Archiv aus. Schalten Sie die Option für das Kartenarchiv in den Einstellungen des Eintrags ein."
     }
   }
 }

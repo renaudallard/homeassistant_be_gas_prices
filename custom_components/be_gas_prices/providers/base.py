@@ -165,6 +165,9 @@ class SupplierExtractor:
     # entry still naming one is told so, and its title is known for what
     # the wizard gave it.
     withdrawn: Mapping[str, str] = field(default_factory=dict)
+    # The supplier publishes its cards as page images, which only the card
+    # archive's reading prices: an entry on it needs the archive.
+    images_only: bool = False
 
     def regions(self) -> frozenset[str]:
         """Union of regions across this supplier's contracts."""

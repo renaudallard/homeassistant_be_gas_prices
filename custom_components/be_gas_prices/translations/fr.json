@@ -126,7 +126,8 @@
       "unknown_postcode": "Ce n'est pas un code postal belge que l'intégration connaît.",
       "no_gas_network": "Aucun gestionnaire de réseau de distribution de gaz n'est désigné pour ce code postal. Videz le code postal pour choisir vous-même le gestionnaire.",
       "end_before_start": "La date de fin du contrat doit être postérieure à sa date de début.",
-      "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture."
+      "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
+      "card_archive_needed": "Ce fournisseur publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     }
   },
   "options": {
@@ -293,7 +294,8 @@
       "no_gas_network": "Aucun gestionnaire de réseau de distribution de gaz n'est désigné pour ce code postal. Videz le code postal pour choisir vous-même le gestionnaire.",
       "end_before_start": "La date de fin du contrat doit être postérieure à sa date de début.",
       "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
-      "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui."
+      "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui.",
+      "card_archive_needed": "Ce fournisseur publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     },
     "abort": {
       "compare_done": "Comparaison terminée, rien n'a été modifié."
@@ -410,7 +412,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} publie sa carte sous forme d'images",
-      "description": "La carte de {entry} n'a pas de couche texte et ne peut donc pas être lue. La dernière bonne carte, ou l'archive des cartes du projet, continue de servir."
+      "description": "La carte de {entry} n'a pas de couche texte et ne peut donc pas être lue ici. La dernière bonne carte continue de servir ; l'archive des cartes du projet sert sa propre lecture de la carte dès qu'elle en a une, si l'entrée la laisse lire."
     },
     "card_read_by_ocr": {
       "title": "Carte {supplier} lue sur son image",
@@ -464,6 +466,9 @@
     },
     "contract_withdrawn": {
       "message": "Le fournisseur a retiré le contrat {contract}, dont la carte tarifaire n'est plus publiée. Choisissez un autre contrat dans les paramètres de l'entrée, ou saisissez les chiffres de votre contrat sous « Expert: custom figures »."
+    },
+    "card_archive_needed": {
+      "message": "{supplier} publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit, et cette entrée exclut l'archive. Activez l'option de l'archive des cartes dans les paramètres de l'entrée."
     }
   }
 }

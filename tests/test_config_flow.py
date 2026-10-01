@@ -410,6 +410,38 @@ def _entry(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+async def test_an_images_only_supplier_needs_the_card_archive(hass: HomeAssistant) -> None:
+    """Ecofix's cards are page images: without the archive's reading the
+    entry could not be priced, so the option cannot be off."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_POSTCODE: ""})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REGION: REGION_WALLONIA}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: "ecofix"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_CONTRACT: "ecofix_flexy"}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
+    result = await _household(hass, result["flow_id"], CONVERSION_MANUAL)
+    assert result["step_id"] == "household"
+    assert result["errors"] == {CONF_CARD_ARCHIVE: "card_archive_needed"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_ANNUAL_CONSUMPTION_KWH: 12000,
+            CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+            CONF_CARD_ARCHIVE: True,
+            CONF_DAILY_COMPARE: False,
+        },
+    )
+    assert result["step_id"] == "factor"
+
+
 async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> None:
     entry = _entry(hass)
     own = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.08, 190.0, True, True)

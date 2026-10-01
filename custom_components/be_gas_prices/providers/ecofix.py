@@ -253,4 +253,5 @@ EXTRACTOR = SupplierExtractor(
     ),
     fetch=fetch,
     probe=probe,
+    images_only=True,
 )

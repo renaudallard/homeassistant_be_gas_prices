@@ -570,6 +570,26 @@ async def test_a_card_put_up_early_is_read_once_its_month_begins(
     assert entry.runtime_data.data.snapshot.publication_label == "2026-10"
 
 
+async def test_an_images_only_supplier_without_the_archive_stops_the_entry(
+    hass: HomeAssistant,
+) -> None:
+    """An Ecofix entry that keeps the archive out has no card it can read:
+    it stops with that reason rather than retrying and downloading."""
+    fetch = AsyncMock(side_effect=CardNotReadableError("card has no text layer"))
+    stub = replace(providers.EXTRACTORS["ecofix"], fetch=fetch)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Ecofix Flexy",
+        data={**DATA, CONF_SUPPLIER: "ecofix", CONF_CONTRACT: "ecofix_flexy"},
+    )
+    entry.add_to_hass(hass)
+    with patch.dict(providers.EXTRACTORS, {"ecofix": stub}):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert entry.reason is not None and "Ecofix" in entry.reason
+    fetch.assert_not_called()
+
+
 async def test_a_withdrawn_contract_stops_the_entry_with_its_reason(
     hass: HomeAssistant,
 ) -> None:

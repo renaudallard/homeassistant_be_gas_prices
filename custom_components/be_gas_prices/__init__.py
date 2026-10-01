@@ -53,7 +53,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.json import JsonValueType
 
 from .backfill import backfill_once_a_year, backfill_prices
-from .const import DOMAIN, PLATFORMS, STORAGE_VERSION
+from .const import CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE, DOMAIN, PLATFORMS, STORAGE_VERSION
 from .coordinator import GasCoordinator
 from .daily_ranking import ranking_minute
 from .issues import clear_issues
@@ -139,6 +139,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
     except ExtractorError as err:
         # A supplier this release no longer carries: retrying cannot help.
         raise ConfigEntryError(str(err)) from err
+    if coordinator.extractor.images_only and not entry.data.get(
+        CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE
+    ):
+        # No card of this supplier can be read here, and the entry keeps the
+        # archive's reading out: retrying would only download the card.
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="card_archive_needed",
+            translation_placeholders={"supplier": coordinator.extractor.label},
+        )
     if coordinator.contract not in {c.id for c in coordinator.extractor.contracts}:
         # A contract its supplier withdrew: no card of it is read any more,
         # and the entry is set up again once its settings name another.

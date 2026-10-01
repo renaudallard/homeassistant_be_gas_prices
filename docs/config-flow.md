@@ -16,7 +16,7 @@ once in `_FlowSteps` over `self._data`.
 | `signed_rate` | Price or factor and base, yearly fee | Only when a start date or card month is set, and never for the custom supplier, whose card is already the typed figures; all optional. See `manual_rate.py`. |
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Walloon fee and the Brussels levy only in their region. |
-| `household` | Annual consumption, Brussels meter caliber, gas meter, conversion mode, card archive, daily ranking | The caliber only in Brussels. The conversion mode defaults to the bill's factor. |
+| `household` | Annual consumption, Brussels meter caliber, gas meter, conversion mode, card archive, daily ranking | The caliber only in Brussels. The conversion mode defaults to the bill's factor. The card archive cannot be off for a supplier whose cards are page images (`images_only`, Ecofix). |
 | `station` | Reception station | From Atrias's latest published month. If Atrias cannot be read, an entry that names its station already keeps it and saves; otherwise the flow moves to `factor` with an error. |
 | `factor` | Conversion factor | kWh/m³ from the bill. Optional and suggested rather than defaulted: left empty, the flow moves to `station`, since a form has no way back to the mode picked on `household`. |
 

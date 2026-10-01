@@ -126,7 +126,8 @@
       "unknown_postcode": "Dit is geen Belgische postcode die de integratie kent.",
       "no_gas_network": "Voor deze postcode is geen distributienetbeheerder voor gas aangeduid. Maak de postcode leeg om zelf de netbeheerder te kiezen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
-      "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in."
+      "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
+      "card_archive_needed": "Deze leverancier publiceert zijn kaarten als afbeeldingen, die alleen het kaartarchief van het project leest: zet deze optie aan."
     }
   },
   "options": {
@@ -293,7 +294,8 @@
       "no_gas_network": "Voor deze postcode is geen distributienetbeheerder voor gas aangeduid. Maak de postcode leeg om zelf de netbeheerder te kiezen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
-      "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag."
+      "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag.",
+      "card_archive_needed": "Deze leverancier publiceert zijn kaarten als afbeeldingen, die alleen het kaartarchief van het project leest: zet deze optie aan."
     },
     "abort": {
       "compare_done": "Vergelijking klaar, er werd niets gewijzigd."
@@ -410,7 +412,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} publiceert zijn kaart als afbeeldingen",
-      "description": "De kaart voor {entry} heeft geen tekstlaag en kan dus niet gelezen worden. De laatste goede kaart, of het kaartarchief van het project, blijft rekenen."
+      "description": "De kaart voor {entry} heeft geen tekstlaag en kan hier dus niet gelezen worden. De laatste goede kaart blijft rekenen; het kaartarchief van het project rekent op zijn eigen lezing van de kaart zodra het die heeft, als het item het archief laat lezen."
     },
     "card_read_by_ocr": {
       "title": "{supplier}-tariefkaart gelezen uit haar afbeelding",
@@ -464,6 +466,9 @@
     },
     "contract_withdrawn": {
       "message": "De leverancier heeft het contract {contract} stopgezet en publiceert de tariefkaart ervan niet meer. Kies een ander contract in de instellingen van het item, of vul de cijfers van je contract in onder \"Expert: custom figures\"."
+    },
+    "card_archive_needed": {
+      "message": "{supplier} publiceert zijn kaarten als afbeeldingen, die alleen het kaartarchief van het project leest, en dit item sluit het archief uit. Zet de optie voor het kaartarchief aan in de instellingen van het item."
     }
   }
 }
