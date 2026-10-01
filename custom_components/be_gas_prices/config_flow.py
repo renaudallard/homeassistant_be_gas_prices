@@ -96,7 +96,7 @@ from .const import (
     REGIONS,
     SUPPLIER_CUSTOM,
 )
-from .contract_periods import previous_contracts, record_switch
+from .contract_periods import parse_date, previous_contracts, record_switch
 from .providers import all_extractors
 from .providers import get as get_extractor
 from .providers._rates import Contract
@@ -749,12 +749,20 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         today = dt_util.now().date()
         if user_input is not None:
             switched = date.fromisoformat(str(user_input[CONF_SWITCH_DATE]))
-            previous = previous_contracts(self.config_entry.data)
-            earliest = max(
-                (date.fromisoformat(p["until"]) for p in previous),
-                default=date(today.year, 1, 1) - timedelta(days=1),
+            data = self.config_entry.data
+            # The contract the change closes must have supplied a day of this
+            # year: from 1 January, the day after the last change recorded,
+            # or its own start, whichever comes last.
+            began = parse_date(data.get(CONF_CONTRACT_START_DATE))
+            first = max(
+                [date(today.year, 1, 1)]
+                + [
+                    date.fromisoformat(p["until"]) + timedelta(days=1)
+                    for p in previous_contracts(data)
+                ]
+                + ([] if began is None else [began])
             )
-            if not earliest < switched <= today:
+            if not first < switched <= today:
                 errors[CONF_SWITCH_DATE] = "switch_date_invalid"
             else:
                 self._data = record_switch(dict(self.config_entry.data), switched)

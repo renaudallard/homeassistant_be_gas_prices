@@ -42,4 +42,6 @@ reloads the entry.
   current settings become an earlier contract ending the day before
   (`contract_periods.record_switch`) and the supplier steps set up the new
   one, without the old contract's card month, end date or typed figures.
-  The date must be after the last recorded change and not in the future.
+  The date must be after 1 January, the current contract's start and the
+  last recorded change, so the contract it closes supplied a day of the
+  year, and not in the future.

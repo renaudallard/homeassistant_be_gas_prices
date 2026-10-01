@@ -293,7 +293,7 @@
       "no_gas_network": "Voor deze postcode is geen distributienetbeheerder voor gas aangeduid. Maak de postcode leeg om zelf de netbeheerder te kiezen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
-      "switch_date_invalid": "De wissel moet na de laatst vastgelegde vallen en uiterlijk vandaag."
+      "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag."
     },
     "abort": {
       "compare_done": "Vergelijking klaar, er werd niets gewijzigd."

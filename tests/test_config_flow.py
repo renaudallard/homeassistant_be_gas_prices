@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -396,6 +397,54 @@ async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> Non
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "compare_done"
     assert entry.data[CONF_CONTRACT] == "engie_flow"
+
+
+_EARLIER = {
+    CONF_SUPPLIER: "engie",
+    CONF_CONTRACT: "engie_easy_fixed",
+    CONF_REGION: REGION_WALLONIA,
+    CONF_DSO: DSO_ORES,
+}
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(
+    ("extra", "switched", "valid"),
+    [
+        # Last year, though a change of last year is recorded.
+        ({CONF_PREVIOUS_CONTRACTS: [{**_EARLIER, "until": "2025-03-31"}]}, "2025-12-01", False),
+        # The day of the last change: the contract it closes supplied none.
+        (
+            {
+                CONF_PREVIOUS_CONTRACTS: [{**_EARLIER, "until": "2026-05-31"}],
+                CONF_CONTRACT_START_DATE: "2026-06-01",
+            },
+            "2026-06-01",
+            False,
+        ),
+        # Before the current contract started.
+        ({CONF_CONTRACT_START_DATE: "2026-06-01"}, "2026-03-01", False),
+        ({}, "2026-01-01", False),
+        ({CONF_CONTRACT_START_DATE: "2026-06-01"}, "2026-06-02", True),
+        ({}, "2026-01-02", True),
+    ],
+)
+async def test_a_change_must_close_a_contract_that_supplied_this_year(
+    hass: HomeAssistant, extra: dict[str, Any], switched: str, valid: bool
+) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, **extra})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "switch"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_SWITCH_DATE: switched}
+    )
+    if valid:
+        assert result["step_id"] == "supplier"
+    else:
+        assert result["errors"] == {CONF_SWITCH_DATE: "switch_date_invalid"}
 
 
 @pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")

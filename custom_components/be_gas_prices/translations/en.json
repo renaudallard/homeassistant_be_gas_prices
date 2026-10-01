@@ -293,7 +293,7 @@
       "no_gas_network": "No gas network operator is designated for this postcode. Clear the postcode to pick the operator yourself.",
       "end_before_start": "The contract end date must be after its start date.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
-      "switch_date_invalid": "The change must be after the last one recorded and no later than today."
+      "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today."
     },
     "abort": {
       "compare_done": "Comparison complete, nothing was changed."
