@@ -111,7 +111,7 @@ async def backfill_prices(
     clear: bool = False,
 ) -> dict[str, int]:
     """Write the hourly price rows from ``start``, or from the day the
-    current contract took over at a switch recorded this year, to the last
+    current contract took over at the last recorded switch, to the last
     full hour, or the one before it in the minutes the recorder is
     compiling it.
 
