@@ -778,6 +778,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.contract,
             replace(snapshot, energy=self._energy_for(snapshot)),
             read_by_ocr=self._card_source == "ocr",
+            table=self._index_table,
         )
 
     def _filling(self) -> bool:

@@ -95,6 +95,7 @@ from custom_components.be_gas_prices.providers._rates import Contract, FixedRate
 from custom_components.be_gas_prices.providers._resolve import resolve_network
 from custom_components.be_gas_prices.providers.base import (
     CardNotReadableError,
+    ExtractorError,
     SupplierExtractor,
     SupplierSnapshot,
 )
@@ -509,6 +510,18 @@ async def test_a_ranking_quotes_a_typed_card_among_the_suppliers() -> None:
     }
     costs = [q.annual_cost for q in quotes]
     assert None not in costs and costs == sorted(costs)  # type: ignore[type-var]
+
+
+async def test_the_own_contract_is_priced_on_the_entry_s_index_values() -> None:
+    """The entry chose its energy leg on its own index table: the comparison
+    prices on that table rather than fetching another, which may fail."""
+    card = _flow_card()
+    failing = AsyncMock(side_effect=ExtractorError("HTTP 503 fetching x"))
+    engie_down = replace(engie.EXTRACTOR, fetch_index=failing)
+    own = OwnContract(engie_down, "engie_flow", card, table={"ZTPDAM": {"2026-09": 70.0}})
+    indices = IndexCache(own)
+    assert await indices.table(AsyncMock(), engie_down) == {"ZTPDAM": {"2026-09": 70.0}}
+    failing.assert_not_called()
 
 
 def test_quote_table_bolds_the_own_row_and_signs_the_gap() -> None:

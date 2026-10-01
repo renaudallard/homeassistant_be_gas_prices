@@ -681,9 +681,9 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
             session = async_get_clientsession(self.hass)
             household = self._household()
             month = month_key(dt_util.now().date())
-            indices = IndexCache()
             use_archive = bool(data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
             held = self._own_contract()
+            indices = IndexCache(held)
             other, own = await asyncio.gather(
                 quote_contract(
                     session,

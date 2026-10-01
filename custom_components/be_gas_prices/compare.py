@@ -92,13 +92,18 @@ class OwnContract:
     card: SupplierSnapshot
     # The card is the card archive's reading of one published as images.
     read_by_ocr: bool = False
+    # The supplier's index values the entry prices on, which picked the
+    # card's energy leg: the comparison prices the contract on them too.
+    table: IndexTable | None = None
 
 
 class IndexCache:
     """Each supplier's index table, fetched once per comparison."""
 
-    def __init__(self) -> None:
+    def __init__(self, own: OwnContract | None = None) -> None:
         self._tables: dict[str, IndexTable | None] = {}
+        if own is not None:
+            self._tables[own.extractor.id] = own.table
         self._lock = asyncio.Lock()
 
     async def table(
@@ -213,7 +218,7 @@ async def rank(
         for pair in candidates(region)
         if own is None or (pair[0].id, pair[1]) != (own.extractor.id, own.contract)
     ]
-    indices = IndexCache()
+    indices = IndexCache(own)
     started = time.monotonic()
     semaphore = asyncio.Semaphore(_CONCURRENCY)
     done = 0
