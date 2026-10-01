@@ -229,6 +229,16 @@ def _ocr_text(payload: bytes) -> str:
     return text
 
 
+def _ocr_failure(cards: _Cards, err: BaseException) -> bool:
+    """Whether a failed fetch is the OCR engine's: it could not read the
+    card, or what it read of the card failed the parse."""
+    if isinstance(err, CardNotReadableError):
+        return True
+    return not is_transient(err) and any(
+        (variant, digest) in cards.ocr for variant, _url, digest, _text in cards.calls
+    )
+
+
 class _Cards(StoredTexts):
     """The render cache, plus where the card bytes are kept.
 
@@ -314,6 +324,9 @@ class _Summary:
     # so the next run replays again rather than never.
     download_failed: bool = False
     failed: list[str] = field(default_factory=list)
+    # The failures that are the OCR engine's, a subset of ``failed``: this
+    # walk is the only reader of such a card, so the workflow files them.
+    ocr_failed: list[str] = field(default_factory=list)
     given_up: list[str] = field(default_factory=list)
     unreplayable: list[str] = field(default_factory=list)
 
@@ -936,7 +949,10 @@ async def archive(
         try:
             got = await fetch_with_retry(fetch, sleep=sleep)
         except Exception as err:  # one card must not stop the walk
-            summary.failed.append(f"{label}: {type(err).__name__}: {err}")
+            line = f"{label}: {type(err).__name__}: {err}"
+            summary.failed.append(line)
+            if _ocr_failure(cards, err):
+                summary.ocr_failed.append(line)
             if patience.note(ex.id, err):
                 summary.given_up.append(ex.id)
             return None
@@ -1074,6 +1090,13 @@ def main() -> int:
         help="also mirror the N closed months before this one from the supplier archives",
     )
     parser.add_argument(
+        "--ocr-failures",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="write the cards the OCR engine could not read to FILE, one a line",
+    )
+    parser.add_argument(
         "--index-only",
         action="store_true",
         help="only rewrite the coverage sheets from what is on disk; no fetch",
@@ -1099,6 +1122,11 @@ def main() -> int:
             reparse=args.reparse,
         )
     )
+    if args.ocr_failures is not None:
+        args.ocr_failures.write_text(
+            "".join(" ".join(line.split()) + "\n" for line in summary.ocr_failed),
+            encoding="utf-8",
+        )
     return 0 if summary.stored or summary.unchanged else 1
 
 

@@ -106,7 +106,41 @@ jobs:
           --pdf-base-url "https://github.com/${CARDS_REPO}/releases/download"
           --archive-base-url "https://github.com/${CARDS_REPO}/blob/main/gas"
           --backfill "$BACKFILL"
+          --ocr-failures ocr_failed.txt
           ${REPARSE:+"$REPARSE"}
+
+      - name: Report cards the OCR could not read
+        # A card published as page images is read here and nowhere else: the
+        # live check has no reading of its bytes and can only note it, and
+        # this walk succeeds while any other card is stored. One issue says
+        # so, the same cards posted once a week at most.
+        if: steps.store.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -s ocr_failed.txt ] || exit 0
+          {
+            echo "## Cards the OCR could not read"
+            echo
+            echo "Each line is the card and the error:"
+            echo
+            echo '```'
+            cat ocr_failed.txt
+            echo '```'
+            echo
+            echo "The OCR leaves out every line it refused a mark on, so a figure"
+            echo "missing from its reading is most often a glyph its library lacks."
+          } > ocr_failed_body.md
+          # The cards, not the errors: the same card failing again tomorrow
+          # adds nothing, another card is posted at once.
+          cut -d ':' -f 1 ocr_failed.txt | sort -u > ocr_failed_fingerprint.txt
+          bash scripts/file_ci_issue.sh \
+            --label archive-cards-ocr \
+            --title "[archive-cards] the OCR could not read a card" \
+            --body ocr_failed_body.md \
+            --fingerprint ocr_failed_fingerprint.txt \
+            --workflow .github/workflows/archive_cards.yml
 
       - name: Report glyphs the OCR library has not learnt
         # The OCR reads a font only through the glyphs it has learnt, and no

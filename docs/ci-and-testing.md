@@ -122,7 +122,8 @@ attempt is TRANSIENT, reported and never filed. Both scripts render in a
 daemon thread of its own (`card_texts.in_daemon_thread`), so a render that
 never returns is abandoned at its timeout without holding the run's exit. A card published as page
 images (`CardNotReadableError`) is parsed on the archive's OCR reading of its
-bytes; until the archive has read them, it is a notice.
+bytes; until the archive has read them, it is a notice, and the archive
+files a card its OCR could not read.
 
 How the cross-check decides:
 
@@ -187,7 +188,10 @@ engine is installed from its main branch; its version and git commit are
 recorded on each source it read, and a stored reading is served again only
 to the same engine, so a new glyph library reads those cards again and no
 other. The engine needs Python 3.14, so the archive job runs on 3.14; the
-test suite, like an installation, runs on 3.13.
+test suite, like an installation, runs on 3.13. `--ocr-failures FILE` lists
+the cards the engine could not read, or whose reading failed the parse; the
+workflow files them under `archive-cards-ocr`, since the live check has no
+reading of those bytes and only notes them.
 
 `--backfill N` also mirrors the N closed months before this one, at most
 `--keep-months`, from every supplier archive, for months not held yet.

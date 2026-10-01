@@ -691,6 +691,55 @@ async def test_a_card_published_as_images_is_read_by_the_ocr_engine(
     assert next(s for s in row["_sources"] if s["url"] == CARD_URL)["ocr"] == "0.3.0+bbbbbbbbbbbb"
 
 
+async def test_a_card_the_ocr_cannot_read_is_listed_for_the_workflow(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reading that misses a figure, or no reading at all: the walk still
+    succeeds on the other cards, so these are what the workflow files."""
+    out = tmp_path / "gas"
+    monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+aaaaaaaaaaaa")
+    # The engine refused the marks of the price line.
+    monkeypatch.setattr(ac, "_ocr_text", lambda payload: "month 2026-09")
+    summary = await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    assert summary.ocr_failed == summary.failed
+    assert summary.ocr_failed[0].startswith("acme/acme_fix/wallonia: ExtractorError")
+
+    def refuse(payload: bytes) -> str:
+        raise ac.CardNotReadableError("OCR could not read the card: no glyph")
+
+    monkeypatch.setattr(ac, "_ocr_text", refuse)
+    summary = await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    assert summary.ocr_failed == summary.failed
+    assert "CardNotReadableError" in summary.ocr_failed[0]
+    # A card read off its text layer that fails is not the OCR's.
+    web.pages[CARD_URL] = b"%PDF-1.4 month 2026-09"
+    summary = await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    assert summary.failed and not summary.ocr_failed
+
+
+def test_main_writes_the_ocr_failures_one_a_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    results = iter(
+        (
+            ac._Summary(stored=1, ocr_failed=["ecofix/flexy/flanders: ExtractorError: a\nb"]),
+            ac._Summary(stored=1),
+        )
+    )
+
+    async def archive(_out: Path, **_kwargs: Any) -> Any:
+        return next(results)
+
+    report = tmp_path / "ocr_failed.txt"
+    monkeypatch.setattr(ac, "archive", archive)
+    argv = ["archive_cards.py", "--out", str(tmp_path), "--ocr-failures", str(report)]
+    monkeypatch.setattr(sys, "argv", argv)
+    assert ac.main() == 0
+    assert report.read_text() == "ecofix/flexy/flanders: ExtractorError: a b\n"
+    assert ac.main() == 0
+    assert report.read_text() == ""
+
+
 async def test_a_replay_under_another_engine_keeps_the_reading_marked(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

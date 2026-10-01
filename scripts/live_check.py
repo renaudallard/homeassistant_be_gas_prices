@@ -223,6 +223,7 @@ def _failure(label: str, err: BaseException) -> Check:
         # A card published as page images, which only the card archive's
         # OCR reading of these very bytes lets the check parse. Until the
         # archive has read them no change here can: reported, never filed.
+        # The archive files a card its OCR could not read.
         return Check(label, "notice", detail)
     return Check(label, "transient" if is_transient(err) else "fail", detail)
 
