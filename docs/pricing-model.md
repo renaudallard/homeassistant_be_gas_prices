@@ -112,7 +112,9 @@ year recorded at a switch are walked the same way on their own suppliers'
 cards (`contract_periods.py`) and added: each from 1 January or the day
 after the one before it, or from its own contract start when the entry
 billed from it, on its own signing card and typed figures (a contract on
-the custom supplier on the card typed for it).
+the custom supplier on the card typed for it). Their last month's card is
+their current card: a month without a card of its own is billed on it, or
+on today's card when it is not held or cannot price the household.
 
 - `rolling_year_kwh`: the last 365 days, up to 15 missing days scaled across;
   more missing and it is unknown. Gas is too seasonal for a shorter window to

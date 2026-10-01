@@ -272,8 +272,9 @@ class PeriodBilling:
     ) -> tuple[list[RunningCosts], list[str]]:
         """What each earlier contract of the year cost, and the ones that
         could not be priced (their supplier is gone or its card unreadable).
-        ``fill`` fetches their months' cards first; without it, a month whose
-        card is not in the cache yet is priced on today's card for now."""
+        ``fill`` fetches their months' cards first. A month without a card of
+        its own is priced on the contract's last month's card, or on today's
+        while that one is not held or cannot price the household."""
         from .providers import get as get_extractor
 
         if fill:
@@ -376,7 +377,7 @@ class PeriodBilling:
             except PricingError as err:
                 # The last month's own card cannot price the household (an
                 # archived card missing its DSO row or tier): today's card
-                # stands in, as it does for any other month.
+                # stands in for it and for every month it stood in for.
                 fallback = None
                 if not custom and not end_on_current and month_key(end) < current:
                     fallback = await self._current_card(
