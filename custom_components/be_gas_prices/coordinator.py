@@ -148,6 +148,12 @@ SNAPSHOT_STALE_AFTER_VALIDITY = timedelta(days=7)
 _ARCHIVE_MONTHS_BACK = 12
 
 
+def _card_digest(card: SupplierSnapshot) -> str:
+    """A card's figures, digested."""
+    blob = json.dumps(snapshot_to_json(card), sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
 class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     """Fetches the card, reads the meter and prices one household."""
 
@@ -337,17 +343,20 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     def card_months_signature(self) -> str:
         """What the year's past months are priced from: the entry's
-        settings, which months have their own card, the latest index value
-        and the latest calorific value. It moves when any of them changes or
-        lands, which is when the price history is worth drawing again."""
+        settings, each past month's own card and the card in hand as read,
+        the latest index value and the latest calorific value. It moves when
+        any of them changes or lands, a card read again after an update
+        included, which is when the price history is worth drawing again."""
         today = dt_util.now().date()
-        own = [m for m in self._months_needed(today) if self._month_card(m) is not None]
+        own = [
+            f"{month}:{_card_digest(card)}"
+            for month in self._months_needed(today)
+            if (card := self._month_card(month)) is not None
+        ]
         index = max((max(v) for v in (self._index_table or {}).values() if v), default="")
         gcv = max(self._gcv, default="")
-        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{self._snapshot_label()}"
-
-    def _snapshot_label(self) -> str:
-        return "" if self._snapshot is None else self._snapshot.publication_label
+        current = "" if self._snapshot is None else _card_digest(self._snapshot)
+        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}"
 
     # ---- the card ---------------------------------------------------------
 

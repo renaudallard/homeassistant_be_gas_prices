@@ -45,6 +45,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.be_gas_prices import calorific, providers
@@ -84,6 +85,7 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
 )
+from custom_components.be_gas_prices.month_cards import MonthCard
 from custom_components.be_gas_prices.providers import engie, octaplus
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
@@ -1111,6 +1113,24 @@ async def test_the_price_history_stamp_moves_with_the_settings(
     hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_DSO: DSO_RESA})
     await hass.async_block_till_done()
     assert entry.runtime_data.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_stamp_moves_with_a_card_read_again(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A release that reads March's card better changes March's prices, not
+    which months have a card: the history is worth drawing again."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    card = fetch.return_value
+    rows = coordinator._months._rows
+    key = "engie/engie_flow/wallonia/2026-03"
+    rows[key] = MonthCard(card, "supplier", dt_util.utcnow())
+    before = coordinator.card_months_signature()
+    read_again = replace(card, energy=replace(card.energy, price=card.energy.price * 2))
+    rows[key] = MonthCard(read_again, "supplier", dt_util.utcnow())
+    assert coordinator.card_months_signature() != before
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
