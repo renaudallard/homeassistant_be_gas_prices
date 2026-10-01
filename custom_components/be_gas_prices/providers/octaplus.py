@@ -31,15 +31,16 @@ URL, overwritten in place every month:
     https://files.octaplus.be/tariffs/G_OCTA_<SLUG>_RE_<VL|WL>_FR.pdf
 
 Residential gas is sold in Flanders and Wallonia only: the Brussels cards the
-tariff page links are professional ones. The slugs are FLUX, ECOFLUX,
-SMARTVARIABLE, ECOFIXED and, in mixed case as the tariff page links it, Fixed.
+tariff page links are professional ones. Since October 2026 the slugs are
+BASICONLINE, BOOSTFLEX, ECOBOOSTFLEX, SMARTVARIABLE, BOOSTFIX and
+ECOBOOSTFIX. Flux, Eco Flux, Fixed and Eco Fixed were withdrawn that month.
 
 Both regional cards print the same energy figures and both regions' DSO
 tables; the Walloon one adds the connection fee column. Every figure is VAT
 inclusive ("TVAC"), but no card states the rate, so the formulas are grossed
 up by the statutory residential rate.
 
-Flux, Eco Flux and Smart Variable index on "ZTP RLP M", the RLP-weighted mean
+Every variable product indexes on "ZTP RLP M", the RLP-weighted mean
 of the ZTP day-ahead quotes of the delivery month, known only once the month
 is over. The card prints the formula in EUR/MWh excluding VAT and a price that
 is not the formula at the last known value but a twelve-month estimate at the
@@ -50,7 +51,6 @@ which is what :func:`fetch_index` reads.
 
 The site's archive is two JSON endpoints: getTarifArchive names the cards a
 month had for a region, and getTariffSheet hands one back as a base64 data URL.
-The archive spells FIXED in upper case where the live file name says Fixed.
 The current template starts with the June 2026 cards. The ones checked from
 September 2025 to May 2026 are an older template this module does not read,
 so :func:`fetch_for_month` returns None for such months.
@@ -129,11 +129,12 @@ class _ContractDef:
 
 
 _CONTRACTS: tuple[_ContractDef, ...] = (
-    _ContractDef("octaplus_flux", "OCTA+ Flux", "indexed", "FLUX"),
-    _ContractDef("octaplus_ecoflux", "OCTA+ Eco Flux", "indexed", "ECOFLUX"),
+    _ContractDef("octaplus_basiconline", "OCTA+ Basic Online", "indexed", "BASICONLINE"),
+    _ContractDef("octaplus_boostflex", "OCTA+ Boost Flex", "indexed", "BOOSTFLEX"),
+    _ContractDef("octaplus_ecoboostflex", "OCTA+ Eco Boost Flex", "indexed", "ECOBOOSTFLEX"),
     _ContractDef("octaplus_smartvariable", "OCTA+ Smart Variable", "indexed", "SMARTVARIABLE"),
-    _ContractDef("octaplus_fixed", "OCTA+ Fixed", "fixed", "Fixed"),
-    _ContractDef("octaplus_ecofixed", "OCTA+ Eco Fixed", "fixed", "ECOFIXED"),
+    _ContractDef("octaplus_boostfix", "OCTA+ Boost Fix", "fixed", "BOOSTFIX"),
+    _ContractDef("octaplus_ecoboostfix", "OCTA+ Eco Boost Fix", "fixed", "ECOBOOSTFIX"),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 
@@ -200,14 +201,14 @@ def _pick_archive_name(
 ) -> str | None:
     """The archive's file name for ``contract`` in one month, or None.
 
-    The listing spells the name "2026-08 G OCTA+FIXED RE WL FR.pdf". The
-    March 2026 one names its fixed cards FIXEDD and ECOFIXEDD instead, the
+    The listing spells the name "2026-10 G OCTA+BOOSTFIX RE WL FR.pdf". The
+    March 2026 one named its fixed cards FIXEDD and ECOFIXEDD instead, the
     Fixed one a revision valid from 16 March, so a name that differs only by a
     doubled letter is taken when it is the only one: no two products fold onto
     each other that way, and a month listing two such names is left unread
     rather than guessed.
     """
-    wanted = f"{month:%Y-%m} G OCTA+{contract.slug.upper()} RE {code} FR.pdf"
+    wanted = f"{month:%Y-%m} G OCTA+{contract.slug} RE {code} FR.pdf"
     if wanted in names:
         return wanted
     near = [name for name in names if _collapse(name) == _collapse(wanted)]
@@ -320,12 +321,13 @@ def parse_snapshot(
 
 
 def _check_product(text: str, contract: _ContractDef) -> None:
-    """The card opens with its product, "GAZ FLUX". The archive match is
-    loose enough to warrant making sure it found the product asked for."""
-    match = re.search(r"^GAZ (\S+)$", text, re.MULTILINE)
+    """The card opens with its product, "GAZ SMARTVARIABLE", "GAZ BOOST FLEX"
+    or "GAZ ECO BOOST FIX": its slug, spaced out. The archive match is loose
+    enough to warrant making sure it found the product asked for."""
+    match = re.search(r"^GAZ ((?:\S+ ?)+?)\s*$", text, re.MULTILINE)
     if match is None:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: product heading not found")
-    if match.group(1) != contract.slug.upper():
+    if "".join(match.group(1).split()) != contract.slug:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: the card is for {match.group(1)}")
 
 

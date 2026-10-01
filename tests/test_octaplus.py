@@ -23,7 +23,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""OCTA+ gas card extractor, against the September 2026 cards."""
+"""OCTA+ gas card extractor, against the October 2026 cards of the range
+sold from that month, and Smart Variable's September card."""
 
 from __future__ import annotations
 
@@ -59,6 +60,14 @@ from tests import fixture_page, fixture_text
 
 _LISTING = "https://srv.octaplus.be/websiterest/getTarifArchive"
 _SHEET = "https://srv.octaplus.be/websiterest/getTariffSheet"
+BOOSTFLEX_WL = "G_OCTA_BOOSTFLEX_RE_WL_FR.pdf"
+ECOBOOSTFLEX_VL = "G_OCTA_ECOBOOSTFLEX_RE_VL_FR.pdf"
+BASICONLINE_VL = "G_OCTA_BASICONLINE_RE_VL_FR.pdf"
+BOOSTFIX_WL = "G_OCTA_BOOSTFIX_RE_WL_FR.pdf"
+ECOBOOSTFIX_VL = "G_OCTA_ECOBOOSTFIX_RE_VL_FR.pdf"
+# Smart Variable's card for October, put up on 30 September, and September's.
+SMARTVARIABLE_WL = "G_OCTA_SMARTVARIABLE_RE_WL_FR.pdf"
+SMARTVARIABLE_VL_SEPTEMBER = "G_OCTA_SMARTVARIABLE_RE_VL_FR.pdf"
 
 
 def _card(name: str) -> str:
@@ -74,36 +83,54 @@ def _v_test(month: str) -> float:
     return float(match.group(1).replace(",", "."))
 
 
-def test_flux_is_indexed_on_ztp_rlp_m() -> None:
-    snap = octaplus.parse_snapshot(
-        "octaplus_flux", REGION_WALLONIA, _card("G_OCTA_FLUX_RE_WL_FR.pdf")
-    )
+def test_boost_flex_is_indexed_on_ztp_rlp_m() -> None:
+    snap = octaplus.parse_snapshot("octaplus_boostflex", REGION_WALLONIA, _card(BOOSTFLEX_WL))
     energy = snap.energy
     assert isinstance(energy, IndexedRates)
     assert energy.index == "ZTP RLP M"
     # Known only once the delivery month is over.
     assert not energy.settled
     assert energy.period == "month"
-    # "ZTP RLP M * 1,010 + 2,160" in EUR/MWh excluding VAT, grossed up by 6%.
-    assert energy.factor == pytest.approx(0.001010 * 1.06)
-    assert energy.base == pytest.approx(0.002160 * 1.06)
-    assert energy.formula == "ZTP RLP M * 1,010 + 2,160"
-    # "Coût du gaz (c€/kWh) 6,89", the twelve-month estimate, and the fee.
-    assert energy.price == pytest.approx(0.0689)
+    # "ZTP RLP M * 1,020 + 3,200" in EUR/MWh excluding VAT, grossed up by 6%.
+    assert energy.factor == pytest.approx(0.001020 * 1.06)
+    assert energy.base == pytest.approx(0.003200 * 1.06)
+    assert energy.formula == "ZTP RLP M * 1,020 + 3,200"
+    # "Coût du gaz (c€/kWh) 7,82", the twelve-month estimate, and the fee.
+    assert energy.price == pytest.approx(0.0782)
     assert energy.yearly_fixed_fee == pytest.approx(65.0)
-    assert snap.publication_label == "2026-09"
-    assert snap.valid_until == date(2026, 9, 30)
-    assert snap.source_url == "https://files.octaplus.be/tariffs/G_OCTA_FLUX_RE_WL_FR.pdf"
+    assert snap.publication_label == "2026-10"
+    assert snap.valid_until == date(2026, 10, 31)
+    assert snap.source_url == "https://files.octaplus.be/tariffs/" + BOOSTFLEX_WL
     # "TVAC" and no rate anywhere on the card.
     assert snap.taxes.card_vat_rate is None
     assert snap.taxes.vat_rate == 0.0
+
+
+@pytest.mark.parametrize(
+    ("contract", "region", "name", "factor", "base", "price", "fee"),
+    [
+        # "GAZ ECO BOOST FLEX", "ZTP RLP M * 1,010 + 16,910".
+        ("octaplus_ecoboostflex", REGION_FLANDERS, ECOBOOSTFLEX_VL, 1.010, 16.910, 0.092, 150.0),
+        # "GAZ BASIC ONLINE", "ZTP RLP M * 1,020 + 1,940".
+        ("octaplus_basiconline", REGION_FLANDERS, BASICONLINE_VL, 1.020, 1.940, 0.0768, 40.0),
+    ],
+)
+def test_the_other_indexed_products(
+    contract: str, region: str, name: str, factor: float, base: float, price: float, fee: float
+) -> None:
+    energy = octaplus.parse_snapshot(contract, region, _card(name)).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(factor / 1000 * 1.06)
+    assert energy.base == pytest.approx(base / 1000 * 1.06)
+    assert energy.price == pytest.approx(price)
+    assert energy.yearly_fixed_fee == pytest.approx(fee)
 
 
 def test_smart_variable_formula_is_spelled_differently() -> None:
     """ "ZTP RLP M* 1,15+ 10 EUR/MWh", with no HTVA; the estimate below shows
     it is excluding VAT like the others."""
     snap = octaplus.parse_snapshot(
-        "octaplus_smartvariable", REGION_FLANDERS, _card("G_OCTA_SMARTVARIABLE_RE_VL_FR.pdf")
+        "octaplus_smartvariable", REGION_FLANDERS, _card(SMARTVARIABLE_VL_SEPTEMBER)
     )
     energy = snap.energy
     assert isinstance(energy, IndexedRates)
@@ -113,19 +140,12 @@ def test_smart_variable_formula_is_spelled_differently() -> None:
     assert energy.yearly_fixed_fee == pytest.approx(160.0)
 
 
-@pytest.mark.parametrize(
-    ("contract", "region", "name"),
-    [
-        ("octaplus_flux", REGION_WALLONIA, "G_OCTA_FLUX_RE_WL_FR.pdf"),
-        ("octaplus_smartvariable", REGION_FLANDERS, "G_OCTA_SMARTVARIABLE_RE_VL_FR.pdf"),
-    ],
-)
-def test_printed_estimate_is_the_formula_at_the_v_test_value(
-    contract: str, region: str, name: str
-) -> None:
+def test_printed_estimate_is_the_formula_at_the_v_test_value() -> None:
     """The card says its price is the formula at the current V-test value,
     published at octaplus.be/prixattendus: 62,209 EUR/MWh for 09/2026."""
-    energy = octaplus.parse_snapshot(contract, region, _card(name)).energy
+    energy = octaplus.parse_snapshot(
+        "octaplus_smartvariable", REGION_FLANDERS, _card(SMARTVARIABLE_VL_SEPTEMBER)
+    ).energy
     assert isinstance(energy, IndexedRates)
     assert energy.at(_v_test("09/2026")) == pytest.approx(energy.price, abs=5e-5)
 
@@ -133,8 +153,8 @@ def test_printed_estimate_is_the_formula_at_the_v_test_value(
 @pytest.mark.parametrize(
     ("contract", "region", "name", "price", "fee"),
     [
-        ("octaplus_fixed", REGION_WALLONIA, "G_OCTA_Fixed_RE_WL_FR.pdf", 0.0825, 65.0),
-        ("octaplus_ecofixed", REGION_FLANDERS, "G_OCTA_ECOFIXED_RE_VL_FR.pdf", 0.0945, 130.0),
+        ("octaplus_boostfix", REGION_WALLONIA, BOOSTFIX_WL, 0.0881, 110.0),
+        ("octaplus_ecoboostfix", REGION_FLANDERS, ECOBOOSTFIX_VL, 0.1002, 150.0),
     ],
 )
 def test_fixed_cards(contract: str, region: str, name: str, price: float, fee: float) -> None:
@@ -142,13 +162,11 @@ def test_fixed_cards(contract: str, region: str, name: str, price: float, fee: f
     assert isinstance(snap.energy, FixedRates)
     assert snap.energy.price == pytest.approx(price)
     assert snap.energy.yearly_fixed_fee == pytest.approx(fee)
-    assert snap.publication_label == "2026-09"
+    assert snap.publication_label == "2026-10"
 
 
 def test_flanders_table() -> None:
-    snap = octaplus.parse_snapshot(
-        "octaplus_ecofixed", REGION_FLANDERS, _card("G_OCTA_ECOFIXED_RE_VL_FR.pdf")
-    )
+    snap = octaplus.parse_snapshot("octaplus_ecoboostfix", REGION_FLANDERS, _card(ECOBOOSTFIX_VL))
     assert set(snap.dsos) == FLUVIUS_KEYS
     # "Fluvius West 19,03 2,69 101,02 1,05 18,92 0,165"
     west = snap.dsos[DSO_FLUVIUS_WEST]
@@ -166,9 +184,7 @@ def test_flanders_table() -> None:
 
 
 def test_wallonia_table_collapses_the_ores_sub_areas() -> None:
-    snap = octaplus.parse_snapshot(
-        "octaplus_flux", REGION_WALLONIA, _card("G_OCTA_FLUX_RE_WL_FR.pdf")
-    )
+    snap = octaplus.parse_snapshot("octaplus_boostflex", REGION_WALLONIA, _card(BOOSTFLEX_WL))
     assert set(snap.dsos) == {DSO_ORES, DSO_RESA}
     # "RESA 34,59 4,64 122,05 2,53 - 0,165"
     resa = snap.dsos[DSO_RESA]
@@ -192,7 +208,7 @@ def test_walloon_levies_as_printed() -> None:
     contribution the law zeroed in August but the card still prints, and
     the connection fee."""
     taxes = octaplus.parse_snapshot(
-        "octaplus_flux", REGION_WALLONIA, _card("G_OCTA_FLUX_RE_WL_FR.pdf")
+        "octaplus_boostflex", REGION_WALLONIA, _card(BOOSTFLEX_WL)
     ).taxes
     [(low_upper, low), (high_upper, high)] = taxes.excise_bands
     assert (low_upper, high_upper) == (12000.0, None)
@@ -204,7 +220,7 @@ def test_walloon_levies_as_printed() -> None:
 
 def test_flemish_card_has_no_connection_fee() -> None:
     taxes = octaplus.parse_snapshot(
-        "octaplus_ecofixed", REGION_FLANDERS, _card("G_OCTA_ECOFIXED_RE_VL_FR.pdf")
+        "octaplus_ecoboostfix", REGION_FLANDERS, _card(ECOBOOSTFIX_VL)
     ).taxes
     assert taxes.excise_bands[0][1] == pytest.approx(0.010929)
     assert taxes.connection_fee == 0.0
@@ -213,56 +229,64 @@ def test_flemish_card_has_no_connection_fee() -> None:
 def test_flemish_card_read_for_wallonia_fails_loud() -> None:
     """The Flemish card prints both DSO tables but no connection fee."""
     with pytest.raises(ExtractorError, match="connection fee"):
-        octaplus.parse_snapshot(
-            "octaplus_ecofixed", REGION_WALLONIA, _card("G_OCTA_ECOFIXED_RE_VL_FR.pdf")
-        )
+        octaplus.parse_snapshot("octaplus_ecoboostfix", REGION_WALLONIA, _card(ECOBOOSTFIX_VL))
 
 
 def test_brussels_is_not_sold() -> None:
     with pytest.raises(ExtractorError):
-        octaplus.parse_snapshot("octaplus_flux", REGION_BRUSSELS, _card("G_OCTA_FLUX_RE_WL_FR.pdf"))
+        octaplus.parse_snapshot("octaplus_boostflex", REGION_BRUSSELS, _card(BOOSTFLEX_WL))
 
 
-def test_card_of_another_product_is_refused() -> None:
-    with pytest.raises(ExtractorError, match="the card is for FLUX"):
-        octaplus.parse_snapshot(
-            "octaplus_ecoflux", REGION_WALLONIA, _card("G_OCTA_FLUX_RE_WL_FR.pdf")
-        )
+@pytest.mark.parametrize(
+    ("contract", "name", "named"),
+    [
+        # Two products whose headings share every word but one.
+        ("octaplus_ecoboostflex", BOOSTFLEX_WL, "BOOST FLEX"),
+        ("octaplus_boostfix", BOOSTFLEX_WL, "BOOST FLEX"),
+        ("octaplus_boostflex", SMARTVARIABLE_WL, "SMARTVARIABLE"),
+    ],
+)
+def test_card_of_another_product_is_refused(contract: str, name: str, named: str) -> None:
+    with pytest.raises(ExtractorError, match=f"the card is for {named}"):
+        octaplus.parse_snapshot(contract, REGION_WALLONIA, _card(name))
 
 
 def test_a_formula_printed_with_decimal_points_is_read_whole() -> None:
-    text = _card("G_OCTA_FLUX_RE_WL_FR.pdf").replace("* 1,010 + 2,160", "* 1.010 + 2.160")
-    energy = octaplus.parse_snapshot("octaplus_flux", REGION_WALLONIA, text).energy
+    text = _card(BOOSTFLEX_WL).replace("* 1,020 + 3,200", "* 1.020 + 3.200")
+    energy = octaplus.parse_snapshot("octaplus_boostflex", REGION_WALLONIA, text).energy
     assert isinstance(energy, IndexedRates)
-    assert energy.factor == pytest.approx(0.001010 * 1.06)
-    assert energy.base == pytest.approx(0.002160 * 1.06)
+    assert energy.factor == pytest.approx(0.001020 * 1.06)
+    assert energy.base == pytest.approx(0.003200 * 1.06)
 
 
 def test_card_that_lost_its_formula_fails_loud() -> None:
-    text = _card("G_OCTA_FLUX_RE_WL_FR.pdf").replace("ZTP RLP M *", "ZTP RLP *")
+    text = _card(BOOSTFLEX_WL).replace("ZTP RLP M *", "ZTP RLP *")
     with pytest.raises(ExtractorError, match="formula"):
-        octaplus.parse_snapshot("octaplus_flux", REGION_WALLONIA, text)
+        octaplus.parse_snapshot("octaplus_boostflex", REGION_WALLONIA, text)
 
 
 def test_regions_and_kinds() -> None:
+    """The range sold from October 2026; Flux, Eco Flux, Fixed and Eco Fixed
+    were withdrawn."""
     by_id = {c.id: c for c in octaplus.EXTRACTOR.contracts}
     assert set(by_id) == {
-        "octaplus_flux",
-        "octaplus_ecoflux",
+        "octaplus_basiconline",
+        "octaplus_boostflex",
+        "octaplus_ecoboostflex",
         "octaplus_smartvariable",
-        "octaplus_fixed",
-        "octaplus_ecofixed",
+        "octaplus_boostfix",
+        "octaplus_ecoboostfix",
     }
     assert {c.regions for c in by_id.values()} == {frozenset({REGION_FLANDERS, REGION_WALLONIA})}
     assert by_id["octaplus_smartvariable"].kind == "indexed"
-    assert by_id["octaplus_fixed"].kind == "fixed"
+    assert by_id["octaplus_boostfix"].kind == "fixed"
 
 
 async def test_fetch_uses_the_file_name_the_tariff_page_links() -> None:
-    text = _card("G_OCTA_Fixed_RE_WL_FR.pdf")
+    text = _card(BOOSTFIX_WL)
     with patch.object(octaplus, "fetch_pdf_text_layout", AsyncMock(return_value=text)) as fetched:
-        snap = await octaplus.fetch(AsyncMock(), "octaplus_fixed", REGION_WALLONIA)
-    url = "https://files.octaplus.be/tariffs/G_OCTA_Fixed_RE_WL_FR.pdf"
+        snap = await octaplus.fetch(AsyncMock(), "octaplus_boostfix", REGION_WALLONIA)
+    url = "https://files.octaplus.be/tariffs/" + BOOSTFIX_WL
     assert fetched.call_args.args[1] == url
     assert snap.source_url == url
 
@@ -271,76 +295,87 @@ async def test_probe_heads_the_card() -> None:
     """The month is in the key, so a card read before its month began is
     read again once it begins."""
     with (
-        freeze_time(datetime(2026, 8, 31, 21, 59)),
+        freeze_time(datetime(2026, 9, 30, 21, 59)),
         patch.object(
-            octaplus, "head_freshness_key", AsyncMock(return_value="Mon, 31 Aug 2026")
+            octaplus, "head_freshness_key", AsyncMock(return_value="Wed, 30 Sep 2026")
         ) as head,
     ):
-        probed = AsyncMock(), "octaplus_flux", REGION_FLANDERS
-        assert await octaplus.probe(*probed) == "Mon, 31 Aug 2026 2026-08"
-        with freeze_time(datetime(2026, 8, 31, 22, 1)):
-            assert await octaplus.probe(*probed) == "Mon, 31 Aug 2026 2026-09"
-    assert head.call_args.args[1] == "https://files.octaplus.be/tariffs/G_OCTA_FLUX_RE_VL_FR.pdf"
+        probed = AsyncMock(), "octaplus_smartvariable", REGION_FLANDERS
+        assert await octaplus.probe(*probed) == "Wed, 30 Sep 2026 2026-09"
+        with freeze_time(datetime(2026, 9, 30, 22, 1)):
+            assert await octaplus.probe(*probed) == "Wed, 30 Sep 2026 2026-10"
+    assert head.call_args.args[1] == (
+        "https://files.octaplus.be/tariffs/G_OCTA_SMARTVARIABLE_RE_VL_FR.pdf"
+    )
+
+
+_SEPTEMBER_ARCHIVE = {
+    "AnneeMois=202609": "getTarifArchive_WL_202609_G_RE.json",
+    "RequestedPDF=2026-09+G+OCTA%2BSMARTVARIABLE+RE+WL+FR.pdf": (
+        "getTariffSheet_2026-09 G OCTA+SMARTVARIABLE RE WL FR.json"
+    ),
+}
 
 
 async def test_the_running_month_s_card_stands_in_for_one_put_up_early() -> None:
-    """On 31 August afternoon the card online is already September's: fetch
-    returns it as it stands, which the card archive stores, and an
-    installation is priced on August's from OCTA+'s archive."""
-    online = AsyncMock(return_value=_card("G_OCTA_FLUX_RE_WL_FR.pdf"))
-    pages = {
-        "AnneeMois=202608": "getTarifArchive_WL_202608_G_RE.json",
-        "RequestedPDF=2026-08+G+OCTA%2BFLUX+RE+WL+FR.pdf": "getTariffSheet_2026-08 G OCTA+FLUX RE WL FR.json",
-    }
-    archive = AsyncMock(side_effect=_archive(pages))
+    """On 30 September afternoon Smart Variable's card online is already
+    October's: fetch returns it as it stands, which the card archive stores,
+    and an installation is priced on September's from OCTA+'s archive."""
+    online = AsyncMock(return_value=_card(SMARTVARIABLE_WL))
+    archive = AsyncMock(side_effect=_archive(_SEPTEMBER_ARCHIVE))
     with (
         patch.object(octaplus, "fetch_pdf_text_layout", online),
         patch.object(octaplus, "fetch_text", archive),
     ):
-        snap = await octaplus.fetch(AsyncMock(), "octaplus_flux", REGION_WALLONIA)
-        assert snap.publication_label == "2026-09"
+        snap = await octaplus.fetch(AsyncMock(), "octaplus_smartvariable", REGION_WALLONIA)
+        assert snap.publication_label == "2026-10"
         archive.assert_not_called()
         snap, source = await current_card(
             AsyncMock(),
             octaplus.EXTRACTOR,
-            "octaplus_flux",
-            REGION_WALLONIA,
-            "2026-08",
-            use_archive=False,
-        )
-        assert (snap.publication_label, source) == ("2026-08", "live")
-        # "Coût du gaz (c€/kWh) 6,14" on the August card, 6,89 on September's.
-        assert snap.energy.price == pytest.approx(0.0614)
-        archive.reset_mock()
-        snap, _source = await current_card(
-            AsyncMock(),
-            octaplus.EXTRACTOR,
-            "octaplus_flux",
+            "octaplus_smartvariable",
             REGION_WALLONIA,
             "2026-09",
             use_archive=False,
         )
-        assert snap.publication_label == "2026-09"
+        assert (snap.publication_label, source) == ("2026-09", "live")
+        # "Coût du gaz (c€/kWh) 8,64" on the September card, 9,49 on October's.
+        assert snap.energy.price == pytest.approx(0.0864)
+        archive.reset_mock()
+        snap, _source = await current_card(
+            AsyncMock(),
+            octaplus.EXTRACTOR,
+            "octaplus_smartvariable",
+            REGION_WALLONIA,
+            "2026-10",
+            use_archive=False,
+        )
+        assert snap.publication_label == "2026-10"
         archive.assert_not_called()
 
 
 async def test_a_card_put_up_early_is_kept_over_another_month_s() -> None:
     """The archive answering with another month's card is no stand-in."""
-    online = AsyncMock(return_value=_card("G_OCTA_FLUX_RE_WL_FR.pdf"))
-    july = octaplus.parse_snapshot(
-        "octaplus_flux", REGION_WALLONIA, _card("G_OCTA_FLUX_RE_WL_FR.pdf")
+    online = AsyncMock(return_value=_card(SMARTVARIABLE_WL))
+    august = octaplus.parse_snapshot(
+        "octaplus_smartvariable", REGION_WALLONIA, _card(SMARTVARIABLE_WL)
     )
-    july = replace(july, publication_label="2026-07", valid_until=date(2026, 7, 31))
-    stub = replace(octaplus.EXTRACTOR, fetch_for_month=AsyncMock(return_value=july))
+    august = replace(august, publication_label="2026-08", valid_until=date(2026, 8, 31))
+    stub = replace(octaplus.EXTRACTOR, fetch_for_month=AsyncMock(return_value=august))
     with patch.object(octaplus, "fetch_pdf_text_layout", online):
         snap, _source = await current_card(
-            AsyncMock(), stub, "octaplus_flux", REGION_WALLONIA, "2026-08", use_archive=False
+            AsyncMock(),
+            stub,
+            "octaplus_smartvariable",
+            REGION_WALLONIA,
+            "2026-09",
+            use_archive=False,
         )
-    assert snap.publication_label == "2026-09"
+    assert snap.publication_label == "2026-10"
 
 
 async def test_a_card_put_up_early_is_kept_when_the_archive_has_none() -> None:
-    online = AsyncMock(return_value=_card("G_OCTA_FLUX_RE_WL_FR.pdf"))
+    online = AsyncMock(return_value=_card(SMARTVARIABLE_WL))
     with (
         patch.object(octaplus, "fetch_pdf_text_layout", online),
         patch.object(octaplus, "fetch_text", AsyncMock(side_effect=_archive({}))),
@@ -348,12 +383,12 @@ async def test_a_card_put_up_early_is_kept_when_the_archive_has_none() -> None:
         snap, _source = await current_card(
             AsyncMock(),
             octaplus.EXTRACTOR,
-            "octaplus_flux",
+            "octaplus_smartvariable",
             REGION_WALLONIA,
-            "2026-08",
+            "2026-09",
             use_archive=False,
         )
-    assert snap.publication_label == "2026-09"
+    assert snap.publication_label == "2026-10"
 
 
 def test_index_table_reads_ztp_rlp_by_delivery_month() -> None:
@@ -394,7 +429,7 @@ def test_an_archive_sheet_that_is_not_base64_is_an_extractor_error(payload: str)
     which the month cache would not catch."""
     reply = json.dumps({"Response": {"TariffSheet": f"data:application/pdf;base64,{payload}"}})
     with pytest.raises(ExtractorError, match="bad base64"):
-        octaplus._archive_pdf(reply, "G_OCTA_FLUX_RE_WL_FR")
+        octaplus._archive_pdf(reply, "G_OCTA_BOOSTFLEX_RE_WL_FR")
 
 
 async def test_fetch_for_month_reads_the_archived_card_through_the_render_hook() -> None:
@@ -405,89 +440,86 @@ async def test_fetch_for_month_reads_the_archived_card_through_the_render_hook()
         return render(payload)
 
     pages = {
-        "AnneeMois=202608": "getTarifArchive_WL_202608_G_RE.json",
-        "RequestedPDF=2026-08+G+OCTA%2BFLUX+RE+WL+FR.pdf": "getTariffSheet_2026-08 G OCTA+FLUX RE WL FR.json",
+        "AnneeMois=202610": "getTarifArchive_WL_202610_G_RE.json",
+        "RequestedPDF=2026-10+G+OCTA%2BBOOSTFLEX+RE+WL+FR.pdf": (
+            "getTariffSheet_2026-10 G OCTA+BOOSTFLEX RE WL FR.json"
+        ),
     }
     fetched = AsyncMock(side_effect=_archive(pages))
     with patch.object(octaplus, "fetch_text", fetched), render_through(hook):
         snap = await octaplus.fetch_for_month(
-            AsyncMock(), "octaplus_flux", REGION_WALLONIA, date(2026, 8, 1)
+            AsyncMock(), "octaplus_boostflex", REGION_WALLONIA, date(2026, 10, 1)
         )
     assert snap is not None
-    assert snap.publication_label == "2026-08"
-    assert snap.valid_until == date(2026, 8, 31)
-    # "Coût du gaz (c€/kWh) 6,14" on the August card.
-    assert snap.energy.price == pytest.approx(0.0614)
+    assert snap.publication_label == "2026-10"
+    assert snap.valid_until == date(2026, 10, 31)
+    assert snap.energy.price == pytest.approx(0.0782)
     listing = fetched.call_args_list[0].args[1]
     assert listing == (
-        f"{_LISTING}?Lang=FR&Region=WL&AnneeMois=202608&Nrj=G&Canal=website&TypeContrat=RE"
+        f"{_LISTING}?Lang=FR&Region=WL&AnneeMois=202610&Nrj=G&Canal=website&TypeContrat=RE"
     )
-    sheet = f"{_SHEET}?Canal=website&RequestedPDF=2026-08+G+OCTA%2BFLUX+RE+WL+FR.pdf"
+    sheet = f"{_SHEET}?Canal=website&RequestedPDF=2026-10+G+OCTA%2BBOOSTFLEX+RE+WL+FR.pdf"
     assert fetched.call_args_list[1].args[1] == sheet
     assert rendered == [("layout", sheet)]
     assert snap.source_url == sheet
 
 
-async def test_fetch_for_month_spells_fixed_as_the_archive_does() -> None:
-    """The live file is G_OCTA_Fixed_...; the archive lists FIXED."""
+async def test_fetch_for_month_reads_a_sheet_the_archive_does_not_hold_as_none() -> None:
+    """A name the sheet endpoint does not hold is answered 200 with "Ok":
+    "False", which is no card rather than a failed fetch."""
     pages = {
-        "AnneeMois=202608": "getTarifArchive_VL_202608_G_RE.json",
+        "AnneeMois=202610": "getTarifArchive_WL_202610_G_RE.json",
         "RequestedPDF=": "getTariffSheet_missing.json",
     }
     fetched = AsyncMock(side_effect=_archive(pages))
     with patch.object(octaplus, "fetch_text", fetched):
         assert (
             await octaplus.fetch_for_month(
-                AsyncMock(), "octaplus_fixed", REGION_FLANDERS, date(2026, 8, 1)
+                AsyncMock(), "octaplus_boostfix", REGION_WALLONIA, date(2026, 10, 1)
             )
             is None
         )
-    assert "RequestedPDF=2026-08+G+OCTA%2BFIXED+RE+VL+FR.pdf" in fetched.call_args_list[1].args[1]
+    assert (
+        "RequestedPDF=2026-10+G+OCTA%2BBOOSTFIX+RE+WL+FR.pdf" in fetched.call_args_list[1].args[1]
+    )
 
 
-@pytest.mark.parametrize(
-    ("contract", "listed"),
-    [("octaplus_fixed", "OCTA%2BFIXEDD+RE"), ("octaplus_ecofixed", "OCTA%2BECOFIXEDD+RE")],
-)
-async def test_fetch_for_month_takes_the_one_name_with_a_doubled_letter(
-    contract: str, listed: str
-) -> None:
-    """March 2026 lists its fixed cards as FIXEDD and ECOFIXEDD."""
-    pages = {
-        "AnneeMois=202603": "getTarifArchive_WL_202603_G_RE.json",
-        "RequestedPDF=": "getTariffSheet_missing.json",
-    }
-    fetched = AsyncMock(side_effect=_archive(pages))
-    with patch.object(octaplus, "fetch_text", fetched):
-        await octaplus.fetch_for_month(AsyncMock(), contract, REGION_WALLONIA, date(2026, 3, 1))
-    assert listed in fetched.call_args_list[1].args[1]
+def test_an_archive_name_with_a_doubled_letter_is_taken_when_it_is_the_only_one() -> None:
+    """March 2026 listed its fixed cards as FIXEDD and ECOFIXEDD."""
+    contract = octaplus._CONTRACTS_BY_ID["octaplus_boostfix"]
+    doubled = "2026-03 G OCTA+BOOSTFIXX RE WL FR.pdf"
+    names = [doubled, "2026-03 G OCTA+ECOBOOSTFIX RE WL FR.pdf"]
+    assert octaplus._pick_archive_name(names, contract, "WL", date(2026, 3, 1)) == doubled
+    twice = [*names, "2026-03 G OCTA+BOOSSTFIX RE WL FR.pdf"]
+    assert octaplus._pick_archive_name(twice, contract, "WL", date(2026, 3, 1)) is None
 
 
 async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:
-    """The July listing names the card, but the sheet answers August's."""
+    """The July listing names the card, but the sheet answers September's."""
     pages = {
         "AnneeMois=202607": "getTarifArchive_WL_202607_G_RE.json",
-        "RequestedPDF=": "getTariffSheet_2026-08 G OCTA+FLUX RE WL FR.json",
+        "RequestedPDF=": "getTariffSheet_2026-09 G OCTA+SMARTVARIABLE RE WL FR.json",
     }
     with patch.object(octaplus, "fetch_text", AsyncMock(side_effect=_archive(pages))):
         assert (
             await octaplus.fetch_for_month(
-                AsyncMock(), "octaplus_flux", REGION_WALLONIA, date(2026, 7, 1)
+                AsyncMock(), "octaplus_smartvariable", REGION_WALLONIA, date(2026, 7, 1)
             )
             is None
         )
 
 
 async def test_fetch_for_month_has_no_card_for_the_older_template() -> None:
-    """The May 2026 card is the template before the June redesign."""
+    """The May 2026 card is the template before the June redesign ("Tarif :
+    Smart Variable")."""
     pages = {
         "AnneeMois=202605": "getTarifArchive_WL_202605_G_RE.json",
-        "RequestedPDF=": "getTariffSheet_2026-05 G OCTA+FLUX RE WL FR.json",
+        "RequestedPDF=": "getTariffSheet_2026-05 G OCTA+SMARTVARIABLE RE WL FR.json",
     }
     with patch.object(octaplus, "fetch_text", AsyncMock(side_effect=_archive(pages))):
         assert (
             await octaplus.fetch_for_month(
-                AsyncMock(), "octaplus_flux", REGION_WALLONIA, date(2026, 5, 1)
+                AsyncMock(), "octaplus_smartvariable", REGION_WALLONIA, date(2026, 5, 1)
             )
             is None
         )
@@ -503,7 +535,7 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
         pytest.raises(ExtractorError),
     ):
         await octaplus.fetch_for_month(
-            AsyncMock(), "octaplus_flux", REGION_WALLONIA, date(2026, 8, 1)
+            AsyncMock(), "octaplus_boostflex", REGION_WALLONIA, date(2026, 10, 1)
         )
 
 
@@ -512,7 +544,7 @@ async def test_fetch_for_month_asks_nothing_for_brussels() -> None:
     with patch.object(octaplus, "fetch_text", fetched):
         assert (
             await octaplus.fetch_for_month(
-                AsyncMock(), "octaplus_flux", REGION_BRUSSELS, date(2026, 8, 1)
+                AsyncMock(), "octaplus_boostflex", REGION_BRUSSELS, date(2026, 10, 1)
             )
             is None
         )
