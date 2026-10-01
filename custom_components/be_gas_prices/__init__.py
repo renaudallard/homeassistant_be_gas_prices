@@ -30,7 +30,12 @@ from __future__ import annotations
 from datetime import datetime
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import (
+    SIGNAL_CONFIG_ENTRY_CHANGED,
+    ConfigEntry,
+    ConfigEntryChange,
+    ConfigEntryState,
+)
 from homeassistant.core import (
     HomeAssistant,
     ServiceCall,
@@ -40,6 +45,7 @@ from homeassistant.core import (
 )
 from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
@@ -86,6 +92,15 @@ def _loaded_coordinators(hass: HomeAssistant, entry_id: str | None) -> list[GasC
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the services once, whatever the number of entries."""
+
+    @callback
+    def _entry_changed(_change: ConfigEntryChange, entry: ConfigEntry) -> None:
+        # An entry whose setup was retrying is not unloaded when it is
+        # disabled, only stopped: its Repairs cards go with it here.
+        if entry.domain == DOMAIN and entry.state is ConfigEntryState.NOT_LOADED:
+            clear_issues(hass, entry.entry_id)
+
+    async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, _entry_changed)
 
     async def _refresh(call: ServiceCall) -> None:
         for coordinator in _loaded_coordinators(hass, call.data.get("entry_id")):

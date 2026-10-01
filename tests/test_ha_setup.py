@@ -37,7 +37,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.repairs import repairs_flow_manager
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import ConfigEntryDisabler, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
@@ -200,6 +200,25 @@ async def test_a_network_failure_keeps_an_unreadable_card_marked(
     await coordinator.async_force_refresh(wait=True)
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is not None
     assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_disabling_a_retrying_entry_clears_its_repairs_cards(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Home Assistant does not unload an entry whose setup is retrying, so
+    its cards are cleared when it stops."""
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    issues = ir.async_get(hass)
+    key = f"card_unreadable_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, key) is not None
+    await hass.config_entries.async_set_disabled_by(entry.entry_id, ConfigEntryDisabler.USER)
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, key) is None
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
