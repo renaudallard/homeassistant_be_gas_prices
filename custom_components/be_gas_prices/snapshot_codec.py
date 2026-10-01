@@ -40,7 +40,9 @@ from .providers._rates import EnergyRates, FixedRates, IndexedRates, VariableRat
 from .providers.base import DsoOverlay, DsoTier, SupplierSnapshot, TaxOverlay
 
 # Bumped whenever a field is added, removed or changes meaning, so a blob an
-# older release wrote is dropped instead of being read with a wrong shape.
+# older release wrote is dropped instead of being read with a wrong shape;
+# and by a release that refuses a card an older one misread, since a stored
+# card no one serves any more is otherwise kept.
 SNAPSHOT_SCHEMA_VERSION = 1
 
 

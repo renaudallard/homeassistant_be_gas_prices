@@ -43,7 +43,7 @@ from typing import Any, Literal
 import aiohttp
 from homeassistant.util import dt as dt_util
 
-from .const import CARD_ARCHIVE_KEEP_MONTHS, CARD_ARCHIVE_URL
+from .const import CARD_ARCHIVE_URL
 from .providers._pdf import USER_AGENT, error_text
 from .providers.base import (
     CardNotReadableError,
@@ -196,13 +196,6 @@ async def current_card(
     return snapshot, "live"
 
 
-def _within_archive(month: str) -> bool:
-    """Whether the card archive still keeps ``month``."""
-    today = dt_util.now().date()
-    year, number = (int(part) for part in month.split("-"))
-    return (today.year - year) * 12 + today.month - number <= CARD_ARCHIVE_KEEP_MONTHS
-
-
 class MonthCardCache:
     """Past months' cards for one entry, in memory and in its store."""
 
@@ -264,16 +257,11 @@ class MonthCardCache:
         if snapshot is None and unavailable is not None:
             raise unavailable
         row = MonthCard(snapshot=snapshot, source=source, fetched_at=now)
-        if (
-            snapshot is None
-            and held is not None
-            and held.snapshot is not None
-            and not _within_archive(month)
-        ):
-            # A month past the card archive's reach (a signing card), which
-            # no one serves any more: the stored reading is all there is.
-            # Within its reach no card means the month's card is refused
-            # now, and the old reading goes.
+        if snapshot is None and held is not None and held.snapshot is not None:
+            # No card of the month to be found, which says nothing of the
+            # stored one (a signing card no one serves any more): it stays.
+            # A release that refuses a card it once misread drops it by
+            # bumping the snapshot schema.
             row = replace(held, reread=False)
         self._rows[key] = row
         return row

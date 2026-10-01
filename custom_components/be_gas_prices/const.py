@@ -275,8 +275,6 @@ STORAGE_VERSION: Final = 1
 CARD_ARCHIVE_URL: Final = (
     "https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/cards"
 )
-# The card archive keeps the running month and the twelve before it.
-CARD_ARCHIVE_KEEP_MONTHS: Final = 12
 
 # Atrias publishes the monthly gross calorific value of every gas reception
 # station in Belgium. The API wants the public subscription key its own site

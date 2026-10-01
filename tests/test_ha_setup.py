@@ -872,7 +872,7 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize(
     ("same_release", "served", "price"),
-    [(True, True, 1.0), (False, True, 0.07643), (False, False, None)],
+    [(True, True, 1.0), (False, True, 0.07643), (False, False, 1.0)],
 )
 async def test_month_cards_stored_by_another_release_are_read_again(
     hass: HomeAssistant,
@@ -883,9 +883,8 @@ async def test_month_cards_stored_by_another_release_are_read_again(
     price: float | None,
 ) -> None:
     """A release may read a card better than the one that stored it: the
-    past months' cards another release stored are fetched afresh. August is
-    within the card archive's reach, so no card of it now means the old
-    reading is refused, and it goes."""
+    past months' cards another release stored are fetched afresh, and kept
+    when no card of the month can be found."""
     card = fetch.return_value
     august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
     misread = replace(august, energy=replace(august.energy, price=1.0))
