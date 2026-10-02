@@ -335,6 +335,65 @@ async def test_typed_figures_alone_unfold_the_section(hass: HomeAssistant) -> No
     assert schema.schema["advanced"].options == {"collapsed": False}
 
 
+@pytest.mark.parametrize(
+    ("held", "folded"),
+    [
+        ({CONF_TARIFF_CARD_DATE: "2026-02-10"}, False),
+        ({CONF_CONTRACT_END_DATE: "2027-03-01"}, False),
+        ({CONF_CONTRACT_START_DATE: "2026-03-01", CONF_YTD_FROM_CONTRACT_START: True}, False),
+        # The start date is not in the section.
+        ({CONF_CONTRACT_START_DATE: "2026-03-01"}, True),
+    ],
+)
+async def test_settings_unfold_the_section_for_what_it_holds(
+    hass: HomeAssistant, held: dict[str, Any], folded: bool
+) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, **held})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    schema = result["data_schema"]
+    assert schema is not None
+    assert schema.schema["advanced"].options == {"collapsed": folded}
+    # Each date the section holds is offered again, so saving keeps it.
+    for key in (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE):
+        if key in held:
+            field = next(k for k in _advanced(schema) if k == key)
+            assert field.description == {"suggested_value": held[key]}
+
+
+async def test_figures_left_from_another_supplier_do_not_unfold_a_custom_entry(
+    hass: HomeAssistant,
+) -> None:
+    """An entry with a typed fee moved to the custom supplier: there is no
+    switch for the fee in its section, so the section stays folded and the
+    fee goes."""
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_MANUAL_FEE: 50.0})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: SUPPLIER_CUSTOM},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    schema = result["data_schema"]
+    assert schema is not None
+    assert schema.schema["advanced"].options == {"collapsed": True}
+    assert "signed_rate" not in _advanced(schema)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONTRACT: CUSTOM_CONTRACT}
+    )
+    assert result["step_id"] == "dso"
+
+
 async def test_a_postcode_partly_on_an_unpriced_network_is_warned_about(
     hass: HomeAssistant,
 ) -> None:
