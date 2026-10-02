@@ -14,7 +14,7 @@ once in `_FlowSteps` over `self._data`.
 | `supplier` | Supplier | Suppliers with a contract in the region, withdrawn ones hidden, the custom supplier last. |
 | `contract` | Contract, start date, tariff card month, end date, count from start | End before start is refused. Blanked dates are removed. Count from start is not offered while a change of contract is recorded this year, since the year then starts with the earlier contract. |
 | `signed_rate` | Price or factor and base, yearly fee | Only when a start date or card month is set, and never for the custom supplier, whose card is already the typed figures; all optional. See `manual_rate.py`. |
-| `dso` | DSO | Narrowed to the postcode's DSOs when it resolved. |
+| `dso` | DSO | Narrowed to the postcode's DSOs when it resolved, and skipped when one is left: every postcode with gas names a single DSO, and Brussels has only Sibelga. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Walloon fee and the Brussels levy only in their region. |
 | `household` | Annual consumption, Brussels meter caliber, gas meter, conversion mode, card archive, daily ranking | The caliber only in Brussels. The conversion mode defaults to the bill's factor. The card archive cannot be off for a supplier whose cards are page images (`images_only`, Ecofix). |
 | `station` | Reception station | The stations Atrias gave a value in either of its two latest months, plus the entry's own station when it is in neither, so its settings save without another pick. If Atrias cannot be read, an entry that names its station already keeps it and saves; otherwise the flow moves to `factor` with an error. |

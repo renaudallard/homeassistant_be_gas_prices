@@ -367,6 +367,9 @@ class _FlowSteps:
     async def async_step_dso(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         region = self._data[CONF_REGION]
         options = _dso_options(region, getattr(self, "_candidates", ()))
+        if user_input is None and len(options) == 1:
+            # The postcode names the operator: there is nothing to pick.
+            user_input = {CONF_DSO: options[0]["value"]}
         if user_input is not None:
             self._data[CONF_DSO] = user_input[CONF_DSO]
             if self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM:
@@ -375,8 +378,7 @@ class _FlowSteps:
                 self._data.pop(key, None)
             return await self.async_step_household()
         current = self._data.get(CONF_DSO)
-        valid = [o["value"] for o in options]
-        default = current if current in valid else (valid[0] if len(valid) == 1 else vol.UNDEFINED)
+        default = current if any(o["value"] == current for o in options) else vol.UNDEFINED
         schema = vol.Schema({vol.Required(CONF_DSO, default=default): _select(options)})
         return self.async_show_form(step_id="dso", data_schema=schema)
 

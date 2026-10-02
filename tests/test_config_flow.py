@@ -128,8 +128,7 @@ async def test_postcode_resolves_the_region_and_the_dso(hass: HomeAssistant) -> 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_CONTRACT: "engie_flow"}
     )
-    assert result["step_id"] == "dso"
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
+    # The postcode named the operator, so it is not asked.
     assert result["step_id"] == "household"
     # The bill's factor carries the DSO's pressure and temperature correction
     # the station value leaves out, so it is the one offered first.
@@ -175,10 +174,8 @@ async def test_blank_postcode_asks_the_region(hass: HomeAssistant) -> None:
     # A start date offers the figures signed at; left empty, the card gives them.
     assert result["step_id"] == "signed_rate"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
-    assert result["step_id"] == "dso"
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {CONF_DSO: DSO_SIBELGA}
-    )
+    # Sibelga is the only operator in Brussels.
+    assert result["step_id"] == "household"
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
@@ -194,6 +191,7 @@ async def test_blank_postcode_asks_the_region(hass: HomeAssistant) -> None:
         result["flow_id"], {CONF_CONVERSION_FACTOR: 11.4}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_DSO] == DSO_SIBELGA
     assert result["data"][CONF_CALIBER] == "q16"
     assert result["data"][CONF_CONVERSION_FACTOR] == 11.4
     assert result["data"][CONF_CONTRACT_START_DATE] == "2026-03-01"
