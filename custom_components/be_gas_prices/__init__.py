@@ -190,9 +190,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
     if coordinator.meter_reads_pending:
         # The first refresh read no meter, since Home Assistant waits on it:
-        # the one that does runs now, while the rest of it starts. Not a
-        # requested refresh, which the month cards' own request may already
-        # hold back for its cooldown; this one takes the same lock.
+        # the one that does runs now, while the rest of it starts. On the
+        # refresh lock rather than a requested refresh, which Home Assistant
+        # drops when it comes due while another tick holds that lock.
         entry.async_create_background_task(
             hass,
             coordinator.async_reprice(lambda: coordinator.meter_reads_pending),

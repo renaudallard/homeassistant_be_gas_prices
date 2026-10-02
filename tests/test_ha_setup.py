@@ -185,7 +185,7 @@ async def test_a_failing_supplier_keeps_the_last_card(
     coordinator = entry.runtime_data
     fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
     for _ in range(2):
-        # A requested refresh waits out the cooldown of the one before it.
+        # Each press is a fetch of its own.
         await coordinator.async_force_refresh()
         freezer.tick(timedelta(seconds=11))
         async_fire_time_changed(hass)
@@ -1366,8 +1366,8 @@ async def test_a_fetch_forced_during_the_startup_reprice_is_made(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
     """The refresh button pressed while the meter is read after setup, with
-    August's card landing then: the reprice August asks for runs next and
-    cancels the request the press made, so it makes the fetch itself."""
+    August's card landing then: the press and the reprice August asks for
+    both wait on the lock, and whichever runs first makes the one fetch."""
     card = fetch.return_value
     august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
     meter_gate = asyncio.Event()
@@ -1413,9 +1413,9 @@ async def test_a_fetch_forced_during_the_startup_reprice_is_made(
 async def test_a_fetch_forced_during_a_long_startup_meter_read_is_made(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
-    """The meter read after setup outlasts the cooldown of the request the
-    press made, which then comes due while the read holds the lock and is
-    dropped: the read asks for the fetch again once it is done."""
+    """The meter read after setup outlasts the cooldown a requested refresh
+    would wait out, which Home Assistant drops with the lock held: the
+    press waits on the lock itself and is fetched once the read is done."""
     gate = asyncio.Event()
 
     async def slow(_self: Any, _today: date) -> Any:
