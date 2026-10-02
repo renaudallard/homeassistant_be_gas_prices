@@ -22,6 +22,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
@@ -110,6 +111,12 @@ COMPARE_BUDGET_S = 120.0
 
 # The date fields a household may blank to remove.
 _DATE_FIELDS = (CONF_CONTRACT_START_DATE, CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE)
+
+# The contract form's folded section, what it stores, and its choice to
+# type the contract's figures, which is not stored.
+_ADVANCED = "advanced"
+_ADVANCED_KEYS = (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE, CONF_YTD_FROM_CONTRACT_START)
+_SIGNED_RATE = "signed_rate"
 
 
 def _suppliers_for(region: str) -> list[SelectOptionDict]:
@@ -275,34 +282,52 @@ class _FlowSteps:
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         contracts = _contracts_for(self._data[CONF_SUPPLIER], self._data[CONF_REGION])
+        # The custom card is the household's own figures already.
+        custom = self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM
         errors: dict[str, str] = {}
         # With a change of contract recorded this year, the year's cost starts
         # with the earlier contract: counting from this one's start would
         # leave its days out, so the choice is not offered.
         switched = bool(periods_this_year(self._data, dt_util.now().date()))
         if user_input is not None:
-            start = user_input.get(CONF_CONTRACT_START_DATE)
-            end = user_input.get(CONF_CONTRACT_END_DATE)
+            # The folded fields are stored with the others.
+            given = {k: v for k, v in user_input.items() if k != _ADVANCED}
+            given.update(user_input.get(_ADVANCED, {}))
+            signed = bool(given.pop(_SIGNED_RATE, False))
+            start = given.get(CONF_CONTRACT_START_DATE)
+            end = given.get(CONF_CONTRACT_END_DATE)
             if start and end and str(end) <= str(start):
-                errors[CONF_CONTRACT_END_DATE] = "end_before_start"
+                errors["base"] = "end_before_start"
             else:
                 for key in _DATE_FIELDS:
-                    if not user_input.get(key):
+                    if not given.get(key):
                         self._data.pop(key, None)
-                self._data.update({k: v for k, v in user_input.items() if v not in (None, "")})
+                self._data.update({k: v for k, v in given.items() if v not in (None, "")})
                 if not self._data.get(CONF_CONTRACT_START_DATE) or switched:
                     self._data.pop(CONF_YTD_FROM_CONTRACT_START, None)
-                # The custom card is the household's own figures already.
-                if self._data[CONF_SUPPLIER] != SUPPLIER_CUSTOM and (
-                    self._data.get(CONF_CONTRACT_START_DATE)
-                    or self._data.get(CONF_TARIFF_CARD_DATE)
-                ):
+                if signed and not custom:
                     return await self.async_step_signed_rate()
                 for key in MANUAL_RATE_KEYS:
                     self._data.pop(key, None)
                 return await self.async_step_dso()
         current = self._data.get(CONF_CONTRACT)
         default = current if any(c.id == current for c in contracts) else vol.UNDEFINED
+        advanced: dict[Any, Any] = {
+            vol.Optional(CONF_TARIFF_CARD_DATE): DateSelector(),
+            vol.Optional(CONF_CONTRACT_END_DATE): DateSelector(),
+        }
+        if not switched:
+            advanced[
+                vol.Optional(
+                    CONF_YTD_FROM_CONTRACT_START,
+                    default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
+                )
+            ] = BooleanSelector()
+        if not custom:
+            has_figures = any(key in self._data for key in MANUAL_RATE_KEYS)
+            advanced[vol.Optional(_SIGNED_RATE, default=has_figures)] = BooleanSelector()
+        # Folded unless the entry already uses one of them.
+        folded = not any(self._data.get(key) for key in (*_ADVANCED_KEYS, *MANUAL_RATE_KEYS))
         fields: dict[Any, Any] = {
             vol.Required(CONF_CONTRACT, default=default): SelectSelector(
                 SelectSelectorConfig(
@@ -311,22 +336,15 @@ class _FlowSteps:
                 )
             ),
             vol.Optional(CONF_CONTRACT_START_DATE): DateSelector(),
-            vol.Optional(CONF_TARIFF_CARD_DATE): DateSelector(),
-            vol.Optional(CONF_CONTRACT_END_DATE): DateSelector(),
+            vol.Optional(_ADVANCED, default=dict): section(
+                vol.Schema(advanced), {"collapsed": folded}
+            ),
         }
-        if not switched:
-            fields[
-                vol.Optional(
-                    CONF_YTD_FROM_CONTRACT_START,
-                    default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
-                )
-            ] = BooleanSelector()
-        schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields),
-            {key: self._data.get(key) for key in _DATE_FIELDS}
-            if user_input is None
-            else user_input,
-        )
+        suggested = user_input or {
+            CONF_CONTRACT_START_DATE: self._data.get(CONF_CONTRACT_START_DATE),
+            _ADVANCED: {key: self._data.get(key) for key in _DATE_FIELDS[1:]},
+        }
+        schema = self.add_suggested_values_to_schema(vol.Schema(fields), suggested)
         return self.async_show_form(step_id="contract", data_schema=schema, errors=errors)
 
     async def async_step_signed_rate(

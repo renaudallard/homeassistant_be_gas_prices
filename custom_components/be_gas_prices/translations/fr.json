@@ -32,17 +32,31 @@
       },
       "contract": {
         "title": "Contrat",
-        "description": "Le produit que vous avez. Les dates sont facultatives : une date de début facture un contrat fixe ou indexé selon la carte tarifaire du mois de sa souscription, et le mois de la carte tarifaire remplace ce mois quand votre carte est d'un autre mois. La date de fin sert seulement à un rappel de renouvellement.",
+        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, elle désigne la carte tarifaire du mois de souscription, pour utiliser le prix que vous payez réellement.",
         "data": {
           "contract": "Contrat",
-          "contract_start_date": "Date de début du contrat",
-          "tariff_card_date": "Mois de la carte tarifaire",
-          "contract_end_date": "Date de fin du contrat",
-          "ytd_from_contract_start": "Compter le coût de cette année depuis le début du contrat"
+          "contract_start_date": "Date de début du contrat"
         },
         "data_description": {
-          "tariff_card_date": "Un jour du mois de la carte que vous avez signée, quand ce n'est pas le mois où la fourniture a commencé.",
-          "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive."
+          "contract_start_date": "Le premier jour de fourniture, comme sur votre facture."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Avancé",
+            "description": "La plupart des ménages peuvent laisser ces réglages tels quels.",
+            "data": {
+              "tariff_card_date": "Mois de la carte tarifaire",
+              "contract_end_date": "Date de fin du contrat",
+              "ytd_from_contract_start": "Compter le coût de cette année depuis le début du contrat",
+              "signed_rate": "Saisir les chiffres de mon contrat"
+            },
+            "data_description": {
+              "tariff_card_date": "Un jour du mois de la carte que vous avez signée, quand ce n'est pas le mois où la fourniture a commencé.",
+              "contract_end_date": "Sert seulement à un rappel de renouvellement.",
+              "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive.",
+              "signed_rate": "Pour un contrat dont le prix diffère de la carte du fournisseur, ou dont la carte est introuvable. L'étape suivante les demande."
+            }
+          }
         }
       },
       "dso": {
@@ -88,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Tarif à la signature",
-        "description": "Uniquement pour un contrat dont les chiffres diffèrent de la carte du mois de sa signature, ou dont l'archive n'a pas cette carte : laissez vide sinon. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
+        "description": "Les chiffres imprimés sur votre contrat. Un champ laissé vide garde le chiffre de la carte. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
         "data": {
           "manual_price": "Prix de l'énergie (c€/kWh, hors TVA)",
           "manual_factor": "Facteur d'index",
@@ -162,17 +176,31 @@
       },
       "contract": {
         "title": "Contrat",
-        "description": "Le produit que vous avez. Les dates sont facultatives : une date de début facture un contrat fixe ou indexé selon la carte tarifaire du mois de sa souscription, et le mois de la carte tarifaire remplace ce mois quand votre carte est d'un autre mois. La date de fin sert seulement à un rappel de renouvellement.",
+        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, elle désigne la carte tarifaire du mois de souscription, pour utiliser le prix que vous payez réellement.",
         "data": {
           "contract": "Contrat",
-          "contract_start_date": "Date de début du contrat",
-          "tariff_card_date": "Mois de la carte tarifaire",
-          "contract_end_date": "Date de fin du contrat",
-          "ytd_from_contract_start": "Compter le coût de cette année depuis le début du contrat"
+          "contract_start_date": "Date de début du contrat"
         },
         "data_description": {
-          "tariff_card_date": "Un jour du mois de la carte que vous avez signée, quand ce n'est pas le mois où la fourniture a commencé.",
-          "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive."
+          "contract_start_date": "Le premier jour de fourniture, comme sur votre facture."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Avancé",
+            "description": "La plupart des ménages peuvent laisser ces réglages tels quels.",
+            "data": {
+              "tariff_card_date": "Mois de la carte tarifaire",
+              "contract_end_date": "Date de fin du contrat",
+              "ytd_from_contract_start": "Compter le coût de cette année depuis le début du contrat",
+              "signed_rate": "Saisir les chiffres de mon contrat"
+            },
+            "data_description": {
+              "tariff_card_date": "Un jour du mois de la carte que vous avez signée, quand ce n'est pas le mois où la fourniture a commencé.",
+              "contract_end_date": "Sert seulement à un rappel de renouvellement.",
+              "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive.",
+              "signed_rate": "Pour un contrat dont le prix diffère de la carte du fournisseur, ou dont la carte est introuvable. L'étape suivante les demande."
+            }
+          }
         }
       },
       "dso": {
@@ -255,7 +283,7 @@
       },
       "signed_rate": {
         "title": "Tarif à la signature",
-        "description": "Uniquement pour un contrat dont les chiffres diffèrent de la carte du mois de sa signature, ou dont l'archive n'a pas cette carte : laissez vide sinon. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
+        "description": "Les chiffres imprimés sur votre contrat. Un champ laissé vide garde le chiffre de la carte. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
         "data": {
           "manual_price": "Prix de l'énergie (c€/kWh, hors TVA)",
           "manual_factor": "Facteur d'index",

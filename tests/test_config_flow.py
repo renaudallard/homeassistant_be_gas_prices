@@ -46,6 +46,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CALIBER,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
+    CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
@@ -59,12 +60,14 @@ from custom_components.be_gas_prices.const import (
     CONF_DAILY_COMPARE,
     CONF_DSO,
     CONF_GAS_METER,
+    CONF_MANUAL_FEE,
     CONF_POSTCODE,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_STATION,
     CONF_SUPPLIER,
     CONF_SWITCH_DATE,
+    CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
     CONVERSION_MANUAL,
     CONVERSION_STATION,
@@ -109,6 +112,11 @@ async def _household(hass: HomeAssistant, flow_id: str, mode: str) -> ConfigFlow
             CONF_DAILY_COMPARE: False,
         },
     )
+
+
+def _advanced(schema: Any) -> dict[Any, Any]:
+    """The fields folded in the contract form's section."""
+    return dict(schema.schema["advanced"].schema.schema)
 
 
 async def test_postcode_resolves_the_region_and_the_dso(hass: HomeAssistant) -> None:
@@ -171,9 +179,6 @@ async def test_blank_postcode_asks_the_region(hass: HomeAssistant) -> None:
         result["flow_id"],
         {CONF_CONTRACT: "engie_easy_variable", CONF_CONTRACT_START_DATE: "2026-03-01"},
     )
-    # A start date offers the figures signed at; left empty, the card gives them.
-    assert result["step_id"] == "signed_rate"
-    result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
     # Sibelga is the only operator in Brussels.
     assert result["step_id"] == "household"
     result = await hass.config_entries.flow.async_configure(
@@ -210,6 +215,7 @@ async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssis
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {CONF_SUPPLIER: SUPPLIER_CUSTOM}
     )
+    assert "signed_rate" not in _advanced(result["data_schema"])
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_CONTRACT: CUSTOM_CONTRACT, CONF_CONTRACT_START_DATE: "2026-03-01"},
@@ -217,6 +223,103 @@ async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssis
     assert result["step_id"] == "dso"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
     assert result["step_id"] == "custom_energy"
+
+
+async def test_the_contract_form_folds_the_rarely_needed_fields(hass: HomeAssistant) -> None:
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_POSTCODE: ""})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_REGION: REGION_WALLONIA}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: "engie"}
+    )
+    schema = result["data_schema"]
+    assert schema is not None
+    assert list(schema.schema) == [CONF_CONTRACT, CONF_CONTRACT_START_DATE, "advanced"]
+    assert schema.schema["advanced"].options == {"collapsed": True}
+    assert list(_advanced(schema)) == [
+        CONF_TARIFF_CARD_DATE,
+        CONF_CONTRACT_END_DATE,
+        CONF_YTD_FROM_CONTRACT_START,
+        "signed_rate",
+    ]
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_CONTRACT: "engie_easy_fixed",
+            CONF_CONTRACT_START_DATE: "2026-03-01",
+            "advanced": {CONF_CONTRACT_END_DATE: "2026-02-01"},
+        },
+    )
+    assert result["errors"] == {"base": "end_before_start"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_CONTRACT: "engie_easy_fixed",
+            CONF_CONTRACT_START_DATE: "2026-03-01",
+            "advanced": {CONF_TARIFF_CARD_DATE: "2026-02-10"},
+        },
+    )
+    # The contract's figures are only asked for when the household says so.
+    assert result["step_id"] == "dso"
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
+    result = await _household(hass, result["flow_id"], CONVERSION_MANUAL)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_CONVERSION_FACTOR: 11.4}
+    )
+    data = result["data"]
+    assert data[CONF_TARIFF_CARD_DATE] == "2026-02-10"
+    assert data[CONF_YTD_FROM_CONTRACT_START] is False
+    assert "advanced" not in data
+    assert "signed_rate" not in data
+
+
+async def test_settings_unfold_the_figures_the_entry_holds(hass: HomeAssistant) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, CONF_TARIFF_CARD_DATE: "2026-02-10", CONF_MANUAL_FEE: 50.0}
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "settings"}
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_REGION: REGION_WALLONIA}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: "engie"}
+    )
+    schema = result["data_schema"]
+    assert schema is not None
+    assert schema.schema["advanced"].options == {"collapsed": False}
+    advanced = _advanced(schema)
+    card_month = next(key for key in advanced if key == CONF_TARIFF_CARD_DATE)
+    assert card_month.description == {"suggested_value": "2026-02-10"}
+    figures = next(key for key in advanced if key == "signed_rate")
+    assert figures.default() is True
+    # Turned off, the typed figures go.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_CONTRACT: "engie_flow",
+            "advanced": {CONF_TARIFF_CARD_DATE: "2026-02-10", "signed_rate": False},
+        },
+    )
+    assert result["step_id"] == "dso"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_DSO: DSO_ORES}
+    )
+    result = await _household_options(hass, result["flow_id"])
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONVERSION_FACTOR: 11.5}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert CONF_MANUAL_FEE not in entry.data
+    assert entry.data[CONF_TARIFF_CARD_DATE] == "2026-02-10"
 
 
 async def test_a_postcode_partly_on_an_unpriced_network_is_warned_about(
@@ -740,18 +843,21 @@ async def test_options_switch_keeps_the_earlier_contract(hass: HomeAssistant) ->
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_SUPPLIER: "engie"}
     )
-    # The form suggests the switch date as the contract start, and the new
-    # contract's signing figures are asked for that date.
+    # The form suggests the switch date as the contract start.
     schema = result["data_schema"]
     assert schema is not None
     start = next(key for key in schema.schema if key == CONF_CONTRACT_START_DATE)
     assert start.description == {"suggested_value": "2026-06-01"}
     # The year starts with the earlier contract: counting from this one's
     # start is not offered, since it could not apply.
-    assert CONF_YTD_FROM_CONTRACT_START not in schema.schema
+    assert CONF_YTD_FROM_CONTRACT_START not in _advanced(schema)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        {CONF_CONTRACT: "engie_easy_fixed", CONF_CONTRACT_START_DATE: "2026-06-01"},
+        {
+            CONF_CONTRACT: "engie_easy_fixed",
+            CONF_CONTRACT_START_DATE: "2026-06-01",
+            "advanced": {"signed_rate": True},
+        },
     )
     assert result["step_id"] == "signed_rate"
     result = await hass.config_entries.options.async_configure(result["flow_id"], {})

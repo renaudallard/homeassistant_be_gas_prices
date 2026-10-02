@@ -32,17 +32,31 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Het product dat je hebt. De datums zijn optioneel: met een startdatum wordt een vast of geïndexeerd contract aangerekend volgens de tariefkaart van de maand waarin het werd afgesloten, en de maand van de tariefkaart vervangt die maand wanneer je kaart van een andere maand is. De einddatum dient alleen voor een herinnering aan de verlenging.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract bepaalt die de tariefkaart van de maand waarin je tekende, zodat de prijs die je echt betaalt gebruikt wordt.",
         "data": {
           "contract": "Contract",
-          "contract_start_date": "Startdatum contract",
-          "tariff_card_date": "Maand van de tariefkaart",
-          "contract_end_date": "Einddatum contract",
-          "ytd_from_contract_start": "De kosten van dit jaar tellen vanaf de start van het contract"
+          "contract_start_date": "Startdatum contract"
         },
         "data_description": {
-          "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
-          "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt."
+          "contract_start_date": "De eerste dag van levering, zoals op je factuur."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Geavanceerd",
+            "description": "De meeste gezinnen kunnen deze laten zoals ze zijn.",
+            "data": {
+              "tariff_card_date": "Maand van de tariefkaart",
+              "contract_end_date": "Einddatum contract",
+              "ytd_from_contract_start": "De kosten van dit jaar tellen vanaf de start van het contract",
+              "signed_rate": "De cijfers van mijn contract invullen"
+            },
+            "data_description": {
+              "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
+              "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
+              "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
+              "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
+            }
+          }
         }
       },
       "dso": {
@@ -88,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Tarief bij ondertekening",
-        "description": "Alleen voor een contract waarvan de cijfers afwijken van de kaart van de maand van ondertekening, of waarvan het archief die kaart niet heeft: laat anders leeg. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
+        "description": "De cijfers op je contract. Een leeg veld behoudt het cijfer van de kaart. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
         "data": {
           "manual_price": "Energieprijs (c€/kWh, excl. btw)",
           "manual_factor": "Indexfactor",
@@ -162,17 +176,31 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Het product dat je hebt. De datums zijn optioneel: met een startdatum wordt een vast of geïndexeerd contract aangerekend volgens de tariefkaart van de maand waarin het werd afgesloten, en de maand van de tariefkaart vervangt die maand wanneer je kaart van een andere maand is. De einddatum dient alleen voor een herinnering aan de verlenging.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract bepaalt die de tariefkaart van de maand waarin je tekende, zodat de prijs die je echt betaalt gebruikt wordt.",
         "data": {
           "contract": "Contract",
-          "contract_start_date": "Startdatum contract",
-          "tariff_card_date": "Maand van de tariefkaart",
-          "contract_end_date": "Einddatum contract",
-          "ytd_from_contract_start": "De kosten van dit jaar tellen vanaf de start van het contract"
+          "contract_start_date": "Startdatum contract"
         },
         "data_description": {
-          "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
-          "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt."
+          "contract_start_date": "De eerste dag van levering, zoals op je factuur."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Geavanceerd",
+            "description": "De meeste gezinnen kunnen deze laten zoals ze zijn.",
+            "data": {
+              "tariff_card_date": "Maand van de tariefkaart",
+              "contract_end_date": "Einddatum contract",
+              "ytd_from_contract_start": "De kosten van dit jaar tellen vanaf de start van het contract",
+              "signed_rate": "De cijfers van mijn contract invullen"
+            },
+            "data_description": {
+              "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
+              "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
+              "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
+              "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
+            }
+          }
         }
       },
       "dso": {
@@ -255,7 +283,7 @@
       },
       "signed_rate": {
         "title": "Tarief bij ondertekening",
-        "description": "Alleen voor een contract waarvan de cijfers afwijken van de kaart van de maand van ondertekening, of waarvan het archief die kaart niet heeft: laat anders leeg. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
+        "description": "De cijfers op je contract. Een leeg veld behoudt het cijfer van de kaart. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
         "data": {
           "manual_price": "Energieprijs (c€/kWh, excl. btw)",
           "manual_factor": "Indexfactor",

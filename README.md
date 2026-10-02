@@ -219,12 +219,13 @@ Home Assistant installs them from the manifest.
 
 1. **Postcode**: resolves the region and your gas network operator. Leave it
    blank to pick both yourself. A postcode with no gas network is refused.
-2. **Supplier** and **contract**, with optional dates: a **contract start
-   date** prices a fixed or indexed contract on the card of the month you
-   signed (a **tariff card month** overrides that month), and the **end
-   date** feeds a renewal reminder. With a date set, you may type the figures
-   of your contract when they differ from the card or the card cannot be
-   reached.
+2. **Supplier** and **contract**, with an optional **contract start date**:
+   it prices a fixed or indexed contract on the card of the month you
+   signed. The folded **Advanced** section holds what most households leave
+   alone: a **tariff card month** when you signed on another month's card,
+   the **end date** for a renewal reminder, counting this year's cost from
+   the contract start, and a switch to type the figures of your contract
+   when they differ from the card or the card cannot be reached.
 3. **Network operator**, only asked without a postcode and outside
    Brussels. The expert custom supplier then asks for the figures of your
    card: the energy price and fee, then your network operator's terms and

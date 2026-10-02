@@ -32,17 +32,31 @@
       },
       "contract": {
         "title": "Vertrag",
-        "description": "Ihr Produkt. Die Daten sind optional: Mit einem Vertragsbeginn wird ein fester oder indexierter Vertrag nach der Tarifkarte des Monats abgerechnet, in dem er abgeschlossen wurde, und der Monat der Tarifkarte ersetzt diesen Monat, wenn Ihre Karte aus einem anderen Monat stammt. Das Vertragsende dient nur einer Erinnerung an die Verlängerung.",
+        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag bestimmt er die Tarifkarte des Abschlussmonats, damit der Preis verwendet wird, den Sie tatsächlich zahlen.",
         "data": {
           "contract": "Vertrag",
-          "contract_start_date": "Vertragsbeginn",
-          "tariff_card_date": "Monat der Tarifkarte",
-          "contract_end_date": "Vertragsende",
-          "ytd_from_contract_start": "Die Kosten dieses Jahres ab Vertragsbeginn zählen"
+          "contract_start_date": "Vertragsbeginn"
         },
         "data_description": {
-          "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
-          "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt."
+          "contract_start_date": "Der erste Liefertag, wie auf Ihrer Rechnung."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Erweitert",
+            "description": "Die meisten Haushalte können diese unverändert lassen.",
+            "data": {
+              "tariff_card_date": "Monat der Tarifkarte",
+              "contract_end_date": "Vertragsende",
+              "ytd_from_contract_start": "Die Kosten dieses Jahres ab Vertragsbeginn zählen",
+              "signed_rate": "Die Zahlen meines Vertrags eingeben"
+            },
+            "data_description": {
+              "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
+              "contract_end_date": "Dient nur einer Erinnerung an die Verlängerung.",
+              "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt.",
+              "signed_rate": "Für einen Vertrag, dessen Preis von der Karte des Lieferanten abweicht oder dessen Karte nicht zu finden ist. Der nächste Schritt fragt danach."
+            }
+          }
         }
       },
       "dso": {
@@ -88,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Tarif bei Vertragsabschluss",
-        "description": "Nur für einen Vertrag, dessen Zahlen von der Karte seines Abschlussmonats abweichen oder dessen Karte das Archiv nicht hat: sonst leer lassen. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
+        "description": "Die Zahlen auf Ihrem Vertrag. Ein leeres Feld behält den Wert der Karte. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
         "data": {
           "manual_price": "Energiepreis (c€/kWh, ohne MwSt.)",
           "manual_factor": "Indexfaktor",
@@ -162,17 +176,31 @@
       },
       "contract": {
         "title": "Vertrag",
-        "description": "Ihr Produkt. Die Daten sind optional: Mit einem Vertragsbeginn wird ein fester oder indexierter Vertrag nach der Tarifkarte des Monats abgerechnet, in dem er abgeschlossen wurde, und der Monat der Tarifkarte ersetzt diesen Monat, wenn Ihre Karte aus einem anderen Monat stammt. Das Vertragsende dient nur einer Erinnerung an die Verlängerung.",
+        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag bestimmt er die Tarifkarte des Abschlussmonats, damit der Preis verwendet wird, den Sie tatsächlich zahlen.",
         "data": {
           "contract": "Vertrag",
-          "contract_start_date": "Vertragsbeginn",
-          "tariff_card_date": "Monat der Tarifkarte",
-          "contract_end_date": "Vertragsende",
-          "ytd_from_contract_start": "Die Kosten dieses Jahres ab Vertragsbeginn zählen"
+          "contract_start_date": "Vertragsbeginn"
         },
         "data_description": {
-          "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
-          "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt."
+          "contract_start_date": "Der erste Liefertag, wie auf Ihrer Rechnung."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Erweitert",
+            "description": "Die meisten Haushalte können diese unverändert lassen.",
+            "data": {
+              "tariff_card_date": "Monat der Tarifkarte",
+              "contract_end_date": "Vertragsende",
+              "ytd_from_contract_start": "Die Kosten dieses Jahres ab Vertragsbeginn zählen",
+              "signed_rate": "Die Zahlen meines Vertrags eingeben"
+            },
+            "data_description": {
+              "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
+              "contract_end_date": "Dient nur einer Erinnerung an die Verlängerung.",
+              "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt.",
+              "signed_rate": "Für einen Vertrag, dessen Preis von der Karte des Lieferanten abweicht oder dessen Karte nicht zu finden ist. Der nächste Schritt fragt danach."
+            }
+          }
         }
       },
       "dso": {
@@ -255,7 +283,7 @@
       },
       "signed_rate": {
         "title": "Tarif bei Vertragsabschluss",
-        "description": "Nur für einen Vertrag, dessen Zahlen von der Karte seines Abschlussmonats abweichen oder dessen Karte das Archiv nicht hat: sonst leer lassen. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
+        "description": "Die Zahlen auf Ihrem Vertrag. Ein leeres Feld behält den Wert der Karte. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
         "data": {
           "manual_price": "Energiepreis (c€/kWh, ohne MwSt.)",
           "manual_factor": "Indexfaktor",

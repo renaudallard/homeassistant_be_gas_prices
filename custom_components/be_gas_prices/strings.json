@@ -32,17 +32,31 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "The product you are on. The dates are optional: a contract start date bills a fixed or indexed contract at the card of the month it was signed, and the tariff card month overrides that month when the card you signed is from another month. The end date only feeds a renewal reminder.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract it picks the price card of the month you signed, so the price you actually pay is used.",
         "data": {
           "contract": "Contract",
-          "contract_start_date": "Contract start date",
-          "tariff_card_date": "Tariff card month",
-          "contract_end_date": "Contract end date",
-          "ytd_from_contract_start": "Count this year's cost from the contract start"
+          "contract_start_date": "Contract start date"
         },
         "data_description": {
-          "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
-          "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later."
+          "contract_start_date": "The first day of supply, as on your bill."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "description": "Most households can leave these as they are.",
+            "data": {
+              "tariff_card_date": "Tariff card month",
+              "contract_end_date": "Contract end date",
+              "ytd_from_contract_start": "Count this year's cost from the contract start",
+              "signed_rate": "Enter the figures of my contract"
+            },
+            "data_description": {
+              "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
+              "contract_end_date": "Only used for a renewal reminder.",
+              "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
+              "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."
+            }
+          }
         }
       },
       "dso": {
@@ -88,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Signing rate",
-        "description": "Only for a contract whose figures differ from the supplier's card for its signing month, or whose card the archive cannot reach: leave empty otherwise. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
+        "description": "The figures printed on your contract. A field left empty keeps the card's figure. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
         "data": {
           "manual_price": "Energy price (c€/kWh, excl. VAT)",
           "manual_factor": "Index factor",
@@ -162,17 +176,31 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "The product you are on. The dates are optional: a contract start date bills a fixed or indexed contract at the card of the month it was signed, and the tariff card month overrides that month when the card you signed is from another month. The end date only feeds a renewal reminder.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract it picks the price card of the month you signed, so the price you actually pay is used.",
         "data": {
           "contract": "Contract",
-          "contract_start_date": "Contract start date",
-          "tariff_card_date": "Tariff card month",
-          "contract_end_date": "Contract end date",
-          "ytd_from_contract_start": "Count this year's cost from the contract start"
+          "contract_start_date": "Contract start date"
         },
         "data_description": {
-          "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
-          "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later."
+          "contract_start_date": "The first day of supply, as on your bill."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "description": "Most households can leave these as they are.",
+            "data": {
+              "tariff_card_date": "Tariff card month",
+              "contract_end_date": "Contract end date",
+              "ytd_from_contract_start": "Count this year's cost from the contract start",
+              "signed_rate": "Enter the figures of my contract"
+            },
+            "data_description": {
+              "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
+              "contract_end_date": "Only used for a renewal reminder.",
+              "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
+              "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."
+            }
+          }
         }
       },
       "dso": {
@@ -255,7 +283,7 @@
       },
       "signed_rate": {
         "title": "Signing rate",
-        "description": "Only for a contract whose figures differ from the supplier's card for its signing month, or whose card the archive cannot reach: leave empty otherwise. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
+        "description": "The figures printed on your contract. A field left empty keeps the card's figure. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
         "data": {
           "manual_price": "Energy price (c€/kWh, excl. VAT)",
           "manual_factor": "Index factor",
