@@ -96,8 +96,9 @@ config entry
     |
     v
 async_setup_entry                       __init__.py
-    GasCoordinator(hass, entry)
-    async_load_persistent()             last card, index table, calorific values, month cards
+    GasCoordinator(hass, entry, defer_meter_reads=True)
+    async_load_persistent()             last card, index table, calorific values,
+                                        month cards, figures of the last meter read
     async_config_entry_first_refresh()
         |
         v
@@ -107,11 +108,15 @@ async_setup_entry                       __init__.py
         index:     extractor.fetch_index() twice a day        (IndexedRates)
         calorific: Atrias GCV of the reception station daily  calorific.py
         months:    past months' cards, supplier archive then card archive
+                   (the first tick's in the background, then async_reprice)
         meter:     recorder daily changes, m³ or kWh           gas_meter.py
+                   (not on setup's own tick, which shows the held figures,
+                   unless the card cannot price the volume it holds)
         bills:     running_costs() -> bill_month() -> pricing.compute_breakdown()
         -> CoordinatorData
+    background: async_reprice(), the meter read with what is in hand
     forward platforms: sensor, button
-    background: price history backfill                         backfill.py
+    background, once the meter is read: price history backfill  backfill.py
 ```
 
 ## Freshness and fallbacks, at a glance

@@ -86,14 +86,15 @@ cards (`issues.sync_issues`).
 
 The entry's Store (`.storage/be_gas_prices.<entry_id>`) holds the last card
 and when it was fetched, the index table, the calorific values of the
-configured station, the past months' cards, the price-history stamp, the
-last daily ranking and the figures the last meter read gave, with the
-settings, year and month they were priced for. A blob written under another snapshot schema is dropped,
-not migrated: everything in it is re-derivable. The past months' cards
-another release of the integration stored are read again, even across a
-restart, so a release that reads a card better reaches them, and kept when
-no card of the month can be found any more. A release that refuses a card
-an older one misread bumps the snapshot schema, which drops them all.
+configured station, the past months' cards, the price-history stamp, the last
+daily ranking and the figures the last meter read gave, with the meter,
+settings, year and month they were read and priced for. A blob written under
+another snapshot schema is dropped, not migrated: everything in it is
+re-derivable. The past months' cards another release of the integration
+stored are read again, even across a restart, so a release that reads a card
+better reaches them, and kept when no card of the month can be found any
+more. A release that refuses a card an older one misread bumps the snapshot
+schema, which drops them all.
 
 ## Staleness
 
