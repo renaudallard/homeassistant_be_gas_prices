@@ -744,17 +744,20 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     # ---- the tick -------------------------------------------------------------
 
     async def async_reprice(self, needed: Callable[[], bool]) -> None:
-        """A tick that prices again on the card, index and calorific values
-        in hand, the meter read, while ``needed`` says one still is: the one
+        """A tick that prices again on the card, index and calorific values in
+        hand, the meter read, while ``needed`` says one still is: the one
         setup starts once Home Assistant no longer waits on it, which reads
         the meter its own tick left out, and the one the past months' cards
         ask for once fetched. Whichever gets the lock first does the other's
-        work too, so a restart reads the meter once. Neither asks the
-        supplier or Atrias again seconds after a tick did, which would count
-        a card that fails twice for one failure, unless a fetch was forced
-        meanwhile; one forced while it runs is asked for again after it. The lock async_refresh takes is taken first, so no other
-        refresh waiting on it, a Repairs fix flow's forced fetch say, can
-        take the flag meant for this one."""
+        work too, so a restart whose past months' cards are all in the store
+        reads the meter once; cards fetched again land later and their own
+        reprice reads it again to price them. Neither asks the supplier or
+        Atrias again seconds after a tick did, which would count a card that
+        fails twice for one failure, unless a fetch was forced meanwhile;
+        one forced while it runs is asked for again after it. The lock
+        async_refresh takes is taken first, so no other refresh waiting on
+        it, a Repairs fix flow's forced fetch say, can take the flag meant
+        for this one."""
         async with self._debounced_refresh.async_lock():
             if not needed():
                 return
