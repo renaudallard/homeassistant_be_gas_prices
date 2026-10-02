@@ -4,7 +4,7 @@
     "step": {
       "postcode": {
         "title": "Where is the gas connection?",
-        "description": "Enter the postcode of the connection to find its gas distribution network operator. Leave it blank to pick the region and the operator yourself.",
+        "description": "The postcode where your gas is delivered. It finds your region and network operator. Leave it empty to pick them yourself.",
         "data": {
           "postcode": "Postcode"
         },
@@ -18,7 +18,7 @@
       },
       "region": {
         "title": "Region",
-        "description": "The region decides the network operators and the levies on the bill.",
+        "description": "The region where your gas is delivered.",
         "data": {
           "region": "Region"
         }
@@ -61,14 +61,14 @@
       },
       "dso": {
         "title": "Network operator",
-        "description": "The gas distribution network operator of the connection. It sets the network part of the bill.",
+        "description": "Your gas network operator, as named on your bill.",
         "data": {
           "dso": "Network operator"
         }
       },
       "household": {
         "title": "Household",
-        "description": "Your yearly gas use picks the distribution tier and the excise slices until your meter has measured a full year. The gas meter feeds the running costs; leave it blank to use the one in the Energy dashboard.",
+        "description": "Fill in your yearly consumption and, if you have it, the conversion factor from your bill. The rest can stay as it is.",
         "data": {
           "annual_consumption_kwh": "Yearly consumption",
           "caliber": "Gas meter size",
@@ -78,24 +78,24 @@
           "daily_compare": "Compare every contract once a day"
         },
         "data_description": {
-          "annual_consumption_kwh": "In kWh, as printed on your last yearly bill.",
-          "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
-          "gas_meter": "A cumulative gas sensor in m³ or kWh.",
-          "conversion_factor": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
-          "card_archive": "Read the card archive the project keeps on GitHub for a past month the supplier no longer serves, and for the running month when the supplier's card cannot be read. A request names the supplier, the contract, the region and the month and nothing else.",
-          "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
+          "annual_consumption_kwh": "In kWh, from your last yearly bill. Used until your gas meter has a full year of readings.",
+          "caliber": "Printed on your gas meter; most homes have a G4 or G6. It sets a Brussels levy.",
+          "gas_meter": "The sensor that counts your gas use, in m³ or kWh. Leave it empty to use the one in the Energy dashboard.",
+          "conversion_factor": "How many kWh one m³ of gas is worth, printed on your bill (about 11 to 12). Leave it empty if you don't have it: you then pick your gas reception station.",
+          "card_archive": "Fetch price cards from this project's archive on GitHub when the supplier's own cannot be read or are no longer published. Only the supplier, contract, region and month are sent.",
+          "daily_compare": "Once a day, compare every contract in your region and show the best saving as a sensor."
         }
       },
       "station": {
         "title": "Gas reception station",
-        "description": "The network operator converts cubic metres to kWh with the calorific value of the reception station your connection is fed from, published monthly by Atrias. It leaves out the operator's correction for the pressure and temperature at the meter, so it counts up to a few percent more kWh than your bill. Pick the station closest to you; some bills name it.",
+        "description": "Pick the gas reception station nearest to you; some bills name it. Its monthly value, published by Atrias, converts m³ to kWh. It can count a few percent more kWh than your bill, which also corrects for the pressure and temperature at the meter.",
         "data": {
           "station": "Reception station"
         }
       },
       "factor": {
         "title": "Conversion factor",
-        "description": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
+        "description": "How many kWh one m³ of gas is worth, printed on your bill (about 11 to 12 kWh/m³). Leave it empty to pick your gas reception station instead.",
         "data": {
           "conversion_factor": "Conversion factor"
         }
@@ -148,7 +148,7 @@
     "step": {
       "postcode": {
         "title": "Where is the gas connection?",
-        "description": "Enter the postcode of the connection to find its gas distribution network operator. Leave it blank to pick the region and the operator yourself.",
+        "description": "The postcode where your gas is delivered. It finds your region and network operator. Leave it empty to pick them yourself.",
         "data": {
           "postcode": "Postcode"
         },
@@ -162,7 +162,7 @@
       },
       "region": {
         "title": "Region",
-        "description": "The region decides the network operators and the levies on the bill.",
+        "description": "The region where your gas is delivered.",
         "data": {
           "region": "Region"
         }
@@ -205,14 +205,14 @@
       },
       "dso": {
         "title": "Network operator",
-        "description": "The gas distribution network operator of the connection. It sets the network part of the bill.",
+        "description": "Your gas network operator, as named on your bill.",
         "data": {
           "dso": "Network operator"
         }
       },
       "household": {
         "title": "Household",
-        "description": "Your yearly gas use picks the distribution tier and the excise slices until your meter has measured a full year. The gas meter feeds the running costs; leave it blank to use the one in the Energy dashboard.",
+        "description": "Fill in your yearly consumption and, if you have it, the conversion factor from your bill. The rest can stay as it is.",
         "data": {
           "annual_consumption_kwh": "Yearly consumption",
           "caliber": "Gas meter size",
@@ -222,24 +222,24 @@
           "daily_compare": "Compare every contract once a day"
         },
         "data_description": {
-          "annual_consumption_kwh": "In kWh, as printed on your last yearly bill.",
-          "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
-          "gas_meter": "A cumulative gas sensor in m³ or kWh.",
-          "conversion_factor": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
-          "card_archive": "Read the card archive the project keeps on GitHub for a past month the supplier no longer serves, and for the running month when the supplier's card cannot be read. A request names the supplier, the contract, the region and the month and nothing else.",
-          "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
+          "annual_consumption_kwh": "In kWh, from your last yearly bill. Used until your gas meter has a full year of readings.",
+          "caliber": "Printed on your gas meter; most homes have a G4 or G6. It sets a Brussels levy.",
+          "gas_meter": "The sensor that counts your gas use, in m³ or kWh. Leave it empty to use the one in the Energy dashboard.",
+          "conversion_factor": "How many kWh one m³ of gas is worth, printed on your bill (about 11 to 12). Leave it empty if you don't have it: you then pick your gas reception station.",
+          "card_archive": "Fetch price cards from this project's archive on GitHub when the supplier's own cannot be read or are no longer published. Only the supplier, contract, region and month are sent.",
+          "daily_compare": "Once a day, compare every contract in your region and show the best saving as a sensor."
         }
       },
       "station": {
         "title": "Gas reception station",
-        "description": "The network operator converts cubic metres to kWh with the calorific value of the reception station your connection is fed from, published monthly by Atrias. It leaves out the operator's correction for the pressure and temperature at the meter, so it counts up to a few percent more kWh than your bill. Pick the station closest to you; some bills name it.",
+        "description": "Pick the gas reception station nearest to you; some bills name it. Its monthly value, published by Atrias, converts m³ to kWh. It can count a few percent more kWh than your bill, which also corrects for the pressure and temperature at the meter.",
         "data": {
           "station": "Reception station"
         }
       },
       "factor": {
         "title": "Conversion factor",
-        "description": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
+        "description": "How many kWh one m³ of gas is worth, printed on your bill (about 11 to 12 kWh/m³). Leave it empty to pick your gas reception station instead.",
         "data": {
           "conversion_factor": "Conversion factor"
         }

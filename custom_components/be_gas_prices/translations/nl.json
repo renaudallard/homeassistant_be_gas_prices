@@ -4,7 +4,7 @@
     "step": {
       "postcode": {
         "title": "Waar is de gasaansluiting?",
-        "description": "Geef de postcode van de aansluiting om de distributienetbeheerder voor gas te vinden. Laat leeg om zelf het gewest en de netbeheerder te kiezen.",
+        "description": "De postcode waar je gas geleverd wordt. Hiermee worden je gewest en je netbeheerder gevonden. Laat leeg om ze zelf te kiezen.",
         "data": {
           "postcode": "Postcode"
         },
@@ -18,7 +18,7 @@
       },
       "region": {
         "title": "Gewest",
-        "description": "Het gewest bepaalt de netbeheerders en de heffingen op de factuur.",
+        "description": "Het gewest waar je gas geleverd wordt.",
         "data": {
           "region": "Gewest"
         }
@@ -61,14 +61,14 @@
       },
       "dso": {
         "title": "Netbeheerder",
-        "description": "De distributienetbeheerder voor gas van de aansluiting. Die bepaalt het netgedeelte van de factuur.",
+        "description": "Je netbeheerder voor gas, zoals vermeld op je factuur.",
         "data": {
           "dso": "Netbeheerder"
         }
       },
       "household": {
         "title": "Huishouden",
-        "description": "Je jaarverbruik bepaalt de distributieschijf en de accijnsschijven tot je meter een volledig jaar heeft gemeten. De gasmeter voedt de lopende kosten; laat leeg om die van het Energiedashboard te gebruiken.",
+        "description": "Vul je jaarverbruik in en, als je die hebt, de omrekeningsfactor van je factuur. De rest mag blijven zoals het is.",
         "data": {
           "annual_consumption_kwh": "Jaarverbruik",
           "caliber": "Grootte van de gasmeter",
@@ -78,24 +78,24 @@
           "daily_compare": "Alle contracten dagelijks vergelijken"
         },
         "data_description": {
-          "annual_consumption_kwh": "In kWh, zoals op je laatste jaarafrekening.",
-          "caliber": "De Brusselse heffing hangt af van het maximale debiet van de meter, dat op de meter staat (G4- en G6-meters zijn 6 of 10 m³/u).",
-          "gas_meter": "Een cumulatieve gassensor in m³ of kWh.",
-          "conversion_factor": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
-          "card_archive": "Het kaartarchief dat het project op GitHub bijhoudt lezen voor een voorbije maand die de leverancier niet meer aanbiedt, en voor de lopende maand als de kaart van de leverancier niet gelezen kan worden. Een verzoek vermeldt de leverancier, het contract, het gewest en de maand en verder niets.",
-          "daily_compare": "Haalt één keer per dag de kaarten van alle leveranciers in je gewest op en publiceert de beste besparing als sensor."
+          "annual_consumption_kwh": "In kWh, van je laatste jaarfactuur. Gebruikt tot je gasmeter een volledig jaar aan metingen heeft.",
+          "caliber": "Staat op je gasmeter; de meeste woningen hebben een G4 of G6. Hij bepaalt een Brusselse heffing.",
+          "gas_meter": "De sensor die je gasverbruik telt, in m³ of kWh. Laat leeg om die van het Energiedashboard te gebruiken.",
+          "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
+          "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd.",
+          "daily_compare": "Vergelijk één keer per dag alle contracten in je gewest en toon de grootste besparing als sensor."
         }
       },
       "station": {
         "title": "Gasontvangststation",
-        "description": "De netbeheerder rekent kubieke meter om naar kWh met de calorische bovenwaarde van het ontvangststation dat je aansluiting voedt, maandelijks gepubliceerd door Atrias. Ze laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt dus tot enkele procent meer kWh dan je factuur. Kies het station dat het dichtst bij je ligt; sommige facturen vermelden het.",
+        "description": "Kies het gasontvangststation dat het dichtst bij je ligt; sommige facturen vermelden het. De maandelijkse waarde, gepubliceerd door Atrias, rekent m³ om naar kWh. Ze kan enkele procent meer kWh tellen dan je factuur, die ook corrigeert voor de druk en de temperatuur aan de meter.",
         "data": {
           "station": "Ontvangststation"
         }
       },
       "factor": {
         "title": "Omrekeningsfactor",
-        "description": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
+        "description": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12 kWh/m³). Laat leeg om in de plaats je gasontvangststation te kiezen.",
         "data": {
           "conversion_factor": "Omrekeningsfactor"
         }
@@ -148,7 +148,7 @@
     "step": {
       "postcode": {
         "title": "Waar is de gasaansluiting?",
-        "description": "Geef de postcode van de aansluiting om de distributienetbeheerder voor gas te vinden. Laat leeg om zelf het gewest en de netbeheerder te kiezen.",
+        "description": "De postcode waar je gas geleverd wordt. Hiermee worden je gewest en je netbeheerder gevonden. Laat leeg om ze zelf te kiezen.",
         "data": {
           "postcode": "Postcode"
         },
@@ -162,7 +162,7 @@
       },
       "region": {
         "title": "Gewest",
-        "description": "Het gewest bepaalt de netbeheerders en de heffingen op de factuur.",
+        "description": "Het gewest waar je gas geleverd wordt.",
         "data": {
           "region": "Gewest"
         }
@@ -205,14 +205,14 @@
       },
       "dso": {
         "title": "Netbeheerder",
-        "description": "De distributienetbeheerder voor gas van de aansluiting. Die bepaalt het netgedeelte van de factuur.",
+        "description": "Je netbeheerder voor gas, zoals vermeld op je factuur.",
         "data": {
           "dso": "Netbeheerder"
         }
       },
       "household": {
         "title": "Huishouden",
-        "description": "Je jaarverbruik bepaalt de distributieschijf en de accijnsschijven tot je meter een volledig jaar heeft gemeten. De gasmeter voedt de lopende kosten; laat leeg om die van het Energiedashboard te gebruiken.",
+        "description": "Vul je jaarverbruik in en, als je die hebt, de omrekeningsfactor van je factuur. De rest mag blijven zoals het is.",
         "data": {
           "annual_consumption_kwh": "Jaarverbruik",
           "caliber": "Grootte van de gasmeter",
@@ -222,24 +222,24 @@
           "daily_compare": "Alle contracten dagelijks vergelijken"
         },
         "data_description": {
-          "annual_consumption_kwh": "In kWh, zoals op je laatste jaarafrekening.",
-          "caliber": "De Brusselse heffing hangt af van het maximale debiet van de meter, dat op de meter staat (G4- en G6-meters zijn 6 of 10 m³/u).",
-          "gas_meter": "Een cumulatieve gassensor in m³ of kWh.",
-          "conversion_factor": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
-          "card_archive": "Het kaartarchief dat het project op GitHub bijhoudt lezen voor een voorbije maand die de leverancier niet meer aanbiedt, en voor de lopende maand als de kaart van de leverancier niet gelezen kan worden. Een verzoek vermeldt de leverancier, het contract, het gewest en de maand en verder niets.",
-          "daily_compare": "Haalt één keer per dag de kaarten van alle leveranciers in je gewest op en publiceert de beste besparing als sensor."
+          "annual_consumption_kwh": "In kWh, van je laatste jaarfactuur. Gebruikt tot je gasmeter een volledig jaar aan metingen heeft.",
+          "caliber": "Staat op je gasmeter; de meeste woningen hebben een G4 of G6. Hij bepaalt een Brusselse heffing.",
+          "gas_meter": "De sensor die je gasverbruik telt, in m³ of kWh. Laat leeg om die van het Energiedashboard te gebruiken.",
+          "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
+          "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd.",
+          "daily_compare": "Vergelijk één keer per dag alle contracten in je gewest en toon de grootste besparing als sensor."
         }
       },
       "station": {
         "title": "Gasontvangststation",
-        "description": "De netbeheerder rekent kubieke meter om naar kWh met de calorische bovenwaarde van het ontvangststation dat je aansluiting voedt, maandelijks gepubliceerd door Atrias. Ze laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt dus tot enkele procent meer kWh dan je factuur. Kies het station dat het dichtst bij je ligt; sommige facturen vermelden het.",
+        "description": "Kies het gasontvangststation dat het dichtst bij je ligt; sommige facturen vermelden het. De maandelijkse waarde, gepubliceerd door Atrias, rekent m³ om naar kWh. Ze kan enkele procent meer kWh tellen dan je factuur, die ook corrigeert voor de druk en de temperatuur aan de meter.",
         "data": {
           "station": "Ontvangststation"
         }
       },
       "factor": {
         "title": "Omrekeningsfactor",
-        "description": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
+        "description": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12 kWh/m³). Laat leeg om in de plaats je gasontvangststation te kiezen.",
         "data": {
           "conversion_factor": "Omrekeningsfactor"
         }

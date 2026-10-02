@@ -4,7 +4,7 @@
     "step": {
       "postcode": {
         "title": "Où se trouve le raccordement au gaz ?",
-        "description": "Indiquez le code postal du raccordement pour trouver son gestionnaire de réseau de distribution de gaz. Laissez vide pour choisir vous-même la région et le gestionnaire.",
+        "description": "Le code postal où votre gaz est livré. Il détermine votre région et votre gestionnaire de réseau. Laissez-le vide pour les choisir vous-même.",
         "data": {
           "postcode": "Code postal"
         },
@@ -18,7 +18,7 @@
       },
       "region": {
         "title": "Région",
-        "description": "La région détermine les gestionnaires de réseau et les prélèvements sur la facture.",
+        "description": "La région où votre gaz est livré.",
         "data": {
           "region": "Région"
         }
@@ -61,14 +61,14 @@
       },
       "dso": {
         "title": "Gestionnaire de réseau",
-        "description": "Le gestionnaire de réseau de distribution de gaz du raccordement. Il fixe la partie réseau de la facture.",
+        "description": "Votre gestionnaire de réseau de gaz, tel qu'indiqué sur votre facture.",
         "data": {
           "dso": "Gestionnaire de réseau"
         }
       },
       "household": {
         "title": "Ménage",
-        "description": "Votre consommation annuelle détermine la tranche de distribution et les tranches d'accise jusqu'à ce que votre compteur ait mesuré une année complète. Le compteur de gaz alimente les coûts courants ; laissez vide pour utiliser celui du tableau de bord Énergie.",
+        "description": "Indiquez votre consommation annuelle et, si vous l'avez, le facteur de conversion de votre facture. Le reste peut rester tel quel.",
         "data": {
           "annual_consumption_kwh": "Consommation annuelle",
           "caliber": "Calibre du compteur de gaz",
@@ -78,24 +78,24 @@
           "daily_compare": "Comparer tous les contrats chaque jour"
         },
         "data_description": {
-          "annual_consumption_kwh": "En kWh, comme sur votre dernière facture annuelle.",
-          "caliber": "La redevance bruxelloise dépend du débit maximal du compteur, indiqué sur le compteur (les compteurs G4 et G6 font 6 ou 10 m³/h).",
-          "gas_meter": "Un capteur de gaz cumulatif en m³ ou en kWh.",
-          "conversion_factor": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche). Laissez-le vide pour choisir plutôt votre station de réception.",
-          "card_archive": "Lire l'archive des cartes que le projet tient sur GitHub pour un mois passé que le fournisseur ne sert plus, et pour le mois en cours quand la carte du fournisseur ne peut pas être lue. Une requête ne mentionne que le fournisseur, le contrat, la région et le mois.",
-          "daily_compare": "Récupère une fois par jour les cartes de tous les fournisseurs de votre région et publie la meilleure économie comme capteur."
+          "annual_consumption_kwh": "En kWh, d'après votre dernière facture annuelle. Utilisée jusqu'à ce que votre compteur de gaz ait une année complète de relevés.",
+          "caliber": "Indiqué sur votre compteur de gaz ; la plupart des logements ont un G4 ou un G6. Il détermine une redevance bruxelloise.",
+          "gas_meter": "Le capteur qui compte votre consommation de gaz, en m³ ou en kWh. Laissez-le vide pour utiliser celui du tableau de bord Énergie.",
+          "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
+          "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés.",
+          "daily_compare": "Une fois par jour, comparer tous les contrats de votre région et afficher la meilleure économie dans un capteur."
         }
       },
       "station": {
         "title": "Station de réception du gaz",
-        "description": "Le gestionnaire de réseau convertit les mètres cubes en kWh avec le pouvoir calorifique supérieur de la station de réception qui alimente votre raccordement, publié chaque mois par Atrias. Il ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur, et compte donc jusqu'à quelques pour cent de kWh de plus que votre facture. Choisissez la station la plus proche ; certaines factures l'indiquent.",
+        "description": "Choisissez la station de réception de gaz la plus proche de chez vous ; certaines factures la mentionnent. Sa valeur mensuelle, publiée par Atrias, convertit les m³ en kWh. Elle peut compter quelques pour cent de kWh en plus que votre facture, qui corrige aussi la pression et la température au compteur.",
         "data": {
           "station": "Station de réception"
         }
       },
       "factor": {
         "title": "Facteur de conversion",
-        "description": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche). Laissez-le vide pour choisir plutôt votre station de réception.",
+        "description": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12 kWh/m³). Laissez-le vide pour choisir plutôt votre station de réception de gaz.",
         "data": {
           "conversion_factor": "Facteur de conversion"
         }
@@ -148,7 +148,7 @@
     "step": {
       "postcode": {
         "title": "Où se trouve le raccordement au gaz ?",
-        "description": "Indiquez le code postal du raccordement pour trouver son gestionnaire de réseau de distribution de gaz. Laissez vide pour choisir vous-même la région et le gestionnaire.",
+        "description": "Le code postal où votre gaz est livré. Il détermine votre région et votre gestionnaire de réseau. Laissez-le vide pour les choisir vous-même.",
         "data": {
           "postcode": "Code postal"
         },
@@ -162,7 +162,7 @@
       },
       "region": {
         "title": "Région",
-        "description": "La région détermine les gestionnaires de réseau et les prélèvements sur la facture.",
+        "description": "La région où votre gaz est livré.",
         "data": {
           "region": "Région"
         }
@@ -205,14 +205,14 @@
       },
       "dso": {
         "title": "Gestionnaire de réseau",
-        "description": "Le gestionnaire de réseau de distribution de gaz du raccordement. Il fixe la partie réseau de la facture.",
+        "description": "Votre gestionnaire de réseau de gaz, tel qu'indiqué sur votre facture.",
         "data": {
           "dso": "Gestionnaire de réseau"
         }
       },
       "household": {
         "title": "Ménage",
-        "description": "Votre consommation annuelle détermine la tranche de distribution et les tranches d'accise jusqu'à ce que votre compteur ait mesuré une année complète. Le compteur de gaz alimente les coûts courants ; laissez vide pour utiliser celui du tableau de bord Énergie.",
+        "description": "Indiquez votre consommation annuelle et, si vous l'avez, le facteur de conversion de votre facture. Le reste peut rester tel quel.",
         "data": {
           "annual_consumption_kwh": "Consommation annuelle",
           "caliber": "Calibre du compteur de gaz",
@@ -222,24 +222,24 @@
           "daily_compare": "Comparer tous les contrats chaque jour"
         },
         "data_description": {
-          "annual_consumption_kwh": "En kWh, comme sur votre dernière facture annuelle.",
-          "caliber": "La redevance bruxelloise dépend du débit maximal du compteur, indiqué sur le compteur (les compteurs G4 et G6 font 6 ou 10 m³/h).",
-          "gas_meter": "Un capteur de gaz cumulatif en m³ ou en kWh.",
-          "conversion_factor": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche). Laissez-le vide pour choisir plutôt votre station de réception.",
-          "card_archive": "Lire l'archive des cartes que le projet tient sur GitHub pour un mois passé que le fournisseur ne sert plus, et pour le mois en cours quand la carte du fournisseur ne peut pas être lue. Une requête ne mentionne que le fournisseur, le contrat, la région et le mois.",
-          "daily_compare": "Récupère une fois par jour les cartes de tous les fournisseurs de votre région et publie la meilleure économie comme capteur."
+          "annual_consumption_kwh": "En kWh, d'après votre dernière facture annuelle. Utilisée jusqu'à ce que votre compteur de gaz ait une année complète de relevés.",
+          "caliber": "Indiqué sur votre compteur de gaz ; la plupart des logements ont un G4 ou un G6. Il détermine une redevance bruxelloise.",
+          "gas_meter": "Le capteur qui compte votre consommation de gaz, en m³ ou en kWh. Laissez-le vide pour utiliser celui du tableau de bord Énergie.",
+          "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
+          "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés.",
+          "daily_compare": "Une fois par jour, comparer tous les contrats de votre région et afficher la meilleure économie dans un capteur."
         }
       },
       "station": {
         "title": "Station de réception du gaz",
-        "description": "Le gestionnaire de réseau convertit les mètres cubes en kWh avec le pouvoir calorifique supérieur de la station de réception qui alimente votre raccordement, publié chaque mois par Atrias. Il ne tient pas compte de la correction du gestionnaire pour la pression et la température au compteur, et compte donc jusqu'à quelques pour cent de kWh de plus que votre facture. Choisissez la station la plus proche ; certaines factures l'indiquent.",
+        "description": "Choisissez la station de réception de gaz la plus proche de chez vous ; certaines factures la mentionnent. Sa valeur mensuelle, publiée par Atrias, convertit les m³ en kWh. Elle peut compter quelques pour cent de kWh en plus que votre facture, qui corrige aussi la pression et la température au compteur.",
         "data": {
           "station": "Station de réception"
         }
       },
       "factor": {
         "title": "Facteur de conversion",
-        "description": "Le nombre de kWh que vaut un mètre cube de votre gaz, tel qu'indiqué sur votre facture (environ 11 à 12 kWh/m³ depuis le passage au gaz riche). Laissez-le vide pour choisir plutôt votre station de réception.",
+        "description": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12 kWh/m³). Laissez-le vide pour choisir plutôt votre station de réception de gaz.",
         "data": {
           "conversion_factor": "Facteur de conversion"
         }

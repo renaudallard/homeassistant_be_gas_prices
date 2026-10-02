@@ -4,7 +4,7 @@
     "step": {
       "postcode": {
         "title": "Wo ist der Gasanschluss?",
-        "description": "Geben Sie die Postleitzahl des Anschlusses ein, um den Gasverteilnetzbetreiber zu finden. Leer lassen, um Region und Netzbetreiber selbst zu wählen.",
+        "description": "Die Postleitzahl, an die Ihr Gas geliefert wird. Damit werden Ihre Region und Ihr Netzbetreiber ermittelt. Leer lassen, um beide selbst zu wählen.",
         "data": {
           "postcode": "Postleitzahl"
         },
@@ -18,7 +18,7 @@
       },
       "region": {
         "title": "Region",
-        "description": "Die Region bestimmt die Netzbetreiber und die Abgaben auf der Rechnung.",
+        "description": "Die Region, in die Ihr Gas geliefert wird.",
         "data": {
           "region": "Region"
         }
@@ -61,14 +61,14 @@
       },
       "dso": {
         "title": "Netzbetreiber",
-        "description": "Der Gasverteilnetzbetreiber des Anschlusses. Er bestimmt den Netzanteil der Rechnung.",
+        "description": "Ihr Gasnetzbetreiber, wie auf Ihrer Rechnung angegeben.",
         "data": {
           "dso": "Netzbetreiber"
         }
       },
       "household": {
         "title": "Haushalt",
-        "description": "Ihr Jahresverbrauch bestimmt die Verteilungsstufe und die Verbrauchsteuerstufen, bis Ihr Zähler ein volles Jahr gemessen hat. Der Gaszähler speist die laufenden Kosten; leer lassen, um den aus dem Energie-Dashboard zu verwenden.",
+        "description": "Geben Sie Ihren Jahresverbrauch an und, falls vorhanden, den Umrechnungsfaktor Ihrer Rechnung. Der Rest kann so bleiben.",
         "data": {
           "annual_consumption_kwh": "Jahresverbrauch",
           "caliber": "Größe des Gaszählers",
@@ -78,24 +78,24 @@
           "daily_compare": "Alle Verträge täglich vergleichen"
         },
         "data_description": {
-          "annual_consumption_kwh": "In kWh, wie auf Ihrer letzten Jahresabrechnung.",
-          "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
-          "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
-          "conversion_factor": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
-          "card_archive": "Das Kartenarchiv des Projekts auf GitHub für einen vergangenen Monat lesen, den der Lieferant nicht mehr bereitstellt, und für den laufenden Monat, wenn die Karte des Lieferanten nicht gelesen werden kann. Eine Anfrage nennt nur den Lieferanten, den Vertrag, die Region und den Monat.",
-          "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
+          "annual_consumption_kwh": "In kWh, von Ihrer letzten Jahresrechnung. Wird verwendet, bis Ihr Gaszähler ein volles Jahr an Messwerten hat.",
+          "caliber": "Steht auf Ihrem Gaszähler; die meisten Haushalte haben einen G4 oder G6. Er bestimmt eine Brüsseler Abgabe.",
+          "gas_meter": "Der Sensor, der Ihren Gasverbrauch zählt, in m³ oder kWh. Leer lassen, um den aus dem Energie-Dashboard zu verwenden.",
+          "conversion_factor": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12). Leer lassen, wenn Sie ihn nicht haben: Sie wählen dann Ihre Gasübernahmestation.",
+          "card_archive": "Tarifkarten aus dem Archiv dieses Projekts auf GitHub holen, wenn die des Lieferanten nicht lesbar sind oder nicht mehr veröffentlicht werden. Nur Lieferant, Vertrag, Region und Monat werden gesendet.",
+          "daily_compare": "Einmal täglich alle Verträge Ihrer Region vergleichen und die größte Ersparnis als Sensor anzeigen."
         }
       },
       "station": {
         "title": "Gasübernahmestation",
-        "description": "Der Netzbetreiber rechnet Kubikmeter mit dem Brennwert der Übernahmestation, die Ihren Anschluss versorgt, in kWh um; Atrias veröffentlicht ihn monatlich. Er lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt daher bis zu einige Prozent mehr kWh als Ihre Rechnung. Wählen Sie die nächstgelegene Station; manche Rechnungen nennen sie.",
+        "description": "Wählen Sie die Gasübernahmestation, die Ihnen am nächsten liegt; manche Rechnungen nennen sie. Ihr monatlicher Wert, von Atrias veröffentlicht, rechnet m³ in kWh um. Er kann einige Prozent mehr kWh zählen als Ihre Rechnung, die auch Druck und Temperatur am Zähler berücksichtigt.",
         "data": {
           "station": "Übernahmestation"
         }
       },
       "factor": {
         "title": "Umrechnungsfaktor",
-        "description": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
+        "description": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³). Leer lassen, um stattdessen Ihre Gasübernahmestation zu wählen.",
         "data": {
           "conversion_factor": "Umrechnungsfaktor"
         }
@@ -148,7 +148,7 @@
     "step": {
       "postcode": {
         "title": "Wo ist der Gasanschluss?",
-        "description": "Geben Sie die Postleitzahl des Anschlusses ein, um den Gasverteilnetzbetreiber zu finden. Leer lassen, um Region und Netzbetreiber selbst zu wählen.",
+        "description": "Die Postleitzahl, an die Ihr Gas geliefert wird. Damit werden Ihre Region und Ihr Netzbetreiber ermittelt. Leer lassen, um beide selbst zu wählen.",
         "data": {
           "postcode": "Postleitzahl"
         },
@@ -162,7 +162,7 @@
       },
       "region": {
         "title": "Region",
-        "description": "Die Region bestimmt die Netzbetreiber und die Abgaben auf der Rechnung.",
+        "description": "Die Region, in die Ihr Gas geliefert wird.",
         "data": {
           "region": "Region"
         }
@@ -205,14 +205,14 @@
       },
       "dso": {
         "title": "Netzbetreiber",
-        "description": "Der Gasverteilnetzbetreiber des Anschlusses. Er bestimmt den Netzanteil der Rechnung.",
+        "description": "Ihr Gasnetzbetreiber, wie auf Ihrer Rechnung angegeben.",
         "data": {
           "dso": "Netzbetreiber"
         }
       },
       "household": {
         "title": "Haushalt",
-        "description": "Ihr Jahresverbrauch bestimmt die Verteilungsstufe und die Verbrauchsteuerstufen, bis Ihr Zähler ein volles Jahr gemessen hat. Der Gaszähler speist die laufenden Kosten; leer lassen, um den aus dem Energie-Dashboard zu verwenden.",
+        "description": "Geben Sie Ihren Jahresverbrauch an und, falls vorhanden, den Umrechnungsfaktor Ihrer Rechnung. Der Rest kann so bleiben.",
         "data": {
           "annual_consumption_kwh": "Jahresverbrauch",
           "caliber": "Größe des Gaszählers",
@@ -222,24 +222,24 @@
           "daily_compare": "Alle Verträge täglich vergleichen"
         },
         "data_description": {
-          "annual_consumption_kwh": "In kWh, wie auf Ihrer letzten Jahresabrechnung.",
-          "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
-          "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
-          "conversion_factor": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
-          "card_archive": "Das Kartenarchiv des Projekts auf GitHub für einen vergangenen Monat lesen, den der Lieferant nicht mehr bereitstellt, und für den laufenden Monat, wenn die Karte des Lieferanten nicht gelesen werden kann. Eine Anfrage nennt nur den Lieferanten, den Vertrag, die Region und den Monat.",
-          "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
+          "annual_consumption_kwh": "In kWh, von Ihrer letzten Jahresrechnung. Wird verwendet, bis Ihr Gaszähler ein volles Jahr an Messwerten hat.",
+          "caliber": "Steht auf Ihrem Gaszähler; die meisten Haushalte haben einen G4 oder G6. Er bestimmt eine Brüsseler Abgabe.",
+          "gas_meter": "Der Sensor, der Ihren Gasverbrauch zählt, in m³ oder kWh. Leer lassen, um den aus dem Energie-Dashboard zu verwenden.",
+          "conversion_factor": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12). Leer lassen, wenn Sie ihn nicht haben: Sie wählen dann Ihre Gasübernahmestation.",
+          "card_archive": "Tarifkarten aus dem Archiv dieses Projekts auf GitHub holen, wenn die des Lieferanten nicht lesbar sind oder nicht mehr veröffentlicht werden. Nur Lieferant, Vertrag, Region und Monat werden gesendet.",
+          "daily_compare": "Einmal täglich alle Verträge Ihrer Region vergleichen und die größte Ersparnis als Sensor anzeigen."
         }
       },
       "station": {
         "title": "Gasübernahmestation",
-        "description": "Der Netzbetreiber rechnet Kubikmeter mit dem Brennwert der Übernahmestation, die Ihren Anschluss versorgt, in kWh um; Atrias veröffentlicht ihn monatlich. Er lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt daher bis zu einige Prozent mehr kWh als Ihre Rechnung. Wählen Sie die nächstgelegene Station; manche Rechnungen nennen sie.",
+        "description": "Wählen Sie die Gasübernahmestation, die Ihnen am nächsten liegt; manche Rechnungen nennen sie. Ihr monatlicher Wert, von Atrias veröffentlicht, rechnet m³ in kWh um. Er kann einige Prozent mehr kWh zählen als Ihre Rechnung, die auch Druck und Temperatur am Zähler berücksichtigt.",
         "data": {
           "station": "Übernahmestation"
         }
       },
       "factor": {
         "title": "Umrechnungsfaktor",
-        "description": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
+        "description": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³). Leer lassen, um stattdessen Ihre Gasübernahmestation zu wählen.",
         "data": {
           "conversion_factor": "Umrechnungsfaktor"
         }
