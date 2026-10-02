@@ -43,6 +43,7 @@ import hashlib
 import json
 import logging
 import ssl
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -220,6 +221,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # Set for a tick that prices again on what is in hand (async_reprice),
         # asking neither the supplier nor Atrias.
         self._reprice_only = False
+        # The past months' cards landed, and the last landing a tick that
+        # read the meter has priced: the fill's reprice runs only while one
+        # has not been (async_reprice).
+        self._cards_landed = 0
+        self._cards_priced = 0
         self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
@@ -734,17 +740,21 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     # ---- the tick -------------------------------------------------------------
 
-    async def async_reprice(self) -> None:
+    async def async_reprice(self, needed: Callable[[], bool]) -> None:
         """A tick that prices again on the card, index and calorific values
-        in hand, the meter read: the one setup starts once Home Assistant no
-        longer waits on it, which reads the meter its own tick left out, and
-        the one the past months' cards ask for once fetched. Neither asks
-        the supplier or Atrias again seconds after a tick did, which would
-        count a card that fails twice for one failure. The lock
-        async_refresh takes is taken first, so no other refresh waiting on
-        it, a Repairs fix flow's forced fetch say, can take the flag meant
-        for this one."""
+        in hand, the meter read, while ``needed`` says one still is: the one
+        setup starts once Home Assistant no longer waits on it, which reads
+        the meter its own tick left out, and the one the past months' cards
+        ask for once fetched. Whichever gets the lock first does the other's
+        work too, so a restart reads the meter once. Neither asks the
+        supplier or Atrias again seconds after a tick did, which would count
+        a card that fails twice for one failure. The lock async_refresh
+        takes is taken first, so no other
+        refresh waiting on it, a Repairs fix flow's forced fetch say, can
+        take the flag meant for this one."""
         async with self._debounced_refresh.async_lock():
+            if not needed():
+                return
             self._reprice_only = True
             try:
                 await self._async_refresh(log_failures=True)
@@ -832,6 +842,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # card not due for a fetch would keep it.
             self.last_error = ""
         self._pricing_error = ""
+        landed = self._cards_landed
         try:
             try:
                 data = await self._build(today, deferred=deferred, digest=digest)
@@ -849,6 +860,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.last_error = self._pricing_error = str(err)
             raise UpdateFailed(str(err)) from err
         self.meter_reads_pending = deferred
+        if not deferred:
+            self._cards_priced = landed
         self.maybe_rank(today)
         await self._save_persistent()
         return data
@@ -938,7 +951,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             dt_util.now().date(),
             use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
         )
-        await self.async_reprice()
+        self._cards_landed += 1
+        landed = self._cards_landed
+        await self.async_reprice(lambda: self._cards_priced < landed)
 
     async def _meter(self) -> str | None:
         configured = self._data.get(CONF_GAS_METER)
