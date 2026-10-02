@@ -23,9 +23,10 @@ Every entity of an entry hangs off one device named after the entry.
 | `potential_saving` | EUR | Only with the daily ranking on, removed when it is turned off: the cheapest contract's saving against the household's own (on the custom supplier, its typed card, quoted beside the ranking), the ranking as an attribute. |
 
 The running costs report `unknown` until a gas meter is readable. Right after
-a restart they show what they showed before it, until the meter is read in the
-background; one for a month or year that has ended since, or after a setting
-was edited or the gas meter changed, reads `unknown` until then.
+a restart they show the figures they showed before it, without their per-month
+attributes, until the meter is read in the background; one for a month or year
+that has ended since, or after a setting was edited or the gas meter changed,
+reads `unknown` until then.
 
 ## Button
 
