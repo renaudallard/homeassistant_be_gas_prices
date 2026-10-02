@@ -1807,6 +1807,31 @@ async def test_a_reprice_with_nothing_to_do_leaves_no_flag(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_restart_does_not_hold_a_typed_volume_as_measured(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A month of meter history prices the year on the typed volume, and the
+    figures held for the next restart do not say it was measured."""
+    month = {date(2026, 8, 15) + timedelta(days=n): 10.0 for n in range(31)}
+    with patch(_READ_METER, AsyncMock(return_value=("energy", month))):
+        entry = await _setup(hass)
+    assert entry.runtime_data.data.current_year_cost is not None
+    assert not entry.runtime_data.data.annual_kwh_measured
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", month)
+
+    with patch(_READ_METER, slow):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        assert entry.runtime_data.meter_reads_pending
+        assert not entry.runtime_data.data.annual_kwh_measured
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_failed_meter_read_keeps_the_figures_held_for_a_restart(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
