@@ -1794,6 +1794,75 @@ async def test_a_setup_that_read_the_meter_and_failed_names_the_meter_problem(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_reprice_with_nothing_to_do_leaves_no_flag(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Its flag is set only once it holds the lock and has work: one left
+    set would make the next hourly tick skip its card, index and calorific
+    checks."""
+    with patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        await coordinator.async_reprice(lambda: False)
+    assert not coordinator._reprice_only
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_failed_meter_read_keeps_the_figures_held_for_a_restart(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The recorder failing an hourly read leaves the costs unknown for that
+    tick, but a restart still shows those the last good read gave."""
+    data = {**DATA, CONF_GAS_METER: "sensor.gas"}
+    kind = AsyncMock(return_value="energy")
+    with (
+        patch("custom_components.be_gas_prices.coordinator.statistic_kind", kind),
+        patch(
+            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            AsyncMock(return_value=_a_year_of_gas()),
+        ),
+    ):
+        entry = await _setup(hass, data)
+        coordinator = entry.runtime_data
+        held = coordinator._held
+        assert held is not None and held["current_year_cost"] is not None
+        kind.side_effect = RecorderUnavailable("recorder query for sensor.gas failed")
+        await coordinator.async_refresh()
+        assert coordinator.data.current_year_cost is None
+    assert coordinator._held == held
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_restart_names_the_earlier_contracts_left_unpriced(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Held with the figures they are missing from, and shown with them
+    until the meter is read again."""
+    gone = {
+        CONF_SUPPLIER: "dats24",
+        CONF_CONTRACT: "dats24_variable",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-05-31",
+    }
+    with patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))):
+        entry = await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [gone]})
+    assert entry.runtime_data.data.unpriced_periods == ("dats24",)
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with patch(_READ_METER, slow):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        assert entry.runtime_data.meter_reads_pending
+        assert entry.runtime_data.data.unpriced_periods == ("dats24",)
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
