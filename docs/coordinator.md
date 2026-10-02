@@ -60,14 +60,13 @@ cards (`issues.sync_issues`).
    the meter in use. Setup then starts the tick that reads the meter in the
    background (`async_reprice`, `meter_reads_pending`), which asks neither
    the supplier nor Atrias again, seconds after its own tick did, unless a
-   fetch was forced meanwhile, and asks again for one forced while it runs.
-   It and the past months' reprice each run only while their work is still
-   to do, so whichever runs first reads the meter for both: a restart whose
-   past months' cards are all in the store reads it once, and cards fetched
-   again land later and are priced by a second read. Where the card cannot
-   price the volume setup's tick has, held or typed, setup's tick reads the
-   meter after all, since the measured volume may fall in a tier the card
-   does price.
+   fetch was forced meanwhile. It and the past months' reprice each run
+   only while their work is still to do, so whichever runs first reads the
+   meter for both: a restart whose past months' cards are all in the store
+   reads it once, and cards fetched again land later and are priced by a
+   second read. Where the card cannot price the volume setup's tick has,
+   held or typed, setup's tick reads the meter after all, since the
+   measured volume may fall in a tier the card does price.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,
@@ -113,9 +112,12 @@ hand is still stale, and it is what lets the card archive stand in.
 
 ## Services and the button
 
-- `be_gas_prices.refresh` and the *Refresh tariff card* button force the next
-  tick to fetch the card, the index values and the calorific values whatever
-  their age.
+- `be_gas_prices.refresh` and the *Refresh tariff card* button fetch the
+  card, the index values and the calorific values whatever their age, in a
+  tick that waits for the one running to end rather than a requested
+  refresh, which Home Assistant drops when a long tick holds the lock at the
+  end of its cooldown. A full tick that started after the press makes the
+  fetch for it, so one press fetches once.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
   the last full hour, or the one before it in the first minutes of an hour,

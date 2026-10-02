@@ -226,9 +226,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # has not been (async_reprice).
         self._cards_landed = 0
         self._cards_priced = 0
-        # Fetches forced so far (async_force_refresh), for a reprice to tell
-        # one asked for while it held the refresh lock.
+        # Fetches forced so far (async_force_refresh), and how many of them
+        # the last full tick to start made: one asked for since is still to
+        # be made (_make_forced_fetch).
         self._force_asked = 0
+        self._force_made = 0
         self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
@@ -753,37 +755,46 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         reads the meter once; cards fetched again land later and their own
         reprice reads it again to price them. Neither asks the supplier or
         Atrias again seconds after a tick did, which would count a card that
-        fails twice for one failure, unless a fetch was forced meanwhile;
-        one forced while it runs is asked for again after it. The lock
-        async_refresh takes is taken first, so no other refresh waiting on
-        it, a Repairs fix flow's forced fetch say, can take the flag meant
+        fails twice for one failure, unless a fetch was forced meanwhile. The
+        lock async_refresh takes is taken first, so no other refresh waiting
+        on it, a Repairs fix flow's forced fetch say, can take the flag meant
         for this one."""
         async with self._debounced_refresh.async_lock():
             if not needed():
                 return
-            asked = self._force_asked
             self._reprice_only = True
             try:
                 await self._async_refresh(log_failures=True)
             finally:
                 self._reprice_only = False
-        if self._force_asked != asked and self._force_refresh:
-            # Forced while this held the lock, and not made: the request the
-            # press made came due meanwhile and was dropped, the lock held.
-            await self.async_request_refresh()
 
     async def async_force_refresh(self, *, wait: bool = False) -> None:
-        """Fetch the card, the index values and the calorific values again on
-        the next tick whatever their age, or with ``wait`` now, past the
-        cooldown that spaces requested refreshes."""
+        """Fetch the card, the index values and the calorific values again,
+        whatever their age, once the tick running ends, with ``wait`` before
+        returning."""
         self._force_refresh = True
         self._force_asked += 1
         self._index_fetched_at = None
         self._gcv_fetched_at = None
         if wait:
-            await self.async_refresh()
+            await self._make_forced_fetch()
         else:
-            await self.async_request_refresh()
+            self.entry.async_create_background_task(
+                self.hass, self._make_forced_fetch(), f"{DOMAIN} forced fetch"
+            )
+
+    async def _make_forced_fetch(self) -> None:
+        """A tick that makes the fetch forced, once the refresh lock is free,
+        unless a full tick has started since it was asked and made it. Not a
+        requested refresh: Home Assistant drops one whose cooldown ends while
+        a long tick holds the lock. And a fetch forced while another waits
+        on the lock, a reprice or the fix flow's, is made once, so a card
+        that fails is not counted twice for it."""
+        asked = self._force_asked
+        async with self._debounced_refresh.async_lock():
+            if self._force_made >= asked:
+                return
+            await self._async_refresh(log_failures=True)
 
     @property
     def failures(self) -> int:
@@ -819,6 +830,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # now: this tick cancels the request that would have made it.
         reprice_only = self._reprice_only and not self._force_refresh
         self._reprice_only = False
+        if not reprice_only:
+            # A full tick makes every fetch forced so far, whatever it gives.
+            self._force_made = self._force_asked
         try:
             return await self._tick_with(deferred, reprice_only)
         except BaseException:

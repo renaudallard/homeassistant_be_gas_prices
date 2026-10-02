@@ -1443,6 +1443,82 @@ async def test_a_fetch_forced_during_a_long_startup_meter_read_is_made(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_fix_flow_during_the_startup_reprice_fetches_once(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The stale card's Repairs fix confirmed while the meter is read after
+    setup, the card failing for good: one fetch, one failure, and no card
+    saying the extractor failed."""
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with patch(_READ_METER, slow):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        coordinator = entry.runtime_data
+        before = fetch.await_count
+        fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+        flow = hass.async_create_task(coordinator.async_force_refresh(wait=True))
+        for _ in range(10):
+            await asyncio.sleep(0)
+        gate.set()
+        await flow
+        await hass.async_block_till_done(wait_background_tasks=True)
+        freezer.tick(timedelta(seconds=30))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == before + 1
+    assert coordinator.failures == 1
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_press_during_a_long_hourly_tick_is_fetched_after_it(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """An hourly tick whose meter read outlasts the cooldown of a requested
+    refresh: the press is fetched once that tick is done, not an hour on."""
+    gate = asyncio.Event()
+    slow_reads = False
+
+    async def read(_self: Any, _today: date) -> Any:
+        if slow_reads:
+            await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with patch(_READ_METER, read):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+        coordinator = entry.runtime_data
+        slow_reads = True
+        freezer.tick(timedelta(minutes=61))
+        async_fire_time_changed(hass)
+        for _ in range(20):
+            await asyncio.sleep(0)
+        before = fetch.await_count
+        await coordinator.async_force_refresh()
+        freezer.tick(timedelta(seconds=12))
+        async_fire_time_changed(hass)
+        for _ in range(20):
+            await asyncio.sleep(0)
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+        freezer.tick(timedelta(seconds=60))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == before + 1
+    assert not coordinator._force_refresh
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_past_months_cards_landing_after_setup_are_priced(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
