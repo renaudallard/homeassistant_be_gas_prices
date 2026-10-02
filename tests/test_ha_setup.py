@@ -1519,6 +1519,52 @@ async def test_a_press_during_a_long_hourly_tick_is_fetched_after_it(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_forced_fetch_that_failed_is_not_made_again_by_a_reprice(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The refresh button pressed during the startup meter read, the card
+    failing: the fetch is made once, and the reprice August's card asks for
+    a moment later prices without fetching it again."""
+    card = fetch.return_value
+    august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
+    meter_gate = asyncio.Event()
+    card_gate = asyncio.Event()
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        if month != date(2026, 8, 1):
+            return None
+        await card_gate.wait()
+        return august
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await meter_gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}), patch(_READ_METER, slow):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        for _ in range(20):
+            await asyncio.sleep(0)
+        coordinator = entry.runtime_data
+        before = fetch.await_count
+        fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+        await coordinator.async_force_refresh()
+        meter_gate.set()
+        for _ in range(50):
+            await asyncio.sleep(0)
+        assert fetch.await_count == before + 1
+        freezer.tick(timedelta(seconds=5))
+        card_gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == before + 1
+    assert coordinator.failures == 1
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_past_months_cards_landing_after_setup_are_priced(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

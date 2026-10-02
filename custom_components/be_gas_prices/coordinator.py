@@ -826,9 +826,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # Set from the start: a setup tick that fails before it has a
             # card read no meter either, and leaves the meter card alone.
             self.meter_reads_pending = True
-        # A fetch forced since (the refresh button, the service) is made
-        # now: this tick cancels the request that would have made it.
-        reprice_only = self._reprice_only and not self._force_refresh
+        # A fetch forced and not yet made (the refresh button, the service)
+        # is made by this tick. One made and failed is not: the hourly tick
+        # retries it, rather than a reprice seconds after counting it twice.
+        reprice_only = self._reprice_only and self._force_made >= self._force_asked
         self._reprice_only = False
         if not reprice_only:
             # A full tick makes every fetch forced so far, whatever it gives.
