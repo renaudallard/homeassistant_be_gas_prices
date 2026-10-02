@@ -53,7 +53,8 @@ async def async_setup_entry(
 
 
 class RefreshButton(CoordinatorEntity[GasCoordinator], ButtonEntity):
-    """Fetch the card and the index values again on the next tick."""
+    """Fetch the card, the index values and the calorific values again, by
+    the tick running if it has yet to check its card, else once it ends."""
 
     _attr_has_entity_name = True
     entity_description = _REFRESH

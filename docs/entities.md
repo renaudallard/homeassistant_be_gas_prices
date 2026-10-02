@@ -31,7 +31,8 @@ reads `unknown` until then.
 ## Button
 
 *Refresh tariff card* (diagnostic): fetch the card, the index values and the
-calorific values on the next tick.
+calorific values, by the update running if it has yet to check its card,
+else once it ends.
 
 ## Services
 
