@@ -152,7 +152,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
     try:
-        coordinator = GasCoordinator(hass, entry)
+        coordinator = GasCoordinator(hass, entry, defer_meter_reads=True)
     except ExtractorError as err:
         # A supplier this release no longer carries: retrying cannot help.
         raise ConfigEntryError(str(err)) from err
@@ -181,6 +181,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
     await coordinator.async_load_persistent()
     entry.runtime_data = coordinator
     await coordinator.async_config_entry_first_refresh()
+    if coordinator.meter_reads_pending:
+        # The first refresh read no meter, since Home Assistant waits on it:
+        # the one that does runs now, while the rest of it starts. Not a
+        # requested refresh, which the month cards' own request may already
+        # hold back for its cooldown; this one takes the same lock.
+        entry.async_create_background_task(
+            hass, coordinator.async_refresh(), f"{DOMAIN} meter read"
+        )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 

@@ -85,6 +85,8 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
 )
+from custom_components.be_gas_prices.coordinator import GasCoordinator
+from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
 from custom_components.be_gas_prices.month_cards import MonthCard
 from custom_components.be_gas_prices.providers import engie, octaplus
 from custom_components.be_gas_prices.providers._rates import IndexedRates
@@ -144,7 +146,8 @@ async def _setup(hass: HomeAssistant, data: dict[str, Any] | None = None) -> Moc
     entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=data or DATA)
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    # Setup's own refresh reads no meter; the one that does runs after it.
+    await hass.async_block_till_done(wait_background_tasks=True)
     return entry
 
 
@@ -954,6 +957,116 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
     assert entry.runtime_data._m3_factor("2026-08") == (pytest.approx(11.08), "2026-08")
 
 
+_READ_METER = "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter"
+
+
+def _a_year_of_gas() -> dict[date, float]:
+    return {date(2025, 9, 15) + timedelta(days=n): 10.0 for n in range(366)}
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: AsyncMock) -> None:
+    """Home Assistant waits on it: the meter is read by the refresh setup
+    starts in the background once it is done."""
+    read = AsyncMock(return_value=("energy", _a_year_of_gas()))
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    with patch(_READ_METER, read):
+        coordinator = GasCoordinator(hass, entry, defer_meter_reads=True)
+        await coordinator.async_refresh()
+        assert read.await_count == 0
+        assert coordinator.meter_reads_pending
+        await coordinator.async_refresh()
+    assert read.await_count == 1
+    assert not coordinator.meter_reads_pending
+    assert coordinator.data.current_year_cost is not None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_restart_shows_the_figures_from_before_it_until_the_meter_is_read(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    with patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))):
+        entry = await _setup(hass)
+    before = entry.runtime_data.data
+    assert before.current_year_cost is not None and before.annual_kwh_measured
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with patch(_READ_METER, slow):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        coordinator = entry.runtime_data
+        held = coordinator.data
+        assert coordinator.meter_reads_pending
+        assert held.current_year_cost == pytest.approx(before.current_year_cost)
+        assert held.current_month_cost == pytest.approx(before.current_month_cost)
+        assert held.rolling_year_kwh == pytest.approx(before.rolling_year_kwh)
+        assert held.annual_kwh == pytest.approx(before.annual_kwh)
+        assert held.annual_kwh_measured
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert not coordinator.meter_reads_pending
+    assert coordinator.data.months
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_setup_s_own_tick_still_names_the_meter(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """It reads no statistics, but which meter it is comes from the Energy
+    dashboard's settings: the several-meters card and the meter attribute
+    are there at once, the unit card once the meter is read."""
+    gate = asyncio.Event()
+
+    async def kind(_hass: Any, _meter: str) -> Any:
+        await gate.wait()
+        raise RecorderUnavailable("sensor.gas reports in a unit that is no volume")
+
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.discover_energy_gas_meter",
+            AsyncMock(return_value=("sensor.gas", 2)),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.statistic_kind", kind),
+    ):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        issues = ir.async_get(hass)
+        assert entry.runtime_data.meter_reads_pending
+        assert entry.runtime_data.data.meter == "sensor.gas"
+        assert issues.async_get_issue(DOMAIN, f"several_meters_{entry.entry_id}")
+        assert not issues.async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}")
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert issues.async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}")
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_held_figures_cover_only_their_month_year_and_settings(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A month or year turned over while Home Assistant was down, or a
+    setting edited since, leaves a figure unknown rather than show a period
+    it does not cover."""
+    with patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))):
+        entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    digest = coordinator._settings_digest()
+    same = coordinator._held_for(date(2026, 9, 20), digest)
+    assert same["current_month_cost"] is not None and same["current_year_cost"] is not None
+    next_month = coordinator._held_for(date(2026, 10, 1), digest)
+    assert "current_month_cost" not in next_month
+    assert next_month["current_year_cost"] is not None
+    next_year = coordinator._held_for(date(2027, 1, 1), digest)
+    assert "current_year_cost" not in next_year and "current_month_cost" not in next_year
+    assert next_year["annual_kwh"] is not None
+    assert coordinator._held_for(date(2026, 9, 20), "edited") == {}
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_atrias_failing_at_setup_is_asked_again_next_tick(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
@@ -980,9 +1093,10 @@ async def test_atrias_failing_at_setup_is_asked_again_next_tick(
         freezer.tick(timedelta(hours=1))
         await coordinator.async_refresh()
         assert coordinator._m3_factor("2026-08") == (pytest.approx(11.2), "2026-08")
-        assert key.await_count == 2
-        await coordinator.async_force_refresh(wait=True)
+        # Setup's tick, the meter read right after it, then this one.
         assert key.await_count == 3
+        await coordinator.async_force_refresh(wait=True)
+        assert key.await_count == 4
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -1293,7 +1407,9 @@ async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
     """A new entry whose first index read fails prices every indexed month
     at the card's printed figure: it asks again on the next tick, not twelve
     hours later."""
-    index = AsyncMock(side_effect=[ExtractorError("network error fetching x: timeout"), TABLE])
+    down = ExtractorError("network error fetching x: timeout")
+    # Down for setup's tick and for the meter read right after it.
+    index = AsyncMock(side_effect=[down, down, TABLE])
     stub = replace(providers.EXTRACTORS["engie"], fetch_index=index)
     with patch.dict(providers.EXTRACTORS, {"engie": stub}):
         entry = await _setup(hass)
@@ -1304,7 +1420,7 @@ async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
         assert coordinator.data.index is not None
         freezer.tick(timedelta(hours=1))
         await coordinator.async_refresh()
-    assert index.await_count == 2
+    assert index.await_count == 3
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -1520,10 +1636,12 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         assert entry.runtime_data.data.card_source == "archive"
+        # Setup's tick and the meter read right after it each asked.
+        assert fetch.await_count == 2
         freezer.tick(timedelta(hours=1))
         async_fire_time_changed(hass)
         await hass.async_block_till_done()
-    assert fetch.await_count == 2
+    assert fetch.await_count == 3
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

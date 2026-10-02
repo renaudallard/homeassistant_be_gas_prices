@@ -157,7 +157,9 @@ def _card_digest(card: SupplierSnapshot) -> str:
 class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     """Fetches the card, reads the meter and prices one household."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(
+        self, hass: HomeAssistant, entry: ConfigEntry, *, defer_meter_reads: bool = False
+    ) -> None:
         super().__init__(
             hass,
             _LOGGER,
@@ -207,6 +209,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # The household the last tick priced, measured volume included, for
         # the price history backfill to price past months the same way.
         self.household: Household | None = None
+        # Whether the next tick leaves the recorder alone: asked for by setup,
+        # whose first refresh Home Assistant waits on with 300 s for every
+        # integration together, and a year of meter statistics can take
+        # seconds on a database on a NAS. That tick publishes the figures the
+        # last one that read the meter left (_held), and setup asks for the
+        # one that reads it in the background (meter_reads_pending).
+        self._meter_reads_deferred = defer_meter_reads
+        self.meter_reads_pending = False
+        self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
         self.backfill_stamp: str | None = None
@@ -301,6 +312,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._months.load_json(blob.get("months"), reread=blob.get("release") != self._release)
         stamp = blob.get("backfill")
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
+        held = blob.get("held")
+        self._held = held if isinstance(held, dict) else None
         ranking = DailyRanking.from_json(blob.get("ranking"))
         # A ranking made for another contract prices a saving against a
         # contract the household left, and one made under other settings
@@ -328,6 +341,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "backfill": self.backfill_stamp,
             "ranking": None if self.daily_ranking is None else self.daily_ranking.to_json(),
             "ranking_for": self._settings_digest(),
+            "held": self._held,
         }
         await self._store.async_save(payload)
 
@@ -753,6 +767,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         )
 
     async def _tick(self) -> CoordinatorData:
+        deferred = self._meter_reads_deferred
+        self._meter_reads_deferred = False
+        # Taken before anything is read: an edit saved while this tick runs
+        # reloads the entry, and what it reads belongs to the settings it
+        # started under.
+        digest = self._settings_digest()
         await self._refresh_snapshot()
         if self._snapshot is None:
             raise UpdateFailed(self.last_error or "no tariff card available")
@@ -777,13 +797,17 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.last_error = ""
         self._pricing_error = ""
         try:
-            data = await self._build(today)
+            data = await self._build(today, deferred=deferred, digest=digest)
         except PricingError as err:
             # The card cannot price this household: its DSO or its tier is
             # missing, for this month or for one the running costs bill.
             self.last_error = self._pricing_error = str(err)
             raise UpdateFailed(str(err)) from err
-        self.maybe_rank(today)
+        self.meter_reads_pending = deferred
+        if not deferred:
+            # Ranked on the measured volume the meter read gives, by the tick
+            # setup asks for right after this one.
+            self.maybe_rank(today)
         await self._save_persistent()
         return data
 
@@ -878,6 +902,36 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.meter_count = count
         return meter
 
+    def _held_for(self, today: date, digest: str) -> dict[str, Any]:
+        """The figures the last tick that read the meter left, those that
+        still hold: priced under the entry's settings, the year's for this
+        year and the month's for this month. A new year or month, or a
+        setting edited since, leaves the figure out rather than show a
+        period it does not cover."""
+        held = self._held or {}
+        if held.get("inputs") != digest:
+            return {}
+
+        def number(name: str) -> float | None:
+            value = held.get(name)
+            return float(value) if isinstance(value, (int, float)) else None
+
+        out: dict[str, Any] = {
+            "annual_kwh": number("annual_kwh"),
+            "rolling_year_kwh": number("rolling_year_kwh"),
+        }
+        if held.get("year") == today.year:
+            out["current_year_cost"] = number("current_year_cost")
+            out["ytd_kwh"] = number("ytd_kwh")
+            out["projected_year_end_cost"] = number("projected_year_end_cost")
+            out["projected_year_kwh"] = number("projected_year_kwh")
+            unpriced = held.get("unpriced")
+            if isinstance(unpriced, list):
+                out["unpriced"] = [str(name) for name in unpriced]
+            if held.get("month") == month_key(today):
+                out["current_month_cost"] = number("current_month_cost")
+        return out
+
     async def _read_meter(self, today: date) -> tuple[MeterKind | None, dict[date, float]]:
         self.meter = await self._meter()
         self.meter_error = ""
@@ -894,7 +948,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             return None, {}
         return kind, days
 
-    async def _build(self, today: date) -> CoordinatorData:
+    async def _build(
+        self, today: date, *, deferred: bool = False, digest: str = ""
+    ) -> CoordinatorData:
         snapshot = self._snapshot
         assert snapshot is not None
         household = Household(
@@ -904,18 +960,35 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 self._data.get(CONF_ANNUAL_CONSUMPTION_KWH, DEFAULT_ANNUAL_CONSUMPTION_KWH)
             ),
         )
-        kind, meter_days = await self._read_meter(today)
-        kwh_days = (
-            to_kwh(meter_days, self._factor_for(kind), date(today.year, 1, 1))
-            if meter_days
-            else None
-        )
         costs: RunningCosts | None = None
         earlier: list[RunningCosts] = []
-        # Named afresh on every tick: last year's earlier contracts are no
-        # part of this year's cost.
-        self.unpriced_periods = []
         measured = False
+        kwh_days: dict[date, float] | None = None
+        held: dict[str, Any] = {}
+        if deferred:
+            # No meter read: the figures the last tick that read it left,
+            # those still true (_held_for), and the measured volume they
+            # priced the tier on.
+            held = self._held_for(today, digest)
+            # Which meter, from the Energy dashboard's settings and not the
+            # recorder, so the several-meters card stands.
+            self.meter = await self._meter()
+            if held.get("annual_kwh") is not None:
+                measured = True
+                household = Household(
+                    dso=household.dso, caliber=household.caliber, annual_kwh=held["annual_kwh"]
+                )
+            self.unpriced_periods = list(held.get("unpriced", []))
+        else:
+            # Named afresh on every tick: last year's earlier contracts are
+            # no part of this year's cost.
+            self.unpriced_periods = []
+            kind, meter_days = await self._read_meter(today)
+            kwh_days = (
+                to_kwh(meter_days, self._factor_for(kind), date(today.year, 1, 1))
+                if meter_days
+                else None
+            )
         if kwh_days is not None:
             # A measured year picks the tier and the excise slices; the typed
             # estimate stands in until the meter has one.
@@ -967,14 +1040,52 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.household = household
         index: IndexValue | None = now_bill.index
         age = self.snapshot_age()
-        rolling = None if costs is None else costs.rolling_year_kwh
         all_bills = tuple(b for period in earlier for b in period.months) + (
             () if costs is None else costs.months
         )
         earlier_cost = sum(period.current_year_cost for period in earlier)
         earlier_kwh = sum(period.ytd_kwh for period in earlier)
-        year_end = None if costs is None else costs.projected_year_end_cost
-        year_kwh = None if costs is None else costs.projected_year_kwh
+        if deferred:
+            rolling = held.get("rolling_year_kwh")
+            year_cost = held.get("current_year_cost")
+            month_cost = held.get("current_month_cost")
+            ytd_kwh = held.get("ytd_kwh")
+            year_end_cost = held.get("projected_year_end_cost")
+            year_end_kwh = held.get("projected_year_kwh")
+        else:
+            rolling = None if costs is None else costs.rolling_year_kwh
+            year_cost = None if costs is None else costs.current_year_cost + earlier_cost
+            month_cost = (
+                None if costs is None else sum(b.total for b in all_bills if b.month == month)
+            )
+            ytd_kwh = None if costs is None else costs.ytd_kwh + earlier_kwh
+            year_end_cost = (
+                None
+                if costs is None or costs.projected_year_end_cost is None
+                else costs.projected_year_end_cost + earlier_cost
+            )
+            year_end_kwh = (
+                None
+                if costs is None or costs.projected_year_kwh is None
+                else costs.projected_year_kwh + earlier_kwh
+            )
+            if not self.meter_error:
+                # Held for the next restart's first tick, under the settings
+                # this tick started with; a recorder that failed keeps the
+                # last figures it gave.
+                self._held = {
+                    "inputs": digest,
+                    "year": today.year,
+                    "month": month,
+                    "annual_kwh": household.annual_kwh if measured else None,
+                    "rolling_year_kwh": rolling,
+                    "current_year_cost": year_cost,
+                    "current_month_cost": month_cost,
+                    "ytd_kwh": ytd_kwh,
+                    "projected_year_end_cost": year_end_cost,
+                    "projected_year_kwh": year_end_kwh,
+                    "unpriced": list(self.unpriced_periods),
+                }
         return CoordinatorData(
             snapshot=snapshot,
             card_source=self._card_source,
@@ -991,11 +1102,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             snapshot_stale=self.snapshot_stale(),
             last_error=self.last_error,
             day=today,
-            current_year_cost=None if costs is None else costs.current_year_cost + earlier_cost,
-            current_month_cost=(
-                None if costs is None else sum(b.total for b in all_bills if b.month == month)
-            ),
-            ytd_kwh=None if costs is None else costs.ytd_kwh + earlier_kwh,
+            current_year_cost=year_cost,
+            current_month_cost=month_cost,
+            ytd_kwh=ytd_kwh,
             months=all_bills,
             # Every contract's months in order, one shared by two named once.
             months_on_current_card=tuple(
@@ -1008,8 +1117,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             projected_year_cost=(
                 None if rolling is None else rolling * now_bill.breakdown.all_in + fixed.total
             ),
-            projected_year_end_cost=None if year_end is None else year_end + earlier_cost,
-            projected_year_kwh=None if year_kwh is None else year_kwh + earlier_kwh,
+            projected_year_end_cost=year_end_cost,
+            projected_year_kwh=year_end_kwh,
             meter=self.meter,
             unpriced_periods=tuple(self.unpriced_periods),
         )

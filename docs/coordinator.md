@@ -49,7 +49,14 @@ cards (`issues.sync_issues`).
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
    source of the Energy dashboard, read as daily changes from today's date
    last year (`running_costs.meter_start`), which covers this year, the
-   rolling year and the year-end projection; nothing before is read.
+   rolling year and the year-end projection; nothing before is read. Setup's
+   own tick reads no meter: Home Assistant waits on it, with 300 s for every
+   integration together, and a year of statistics can take seconds on a
+   database on a NAS. That tick publishes the figures the last tick that
+   read the meter left (`_held_for`): the measured volume, and the year's
+   and month's costs and volumes while they still cover this year and month
+   and were priced under the entry's settings. Setup then starts the tick
+   that reads the meter in the background (`meter_reads_pending`).
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,
@@ -58,7 +65,8 @@ cards (`issues.sync_issues`).
    card; when the current card cannot either (its DSO row or the tier is
    missing), the tick records `last_error` and raises `UpdateFailed`.
 7. **The daily ranking** (`maybe_rank`), when the entry asks for it, once a
-   day at a minute derived from the entry id, in the background. A time
+   day at a minute derived from the entry id, in the background, never on
+   setup's own tick, which reads no meter. A time
    listener starts it at that minute; a tick after it catches a day the
    minute was missed on. A stored ranking made for another contract, or
    under other settings, is not restored, so a change of contract or of the
@@ -72,8 +80,9 @@ cards (`issues.sync_issues`).
 
 The entry's Store (`.storage/be_gas_prices.<entry_id>`) holds the last card
 and when it was fetched, the index table, the calorific values of the
-configured station, the past months' cards, the price-history stamp and the
-last daily ranking. A blob written under another snapshot schema is dropped,
+configured station, the past months' cards, the price-history stamp, the
+last daily ranking and the figures the last meter read gave, with the
+settings, year and month they were priced for. A blob written under another snapshot schema is dropped,
 not migrated: everything in it is re-derivable. The past months' cards
 another release of the integration stored are read again, even across a
 restart, so a release that reads a card better reaches them, and kept when

@@ -186,7 +186,8 @@ async def _setup_entry(
         patch("custom_components.be_gas_prices.backfill_once_a_year", AsyncMock()),
     ):
         await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+        # Setup's own refresh reads no meter; the one that does runs after it.
+        await hass.async_block_till_done(wait_background_tasks=True)
     return entry
 
 

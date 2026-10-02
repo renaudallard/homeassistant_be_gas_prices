@@ -22,7 +22,10 @@ Every entity of an entry hangs off one device named after the entry.
 | `contract_end_date` | timestamp | Only with an end date set; removed when it is cleared. |
 | `potential_saving` | EUR | Only with the daily ranking on, removed when it is turned off: the cheapest contract's saving against the household's own (on the custom supplier, its typed card, quoted beside the ranking), the ranking as an attribute. |
 
-The running costs report `unknown` until a gas meter is readable.
+The running costs report `unknown` until a gas meter is readable. Right after
+a restart they show what they showed before it, until the meter is read in the
+background; one for a month or year that has ended since, or after a setting
+was edited, reads `unknown` until then.
 
 ## Button
 
