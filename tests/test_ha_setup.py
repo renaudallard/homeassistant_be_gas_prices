@@ -1155,6 +1155,45 @@ async def test_an_ignored_meter_card_stays_ignored_through_a_restart(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_daily_ranking_waits_for_the_meter_read(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Neither setup's own tick nor the ranking minute's listener ranks the
+    day before the meter is read: the household is priced on its measured
+    volume, and a day once ranked is not ranked again."""
+    volumes: list[float] = []
+
+    async def ranked(
+        _session: Any, _region: str, household: Any, _month: str, **_kwargs: Any
+    ) -> Any:
+        volumes.append(household.annual_kwh)
+        return ([], 0)
+
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with (
+        patch("custom_components.be_gas_prices.coordinator.rank", ranked),
+        patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+        patch(_READ_METER, slow),
+    ):
+        entry = MockConfigEntry(
+            domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_DAILY_COMPARE: True}
+        )
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        entry.runtime_data.maybe_rank(date(2026, 9, 15))
+        await hass.async_block_till_done()
+        assert volumes == []
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert volumes == [pytest.approx(3650.0)]
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

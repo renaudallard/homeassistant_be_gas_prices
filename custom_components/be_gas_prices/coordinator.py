@@ -828,10 +828,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.last_error = self._pricing_error = str(err)
             raise UpdateFailed(str(err)) from err
         self.meter_reads_pending = deferred
-        if not deferred:
-            # Ranked on the measured volume the meter read gives, by the tick
-            # setup asks for right after this one.
-            self.maybe_rank(today)
+        self.maybe_rank(today)
         await self._save_persistent()
         return data
 
@@ -843,6 +840,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         A listener calls this at the minute itself, and every tick after it
         catches a day the minute was missed on (Home Assistant was down)."""
         if not self._data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE):
+            return
+        if self.meter_reads_pending:
+            # Ranked on the measured volume, once the meter read setup starts
+            # after its own tick lands, whether this tick or the listener
+            # asks.
             return
         if self.daily_ranking is not None and self.daily_ranking.day == today:
             return

@@ -70,8 +70,8 @@ cards (`issues.sync_issues`).
    card; when the current card cannot either (its DSO row or the tier is
    missing), the tick records `last_error` and raises `UpdateFailed`.
 7. **The daily ranking** (`maybe_rank`), when the entry asks for it, once a
-   day at a minute derived from the entry id, in the background, never on
-   setup's own tick, which reads no meter. A time
+   day at a minute derived from the entry id, in the background, never
+   before the meter read setup starts after its own tick has landed. A time
    listener starts it at that minute; a tick after it catches a day the
    minute was missed on. A stored ranking made for another contract, or
    under other settings, is not restored, so a change of contract or of the
