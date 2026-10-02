@@ -50,6 +50,7 @@ from tests import approx, fixture_page, fixture_text
 
 VARIABLE = "Energie_be_Gas_Particulier_18ddc53692.pdf"
 FIXED = "VAST_Energie_be_RES_GAS_pdf_276e3f8ac3.pdf"
+OCTOBER = "Oktober_Energie_be_Gas_Particulier_18ddc53692.pdf"
 AUGUST = "Augustus_Tariefkaart_Energie_be_Variabel_NG_RES_3aa9f66512.pdf"
 DECEMBER_2025 = "December_Tariefkaart_Energie_be_Variabel_NG_Res_632ae083c5.pdf"
 NOVEMBER_2023 = "November_Tariefkaart_Variabel_Energie_be_GAS_RES_5108a3762e.pdf"
@@ -79,6 +80,22 @@ def test_variable_card_reads_the_formula_and_its_vnr_price() -> None:
     # "Alle prijzen zijn inclusief btw" without a rate.
     assert snap.taxes.card_vat_rate is None
     assert snap.taxes.vat_rate == 0.0
+
+
+def test_the_october_card_leaves_particulier_out_of_its_title() -> None:
+    """ "Gas online – oktober 2026"."""
+    text = _card(OCTOBER)
+    assert "Gas online – oktober 2026" in text
+    snap = energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, text)
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.price == pytest.approx(0.076)
+    assert energy.factor == pytest.approx(1.014 / 1000.0 * 1.06)
+    assert energy.base == pytest.approx(0.0016 * 1.06)
+    assert energy.yearly_fixed_fee == pytest.approx(35.0)
+    assert snap.publication_label == "2026-10"
+    with pytest.raises(ExtractorError):
+        energiebe.parse_snapshot("energiebe_fixed", REGION_FLANDERS, text)
 
 
 def test_the_factor_is_read_per_card() -> None:

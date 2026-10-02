@@ -33,7 +33,8 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 
 - Card month and product: the title line, "Gas particulier online –
   september 2026" or "Gas vast particulier online – september 2026" ("online"
-  is missing on the December 2025 cards). The word "vast" must match the
+  is missing on the December 2025 cards, "particulier" on the October 2026
+  variable card: "Gas online – oktober 2026"). The word "vast" must match the
   contract asked for, and the variable card must print a formula and the
   fixed card "De energieprijs is een vaste prijs" and no formula.
 - Price: the figure opening the line under "Energieprijs" ("6,88 formule
@@ -109,6 +110,7 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 
 - `test_variable_card_reads_the_formula_and_its_vnr_price`: formula, price,
   fee, VAT basis and the check at 62,4 EUR/MWh (September).
+- `test_the_october_card_leaves_particulier_out_of_its_title`.
 - `test_the_factor_is_read_per_card`: August's 1,025 and its 5,55 estimate.
 - `test_fixed_card`, `test_card_of_the_other_product_is_refused`.
 - `test_dso_table`: the Antwerpen row in full, Kempen and West cells.
