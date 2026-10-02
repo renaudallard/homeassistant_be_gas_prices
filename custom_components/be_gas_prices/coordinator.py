@@ -748,8 +748,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         ask for once fetched. Whichever gets the lock first does the other's
         work too, so a restart reads the meter once. Neither asks the
         supplier or Atrias again seconds after a tick did, which would count
-        a card that fails twice for one failure. The lock async_refresh
-        takes is taken first, so no other
+        a card that fails twice for one failure, unless a fetch was forced
+        meanwhile. The lock async_refresh takes is taken first, so no other
         refresh waiting on it, a Repairs fix flow's forced fetch say, can
         take the flag meant for this one."""
         async with self._debounced_refresh.async_lock():
@@ -799,7 +799,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def _tick(self) -> CoordinatorData:
         deferred = self._meter_reads_deferred
         self._meter_reads_deferred = False
-        reprice_only = self._reprice_only
+        # A fetch forced since (the refresh button, the service) is made
+        # now: this tick cancels the request that would have made it.
+        reprice_only = self._reprice_only and not self._force_refresh
         self._reprice_only = False
         try:
             return await self._tick_with(deferred, reprice_only)
