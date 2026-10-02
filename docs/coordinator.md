@@ -54,8 +54,9 @@ cards (`issues.sync_issues`).
    integration together, and a year of statistics can take seconds on a
    database on a NAS. That tick publishes the figures the last tick that
    read the meter left (`_held_for`): the measured volume, and the year's
-   and month's costs and volumes while they still cover this year and month
-   and were priced under the entry's settings. Setup then starts the tick
+   and month's costs and volumes while they still cover this year and month,
+   were priced under the entry's settings and were read off the meter in
+   use. Setup then starts the tick
    that reads the meter in the background (`async_read_meter`,
    `meter_reads_pending`), which asks neither the supplier nor Atrias again,
    seconds after its own tick did. Where the card cannot price the volume

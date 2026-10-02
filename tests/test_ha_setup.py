@@ -1174,6 +1174,9 @@ async def test_held_figures_cover_only_their_month_year_and_settings(
     assert "current_year_cost" not in next_year and "current_month_cost" not in next_year
     assert next_year["annual_kwh"] is not None
     assert coordinator._held_for(date(2026, 9, 20), "edited") == {}
+    # The Energy dashboard's gas source changed, which no setting says.
+    coordinator.meter = "sensor.other_gas"
+    assert coordinator._held_for(date(2026, 9, 20), digest) == {}
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

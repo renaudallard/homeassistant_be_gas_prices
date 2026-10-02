@@ -193,7 +193,8 @@ statistics can take seconds on a database on a NAS. So after a restart the
 cost and volume sensors show what they showed before it, and the refresh
 that reads the meter runs right after startup instead of inside it. A
 figure for a month or a year that has ended since, or after a setting was
-edited, reads `unknown` until then, as every cost does on a new entry.
+edited or the gas meter changed, reads `unknown` until then, as every cost
+does on a new entry.
 
 ## Installation
 

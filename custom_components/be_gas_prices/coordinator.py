@@ -928,12 +928,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     def _held_for(self, today: date, digest: str) -> dict[str, Any]:
         """The figures the last tick that read the meter left, those that
-        still hold: priced under the entry's settings, the year's for this
-        year and the month's for this month. A new year or month, or a
+        still hold: read off the meter in use, priced under the entry's
+        settings, the year's for this year and the month's for this month. A new year or month, or a
         setting edited since, leaves the figure out rather than show a
         period it does not cover."""
         held = self._held or {}
-        if held.get("inputs") != digest:
+        if held.get("inputs") != digest or held.get("meter") != self.meter:
             return {}
 
         def number(name: str) -> float | None:
@@ -993,10 +993,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # No meter read: the figures the last tick that read it left,
             # those still true (_held_for), and the measured volume they
             # priced the tier on.
-            held = self._held_for(today, digest)
             # Which meter, from the Energy dashboard's settings and not the
-            # recorder, so the several-meters card stands.
+            # recorder, so the several-meters card stands and figures held
+            # for another one are not shown.
             self.meter = await self._meter()
+            held = self._held_for(today, digest)
             if held.get("annual_kwh") is not None:
                 measured = True
                 household = Household(
@@ -1099,6 +1100,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 # last figures it gave.
                 self._held = {
                     "inputs": digest,
+                    "meter": self.meter,
                     "year": today.year,
                     "month": month,
                     "annual_kwh": household.annual_kwh if measured else None,

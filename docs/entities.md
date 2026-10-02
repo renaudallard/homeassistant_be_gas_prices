@@ -25,7 +25,7 @@ Every entity of an entry hangs off one device named after the entry.
 The running costs report `unknown` until a gas meter is readable. Right after
 a restart they show what they showed before it, until the meter is read in the
 background; one for a month or year that has ended since, or after a setting
-was edited, reads `unknown` until then.
+was edited or the gas meter changed, reads `unknown` until then.
 
 ## Button
 
