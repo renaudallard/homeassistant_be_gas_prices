@@ -123,7 +123,8 @@ hand is still stale, and it is what lets the card archive stand in.
 
 ## The automatic price history
 
-`backfill.backfill_once_a_year` runs after setup and after each update, from
+`backfill.backfill_once_a_year` runs after each update once the meter is read
+(never while setup's own tick, which reads none, is all there is), from
 the start of the year's window (`window_start`: 1 January, or the contract
 start when the entry counts from it), and does nothing unless what the year
 is drawn from has moved: the calendar year, the entry's settings, each past

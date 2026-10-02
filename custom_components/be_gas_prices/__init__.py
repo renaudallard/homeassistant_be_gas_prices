@@ -196,8 +196,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
 
     def _maybe_backfill() -> None:
         # One run at a time; each returns at once when nothing it draws
-        # from has moved since the last one.
-        if running:
+        # from has moved since the last one. Not before the meter is read:
+        # the history is priced on the measured volume, and its stamp would
+        # keep a year drawn on another one.
+        if running or coordinator.meter_reads_pending:
             return
         running.add(entry.entry_id)
 

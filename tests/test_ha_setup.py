@@ -1086,6 +1086,37 @@ async def test_setup_reads_the_meter_when_the_typed_volume_cannot_be_priced(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_waits_for_the_meter_read(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Drawn on the measured volume, not the typed one setup's own tick
+    priced on: its stamp would keep that year as drawn."""
+    volumes: list[float] = []
+
+    async def backfill(_hass: Any, coordinator: Any) -> None:
+        volumes.append(coordinator.household.annual_kwh)
+
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with (
+        patch("custom_components.be_gas_prices.backfill_once_a_year", backfill),
+        patch(_READ_METER, slow),
+    ):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        assert volumes == []
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert volumes and volumes[0] == pytest.approx(3650.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
