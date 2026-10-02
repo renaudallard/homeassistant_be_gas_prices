@@ -155,10 +155,10 @@ jobs:
         # learn it from. One issue says so, the same gap posted once a week at
         # most; a check that fails says so in the log and the run goes on, since
         # a gap is a reason to retrain, not a broken archive.
+        # It runs the OCR library on supplier PDFs, so without github.token:
+        # the issue is filed by the step after it.
         if: steps.store.outcome == 'success'
         continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           [ -d tmp/pdfs ] || exit 0
           mapfile -d '' cards < <(find tmp/pdfs -name '*.pdf' -print0 | sort -z)
@@ -197,13 +197,21 @@ jobs:
           # The fonts and characters, not the cards: the same gap seen on next
           # month's card adds nothing.
           cut -d ' ' -f 2- unlearnt.txt | sort -u > unlearnt_fingerprint.txt
+          exit "$failed"
+
+      - name: File the glyphs the OCR library has not learnt
+        if: steps.store.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -s unlearnt_body.md ] || exit 0
           bash scripts/file_ci_issue.sh \
             --label archive-cards-glyphs \
             --title "[archive-cards] a card embeds glyphs the OCR library has not learnt" \
             --body unlearnt_body.md \
             --fingerprint unlearnt_fingerprint.txt \
             --workflow .github/workflows/archive_cards.yml
-          exit "$failed"
 
       - name: Keep the cards themselves
         id: keep
