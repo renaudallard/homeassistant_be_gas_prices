@@ -32,8 +32,8 @@ reads `unknown` until then.
 
 *Refresh tariff card* (diagnostic): fetch the card, the index values and the
 calorific values, by the update running if it has yet to check its card,
-else by one of its own once it ends. The update that reads the meter after
-startup checks none.
+else by the next one. An update running to read the meter after startup
+checks none, so the next one does.
 
 ## Services
 

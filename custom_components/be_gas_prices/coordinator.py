@@ -776,7 +776,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def async_force_refresh(self, *, wait: bool = False) -> None:
         """Fetch the card, the index values and the calorific values again,
         whatever their age: by the tick running if it is a full one yet to
-        check its card, else by one of its own once that tick ends; with
+        check its card, else by the next one, made full for it; with
         ``wait`` before returning."""
         self._force_refresh = True
         self._force_asked += 1
