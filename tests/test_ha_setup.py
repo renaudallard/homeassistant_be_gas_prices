@@ -67,6 +67,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CUSTOM_TRANSPORT,
     CONF_DAILY_COMPARE,
     CONF_DSO,
+    CONF_GAS_METER,
     CONF_MANUAL_FACTOR,
     CONF_MANUAL_PRICE,
     CONF_PREVIOUS_CONTRACTS,
@@ -1269,6 +1270,46 @@ async def test_a_meter_read_that_fails_still_names_the_meter_problem(
     assert not coordinator.meter_reads_pending
     issues = ir.async_get(hass)
     assert issues.async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}") is not None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_restart_on_a_named_meter_shows_its_held_figures(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The figures are held with the meter they were read off, which setup's
+    own tick resolves before it looks them up."""
+    data = {**DATA, CONF_GAS_METER: "sensor.gas"}
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.statistic_kind",
+            AsyncMock(return_value="energy"),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            AsyncMock(return_value=_a_year_of_gas()),
+        ),
+    ):
+        entry = await _setup(hass, data)
+    before = entry.runtime_data.data.current_year_cost
+    assert before is not None
+    gate = asyncio.Event()
+
+    async def slow(*_args: Any) -> Any:
+        await gate.wait()
+        return _a_year_of_gas()
+
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.statistic_kind",
+            AsyncMock(return_value="energy"),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.daily_consumption", slow),
+    ):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        assert entry.runtime_data.meter_reads_pending
+        assert entry.runtime_data.data.current_year_cost == pytest.approx(before)
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
