@@ -87,8 +87,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 - **Changed contract during the year?** Record the switch and each contract is
   billed on its own supplier's cards for its own days.
 - **Price history backfill**: the price sensors' statistics are filled back to
-  1 January on first setup, or to the contract start when the year counts
-  from it, or to a change of contract recorded this year.
+  1 January the first time an entry runs in a year, or to the contract start
+  when the year counts from it, or to a change of contract recorded this
+  year.
 
 **Choosing a contract**
 
@@ -144,7 +145,7 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 **Not supported, and why:**
 
 - **Bolt's variable gas cards** settle each day on the TTF day-ahead price.
-  The only free daily source forbids automated reuse, so they are left out;
+  The only daily source of it forbids reuse, so they are left out;
   Bolt's fixed cards are supported.
 - **DATS 24** left the residential market on 31 August 2026.
 
@@ -169,7 +170,7 @@ All sensors share one device per entry, named after the contract.
 
 | Sensor | Description |
 | --- | --- |
-| `current_price` | All-in EUR/kWh this month. Attributes: the tier, the annual volume and whether it was measured, the index value and its month, whether the price is provisional, the card's month and source, its age and any error. |
+| `current_price` | All-in EUR/kWh this month. Attributes: the tier, the annual volume and whether it was measured, the index value and its month, whether the price is provisional, the card's month, its validity, source and URL, its age, whether it is stale and any error. |
 | `current_price_m3` | The same per cubic metre, for an Energy dashboard gas source in m³. |
 | `energy_component`, `network_component`, `taxes_component` | The three parts of `current_price`, VAT inclusive. |
 | `fixed_costs_eur_per_year` | Supplier fee, distribution fixed term, metering and Brussels levy for a year. |
@@ -183,6 +184,10 @@ All sensors share one device per entry, named after the contract.
 | `projected_year_consumption`, `rolling_year_consumption` | The corresponding volumes. |
 | `contract_end_date` | With an end date set, for a renewal reminder. |
 | `potential_saving` | With the daily comparison on: what the cheapest contract would save a year. |
+
+The device also has a **Refresh tariff card** button, which fetches the card,
+the index values and the calorific values again, even while the card cannot
+be read.
 
 The running costs report `unknown` until a gas meter is readable. The rolling
 year needs 350 of the last 365 days on record and the year-end projection
@@ -250,9 +255,9 @@ change of contract this year.
 A card that cannot be fetched never stops the pricing. The last good one
 keeps serving, from storage across a restart; with none at all, or one that
 has gone stale (a week without a successful fetch, or a week past the month it
-prices), the project's card archive stands in. The `snapshot_stale` Repairs
-card has a Retry button; `extractor_failed` appears after two failures in a
-row that a retry will not fix.
+prices), the project's card archive stands in. Fixing the `snapshot_stale`
+Repairs card fetches the card again; `extractor_failed` appears after two
+failures in a row that a retry will not fix.
 
 ## The card archive
 
@@ -293,7 +298,7 @@ data:
 service: be_gas_prices.backfill_statistics
 data:
   entry_id: 01H...                       # optional; required with clear
-  start_date: "2026-01-01"               # optional; from 1 January of last year to today
+  start_date: "2026-01-01"               # optional; 1 January, or the contract start when the year counts from it; never before 1 January of last year
   clear: false                           # true deletes the sensors' statistics in full first
 ```
 
@@ -326,9 +331,10 @@ data:
   mid-tier fixed term (140,93 for 122,05). The daily live check reports each
   of these as a notice while the card prints that figure, and as a failure
   if it prints another; TotalEnergies' transport it cannot tell from
-  Fluxys's at two decimals. A distribution tier that is not cheaper per kWh than the
-  one below it is a figure in the wrong cell and is dropped instead, so a
-  household on it gets a pricing error rather than a wrong bill.
+  Fluxys's at two decimals. A distribution tier that is not cheaper per kWh
+  than the one below it is a figure in the wrong cell and is dropped with
+  those above it instead, so a household on them gets a pricing error rather
+  than a wrong bill.
 
 ## Development
 
