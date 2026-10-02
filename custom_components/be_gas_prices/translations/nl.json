@@ -73,7 +73,7 @@
           "annual_consumption_kwh": "Jaarverbruik",
           "caliber": "Grootte van de gasmeter",
           "gas_meter": "Gasmeter",
-          "conversion_mode": "Kubieke meter omrekenen naar kWh met",
+          "conversion_factor": "Omrekeningsfactor",
           "card_archive": "Het kaartarchief van het project gebruiken",
           "daily_compare": "Alle contracten dagelijks vergelijken"
         },
@@ -81,7 +81,7 @@
           "annual_consumption_kwh": "In kWh, zoals op je laatste jaarafrekening.",
           "caliber": "De Brusselse heffing hangt af van het maximale debiet van de meter, dat op de meter staat (G4- en G6-meters zijn 6 of 10 m³/u).",
           "gas_meter": "Een cumulatieve gassensor in m³ of kWh.",
-          "conversion_mode": "De factor op je factuur is die waarmee je netbeheerder factureert. De calorische bovenwaarde van het station laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt tot enkele procent meer kWh: kies ze als je geen factuur bij de hand hebt.",
+          "conversion_factor": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
           "card_archive": "Het kaartarchief dat het project op GitHub bijhoudt lezen voor een voorbije maand die de leverancier niet meer aanbiedt, en voor de lopende maand als de kaart van de leverancier niet gelezen kan worden. Een verzoek vermeldt de leverancier, het contract, het gewest en de maand en verder niets.",
           "daily_compare": "Haalt één keer per dag de kaarten van alle leveranciers in je gewest op en publiceert de beste besparing als sensor."
         }
@@ -217,7 +217,7 @@
           "annual_consumption_kwh": "Jaarverbruik",
           "caliber": "Grootte van de gasmeter",
           "gas_meter": "Gasmeter",
-          "conversion_mode": "Kubieke meter omrekenen naar kWh met",
+          "conversion_factor": "Omrekeningsfactor",
           "card_archive": "Het kaartarchief van het project gebruiken",
           "daily_compare": "Alle contracten dagelijks vergelijken"
         },
@@ -225,7 +225,7 @@
           "annual_consumption_kwh": "In kWh, zoals op je laatste jaarafrekening.",
           "caliber": "De Brusselse heffing hangt af van het maximale debiet van de meter, dat op de meter staat (G4- en G6-meters zijn 6 of 10 m³/u).",
           "gas_meter": "Een cumulatieve gassensor in m³ of kWh.",
-          "conversion_mode": "De factor op je factuur is die waarmee je netbeheerder factureert. De calorische bovenwaarde van het station laat de correctie van de netbeheerder voor de druk en de temperatuur aan de meter weg en telt tot enkele procent meer kWh: kies ze als je geen factuur bij de hand hebt.",
+          "conversion_factor": "Het aantal kWh dat één kubieke meter van je gas waard is, zoals op je factuur (ongeveer 11 tot 12 kWh/m³ sinds de omschakeling naar rijk gas). Laat het leeg om in de plaats je ontvangststation te kiezen.",
           "card_archive": "Het kaartarchief dat het project op GitHub bijhoudt lezen voor een voorbije maand die de leverancier niet meer aanbiedt, en voor de lopende maand als de kaart van de leverancier niet gelezen kan worden. Een verzoek vermeldt de leverancier, het contract, het gewest en de maand en verder niets.",
           "daily_compare": "Haalt één keer per dag de kaarten van alle leveranciers in je gewest op en publiceert de beste besparing als sensor."
         }
@@ -350,12 +350,6 @@
         "q100": "100 m³/u (G65)",
         "q160": "160 m³/u (G100)",
         "gt160": "Meer dan 160 m³/u"
-      }
-    },
-    "conversion_mode": {
-      "options": {
-        "manual": "De factor op mijn factuur",
-        "station": "De calorische bovenwaarde van mijn ontvangststation (Atrias)"
       }
     }
   },

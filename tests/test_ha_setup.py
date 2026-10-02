@@ -696,11 +696,10 @@ async def test_a_withdrawn_contract_s_entry_is_set_up_once_another_is_picked(
             {CONF_DSO: DSO_ORES},
             {
                 CONF_ANNUAL_CONSUMPTION_KWH: 17000.0,
-                CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+                CONF_CONVERSION_FACTOR: 11.5,
                 CONF_CARD_ARCHIVE: False,
                 CONF_DAILY_COMPARE: False,
             },
-            {CONF_CONVERSION_FACTOR: 11.5},
         ):
             result = await flows.async_configure(result["flow_id"], user_input)
         assert result["type"] is FlowResultType.CREATE_ENTRY

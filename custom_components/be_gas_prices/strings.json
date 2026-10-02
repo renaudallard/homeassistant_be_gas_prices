@@ -73,7 +73,7 @@
           "annual_consumption_kwh": "Yearly consumption",
           "caliber": "Gas meter size",
           "gas_meter": "Gas meter",
-          "conversion_mode": "Convert cubic metres to kWh with",
+          "conversion_factor": "Conversion factor",
           "card_archive": "Read the project's card archive",
           "daily_compare": "Compare every contract once a day"
         },
@@ -81,7 +81,7 @@
           "annual_consumption_kwh": "In kWh, as printed on your last yearly bill.",
           "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
           "gas_meter": "A cumulative gas sensor in m³ or kWh.",
-          "conversion_mode": "The factor on your bill is the one your network operator bills with. The station's calorific value leaves out the operator's correction for the pressure and temperature at the meter and counts up to a few percent more kWh: pick it when you have no bill at hand.",
+          "conversion_factor": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
           "card_archive": "Read the card archive the project keeps on GitHub for a past month the supplier no longer serves, and for the running month when the supplier's card cannot be read. A request names the supplier, the contract, the region and the month and nothing else.",
           "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
         }
@@ -217,7 +217,7 @@
           "annual_consumption_kwh": "Yearly consumption",
           "caliber": "Gas meter size",
           "gas_meter": "Gas meter",
-          "conversion_mode": "Convert cubic metres to kWh with",
+          "conversion_factor": "Conversion factor",
           "card_archive": "Read the project's card archive",
           "daily_compare": "Compare every contract once a day"
         },
@@ -225,7 +225,7 @@
           "annual_consumption_kwh": "In kWh, as printed on your last yearly bill.",
           "caliber": "The Brussels levy depends on the meter's maximum flow, printed on the meter (G4 and G6 meters are 6 or 10 m³/h).",
           "gas_meter": "A cumulative gas sensor in m³ or kWh.",
-          "conversion_mode": "The factor on your bill is the one your network operator bills with. The station's calorific value leaves out the operator's correction for the pressure and temperature at the meter and counts up to a few percent more kWh: pick it when you have no bill at hand.",
+          "conversion_factor": "The kWh one cubic metre of your gas is worth, as printed on your bill (about 11 to 12 kWh/m³ since the switch to high-calorific gas). Leave it empty to pick your reception station instead.",
           "card_archive": "Read the card archive the project keeps on GitHub for a past month the supplier no longer serves, and for the running month when the supplier's card cannot be read. A request names the supplier, the contract, the region and the month and nothing else.",
           "daily_compare": "Fetches the cards of every supplier in your region once a day and publishes the best saving as a sensor."
         }
@@ -350,12 +350,6 @@
         "q100": "100 m³/h (G65)",
         "q160": "160 m³/h (G100)",
         "gt160": "Above 160 m³/h"
-      }
-    },
-    "conversion_mode": {
-      "options": {
-        "manual": "The factor printed on my bill",
-        "station": "The calorific value of my reception station (Atrias)"
       }
     }
   },

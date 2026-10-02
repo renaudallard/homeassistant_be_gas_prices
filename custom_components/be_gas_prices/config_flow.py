@@ -82,13 +82,11 @@ from .const import (
     CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
     CONVERSION_MANUAL,
-    CONVERSION_MODES,
     CONVERSION_STATION,
     CUSTOM_KEYS,
     DEFAULT_ANNUAL_CONSUMPTION_KWH,
     DEFAULT_CALIBER,
     DEFAULT_CARD_ARCHIVE,
-    DEFAULT_CONVERSION_MODE,
     DEFAULT_DAILY_COMPARE,
     DOMAIN,
     DSO_CHOICES,
@@ -149,6 +147,14 @@ def _select(
     if translation_key is not None:
         config["translation_key"] = translation_key
     return SelectSelector(config)
+
+
+def _factor_selector() -> NumberSelector:
+    return NumberSelector(
+        NumberSelectorConfig(
+            min=9.0, max=13.0, step="any", mode=NumberSelectorMode.BOX, unit_of_measurement="kWh/m³"
+        )
+    )
 
 
 def _default(data: dict[str, Any], key: str, fallback: Any = vol.UNDEFINED) -> Any:
@@ -454,8 +460,9 @@ class _FlowSteps:
         brussels = self._data[CONF_REGION] == REGION_BRUSSELS
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input.get(CONF_GAS_METER):
-                self._data.pop(CONF_GAS_METER, None)
+            for key in (CONF_GAS_METER, CONF_CONVERSION_FACTOR):
+                if user_input.get(key) is None:
+                    self._data.pop(key, None)
             self._data.update(user_input)
         if user_input is not None and (
             get_extractor(self._data[CONF_SUPPLIER]).images_only
@@ -468,9 +475,11 @@ class _FlowSteps:
         elif user_input is not None:
             if not brussels:
                 self._data.pop(CONF_CALIBER, None)
-            if self._data[CONF_CONVERSION_MODE] == CONVERSION_MANUAL:
-                return await self.async_step_factor()
-            return await self.async_step_station()
+            # The factor step stores the factor, or leads to the station list
+            # when it was left empty.
+            return await self.async_step_factor(
+                {CONF_CONVERSION_FACTOR: self._data.get(CONF_CONVERSION_FACTOR)}
+            )
         fields: dict[Any, Any] = {
             vol.Required(
                 CONF_ANNUAL_CONSUMPTION_KWH,
@@ -494,12 +503,7 @@ class _FlowSteps:
         fields[vol.Optional(CONF_GAS_METER)] = EntitySelector(
             EntitySelectorConfig(domain=Platform.SENSOR, device_class=["gas", "energy"])
         )
-        fields[
-            vol.Required(
-                CONF_CONVERSION_MODE,
-                default=self._data.get(CONF_CONVERSION_MODE, DEFAULT_CONVERSION_MODE),
-            )
-        ] = _select(list(CONVERSION_MODES), translation_key="conversion_mode")
+        fields[vol.Optional(CONF_CONVERSION_FACTOR)] = _factor_selector()
         fields[
             vol.Required(
                 CONF_CARD_ARCHIVE,
@@ -512,8 +516,10 @@ class _FlowSteps:
                 default=bool(self._data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE)),
             )
         ] = BooleanSelector()
+        # Suggested rather than defaults, so a cleared field reaches here empty.
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields), {CONF_GAS_METER: self._data.get(CONF_GAS_METER)}
+            vol.Schema(fields),
+            {key: self._data.get(key) for key in (CONF_GAS_METER, CONF_CONVERSION_FACTOR)},
         )
         return self.async_show_form(step_id="household", data_schema=schema, errors=errors)
 
@@ -562,27 +568,14 @@ class _FlowSteps:
     ) -> ConfigFlowResult:
         if user_input is not None:
             if user_input.get(CONF_CONVERSION_FACTOR) is None:
-                # No bill at hand: the station list, the forms having no way
-                # back to the mode picked on the household step.
+                # No bill at hand: the station list.
                 self._data[CONF_CONVERSION_MODE] = CONVERSION_STATION
                 return await self.async_step_station()
             self._data[CONF_CONVERSION_FACTOR] = float(user_input[CONF_CONVERSION_FACTOR])
             self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
             self._data.pop(CONF_STATION, None)
             return await self._async_finish()
-        schema = vol.Schema(
-            {
-                vol.Optional(CONF_CONVERSION_FACTOR): NumberSelector(
-                    NumberSelectorConfig(
-                        min=9.0,
-                        max=13.0,
-                        step="any",
-                        mode=NumberSelectorMode.BOX,
-                        unit_of_measurement="kWh/m³",
-                    )
-                )
-            }
-        )
+        schema = vol.Schema({vol.Optional(CONF_CONVERSION_FACTOR): _factor_selector()})
         # Suggested rather than a default, so a cleared field reaches here
         # empty instead of coming back as the old factor.
         schema = self.add_suggested_values_to_schema(

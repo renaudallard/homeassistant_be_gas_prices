@@ -73,7 +73,7 @@
           "annual_consumption_kwh": "Jahresverbrauch",
           "caliber": "Größe des Gaszählers",
           "gas_meter": "Gaszähler",
-          "conversion_mode": "Kubikmeter in kWh umrechnen mit",
+          "conversion_factor": "Umrechnungsfaktor",
           "card_archive": "Das Kartenarchiv des Projekts verwenden",
           "daily_compare": "Alle Verträge täglich vergleichen"
         },
@@ -81,7 +81,7 @@
           "annual_consumption_kwh": "In kWh, wie auf Ihrer letzten Jahresabrechnung.",
           "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
           "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
-          "conversion_mode": "Der Faktor auf Ihrer Rechnung ist der, mit dem Ihr Netzbetreiber abrechnet. Der Brennwert der Station lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt bis zu einige Prozent mehr kWh: Wählen Sie ihn, wenn Sie keine Rechnung zur Hand haben.",
+          "conversion_factor": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
           "card_archive": "Das Kartenarchiv des Projekts auf GitHub für einen vergangenen Monat lesen, den der Lieferant nicht mehr bereitstellt, und für den laufenden Monat, wenn die Karte des Lieferanten nicht gelesen werden kann. Eine Anfrage nennt nur den Lieferanten, den Vertrag, die Region und den Monat.",
           "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
         }
@@ -217,7 +217,7 @@
           "annual_consumption_kwh": "Jahresverbrauch",
           "caliber": "Größe des Gaszählers",
           "gas_meter": "Gaszähler",
-          "conversion_mode": "Kubikmeter in kWh umrechnen mit",
+          "conversion_factor": "Umrechnungsfaktor",
           "card_archive": "Das Kartenarchiv des Projekts verwenden",
           "daily_compare": "Alle Verträge täglich vergleichen"
         },
@@ -225,7 +225,7 @@
           "annual_consumption_kwh": "In kWh, wie auf Ihrer letzten Jahresabrechnung.",
           "caliber": "Die Brüsseler Abgabe hängt vom maximalen Durchfluss des Zählers ab, der auf dem Zähler steht (G4- und G6-Zähler haben 6 oder 10 m³/h).",
           "gas_meter": "Ein kumulativer Gassensor in m³ oder kWh.",
-          "conversion_mode": "Der Faktor auf Ihrer Rechnung ist der, mit dem Ihr Netzbetreiber abrechnet. Der Brennwert der Station lässt die Korrektur des Netzbetreibers für Druck und Temperatur am Zähler weg und zählt bis zu einige Prozent mehr kWh: Wählen Sie ihn, wenn Sie keine Rechnung zur Hand haben.",
+          "conversion_factor": "Wie viele kWh ein Kubikmeter Ihres Gases wert ist, wie auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³ seit der Umstellung auf H-Gas). Lassen Sie es leer, um stattdessen Ihre Übernahmestation zu wählen.",
           "card_archive": "Das Kartenarchiv des Projekts auf GitHub für einen vergangenen Monat lesen, den der Lieferant nicht mehr bereitstellt, und für den laufenden Monat, wenn die Karte des Lieferanten nicht gelesen werden kann. Eine Anfrage nennt nur den Lieferanten, den Vertrag, die Region und den Monat.",
           "daily_compare": "Ruft einmal täglich die Karten aller Lieferanten Ihrer Region ab und veröffentlicht die beste Ersparnis als Sensor."
         }
@@ -350,12 +350,6 @@
         "q100": "100 m³/h (G65)",
         "q160": "160 m³/h (G100)",
         "gt160": "Über 160 m³/h"
-      }
-    },
-    "conversion_mode": {
-      "options": {
-        "manual": "Dem Faktor auf meiner Rechnung",
-        "station": "Dem Brennwert meiner Übernahmestation (Atrias)"
       }
     }
   },

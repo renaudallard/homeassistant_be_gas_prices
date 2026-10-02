@@ -16,9 +16,9 @@ once in `_FlowSteps` over `self._data`.
 | `signed_rate` | Price or factor and base, yearly fee | Only when the contract form asks to type the figures; all optional. See `manual_rate.py`. |
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved, and skipped when one is left: every postcode with gas names a single DSO, and Brussels has only Sibelga. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Walloon fee and the Brussels levy only in their region. |
-| `household` | Annual consumption, Brussels meter caliber, gas meter, conversion mode, card archive, daily ranking | The caliber only in Brussels. The conversion mode defaults to the bill's factor. The card archive cannot be off for a supplier whose cards are page images (`images_only`, Ecofix). |
+| `household` | Annual consumption, Brussels meter caliber, gas meter, conversion factor, card archive, daily ranking | The caliber only in Brussels. The factor (kWh/m³ from the bill) is suggested rather than defaulted, like the meter, so a cleared one is removed: given, the entry converts with it and saves; left empty, the flow moves to `station`. The card archive cannot be off for a supplier whose cards are page images (`images_only`, Ecofix). |
 | `station` | Reception station | The stations Atrias gave a value in either of its two latest months, plus the entry's own station when it is in neither, so its settings save without another pick. If Atrias cannot be read, an entry that names its station already keeps it and saves; otherwise the flow moves to `factor` with an error. |
-| `factor` | Conversion factor | kWh/m³ from the bill. Optional and suggested rather than defaulted: left empty, the flow moves to `station`, since a form has no way back to the mode picked on `household`. |
+| `factor` | Conversion factor | Only when Atrias cannot be read for an entry that names no station. Left empty, the flow moves to `station` again. |
 
 The entry's title is the contract's label. Everything is stored in
 `entry.data`; the options flow writes it back and the update listener

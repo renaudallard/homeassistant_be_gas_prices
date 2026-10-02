@@ -233,12 +233,11 @@ Home Assistant installs them from the manifest.
 4. **Household**: your yearly consumption in kWh (it picks the tier and the
    excise slices until your meter has measured a full year), your meter size
    in Brussels, your gas meter (leave blank to use the Energy dashboard's),
-   how cubic metres become kWh, whether the project's card archive may be
-   read (an Ecofix entry prices on it), and whether to compare every
-   contract daily.
-5. **Conversion factor** (from your bill, the default) or **reception
-   station** (Atrias's calorific value). Leave the factor empty to pick the
-   station instead.
+   the **conversion factor** printed on your bill, whether the project's
+   card archive may be read (an Ecofix entry prices on it), and whether to
+   compare every contract daily.
+5. **Reception station**, only when the factor was left empty: its monthly
+   calorific value from Atrias converts cubic metres to kWh instead.
 
 **Settings, Devices & services, Belgian Gas Prices, Configure** opens a menu:
 edit the settings, quote another contract, rank every contract, or record a
