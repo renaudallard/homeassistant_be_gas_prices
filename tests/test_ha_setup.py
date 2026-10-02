@@ -1194,6 +1194,39 @@ async def test_the_daily_ranking_waits_for_the_meter_read(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_forced_fetch_waiting_on_setup_is_not_made_meter_only(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A Repairs fix flow confirmed while setup's own refresh runs waits on
+    its lock: its forced fetch asks the supplier, the meter read setup
+    starts after it being the one that asks no one."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    fix: dict[str, Any] = {}
+    real = GasCoordinator._refresh_index
+
+    async def fix_flow(coordinator: GasCoordinator) -> None:
+        await coordinator.async_force_refresh(wait=True)
+        fix["forced_left"] = coordinator._force_refresh
+
+    async def index(self: GasCoordinator) -> None:
+        if "task" not in fix:
+            fix["task"] = asyncio.create_task(fix_flow(self))
+            await asyncio.sleep(0)
+        await real(self)
+
+    with (
+        patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))),
+        patch.object(GasCoordinator, "_refresh_index", index),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await fix["task"]
+        await hass.async_block_till_done(wait_background_tasks=True)
+    # The fix flow's own refresh made the forced fetch.
+    assert fix["forced_left"] is False
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

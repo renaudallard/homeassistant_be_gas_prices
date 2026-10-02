@@ -738,9 +738,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """The tick setup starts once Home Assistant no longer waits on it:
         the meter read its own tick left out, without asking the supplier
         and Atrias again seconds after it did, which would count a card that
-        fails twice for one failure."""
-        self._meter_only = True
-        await self.async_refresh()
+        fails twice for one failure. The lock async_refresh takes is taken
+        first, so no other refresh waiting on it, a Repairs fix flow's forced
+        fetch say, can take the flag meant for this one."""
+        async with self._debounced_refresh.async_lock():
+            self._meter_only = True
+            try:
+                await self._async_refresh(log_failures=True)
+            finally:
+                self._meter_only = False
 
     async def async_force_refresh(self, *, wait: bool = False) -> None:
         """Fetch the card, the index values and the calorific values again on
