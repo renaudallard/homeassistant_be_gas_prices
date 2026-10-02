@@ -117,7 +117,9 @@ hand is still stale, and it is what lets the card archive stand in.
   tick that waits for the one running to end rather than a requested
   refresh, which Home Assistant drops when a long tick holds the lock at the
   end of its cooldown. A full tick that started after the press makes the
-  fetch for it, so one press fetches once.
+  fetch for it, so one press fetches once. The service returns once the
+  fetch is done, so what follows it reads the prices it gave; the button
+  does not wait.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
   the last full hour, or the one before it in the first minutes of an hour,

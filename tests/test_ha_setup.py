@@ -1565,6 +1565,32 @@ async def test_a_forced_fetch_that_failed_is_not_made_again_by_a_reprice(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_refresh_service_returns_once_its_fetch_is_done(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """An automation that refreshes, then reads the prices, reads those the
+    fetch gave."""
+    entry = await _setup(hass)
+    card = fetch.return_value
+    release = asyncio.Event()
+
+    async def slow(*_args: Any, **_kwargs: Any) -> Any:
+        await release.wait()
+        return card
+
+    fetch.side_effect = slow
+    call = hass.async_create_task(
+        hass.services.async_call(DOMAIN, "refresh", {"entry_id": entry.entry_id}, blocking=True)
+    )
+    for _ in range(50):
+        await asyncio.sleep(0)
+    assert not call.done()
+    release.set()
+    await call
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_past_months_cards_landing_after_setup_are_priced(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

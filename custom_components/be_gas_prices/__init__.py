@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime
 
 import voluptuous as vol
@@ -103,8 +104,14 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, _entry_changed)
 
     async def _refresh(call: ServiceCall) -> None:
-        for coordinator in _loaded_coordinators(hass, call.data.get("entry_id")):
-            await coordinator.async_force_refresh()
+        # Done when the fetches are, so what follows the call reads the
+        # prices they give; the entries side by side, each with its lock.
+        await asyncio.gather(
+            *(
+                coordinator.async_force_refresh(wait=True)
+                for coordinator in _loaded_coordinators(hass, call.data.get("entry_id"))
+            )
+        )
 
     async def _backfill(call: ServiceCall) -> ServiceResponse:
         entry_id = call.data.get("entry_id")
