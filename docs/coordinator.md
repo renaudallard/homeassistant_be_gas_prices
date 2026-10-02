@@ -56,7 +56,9 @@ cards (`issues.sync_issues`).
    read the meter left (`_held_for`): the measured volume, and the year's
    and month's costs and volumes while they still cover this year and month
    and were priced under the entry's settings. Setup then starts the tick
-   that reads the meter in the background (`meter_reads_pending`).
+   that reads the meter in the background (`async_read_meter`,
+   `meter_reads_pending`), which asks neither the supplier nor Atrias again,
+   seconds after its own tick did.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,

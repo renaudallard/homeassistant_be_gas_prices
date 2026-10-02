@@ -217,6 +217,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # one that reads it in the background (meter_reads_pending).
         self._meter_reads_deferred = defer_meter_reads
         self.meter_reads_pending = False
+        # Set for the tick setup starts after its own: the meter read alone,
+        # the card and the index and calorific values just asked for.
+        self._meter_only = False
         self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
@@ -731,6 +734,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     # ---- the tick -------------------------------------------------------------
 
+    async def async_read_meter(self) -> None:
+        """The tick setup starts once Home Assistant no longer waits on it:
+        the meter read its own tick left out, without asking the supplier
+        and Atrias again seconds after it did, which would count a card that
+        fails twice for one failure."""
+        self._meter_only = True
+        await self.async_refresh()
+
     async def async_force_refresh(self, *, wait: bool = False) -> None:
         """Fetch the card, the index values and the calorific values again on
         the next tick whatever their age, or with ``wait`` now, past the
@@ -769,15 +780,19 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def _tick(self) -> CoordinatorData:
         deferred = self._meter_reads_deferred
         self._meter_reads_deferred = False
+        meter_only = self._meter_only
+        self._meter_only = False
         # Taken before anything is read: an edit saved while this tick runs
         # reloads the entry, and what it reads belongs to the settings it
         # started under.
         digest = self._settings_digest()
-        await self._refresh_snapshot()
+        if not meter_only:
+            await self._refresh_snapshot()
         if self._snapshot is None:
             raise UpdateFailed(self.last_error or "no tariff card available")
-        await self._refresh_index()
-        await self._refresh_calorific()
+        if not meter_only:
+            await self._refresh_index()
+            await self._refresh_calorific()
         today = dt_util.now().date()
         needed = self._months_needed(today)
         if self._first_tick:

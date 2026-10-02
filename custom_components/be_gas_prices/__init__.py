@@ -187,7 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
         # requested refresh, which the month cards' own request may already
         # hold back for its cooldown; this one takes the same lock.
         entry.async_create_background_task(
-            hass, coordinator.async_refresh(), f"{DOMAIN} meter read"
+            hass, coordinator.async_read_meter(), f"{DOMAIN} meter read"
         )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))

@@ -1046,6 +1046,26 @@ async def test_setup_s_own_tick_still_names_the_meter(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_meter_read_after_setup_asks_no_supplier_again(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A card that fails once at setup counts once: the meter read setup
+    starts right after its own tick leaves the card to the next tick."""
+    card = fetch.return_value
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    with patch(
+        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        AsyncMock(return_value=(card, False)),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+    assert not entry.runtime_data.meter_reads_pending
+    assert fetch.await_count == 1
+    assert entry.runtime_data.failures == 1
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
@@ -1093,10 +1113,9 @@ async def test_atrias_failing_at_setup_is_asked_again_next_tick(
         freezer.tick(timedelta(hours=1))
         await coordinator.async_refresh()
         assert coordinator._m3_factor("2026-08") == (pytest.approx(11.2), "2026-08")
-        # Setup's tick, the meter read right after it, then this one.
-        assert key.await_count == 3
+        assert key.await_count == 2
         await coordinator.async_force_refresh(wait=True)
-        assert key.await_count == 4
+        assert key.await_count == 3
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -1407,9 +1426,7 @@ async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
     """A new entry whose first index read fails prices every indexed month
     at the card's printed figure: it asks again on the next tick, not twelve
     hours later."""
-    down = ExtractorError("network error fetching x: timeout")
-    # Down for setup's tick and for the meter read right after it.
-    index = AsyncMock(side_effect=[down, down, TABLE])
+    index = AsyncMock(side_effect=[ExtractorError("network error fetching x: timeout"), TABLE])
     stub = replace(providers.EXTRACTORS["engie"], fetch_index=index)
     with patch.dict(providers.EXTRACTORS, {"engie": stub}):
         entry = await _setup(hass)
@@ -1420,7 +1437,7 @@ async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
         assert coordinator.data.index is not None
         freezer.tick(timedelta(hours=1))
         await coordinator.async_refresh()
-    assert index.await_count == 3
+    assert index.await_count == 2
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -1636,12 +1653,10 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         assert entry.runtime_data.data.card_source == "archive"
-        # Setup's tick and the meter read right after it each asked.
-        assert fetch.await_count == 2
         freezer.tick(timedelta(hours=1))
         async_fire_time_changed(hass)
         await hass.async_block_till_done()
-    assert fetch.await_count == 3
+    assert fetch.await_count == 2
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
