@@ -281,6 +281,30 @@ def test_a_fluvius_card_without_data_management_is_a_notice_in_its_year() -> Non
     ]
 
 
+def test_a_documented_card_error_is_a_notice_while_the_card_prints_it() -> None:
+    """EBEM's Kempen T1 of 2,12 is documented; another figure from EBEM, or
+    the same one from another supplier, is a new departure."""
+
+    def fleet(supplier: str, t1_prop: float) -> list[Any]:
+        return [
+            _card(_snapshot("alpha", t1_prop=0.0227489)),
+            _card(_snapshot("beta", t1_prop=0.0227)),
+            _card(_snapshot(supplier, t1_prop=t1_prop)),
+        ]
+
+    known = lc.consensus(fleet("ebem", 0.0212))
+    assert _failing(known) == {}
+    [notice] = [c for c in known if c.status == "notice"]
+    assert notice.label == "ebem: fluvius_kempen T1 proportional for 2026-09"
+    assert notice.detail.endswith("; a known card error, see docs/providers/ebem.md")
+    assert list(_failing(lc.consensus(fleet("ebem", 0.0200)))) == [
+        "ebem: fluvius_kempen T1 proportional for 2026-09"
+    ]
+    assert list(_failing(lc.consensus(fleet("gamma", 0.0212)))) == [
+        "gamma: fluvius_kempen T1 proportional for 2026-09"
+    ]
+
+
 def test_a_single_excise_rate_stands_for_both_slices() -> None:
     cards = [
         _card(_snapshot("alpha", label="2027-02")),

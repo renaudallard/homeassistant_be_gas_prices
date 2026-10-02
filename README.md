@@ -321,12 +321,12 @@ data:
   0,16536; EBEM still prints Fluvius Kempen's 2025 small-tier term (2,12 c
   EUR/kWh against 2,27489); Bolt prints ORES's terms 0,091 c EUR/kWh low
   (4,198 and 2,115), RESA's mid tier as 2,259 for 2,529, and the Brussels
-  levy of a small meter above 5 000 kWh as 12,54 EUR a year for 12,59. On
-  its September card, the latest the card archive has read, Ecofix prints
-  the same ORES terms and RESA mid tier, and gives RESA ORES's mid-tier
-  fixed term (140,93 for 122,05). The daily live check reports each of
-  these but TotalEnergies' transport, which at two decimals it cannot tell
-  from Fluxys's. A distribution tier that is not cheaper per kWh than the
+  levy of a small meter above 5 000 kWh as 12,54 EUR a year for 12,59.
+  Ecofix prints the same ORES terms and RESA mid tier, and gives RESA ORES's
+  mid-tier fixed term (140,93 for 122,05). The daily live check reports each
+  of these as a notice while the card prints that figure, and as a failure
+  if it prints another; TotalEnergies' transport it cannot tell from
+  Fluxys's at two decimals. A distribution tier that is not cheaper per kWh than the
   one below it is a figure in the wrong cell and is dropped instead, so a
   household on it gets a pricing error rather than a wrong bill.
 

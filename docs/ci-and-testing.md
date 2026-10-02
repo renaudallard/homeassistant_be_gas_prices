@@ -140,6 +140,10 @@ How the cross-check decides:
   Fluvius data management fee a card leaves out in the tariff year
   `const.py` carries the regulated one for. Past those windows the same
   departure fails.
+- A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
+  and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
+  T1) is a notice while the card prints that value: it is billed as
+  printed, but already known. Any other value for it fails.
 
 `--texts DIR` points at the `gas/` directory of a `be_price_cards` checkout:
 a card whose bytes the archive holds is served its stored text instead of

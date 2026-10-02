@@ -41,7 +41,9 @@ says nothing about the card, and checks what came back:
     misread, and the integration bills what the card prints. Where it bills
     the law or the regulated figure instead (the federal levies and the Walloon
     connection fee of a month const.py knows, a Fluvius data management fee
-    the card leaves out), the departure is a notice rather than a failure.
+    the card leaves out), or the card prints a figure its provider notes
+    document as the card's error, the departure is a notice rather than a
+    failure.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -343,6 +345,23 @@ _LAW_WINDOWS: dict[str, tuple[tuple[int, int], tuple[int, int] | None]] = {
 }
 
 
+# Card errors the provider notes in docs/providers document, by supplier,
+# scope and figure, with the value the card prints. They are billed as
+# printed, but already known, so a card printing that value is a notice; one
+# printing anything else for them is a new departure and fails again.
+_KNOWN_CARD_ERRORS: dict[tuple[str, str, str], float] = {
+    ("bolt", "ores", "T1 proportional"): 0.04198,
+    ("bolt", "ores", "T2 proportional"): 0.02115,
+    ("bolt", "resa", "T2 proportional"): 0.02259,
+    ("bolt", REGION_BRUSSELS, "levy q10_gt5000"): 12.54,
+    ("ebem", "fluvius_kempen", "T1 proportional"): 0.0212,
+    ("ecofix", "ores", "T1 proportional"): 0.04198,
+    ("ecofix", "ores", "T2 proportional"): 0.02115,
+    ("ecofix", "resa", "T2 fixed"): 140.93,
+    ("ecofix", "resa", "T2 proportional"): 0.02259,
+}
+
+
 @dataclass(frozen=True)
 class Figure:
     """One regulated figure as one card prints it.
@@ -473,6 +492,12 @@ def _filled_from_regulation(figure: Figure) -> bool:
     )
 
 
+def _known_error(figure: Figure) -> bool:
+    """A figure the provider notes document as the card's error."""
+    known = _KNOWN_CARD_ERRORS.get((figure.supplier, figure.scope, figure.name))
+    return known is not None and agree(figure.value, known, figure.unit)
+
+
 def _departures(group: list[Figure]) -> Iterator[Check]:
     """The cards of one figure, month and scope that depart from the rest.
 
@@ -514,6 +539,11 @@ def _departures(group: list[Figure]) -> Iterator[Check]:
             status, detail = "notice", detail + "; billed from the law for this month"
         elif all(_filled_from_regulation(f) for f in printed_by):
             status, detail = "notice", detail + "; billed the regulated fee for this month"
+        elif all(_known_error(f) for f in printed_by):
+            status, detail = (
+                "notice",
+                detail + f"; a known card error, see docs/providers/{supplier}.md",
+            )
         yield Check(f"{supplier}: {what}", status, detail)
 
 
