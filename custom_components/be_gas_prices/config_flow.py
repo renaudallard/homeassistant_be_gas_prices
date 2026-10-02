@@ -329,11 +329,11 @@ class _FlowSteps:
                     default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
                 )
             ] = BooleanSelector()
+        has_figures = not custom and any(key in self._data for key in MANUAL_RATE_KEYS)
         if not custom:
-            has_figures = any(key in self._data for key in MANUAL_RATE_KEYS)
             advanced[vol.Optional(_SIGNED_RATE, default=has_figures)] = BooleanSelector()
         # Folded unless the entry already uses one of them.
-        folded = not any(self._data.get(key) for key in (*_ADVANCED_KEYS, *MANUAL_RATE_KEYS))
+        folded = not has_figures and not any(self._data.get(key) for key in _ADVANCED_KEYS)
         fields: dict[Any, Any] = {
             vol.Required(CONF_CONTRACT, default=default): SelectSelector(
                 SelectSelectorConfig(

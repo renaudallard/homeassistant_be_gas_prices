@@ -312,6 +312,24 @@ async def test_settings_unfold_the_figures_the_entry_holds(hass: HomeAssistant) 
     assert entry.data[CONF_TARIFF_CARD_DATE] == "2026-02-10"
 
 
+async def test_typed_figures_alone_unfold_the_section(hass: HomeAssistant) -> None:
+    """A fee typed as 0 is a figure all the same: the section that holds
+    the switch for it is shown open."""
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_MANUAL_FEE: 0.0})
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    schema = result["data_schema"]
+    assert schema is not None
+    assert schema.schema["advanced"].options == {"collapsed": False}
+
+
 async def test_a_postcode_partly_on_an_unpriced_network_is_warned_about(
     hass: HomeAssistant,
 ) -> None:
