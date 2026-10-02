@@ -1005,9 +1005,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def _held_for(self, today: date, digest: str) -> dict[str, Any]:
         """The figures the last tick that read the meter left, those that
         still hold: read off the meter in use, priced under the entry's
-        settings, the year's for this year and the month's for this month. A new year or month, or a
-        setting edited since, leaves the figure out rather than show a
-        period it does not cover."""
+        settings, the year's for this year and the month's for this month.
+        A new year or month, or a setting edited since, leaves the figure
+        out rather than show a period it does not cover."""
         held = self._held or {}
         if held.get("inputs") != digest or held.get("meter") != self.meter:
             return {}
