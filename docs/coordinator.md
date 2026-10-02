@@ -57,12 +57,15 @@ cards (`issues.sync_issues`).
    read the meter left (`_held_for`): the measured volume, and the year's
    and month's costs and volumes while they still cover this year and month,
    were priced under the entry's settings and were read off the meter in
-   use. Setup then starts the tick
-   that reads the meter in the background (`async_reprice`,
-   `meter_reads_pending`), which asks neither the supplier nor Atrias again,
-   seconds after its own tick did. Where the card cannot price the volume
-   setup's tick has, setup's tick reads the meter after all, since the
-   measured volume may fall in a tier the card does price.
+   use. Setup then starts the tick that reads the meter in the background
+   (`async_reprice`, `meter_reads_pending`), which asks neither the
+   supplier nor Atrias again, seconds after its own tick did, unless a
+   fetch was forced meanwhile. It and the past months' reprice each run
+   only while their work is still to do, so whichever runs first reads the
+   meter for both and a restart reads it once. Where the card cannot price
+   the volume setup's tick has, held or typed, setup's tick reads the meter
+   after all, since the measured volume may fall in a tier the card does
+   price.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,

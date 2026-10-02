@@ -195,8 +195,8 @@ per-month attributes, and the refresh that reads the meter runs right after
 startup instead of inside it. A figure for a month or a year that has ended
 since, or after a setting was edited or the gas meter changed, reads
 `unknown` until then, as every cost does on a new entry. Only a card that
-cannot price the volume held makes startup read the meter, since the
-measured volume may fall in a tier it does price.
+cannot price the volume startup has, held or typed, makes it read the meter,
+since the measured volume may fall in a tier the card does price.
 
 ## Installation
 
