@@ -226,6 +226,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # has not been (async_reprice).
         self._cards_landed = 0
         self._cards_priced = 0
+        # Fetches forced so far (async_force_refresh), for a reprice to tell
+        # one asked for while it held the refresh lock.
+        self._force_asked = 0
         self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
@@ -749,23 +752,29 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         work too, so a restart reads the meter once. Neither asks the
         supplier or Atrias again seconds after a tick did, which would count
         a card that fails twice for one failure, unless a fetch was forced
-        meanwhile. The lock async_refresh takes is taken first, so no other
+        meanwhile; one forced while it runs is asked for again after it. The lock async_refresh takes is taken first, so no other
         refresh waiting on it, a Repairs fix flow's forced fetch say, can
         take the flag meant for this one."""
         async with self._debounced_refresh.async_lock():
             if not needed():
                 return
+            asked = self._force_asked
             self._reprice_only = True
             try:
                 await self._async_refresh(log_failures=True)
             finally:
                 self._reprice_only = False
+        if self._force_asked != asked and self._force_refresh:
+            # Forced while this held the lock, and not made: the request the
+            # press made came due meanwhile and was dropped, the lock held.
+            await self.async_request_refresh()
 
     async def async_force_refresh(self, *, wait: bool = False) -> None:
         """Fetch the card, the index values and the calorific values again on
         the next tick whatever their age, or with ``wait`` now, past the
         cooldown that spaces requested refreshes."""
         self._force_refresh = True
+        self._force_asked += 1
         self._index_fetched_at = None
         self._gcv_fetched_at = None
         if wait:

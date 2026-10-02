@@ -1410,6 +1410,39 @@ async def test_a_fetch_forced_during_the_startup_reprice_is_made(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_fetch_forced_during_a_long_startup_meter_read_is_made(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The meter read after setup outlasts the cooldown of the request the
+    press made, which then comes due while the read holds the lock and is
+    dropped: the read asks for the fetch again once it is done."""
+    gate = asyncio.Event()
+
+    async def slow(_self: Any, _today: date) -> Any:
+        await gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    with patch(_READ_METER, slow):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        coordinator = entry.runtime_data
+        before = fetch.await_count
+        await coordinator.async_force_refresh()
+        freezer.tick(timedelta(seconds=12))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+        freezer.tick(timedelta(seconds=30))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == before + 1
+    assert not coordinator._force_refresh
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_past_months_cards_landing_after_setup_are_priced(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
