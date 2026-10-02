@@ -251,6 +251,11 @@ async def test_the_contract_form_folds_the_rarely_needed_fields(hass: HomeAssist
         },
     )
     assert result["errors"] == {"base": "end_before_start"}
+    # The form comes back with the section's fields as typed.
+    schema = result["data_schema"]
+    assert schema is not None
+    end = next(key for key in _advanced(schema) if key == CONF_CONTRACT_END_DATE)
+    assert end.description == {"suggested_value": "2026-02-01"}
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
