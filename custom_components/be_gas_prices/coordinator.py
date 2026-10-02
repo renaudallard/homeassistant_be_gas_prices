@@ -419,6 +419,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         key = None
         if self.extractor.probe is not None:
             key = await self.extractor.probe(self._session, self.contract, self.region)
+        # Read past the probe, which can take seconds: every fetch forced by
+        # now is made by this tick, a press during the probe included, and
+        # the press's own tick has nothing left to fetch.
+        self._force_made = self._force_asked
         if self._snapshot is None or self._force_refresh or self._stand_in:
             return True, key
         # A card whose month is over is asked for again on every tick until
@@ -441,6 +445,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._card_source = "live"
             self._stand_in = False
             self.last_error = ""
+            self._force_made = self._force_asked
             return
         due, key = await self._card_is_due()
         if not due:
@@ -831,9 +836,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # retries it, rather than a reprice seconds after counting it twice.
         reprice_only = self._reprice_only and self._force_made >= self._force_asked
         self._reprice_only = False
-        if not reprice_only:
-            # A full tick makes every fetch forced so far, whatever it gives.
-            self._force_made = self._force_asked
         try:
             return await self._tick_with(deferred, reprice_only)
         except BaseException:

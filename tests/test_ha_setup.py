@@ -1591,6 +1591,46 @@ async def test_the_refresh_service_returns_once_its_fetch_is_done(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_press_during_an_hourly_probe_fetches_once(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The hourly tick waits on the supplier's probe when the button is
+    pressed: it reads the press past the probe and fetches for it, and the
+    press's own tick has nothing left to fetch, so a failing card counts
+    once."""
+    gate = asyncio.Event()
+    probing = asyncio.Event()
+    slow_probe = False
+
+    async def probe(*_args: Any) -> str:
+        if slow_probe:
+            probing.set()
+            await gate.wait()
+        return "etag-1"
+
+    stub = replace(providers.EXTRACTORS["engie"], probe=probe)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        before = fetch.await_count
+        fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+        slow_probe = True
+        freezer.tick(timedelta(minutes=61))
+        async_fire_time_changed(hass)
+        await asyncio.wait_for(probing.wait(), 5)
+        await coordinator.async_force_refresh()
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+        freezer.tick(timedelta(seconds=11))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == before + 1
+    assert coordinator.failures == 1
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_past_months_cards_landing_after_setup_are_priced(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

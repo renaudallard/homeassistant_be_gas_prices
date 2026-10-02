@@ -112,14 +112,14 @@ hand is still stale, and it is what lets the card archive stand in.
 
 ## Services and the button
 
-- `be_gas_prices.refresh` and the *Refresh tariff card* button fetch the
-  card, the index values and the calorific values whatever their age, in a
-  tick that waits for the one running to end rather than a requested
-  refresh, which Home Assistant drops when a long tick holds the lock at the
-  end of its cooldown. A full tick that started after the press makes the
-  fetch for it, so one press fetches once. The service returns once the
-  fetch is done, so what follows it reads the prices it gave; the button
-  does not wait.
+- `be_gas_prices.refresh` and the *Refresh tariff card* button fetch the card,
+  the index values and the calorific values whatever their age, in a tick
+  that waits for the one running to end rather than a requested refresh,
+  which Home Assistant drops when a long tick holds the lock at the end of
+  its cooldown. A full tick that checks its card after the press, past the
+  supplier's probe, makes the fetch for it, so one press fetches once. The
+  service returns once the fetch is done, so what follows it reads the
+  prices it gave; the button does not wait.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
   the last full hour, or the one before it in the first minutes of an hour,
