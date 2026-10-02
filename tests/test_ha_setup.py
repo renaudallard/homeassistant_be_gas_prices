@@ -1631,6 +1631,78 @@ async def test_a_press_during_an_hourly_probe_fetches_once(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_reprice_queued_before_a_press_makes_its_fetch(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """August's card lands during the startup meter read, so its reprice
+    waits on the lock, then the button is pressed: the reprice, first in
+    line, turns full for the fetch the press asked for, and the press's own
+    tick then has nothing left to do, so the meter is read twice in all,
+    not three times."""
+    card = fetch.return_value
+    august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
+    meter_gate = asyncio.Event()
+    card_gate = asyncio.Event()
+    reads = 0
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        if month != date(2026, 8, 1):
+            return None
+        await card_gate.wait()
+        return august
+
+    async def slow(_self: Any, _today: date) -> Any:
+        nonlocal reads
+        reads += 1
+        await meter_gate.wait()
+        return ("energy", _a_year_of_gas())
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}), patch(_READ_METER, slow):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        for _ in range(50):
+            await asyncio.sleep(0)
+        coordinator = entry.runtime_data
+        card_gate.set()
+        for _ in range(50):
+            await asyncio.sleep(0)
+        before = fetch.await_count
+        await coordinator.async_force_refresh()
+        meter_gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+        freezer.tick(timedelta(seconds=15))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == before + 1
+    assert reads == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_press_on_a_custom_entry_counts_as_made(hass: HomeAssistant) -> None:
+    """The typed card has nothing to fetch: a press is made by the tick it
+    asks for, so a reprice after it stays one."""
+    data = {
+        **DATA,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_CUSTOM_PRICE: 7.5,
+        CONF_CUSTOM_T1_FIXED: 15.0,
+        CONF_CUSTOM_T1_PROP: 2.0,
+        CONF_CUSTOM_T2_FIXED: 80.0,
+        CONF_CUSTOM_T2_PROP: 1.0,
+        CONF_CUSTOM_TRANSPORT: 0.165,
+        CONF_CUSTOM_EXCISE_LOW: 1.09286,
+    }
+    with patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))):
+        entry = await _setup(hass, data)
+        coordinator = entry.runtime_data
+        await coordinator.async_force_refresh(wait=True)
+    assert coordinator._force_made == coordinator._force_asked == 1
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_past_months_cards_landing_after_setup_are_priced(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
