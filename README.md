@@ -80,8 +80,10 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   project's card archive otherwise.
 - **Rolling year cost** and a **projected year-end cost**.
 - **Signing-cohort pricing**: set a contract start date and the card of the
-  month you signed prices a fixed or indexed contract, or type the figures of
-  your contract. A variable price is the supplier's for each month.
+  month supply started prices a fixed or indexed contract (or that of the
+  tariff card month, when you signed on another month's card), or type the
+  figures of your contract. A variable price is the supplier's for each
+  month.
 - **Changed contract during the year?** Record the switch and each contract is
   billed on its own supplier's cards for its own days.
 - **Price history backfill**: the price sensors' statistics are filled back to
@@ -220,8 +222,8 @@ Home Assistant installs them from the manifest.
 1. **Postcode**: resolves the region and your gas network operator. Leave it
    blank to pick both yourself. A postcode with no gas network is refused.
 2. **Supplier** and **contract**, with an optional **contract start date**:
-   it prices a fixed or indexed contract on the card of the month you
-   signed. The folded **Advanced** section holds what most households leave
+   it prices a fixed or indexed contract on the card of the month supply
+   started. The folded **Advanced** section holds what most households leave
    alone: a **tariff card month** when you signed on another month's card,
    the **end date** for a renewal reminder, counting this year's cost from
    the contract start, and a switch to type the figures of your contract

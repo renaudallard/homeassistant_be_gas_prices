@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract bepaalt die de tariefkaart van de maand waarin je tekende, zodat de prijs die je echt betaalt gebruikt wordt.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, vul die maand dan in onder Geavanceerd.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract bepaalt die de tariefkaart van de maand waarin je tekende, zodat de prijs die je echt betaalt gebruikt wordt.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, vul die maand dan in onder Geavanceerd.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"

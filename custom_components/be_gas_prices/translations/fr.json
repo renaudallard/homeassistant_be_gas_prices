@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contrat",
-        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, elle désigne la carte tarifaire du mois de souscription, pour utiliser le prix que vous payez réellement.",
+        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, la carte tarifaire du mois où la fourniture a commencé donne le prix que vous payez. Si vous avez signé sur la carte d'un mois antérieur, indiquez ce mois sous Avancé.",
         "data": {
           "contract": "Contrat",
           "contract_start_date": "Date de début du contrat"
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contrat",
-        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, elle désigne la carte tarifaire du mois de souscription, pour utiliser le prix que vous payez réellement.",
+        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, la carte tarifaire du mois où la fourniture a commencé donne le prix que vous payez. Si vous avez signé sur la carte d'un mois antérieur, indiquez ce mois sous Avancé.",
         "data": {
           "contract": "Contrat",
           "contract_start_date": "Date de début du contrat"

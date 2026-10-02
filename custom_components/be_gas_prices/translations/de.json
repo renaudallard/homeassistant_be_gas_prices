@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Vertrag",
-        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag bestimmt er die Tarifkarte des Abschlussmonats, damit der Preis verwendet wird, den Sie tatsächlich zahlen.",
+        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag ergibt die Tarifkarte des Monats, in dem die Lieferung begann, den Preis, den Sie zahlen. Haben Sie auf der Karte eines früheren Monats unterschrieben, geben Sie diesen Monat unter Erweitert an.",
         "data": {
           "contract": "Vertrag",
           "contract_start_date": "Vertragsbeginn"
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Vertrag",
-        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag bestimmt er die Tarifkarte des Abschlussmonats, damit der Preis verwendet wird, den Sie tatsächlich zahlen.",
+        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag ergibt die Tarifkarte des Monats, in dem die Lieferung begann, den Preis, den Sie zahlen. Haben Sie auf der Karte eines früheren Monats unterschrieben, geben Sie diesen Monat unter Erweitert an.",
         "data": {
           "contract": "Vertrag",
           "contract_start_date": "Vertragsbeginn"

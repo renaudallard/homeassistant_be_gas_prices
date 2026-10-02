@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract it picks the price card of the month you signed, so the price you actually pay is used.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, set its month under Advanced.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract it picks the price card of the month you signed, so the price you actually pay is used.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, set its month under Advanced.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
