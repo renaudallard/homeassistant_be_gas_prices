@@ -121,7 +121,7 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 | **Luminus** | Comfy · Comfy+ · MaxxFix · BasicFix Online · ComfyFlex · ComfyFlex+ *(quarterly TTF DAHW)* · MaxxFlex *(monthly TTF DAH M)* · BasicFlex Online *(monthly TTF DAH RLP M)* | Flanders + Wallonia · [`luminus.py`](./custom_components/be_gas_prices/providers/luminus.py) · [notes](./docs/providers/luminus.md) |
 | **Mega** | Smart · Cosy · Online · Prepaid Flex *(monthly ZTP)* · Off-peak Flex · Off-peak Impact *(monthly TTF, Impact in Wallonia only)* · Smart · Cosy · Online · Prepaid · Off-peak · Zen Fixed | All three regions · [`mega.py`](./custom_components/be_gas_prices/providers/mega.py) · [notes](./docs/providers/mega.md) |
 | **OCTA+** | Basic Online · Boost Flex · Eco Boost Flex · Smart Variable *(monthly ZTP RLP M)* · Boost Fix · Eco Boost Fix | Flanders + Wallonia · [`octaplus.py`](./custom_components/be_gas_prices/providers/octaplus.py) · [notes](./docs/providers/octaplus.md) |
-| **Sparki** | Self Service · At Your Service *(a monthly price on a TTF the card does not name)* | Flanders + Wallonia · [`sparki.py`](./custom_components/be_gas_prices/providers/sparki.py) · [notes](./docs/providers/sparki.md) |
+| **Sparki** | Self Service · At Your Service *(a monthly price set on TTF; Sparki publishes no index values, so each month is priced at the price its card prints)* | Flanders + Wallonia · [`sparki.py`](./custom_components/be_gas_prices/providers/sparki.py) · [notes](./docs/providers/sparki.md) |
 | **TotalEnergies** | Gaz Fixe · Gaz Variable · Impact Variable *(Wallonia)* · myComfort Variable · myComfort Fixe · myEssential Variable · myEssential Fixe *(variable ones monthly TTF_M_RLP)* | All three regions · [`totalenergies.py`](./custom_components/be_gas_prices/providers/totalenergies.py) · [notes](./docs/providers/totalenergies.md) |
 | **Trevion** | Gas Flex *(monthly TTF_RLP)* | Flanders only · [`trevion.py`](./custom_components/be_gas_prices/providers/trevion.py) · [notes](./docs/providers/trevion.md) |
 | **Expert: custom figures** *(no public card)* | A fixed price and fee you type, with your DSO's figures | All three regions · [`custom.py`](./custom_components/be_gas_prices/providers/custom.py) |
@@ -173,7 +173,7 @@ All sensors share one device per entry, named after the contract.
 | `fixed_costs_eur_per_year` | Supplier fee, distribution fixed term, metering and Brussels levy for a year. |
 | `supplier_fixed_fee_eur_per_year` | The supplier's part alone. |
 | `conversion_factor` | The kWh a cubic metre is worth this month, and where it comes from. |
-| `current_year_cost` | The year's running bill, each month on its own card, with a per-month breakdown attribute and the earlier contracts of the year that could not be priced. `TOTAL` and monetary, so the Energy dashboard can use it. |
+| `current_year_cost` | The year's running bill, each month on its own card, fixed costs accrued by the day from 1 January (or the contract start when the year counts from it), with a per-month breakdown attribute and the earlier contracts of the year that could not be priced. `TOTAL` and monetary, so the Energy dashboard can use it. |
 | `current_month_cost` | The running month's bill. |
 | `year_to_date_consumption` | kWh the meter recorded this year, from the contract start when the year counts from it. |
 | `projected_year_cost` | Shown as *Rolling year cost*. The last 365 days' volume at today's price plus a year of fixed costs: roughly what a year on this contract costs. |
@@ -182,7 +182,10 @@ All sensors share one device per entry, named after the contract.
 | `contract_end_date` | With an end date set, for a renewal reminder. |
 | `potential_saving` | With the daily comparison on: what the cheapest contract would save a year. |
 
-The running costs report `unknown` until a gas meter is readable.
+The running costs report `unknown` until a gas meter is readable. The rolling
+year needs 350 of the last 365 days on record and the year-end projection
+every remaining day of last year, so all four stay `unknown` until the meter
+has about a year of history.
 
 ## Installation
 
@@ -211,7 +214,9 @@ Home Assistant installs them from the manifest.
    date** feeds a renewal reminder. With a date set, you may type the figures
    of your contract when they differ from the card or the card cannot be
    reached.
-3. **Network operator**.
+3. **Network operator**. The expert custom supplier then asks for the
+   figures of your card: the energy price and fee, then your network
+   operator's terms and the levies.
 4. **Household**: your yearly consumption in kWh (it picks the tier and the
    excise slices until your meter has measured a full year), your meter size
    in Brussels, your gas meter (leave blank to use the Energy dashboard's),
@@ -249,11 +254,12 @@ Y or Z, which a gas formula set in bold would need; a card published as
 page images still embeds the fonts of the text set over its picture, so
 each run looks at the cards it stored and files `[archive-cards] a card
 embeds glyphs the OCR library has not learnt` when one carries such a glyph,
-naming the card to learn it from. An installation reads the archive for a month
-its supplier no longer serves, when its card cannot be read, and for the
-running month of a card published as images. The request names the
-supplier, the contract, the region and the month and nothing else; the
-option in the settings switches it off.
+naming the card to learn it from. An installation reads the archive for a
+past month its supplier no longer serves, for the running month of a card
+published as images, as a stand-in when it holds no card or a stale one, and
+for an earlier contract's running month while that supplier cannot be
+reached. The request names the supplier, the contract, the region and the
+month and nothing else; the option in the settings switches it off.
 
 The archive keeps the running month and the twelve before it. A signing
 month older than that is read from the supplier's own archive where it still
@@ -296,16 +302,19 @@ data:
 - **Professional contracts are not offered.** Their cards are priced excluding
   VAT with business excise rates.
 - **A card's figures are billed as printed** where no regulated figure
-  replaces them, errors included. Known on the September 2026 cards:
+  replaces them, errors included. Known on the October 2026 cards:
   TotalEnergies prints transport as 0,17 c EUR/kWh against Fluxys's
   0,16536; EBEM still prints Fluvius Kempen's 2025 small-tier term (2,12 c
   EUR/kWh against 2,27489); Bolt prints ORES's terms 0,091 c EUR/kWh low
-  (4,198 and 2,115) and RESA's mid tier as 2,259 for 2,529; Ecofix prints the
-  same ORES terms and RESA mid tier, and gives RESA ORES's mid-tier fixed
-  term (140,93 for 122,05). The daily live check reports each of these. A
-  distribution tier that is not cheaper per kWh than the one below it is a
-  figure in the wrong cell and is dropped instead, so a household on it gets
-  a pricing error rather than a wrong bill.
+  (4,198 and 2,115), RESA's mid tier as 2,259 for 2,529, and the Brussels
+  levy of a small meter above 5 000 kWh as 12,54 EUR a year for 12,59. On
+  its September card, the latest the card archive has read, Ecofix prints
+  the same ORES terms and RESA mid tier, and gives RESA ORES's mid-tier
+  fixed term (140,93 for 122,05). The daily live check reports each of
+  these but TotalEnergies' transport, which at two decimals it cannot tell
+  from Fluxys's. A distribution tier that is not cheaper per kWh than the
+  one below it is a figure in the wrong cell and is dropped instead, so a
+  household on it gets a pricing error rather than a wrong bill.
 
 ## Development
 
