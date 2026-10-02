@@ -799,6 +799,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def _tick(self) -> CoordinatorData:
         deferred = self._meter_reads_deferred
         self._meter_reads_deferred = False
+        if deferred:
+            # Set from the start: a setup tick that fails before it has a
+            # card read no meter either, and leaves the meter card alone.
+            self.meter_reads_pending = True
         # A fetch forced since (the refresh button, the service) is made
         # now: this tick cancels the request that would have made it.
         reprice_only = self._reprice_only and not self._force_refresh
