@@ -297,6 +297,79 @@ async def test_a_network_failure_after_a_refused_page_is_asked_again_next_tick()
     assert await billing._table(AsyncMock(), extractor, date(2026, 9, 16)) == table
 
 
+@pytest.mark.parametrize("use_archive", [True, False])
+async def test_the_archive_stands_in_for_an_earlier_contract_s_card_after_a_restart(
+    use_archive: bool,
+) -> None:
+    """Nothing held and the old supplier unreachable: the archive's row for
+    the month prices the contract, where the entry lets it be read, and the
+    supplier is asked again next tick."""
+    card = _flow_card()
+    fetch = AsyncMock(side_effect=ExtractorError("network error fetching x: timeout"))
+    extractor = replace(engie.EXTRACTOR, fetch=fetch)
+    billing = PeriodBilling(MonthCardCache())
+    today = date(2026, 9, 20)
+    with patch(
+        "custom_components.be_gas_prices.contract_periods.fetch_archived_card",
+        AsyncMock(return_value=card),
+    ) as archived:
+        for _ in range(2):
+            held = await billing._current_card(
+                AsyncMock(), extractor, "engie_flow", "wallonia", today, use_archive
+            )
+            assert held is (card if use_archive else None)
+    assert fetch.await_count == 2
+    assert archived.await_count == (2 if use_archive else 0)
+
+
+async def test_a_contract_signed_and_left_this_month_reads_its_card_once() -> None:
+    """Signed on 3 September and left on 15 September, priced after a restart
+    with the supplier down: the archive's card prices both the last month
+    and the signing leg, asked for once."""
+    fixed = {**ENTRY, CONF_CONTRACT: "engie_easy_fixed", CONF_CONTRACT_START_DATE: "2026-09-03"}
+    data = record_switch(fixed, date(2026, 9, 15))
+    card = replace(_flow_card(), energy=FixedRates(price=0.07))
+    fetch = AsyncMock(side_effect=ExtractorError("network error fetching x: timeout"))
+    stub = replace(engie.EXTRACTOR, fetch=fetch, fetch_index=None)
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(273)}
+    with (
+        patch.dict(providers.EXTRACTORS, {"engie": stub}),
+        patch(
+            "custom_components.be_gas_prices.contract_periods.fetch_archived_card",
+            AsyncMock(return_value=card),
+        ) as archived,
+    ):
+        costs, missing = await PeriodBilling(MonthCardCache()).bill(
+            AsyncMock(), data, date(2026, 9, 20), kwh_days, 5_000.0, use_archive=True, fill=False
+        )
+    assert missing == [] and len(costs) == 1
+    assert fetch.await_count == 1
+    assert archived.await_count == 1
+
+
+async def test_an_earlier_image_card_asks_the_archive_once_a_tick() -> None:
+    """A card published as images is already looked up in the archive by
+    current_card: no second request for the same row."""
+    fetch = AsyncMock(side_effect=CardNotReadableError("card has no text layer"))
+    extractor = replace(engie.EXTRACTOR, fetch=fetch)
+    with (
+        patch(
+            "custom_components.be_gas_prices.month_cards.fetch_archived_row",
+            AsyncMock(return_value=None),
+        ) as row,
+        patch(
+            "custom_components.be_gas_prices.contract_periods.fetch_archived_card",
+            AsyncMock(return_value=None),
+        ) as card,
+    ):
+        held = await PeriodBilling(MonthCardCache())._current_card(
+            AsyncMock(), extractor, "engie_flow", "wallonia", date(2026, 9, 20), True
+        )
+    assert held is None
+    assert row.await_count == 1
+    card.assert_not_awaited()
+
+
 async def test_earlier_contracts_on_one_supplier_read_its_index_once() -> None:
     """Two earlier Engie contracts and the index source down: one attempt
     per tick, not one per contract."""

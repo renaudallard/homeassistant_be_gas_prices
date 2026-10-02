@@ -60,11 +60,17 @@ from .const import (
     MANUAL_RATE_KEYS,
     SUPPLIER_CUSTOM,
 )
-from .month_cards import ArchiveUnavailable, MonthCardCache, current_card
+from .month_cards import ArchiveUnavailable, MonthCardCache, current_card, fetch_archived_card
 from .pricing import PricingError
 from .providers._pdf import is_transient_fetch_error
 from .providers._rates import EnergyRates
-from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
+from .providers.base import (
+    CardNotReadableError,
+    ExtractorError,
+    IndexTable,
+    SupplierExtractor,
+    SupplierSnapshot,
+)
 from .providers.custom import build_snapshot as build_custom_snapshot
 from .running_costs import Household, RunningCosts, running_costs
 from .running_costs import months_between as _months_between
@@ -206,7 +212,21 @@ class PeriodBilling:
             )
         except ExtractorError as err:
             _LOGGER.debug("%s card for an earlier contract not read: %s", extractor.label, err)
-            return None if held is None else held[1]
+            if held is not None:
+                return held[1]
+            if not use_archive or isinstance(err, CardNotReadableError):
+                # current_card asks the archive itself for a card it
+                # cannot read.
+                return None
+            # Nothing held, as after a restart: the card archive's row for
+            # the month stands in, as it does for the entry's own card, and
+            # the supplier is asked again next tick.
+            try:
+                return await fetch_archived_card(
+                    session, extractor.id, contract, region, f"{today:%Y-%m}"
+                )
+            except ArchiveUnavailable:
+                return None
         self._cards[key] = (today, card)
         return card
 
@@ -342,13 +362,14 @@ class PeriodBilling:
                 tables[extractor.id] = await self._table(session, extractor, today)
             table = tables[extractor.id]
             signed: SupplierSnapshot | None = None
-            if signing is not None:
-                signed = (
-                    month_card(signing)
-                    if signing < current
-                    else await self._current_card(
-                        session, extractor, contract, region, today, use_archive
-                    )
+            if signing is not None and signing < current:
+                signed = month_card(signing)
+            elif signing is not None and month_key(end) == current:
+                # The running month's card, read above for the last month.
+                signed = end_card
+            elif signing is not None:
+                signed = await self._current_card(
+                    session, extractor, contract, region, today, use_archive
                 )
 
             def energy_for(
