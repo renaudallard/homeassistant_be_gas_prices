@@ -151,6 +151,21 @@ def test_october_gaz_variable_leaves_its_indicative_price_blank() -> None:
     assert snap.publication_label == "2026-10"
 
 
+def test_october_myessential_prints_its_estimate_with_a_dot() -> None:
+    """ "8.03 Tarif mensuel" above "35", where the other cards print a comma."""
+    text = _card("2026_10_MYESSENTIAL_GAS_WAL_FR.pdf")
+    assert "8.03 Tarif mensuel" in text
+    snap = totalenergies.parse_snapshot("totalenergies_myessential_variable", REGION_WALLONIA, text)
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    # The indicative price, "Compteur Simple : 8,69", is printed again.
+    assert energy.price == pytest.approx(0.0869)
+    assert energy.yearly_fixed_fee == pytest.approx(35.0)
+    assert energy.factor == pytest.approx(0.1009 / 100 * 1.06)
+    assert energy.base == pytest.approx(0.604 / 100 * 1.06)
+    assert snap.publication_label == "2026-10"
+
+
 @pytest.mark.parametrize(
     ("contract", "region", "name", "price", "fee"),
     [

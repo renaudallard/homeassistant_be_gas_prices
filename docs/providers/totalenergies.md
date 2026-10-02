@@ -68,7 +68,7 @@ takes about 10 s per card on a Raspberry Pi 4 (`sweep_cost_s`).
   "Consommation (c€/kWh)".
 - Variable energy:
   - `7,41 Tarif mensuel` is the estimate made with the Vlaamse Nutsregulator
-    method. It is not stored while the indicative price below is printed.
+    method (`8.03`, with a dot, on the October 2026 myEssential card). It is not stored while the indicative price below is printed.
     The line under it (`90,00`, from October 2026 `100`) is the yearly fee.
   - `0.1007 * TTF_M_RLP + 0.704 Formule tarifaire` is the formula in c€/kWh
     excluding VAT, with the index in €/MWh. The March 2026 cards print it as
@@ -210,12 +210,14 @@ These were seen on the September 2026 cards and compared with
 The fixtures are the September 2026 cards (all seven Walloon products,
 myComfort Variable and myComfort Fixe in Flanders and Brussels), the archived
 `2026_8_MYCOMFORT_GAS_WAL_FR.pdf` and `2026_3_GAZ-VARIABLE_GAS_WAL_FR.pdf`,
-and the index history PDF. The tests pin:
+the October 2026 `2026_10_GAZ-VARIABLE_GAS_WAL_FR.pdf` and
+`2026_10_MYESSENTIAL_GAS_WAL_FR.pdf`, and the index history PDF. The tests pin:
 
 - the variable leg on myComfort Wallonia: index, factor, base, formula
   string, indicative price, fee, month and VAT;
 - the October 2026 Gaz Variable card, whose indicative price is blank,
   priced at its estimate;
+- the October 2026 myEssential card, whose estimate has a dot;
 - the base per region and the fee and formula of each variable product;
 - the price and fee of every fixed card fixture, in all three regions;
 - the formula check: on eight variable cards, the formula at the previous

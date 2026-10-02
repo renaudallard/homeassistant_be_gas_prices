@@ -299,11 +299,12 @@ def _vat_rate(text: str) -> float:
 _INDEX = "TTF_M_RLP"
 # The fixed card prints the yearly fee then the price on one row: "90,00 8,45
 # Tarif annuel". The variable one prints the estimate with the fee on the
-# line below ("7,41 Tarif mensuel", "90,00", and from October 2026 "100"),
-# then the formula in c EUR/kWh excluding VAT with the index in EUR/MWh. The
-# March 2026 cards wrote it "0.1007*TTFM_RLP+0,67".
+# line below ("7,41 Tarif mensuel", "90,00", and from October 2026 "100"; the
+# October myEssential card prints "8.03"), then the formula in c EUR/kWh
+# excluding VAT with the index in EUR/MWh. The March 2026 cards wrote it
+# "0.1007*TTFM_RLP+0,67".
 _FIXED_RE = re.compile(r"^(\d+,\d+) (\d+,\d+) Tarif annuel$", re.MULTILINE)
-_FEE_RE = re.compile(r"^(\d+,\d+) Tarif mensuel\n(\d+(?:,\d+)?)$", re.MULTILINE)
+_FEE_RE = re.compile(r"^(\d+[.,]\d+) Tarif mensuel\n(\d+(?:,\d+)?)$", re.MULTILINE)
 _FORMULA_RE = re.compile(
     rf"^((\d+[.,]\d+)\s*\*\s*TTF_?M_RLP\s*([{SIGN_CHARS}])\s*(\d+[.,]\d+)) Formule tarifaire$",
     re.MULTILINE,
