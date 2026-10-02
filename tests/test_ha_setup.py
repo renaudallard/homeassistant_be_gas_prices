@@ -1117,6 +1117,44 @@ async def test_the_price_history_waits_for_the_meter_read(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_ignored_meter_card_stays_ignored_through_a_restart(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The registry keeps an ignored card inactive across a restart: setup's
+    own tick, which reads no meter, must not delete it for the meter read to
+    create it afresh."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    issues = ir.async_get(hass)
+    key = f"meter_unit_{entry.entry_id}"
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        key,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="meter_unit",
+        translation_placeholders={"entry": "x", "supplier": "y", "error": "z"},
+    )
+    issues.async_ignore(DOMAIN, key, True)
+
+    async def kind(_hass: Any, _meter: str) -> Any:
+        raise RecorderUnavailable("sensor.gas reports in a unit that is no volume")
+
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.discover_energy_gas_meter",
+            AsyncMock(return_value=("sensor.gas", 1)),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.statistic_kind", kind),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    issue = issues.async_get_issue(DOMAIN, key)
+    assert issue is not None and issue.dismissed_version is not None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

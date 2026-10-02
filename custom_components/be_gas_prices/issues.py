@@ -108,13 +108,17 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
     # The card cannot be read here either way, but while the archive's OCR
     # reading prices the entry, that is what the user needs to know.
     _sync(hass, entry.entry_id, "card_read_by_ocr", coordinator.card_read_by_ocr, base)
-    _sync(
-        hass,
-        entry.entry_id,
-        "meter_unit",
-        bool(coordinator.meter_error),
-        {**base, "error": coordinator.meter_error or "-"},
-    )
+    if not coordinator.meter_reads_pending:
+        # Setup's own tick reads no meter and says nothing of it: deleting
+        # the card there and creating it again once the meter is read would
+        # lose a user's choice to ignore it.
+        _sync(
+            hass,
+            entry.entry_id,
+            "meter_unit",
+            bool(coordinator.meter_error),
+            {**base, "error": coordinator.meter_error or "-"},
+        )
     _sync(
         hass,
         entry.entry_id,
