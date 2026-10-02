@@ -1227,6 +1227,51 @@ async def test_a_forced_fetch_waiting_on_setup_is_not_made_meter_only(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_meter_read_that_fails_still_names_the_meter_problem(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The held measured volume prices at setup, but the recorder fails the
+    meter read after it, which then cannot price the typed volume: the tick
+    fails, and the card naming the recorder problem is raised all the
+    same."""
+    card = fetch.return_value
+    ores = card.dsos[DSO_ORES]
+    t1_only = replace(ores, tiers={TIER_T1: ores.tiers[TIER_T1]})
+    fetch.return_value = replace(card, dsos={**card.dsos, DSO_ORES: t1_only})
+    discover = AsyncMock(return_value=("sensor.gas", 1))
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    with (
+        patch("custom_components.be_gas_prices.coordinator.discover_energy_gas_meter", discover),
+        patch(
+            "custom_components.be_gas_prices.coordinator.statistic_kind",
+            AsyncMock(return_value="energy"),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            AsyncMock(return_value=_a_year_of_gas()),
+        ),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    async def broken(_hass: Any, _meter: str) -> Any:
+        raise RecorderUnavailable("recorder query for sensor.gas failed: database locked")
+
+    with (
+        patch("custom_components.be_gas_prices.coordinator.discover_energy_gas_meter", discover),
+        patch("custom_components.be_gas_prices.coordinator.statistic_kind", broken),
+    ):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    coordinator = entry.runtime_data
+    assert not coordinator.last_update_success
+    assert not coordinator.meter_reads_pending
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}") is not None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

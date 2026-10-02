@@ -788,6 +788,18 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._meter_reads_deferred = False
         meter_only = self._meter_only
         self._meter_only = False
+        try:
+            return await self._tick_with(deferred, meter_only)
+        except BaseException:
+            if not deferred:
+                # Only setup's own tick leaves the meter for later: any
+                # other one tried to read it, failing or not, and the
+                # Repairs card it may raise and the work waiting on it go
+                # ahead.
+                self.meter_reads_pending = False
+            raise
+
+    async def _tick_with(self, deferred: bool, meter_only: bool) -> CoordinatorData:
         # Taken before anything is read: an edit saved while this tick runs
         # reloads the entry, and what it reads belongs to the settings it
         # started under.
