@@ -812,7 +812,16 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self.last_error = ""
         self._pricing_error = ""
         try:
-            data = await self._build(today, deferred=deferred, digest=digest)
+            try:
+                data = await self._build(today, deferred=deferred, digest=digest)
+            except PricingError:
+                if not deferred:
+                    raise
+                # The typed or held volume falls in a tier the card does not
+                # price, where the meter's may not: read it now, or every
+                # setup retry would fail on the same volume for good.
+                deferred = False
+                data = await self._build(today, digest=digest)
         except PricingError as err:
             # The card cannot price this household: its DSO or its tier is
             # missing, for this month or for one the running costs bill.

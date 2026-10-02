@@ -58,7 +58,9 @@ cards (`issues.sync_issues`).
    and were priced under the entry's settings. Setup then starts the tick
    that reads the meter in the background (`async_read_meter`,
    `meter_reads_pending`), which asks neither the supplier nor Atrias again,
-   seconds after its own tick did.
+   seconds after its own tick did. Where the card cannot price the volume
+   setup's tick has, setup's tick reads the meter after all, since the
+   measured volume may fall in a tier the card does price.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,

@@ -84,6 +84,7 @@ from custom_components.be_gas_prices.const import (
     REGION_FLANDERS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
+    TIER_T1,
 )
 from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
@@ -1063,6 +1064,25 @@ async def test_the_meter_read_after_setup_asks_no_supplier_again(
     assert entry.runtime_data.failures == 1
     issues = ir.async_get(hass)
     assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_setup_reads_the_meter_when_the_typed_volume_cannot_be_priced(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The ORES row has T1 only and the typed 17 000 kWh fall in T2: the
+    meter's 3 650 kWh price, so setup reads it rather than retry for good."""
+    card = fetch.return_value
+    ores = card.dsos[DSO_ORES]
+    t1_only = replace(ores, tiers={TIER_T1: ores.tiers[TIER_T1]})
+    fetch.return_value = replace(card, dsos={**card.dsos, DSO_ORES: t1_only})
+    read = AsyncMock(return_value=("energy", _a_year_of_gas()))
+    with patch(_READ_METER, read):
+        entry = await _setup(hass)
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.runtime_data.data.annual_kwh_measured
+    assert not entry.runtime_data.meter_reads_pending
+    assert read.await_count == 1
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
