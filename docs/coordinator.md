@@ -44,8 +44,9 @@ cards (`issues.sync_issues`).
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month, and
    (`PeriodBilling.fill`) the earlier contracts' own. The first tick does
-   this in the background, because it is what setup waits on, and requests
-   a refresh when done.
+   this in the background, because it is what setup waits on, and prices
+   again on them when done (`async_reprice`), without asking the supplier
+   or Atrias again.
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
    source of the Energy dashboard, read as daily changes from today's date
    last year (`running_costs.meter_start`), which covers this year, the
@@ -57,7 +58,7 @@ cards (`issues.sync_issues`).
    and month's costs and volumes while they still cover this year and month,
    were priced under the entry's settings and were read off the meter in
    use. Setup then starts the tick
-   that reads the meter in the background (`async_read_meter`,
+   that reads the meter in the background (`async_reprice`,
    `meter_reads_pending`), which asks neither the supplier nor Atrias again,
    seconds after its own tick did. Where the card cannot price the volume
    setup's tick has, setup's tick reads the meter after all, since the

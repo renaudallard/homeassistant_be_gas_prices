@@ -852,6 +852,7 @@ async def test_a_ranking_that_priced_nothing_is_tried_again(
     with (
         patch("custom_components.be_gas_prices.coordinator.rank", ranked),
         patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+        _no_month_fill(),
     ):
         entry = await _setup(hass, {**DATA, CONF_DAILY_COMPARE: True})
         assert entry.runtime_data.daily_ranking is None
@@ -891,6 +892,7 @@ async def test_a_ranking_that_priced_only_the_household_is_tried_again(
     with (
         patch("custom_components.be_gas_prices.coordinator.rank", ranked),
         patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
+        _no_month_fill(),
     ):
         entry = await _setup(hass, {**DATA, CONF_DAILY_COMPARE: True})
         assert entry.runtime_data.daily_ranking is None
@@ -966,6 +968,12 @@ def _a_year_of_gas() -> dict[date, float]:
     return {date(2025, 9, 15) + timedelta(days=n): 10.0 for n in range(366)}
 
 
+def _no_month_fill() -> Any:
+    """No past month to fetch, so no fill reprices beside the tick a test
+    counts."""
+    return patch.object(GasCoordinator, "_months_needed", return_value=[])
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: AsyncMock) -> None:
     """Home Assistant waits on it: the meter is read by the refresh setup
@@ -973,7 +981,7 @@ async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: As
     read = AsyncMock(return_value=("energy", _a_year_of_gas()))
     entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
     entry.add_to_hass(hass)
-    with patch(_READ_METER, read):
+    with patch(_READ_METER, read), _no_month_fill():
         coordinator = GasCoordinator(hass, entry, defer_meter_reads=True)
         await coordinator.async_refresh()
         assert read.await_count == 0
@@ -1078,7 +1086,7 @@ async def test_setup_reads_the_meter_when_the_typed_volume_cannot_be_priced(
     t1_only = replace(ores, tiers={TIER_T1: ores.tiers[TIER_T1]})
     fetch.return_value = replace(card, dsos={**card.dsos, DSO_ORES: t1_only})
     read = AsyncMock(return_value=("energy", _a_year_of_gas()))
-    with patch(_READ_METER, read):
+    with patch(_READ_METER, read), _no_month_fill():
         entry = await _setup(hass)
     assert entry.state is ConfigEntryState.LOADED
     assert entry.runtime_data.data.annual_kwh_measured
@@ -1180,6 +1188,7 @@ async def test_the_daily_ranking_waits_for_the_meter_read(
         patch("custom_components.be_gas_prices.coordinator.rank", ranked),
         patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0),
         patch(_READ_METER, slow),
+        _no_month_fill(),
     ):
         entry = MockConfigEntry(
             domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_DAILY_COMPARE: True}
@@ -1310,6 +1319,39 @@ async def test_a_restart_on_a_named_meter_shows_its_held_figures(
         assert entry.runtime_data.data.current_year_cost == pytest.approx(before)
         gate.set()
         await hass.async_block_till_done(wait_background_tasks=True)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_month_cards_landing_after_setup_ask_no_supplier_again(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The past months' cards take a round trip to land: the tick they ask
+    for prices again on them, without fetching the failing card a second
+    time and counting it twice."""
+    card = fetch.return_value
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    gate = asyncio.Event()
+
+    async def slow_archive(*_args: Any, **_kwargs: Any) -> Any:
+        await gate.wait()
+
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            AsyncMock(return_value=(card, False)),
+        ),
+        patch("custom_components.be_gas_prices.month_cards.fetch_archived_card", slow_archive),
+    ):
+        entry = MockConfigEntry(
+            domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_CARD_ARCHIVE: True}
+        )
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == 1
+    assert entry.runtime_data.failures == 1
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

@@ -217,9 +217,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # one that reads it in the background (meter_reads_pending).
         self._meter_reads_deferred = defer_meter_reads
         self.meter_reads_pending = False
-        # Set for the tick setup starts after its own: the meter read alone,
-        # the card and the index and calorific values just asked for.
-        self._meter_only = False
+        # Set for a tick that prices again on what is in hand (async_reprice),
+        # asking neither the supplier nor Atrias.
+        self._reprice_only = False
         self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
@@ -734,19 +734,22 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     # ---- the tick -------------------------------------------------------------
 
-    async def async_read_meter(self) -> None:
-        """The tick setup starts once Home Assistant no longer waits on it:
-        the meter read its own tick left out, without asking the supplier
-        and Atrias again seconds after it did, which would count a card that
-        fails twice for one failure. The lock async_refresh takes is taken
-        first, so no other refresh waiting on it, a Repairs fix flow's forced
-        fetch say, can take the flag meant for this one."""
+    async def async_reprice(self) -> None:
+        """A tick that prices again on the card, index and calorific values
+        in hand, the meter read: the one setup starts once Home Assistant no
+        longer waits on it, which reads the meter its own tick left out, and
+        the one the past months' cards ask for once fetched. Neither asks
+        the supplier or Atrias again seconds after a tick did, which would
+        count a card that fails twice for one failure. The lock
+        async_refresh takes is taken first, so no other refresh waiting on
+        it, a Repairs fix flow's forced fetch say, can take the flag meant
+        for this one."""
         async with self._debounced_refresh.async_lock():
-            self._meter_only = True
+            self._reprice_only = True
             try:
                 await self._async_refresh(log_failures=True)
             finally:
-                self._meter_only = False
+                self._reprice_only = False
 
     async def async_force_refresh(self, *, wait: bool = False) -> None:
         """Fetch the card, the index values and the calorific values again on
@@ -786,10 +789,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def _tick(self) -> CoordinatorData:
         deferred = self._meter_reads_deferred
         self._meter_reads_deferred = False
-        meter_only = self._meter_only
-        self._meter_only = False
+        reprice_only = self._reprice_only
+        self._reprice_only = False
         try:
-            return await self._tick_with(deferred, meter_only)
+            return await self._tick_with(deferred, reprice_only)
         except BaseException:
             if not deferred:
                 # Only setup's own tick leaves the meter for later: any
@@ -799,16 +802,16 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 self.meter_reads_pending = False
             raise
 
-    async def _tick_with(self, deferred: bool, meter_only: bool) -> CoordinatorData:
+    async def _tick_with(self, deferred: bool, reprice_only: bool) -> CoordinatorData:
         # Taken before anything is read: an edit saved while this tick runs
         # reloads the entry, and what it reads belongs to the settings it
         # started under.
         digest = self._settings_digest()
-        if not meter_only:
+        if not reprice_only:
             await self._refresh_snapshot()
         if self._snapshot is None:
             raise UpdateFailed(self.last_error or "no tariff card available")
-        if not meter_only:
+        if not reprice_only:
             await self._refresh_index()
             await self._refresh_calorific()
         today = dt_util.now().date()
@@ -935,7 +938,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             dt_util.now().date(),
             use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
         )
-        await self.async_request_refresh()
+        await self.async_reprice()
 
     async def _meter(self) -> str | None:
         configured = self._data.get(CONF_GAS_METER)
