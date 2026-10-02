@@ -775,9 +775,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     async def async_force_refresh(self, *, wait: bool = False) -> None:
         """Fetch the card, the index values and the calorific values again,
-        whatever their age: by the tick running if it has yet to check its
-        card, else by one of its own once that tick ends; with ``wait``
-        before returning."""
+        whatever their age: by the tick running if it is a full one yet to
+        check its card, else by one of its own once that tick ends; with
+        ``wait`` before returning."""
         self._force_refresh = True
         self._force_asked += 1
         self._index_fetched_at = None
@@ -792,11 +792,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def _make_forced_fetch(self) -> None:
         """A tick that makes the fetch forced, once the refresh lock is free,
         unless a full tick has checked its card since it was asked and made
-        it. Not a
-        requested refresh: Home Assistant drops one whose cooldown ends while
-        a long tick holds the lock. And a fetch forced while another waits
-        on the lock, a reprice or the fix flow's, is made once, so a card
-        that fails is not counted twice for it."""
+        it. Not a requested refresh: Home Assistant drops one whose cooldown
+        ends while a long tick holds the lock. And a fetch forced while
+        another waits on the lock, a reprice or the fix flow's, is made
+        once, so a card that fails is not counted twice for it."""
         asked = self._force_asked
         async with self._debounced_refresh.async_lock():
             if self._force_made >= asked:
