@@ -48,8 +48,7 @@ cards (`issues.sync_issues`).
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
    source of the Energy dashboard, read as daily changes from today's date
    last year (`running_costs.meter_start`), which covers this year, the
-   rolling year and the year-end projection. Every day read needs its
-   month's conversion factor, so nothing before is read.
+   rolling year and the year-end projection; nothing before is read.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,

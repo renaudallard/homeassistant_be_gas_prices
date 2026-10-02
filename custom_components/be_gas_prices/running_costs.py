@@ -112,8 +112,8 @@ def to_kwh(
 def meter_start(today: date) -> date:
     """The first day the costs read off the meter: today's date last year,
     before this year's 1 January, the rolling year and the days the year-end
-    projection reads last year. A day before it has no use, and a month of
-    it without a conversion factor would void every cost."""
+    projection reads last year. A day before it has no use, so it is not
+    read."""
     try:
         return today.replace(year=today.year - 1)
     except ValueError:  # 29 February has no twin
