@@ -1452,6 +1452,37 @@ async def test_an_ignored_meter_card_stays_ignored_through_a_failed_setup(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_setup_that_read_the_meter_and_failed_names_the_meter_problem(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The typed volume falls in a tier the card does not price, so setup's
+    tick reads the meter after all; its unit cannot be read, the tick fails,
+    and the card naming the meter problem is raised."""
+    card = fetch.return_value
+    ores = card.dsos[DSO_ORES]
+    t1_only = replace(ores, tiers={TIER_T1: ores.tiers[TIER_T1]})
+    fetch.return_value = replace(card, dsos={**card.dsos, DSO_ORES: t1_only})
+
+    async def bad_unit(_hass: Any, _meter: str) -> Any:
+        raise RecorderUnavailable("sensor.gas reports in a unit that is no volume")
+
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.discover_energy_gas_meter",
+            AsyncMock(return_value=("sensor.gas", 1)),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.statistic_kind", bad_unit),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}")
+    assert issue is not None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_held_figures_cover_only_their_month_year_and_settings(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

@@ -857,8 +857,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     raise
                 # The typed or held volume falls in a tier the card does not
                 # price, where the meter's may not: read it now, or every
-                # setup retry would fail on the same volume for good.
+                # setup retry would fail on the same volume for good. Read
+                # here, it is no longer to come, whatever this build gives.
                 deferred = False
+                self.meter_reads_pending = False
                 data = await self._build(today, digest=digest)
         except PricingError as err:
             # The card cannot price this household: its DSO or its tier is
