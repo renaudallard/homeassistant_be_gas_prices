@@ -1365,30 +1365,48 @@ async def test_a_restart_reads_the_meter_once(hass: HomeAssistant, fetch: AsyncM
 async def test_a_fetch_forced_during_the_startup_reprice_is_made(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
-    """The refresh button pressed while the meter is read after setup: the
-    reprice that runs next cancels the request the press made, so it makes
-    the fetch itself rather than leave it to the hourly tick."""
-    gate = asyncio.Event()
+    """The refresh button pressed while the meter is read after setup, with
+    August's card landing then: the reprice August asks for runs next and
+    cancels the request the press made, so it makes the fetch itself."""
+    card = fetch.return_value
+    august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
+    meter_gate = asyncio.Event()
+    card_gate = asyncio.Event()
+    reads = 0
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        if month != date(2026, 8, 1):
+            return None
+        await card_gate.wait()
+        return august
 
     async def slow(_self: Any, _today: date) -> Any:
-        await gate.wait()
+        nonlocal reads
+        reads += 1
+        await meter_gate.wait()
         return ("energy", _a_year_of_gas())
 
-    with patch(_READ_METER, slow):
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}), patch(_READ_METER, slow):
         entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
         entry.add_to_hass(hass)
         assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
+        for _ in range(20):
+            await asyncio.sleep(0)
         coordinator = entry.runtime_data
+        assert reads == 1
         before = fetch.await_count
         await coordinator.async_force_refresh()
-        gate.set()
+        card_gate.set()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        meter_gate.set()
         await hass.async_block_till_done(wait_background_tasks=True)
         freezer.tick(timedelta(seconds=15))
         async_fire_time_changed(hass)
         await hass.async_block_till_done(wait_background_tasks=True)
+    assert reads == 2
     assert fetch.await_count == before + 1
-    assert not coordinator._force_refresh
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
