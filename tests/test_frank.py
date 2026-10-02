@@ -143,6 +143,23 @@ def test_the_october_standard_card_drops_contract_from_its_title() -> None:
         frank.parse_snapshot("frank_variable_slim", REGION_FLANDERS, text)
 
 
+def test_the_re_uploaded_october_standard_card_names_no_tier() -> None:
+    """ "Frank Energie Variabel — oktober 2026", re-uploaded on 2 October
+    with the figures of the card it replaced."""
+    text = _card(_PREFIX + "Gas ZTP Oktober 2026 v2.pdf")
+    assert text.lstrip().startswith("Frank Energie Variabel — oktober 2026")
+    snap = frank.parse_snapshot("frank_variable", REGION_FLANDERS, text)
+    assert snap.publication_label == "2026-10"
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(0.1 / 100.0 * 1.06)
+    assert energy.base == pytest.approx(0.46 / 100.0 * 1.06)
+    assert energy.yearly_fixed_fee == pytest.approx(2.92 * 12)
+    for other in ("frank_variable_hv", "frank_variable_jn", "frank_variable_korting"):
+        with pytest.raises(ExtractorError):
+            frank.parse_snapshot(other, REGION_FLANDERS, text)
+
+
 def test_the_october_korting_card_is_titled_vt() -> None:
     """ "Frank Energie Variabel — VT ZTP — oktober 2026": the tier is named as
     its file always was, with the same formula and fee."""

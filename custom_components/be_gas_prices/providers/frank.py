@@ -325,8 +325,9 @@ def parse_snapshot(
 
 # The title is the card's first line, its parts set apart by dashes:
 # "Tariefkaart gas variabel contract" ("Tariefkaart gas variabel" from 1
-# October 2026) and the month for the standard tier, "Frank Energie
-# Variabel", the tier and the month for the others. The tier reads "HV ZTP",
+# October 2026, "Frank Energie Variabel" on the card re-uploaded on 2
+# October) and the month for the standard tier, "Frank Energie Variabel",
+# the tier and the month for the others. The tier reads "HV ZTP",
 # "JN", "Slim" or "Korting ZTP" ("VT ZTP" from October 2026), and "SL" or
 # "Slim ZTP" on older Slim cards. It is the one place the card names its tier, so it is
 # checked against the contract: HV, JN and the standard tier print different
@@ -337,9 +338,9 @@ def parse_snapshot(
 # short.
 _DASH = "[" + SIGN_CHARS + "]"
 _TITLE_RE = re.compile(
-    r"(?:Tariefkaart gas variabel(?: contract)?|Frank Energie Variabel\s*"
+    r"(?:Tariefkaart gas variabel(?: contract)?|Frank Energie Variabel(?:\s*"
     + _DASH
-    + r"\s*(\S+)(?:\s+ZTP)?)"
+    + r"\s*(\S+)(?:\s+ZTP)?)?)"
     r"\s*" + _DASH + r"\s*([a-z]+)\s+(\d{4})\s*",
     re.IGNORECASE,
 )

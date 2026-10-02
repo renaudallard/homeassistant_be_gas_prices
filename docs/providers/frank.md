@@ -53,9 +53,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 ## How each figure is read (pdfplumber layout text)
 
 - Title, the first line, its parts set apart by dashes: "Tariefkaart gas
-  variabel contract" ("Tariefkaart gas variabel" from 1 October 2026) and
-  the month (standard), or "Frank Energie Variabel",
-  the tier and the month. The tier reads "HV ZTP", "JN", "Slim" or "Korting
+  variabel contract" ("Tariefkaart gas variabel" from 1 October 2026,
+  "Frank Energie Variabel" on the card re-uploaded on 2 October) and the
+  month (standard), or "Frank Energie Variabel", the tier and the month. The tier reads "HV ZTP", "JN", "Slim" or "Korting
   ZTP" ("VT ZTP" from October 2026), and "SL" or "Slim ZTP" on older Slim
   cards. The tier word must be the
   contract's and nothing but "ZTP" may follow it, which keeps out the January
