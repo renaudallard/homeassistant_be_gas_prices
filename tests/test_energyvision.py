@@ -243,7 +243,7 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
 
 
 @pytest.mark.parametrize(
-    ("contract", "region", "page", "url", "card"),
+    ("contract", "region", "page", "url", "card", "month"),
     [
         (
             _GSG,
@@ -251,6 +251,7 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
             "tariefkaart.html",
             _EV_FILES + "EV-0926-GSG-nl.pdf",
             "EV-0926-GSG-nl.pdf",
+            "2026-09",
         ),
         (
             _GSG,
@@ -258,6 +259,7 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
             "tariefkaart.html",
             _EV_FILES + "EV-0926-GSG-WAL-fr.pdf",
             "EV-0926-GSG-WAL-fr.pdf",
+            "2026-09",
         ),
         (
             _GS1JVG,
@@ -265,6 +267,7 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
             "tariefkaart.html",
             _EV_FILES + "EV-0926-GS1JVG-WAL-fr.pdf",
             "EV-0926-GS1JVG-WAL-fr.pdf",
+            "2026-09",
         ),
         (
             _GSG,
@@ -272,11 +275,21 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
             "brusol/signup-goedkope-stroom-nl.html",
             "https://www.brusol.be/sites/default/files/2026-08/EV-0926-GSG-BXL-nl.pdf",
             "brusol/EV-0926-GSG-BXL-nl.pdf",
+            "2026-09",
+        ),
+        # The October page ends the card's href in a space.
+        (
+            _GSG,
+            REGION_BRUSSELS,
+            "brusol/signup-goedkope-stroom-nl-2026-10.html",
+            "https://www.brusol.be/sites/default/files/2026-09/EV-1026-GSG-BXL-nl.pdf",
+            "brusol/EV-1026-GSG-BXL-nl.pdf",
+            "2026-10",
         ),
     ],
 )
 async def test_fetch_reads_the_card_the_page_links(
-    contract: str, region: str, page: str, url: str, card: str
+    contract: str, region: str, page: str, url: str, card: str, month: str
 ) -> None:
     listing = AsyncMock(return_value=fixture_page("energyvision", page))
     fetched = AsyncMock(return_value=_card(card))
@@ -287,7 +300,7 @@ async def test_fetch_reads_the_card_the_page_links(
         snap = await energyvision.fetch(AsyncMock(), contract, region)
     assert fetched.call_args.args[1] == url
     assert snap.source_url == url
-    assert snap.publication_label == "2026-09"
+    assert snap.publication_label == month
 
 
 async def test_fetch_for_month_builds_the_plain_name() -> None:

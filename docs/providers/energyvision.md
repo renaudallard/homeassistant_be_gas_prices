@@ -11,8 +11,8 @@ Tests: `tests/test_energyvision.py`, fixtures in
   `_N` is Drupal's re-upload suffix, so the current card is read off the
   listing. Probe: the listing's ETag.
 - Brusol (Brussels): https://www.brusol.be/nl/elektriciteit-en-gas/schrijf-je-in-voor-goedkope-stroom-van-brusol
-  links `https://www.brusol.be/sites/default/files/<upload YYYY-MM>/EV-<MMYY>-GSG-BXL-nl.pdf`.
-  The page sends no ETag or Last-Modified, so Brussels has no probe key.
+  links `https://www.brusol.be/sites/default/files/<upload YYYY-MM>/EV-<MMYY>-GSG-BXL-nl.pdf`,
+  from October 2026 with a space before the closing quote. The page sends no ETag or Last-Modified, so Brussels has no probe key.
 
 Gas is sold only with an electricity contract ("Fossiel gas mogelijk: in
 combinatie"). Brusol's Goedkope Stroom is "exclusief voorbehouden aan

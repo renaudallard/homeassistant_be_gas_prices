@@ -216,12 +216,13 @@ def _card_url(html: str, contract: _ContractDef, card: _Card) -> str:
     """The newest card of ``contract`` for ``card`` that ``html`` links.
 
     The href is site-relative on EnergyVision's listing and absolute on
-    Brusol's page. The token follows the product code directly, so the
-    Flemish "nl" cannot pick up a "BXL-nl" or "WAL-nl" card.
+    Brusol's page, where it has ended in a space ("EV-1026-GSG-BXL-nl.pdf ").
+    The token follows the product code directly, so the Flemish "nl" cannot
+    pick up a "BXL-nl" or "WAL-nl" card.
     """
     pattern = re.compile(
         r'href="((?:https?://[^"/]+)?/sites/default/files/[^"]*?'
-        rf'EV-(\d{{2}})(\d{{2}})-{contract.code}-{re.escape(card.token)}[^"/]*\.pdf)"'
+        rf'EV-(\d{{2}})(\d{{2}})-{contract.code}-{re.escape(card.token)}[^"/]*\.pdf)\s*"'
     )
     found: dict[tuple[int, int], str] = {
         (int(year), int(month)): href for href, month, year in pattern.findall(html)
