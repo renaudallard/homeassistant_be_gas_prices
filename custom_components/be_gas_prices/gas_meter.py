@@ -46,6 +46,7 @@ from typing import Any, Literal
 from homeassistant.const import UnitOfEnergy, UnitOfVolume
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+from homeassistant.util.hass_dict import HassKey
 from homeassistant.util.unit_conversion import EnergyConverter, VolumeConverter
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,8 +59,12 @@ _ALREADY_CUBIC_METRES = frozenset({None, "m3"})
 
 # How long a coordinator tick waits for the energy manager singleton. A failed
 # first load of .storage/energy leaves it waiting forever, and one tick is the
-# most that should cost.
+# most that should cost. The wait is all the timeout gives up: the load runs
+# in a task of its own, shared by every tick, because cancelling it would
+# leave the singleton waiting forever for every caller, the Energy dashboard
+# included.
 _ENERGY_MANAGER_TIMEOUT_S = 10.0
+_ENERGY_MANAGER_LOAD: HassKey[asyncio.Task[Any]] = HassKey("be_gas_prices_energy_manager")
 
 
 class RecorderUnavailable(Exception):
@@ -83,17 +88,16 @@ async def discover_energy_gas_meter(hass: HomeAssistant) -> tuple[str | None, in
     available. One meter is billed; the count lets the caller say that the
     others are ignored.
     """
-    try:
-        from homeassistant.components.energy import (  # type: ignore[attr-defined]
-            async_get_manager,
+    load = hass.data.get(_ENERGY_MANAGER_LOAD)
+    if load is None:
+        load = hass.data[_ENERGY_MANAGER_LOAD] = hass.async_create_background_task(
+            _energy_manager(hass), "be_gas_prices energy manager"
         )
-    except ImportError:
-        return None, 0
     try:
         async with asyncio.timeout(_ENERGY_MANAGER_TIMEOUT_S):
-            manager = await async_get_manager(hass)
-    except Exception as err:  # a timeout, or whatever the energy component raised
-        _LOGGER.debug("energy manager unavailable: %s", err)
+            manager = await asyncio.shield(load)
+    except TimeoutError:
+        _LOGGER.debug("energy manager still loading")
         return None, 0
     data = getattr(manager, "data", None)
     if not data:
@@ -108,6 +112,23 @@ async def discover_energy_gas_meter(hass: HomeAssistant) -> tuple[str | None, in
     if not stats:
         return None, 0
     return stats[0], len(stats)
+
+
+async def _energy_manager(hass: HomeAssistant) -> Any | None:
+    """The energy manager, or None when the energy component is not available
+    or failed to load it. The failure is logged here, where no caller may be
+    left to see it."""
+    try:
+        from homeassistant.components.energy import (  # type: ignore[attr-defined]
+            async_get_manager,
+        )
+    except ImportError:
+        return None
+    try:
+        return await async_get_manager(hass)
+    except Exception as err:  # whatever the energy component raised
+        _LOGGER.debug("energy manager unavailable: %s", err)
+        return None
 
 
 def _recorder(hass: HomeAssistant) -> Any | None:

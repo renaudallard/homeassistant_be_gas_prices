@@ -27,12 +27,14 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from datetime import date, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from homeassistant.components.energy.data import EnergyManager, async_get_manager
 from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.models import (
     StatisticData,
@@ -140,6 +142,27 @@ async def test_a_unit_nothing_converts_is_refused(recorder_mock: Any, hass: Home
     await async_wait_recording_done(hass)
     with pytest.raises(gas_meter.RecorderUnavailable):
         await gas_meter.statistic_kind(hass, METER)
+
+
+async def test_a_slow_energy_manager_is_left_to_finish(hass: HomeAssistant) -> None:
+    """A tick that stops waiting for the energy manager's first load does
+    not cancel it: the load completes and the next tick finds the meter."""
+    loaded = asyncio.Event()
+
+    async def slow_initialize(self: EnergyManager) -> None:
+        await loaded.wait()
+        prefs: Any = {"energy_sources": [{"type": "gas", "stat_energy_from": METER}]}
+        self.data = prefs
+
+    with (
+        patch.object(EnergyManager, "async_initialize", slow_initialize),
+        patch.object(gas_meter, "_ENERGY_MANAGER_TIMEOUT_S", 0.01),
+    ):
+        assert await gas_meter.discover_energy_gas_meter(hass) == (None, 0)
+        loaded.set()
+        manager = await asyncio.wait_for(async_get_manager(hass), timeout=1)
+        assert manager.data is not None
+        assert await gas_meter.discover_energy_gas_meter(hass) == (METER, 1)
 
 
 def _card() -> SupplierSnapshot:
