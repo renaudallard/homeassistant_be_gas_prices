@@ -47,11 +47,14 @@ jobs:
         # keys every entry on the PDF's digest, the reader code and the pypdf
         # and pdfplumber versions, so an older cache restored through
         # restore-keys can only serve text the current code would read; what
-        # no longer matches is simply not used.
+        # no longer matches is simply not used. The tests choose which cards
+        # are read and with which reader, so they are in the key too: a
+        # changed test restores through restore-keys and saves what it read,
+        # where an exact hit would never save.
         uses: actions/cache@v6
         with:
           path: tmp/fixture_text
-          key: fixture-text-${{ hashFiles('tests/fixtures/**/*.pdf', 'custom_components/be_gas_prices/providers/_pdf.py', 'requirements-dev.txt') }}
+          key: fixture-text-${{ hashFiles('tests/fixtures/**/*.pdf', 'tests/**/*.py', 'custom_components/be_gas_prices/providers/_pdf.py', 'requirements-dev.txt') }}
           restore-keys: fixture-text-
       - name: Install dependencies
         run: |
