@@ -11,8 +11,10 @@ permissions:
   contents: write
 
 # Two manifest bumps in quick succession would otherwise race on git tag and
-# gh release create. Serialise them per ref so the second push waits for the
-# first, and never cancel one: that would orphan a half published release.
+# gh release create. Serialise them per ref and never cancel a run in
+# progress, so no release is left half published. Only one run can wait in
+# the group, and a newer push replaces it: a version bumped over before its
+# run started gets no release of its own, its changes go out with the next.
 concurrency:
   group: autorelease-${{ github.ref }}
   cancel-in-progress: false
