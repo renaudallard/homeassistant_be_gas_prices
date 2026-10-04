@@ -119,13 +119,16 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
             bool(coordinator.meter_error),
             {**base, "error": coordinator.meter_error or "-"},
         )
-    _sync(
-        hass,
-        entry.entry_id,
-        "several_meters",
-        coordinator.meter_count > 1,
-        {**base, "count": str(coordinator.meter_count)},
-    )
+    if coordinator.meter_count is not None:
+        # Left alone by a tick that failed before it looked for the meter,
+        # like the meter card above.
+        _sync(
+            hass,
+            entry.entry_id,
+            "several_meters",
+            coordinator.meter_count > 1,
+            {**base, "count": str(coordinator.meter_count)},
+        )
 
 
 def clear_issues(hass: HomeAssistant, entry_id: str) -> None:

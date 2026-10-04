@@ -205,7 +205,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._month_fill: asyncio.Task[None] | None = None
         self._first_tick = True
         self.meter: str | None = None
-        self.meter_count = 0
+        # None until a tick names the meter: one failing before that says
+        # nothing of how many there are.
+        self.meter_count: int | None = None
         self.meter_error = ""
         # The household the last tick priced, measured volume included, for
         # the price history backfill to price past months the same way.
