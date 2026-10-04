@@ -79,7 +79,8 @@ the pure reader. One dead link is skipped; a transient failure raises.
 
 ## Archive
 
-The listing is the archive, from March 2026. `fetch_for_month` takes the
+The listing is the archive, a rolling window of recent months: on
+2026-10-04 it held April to October 2026. `fetch_for_month` takes the
 listing's href for the month and refuses a card naming another month.
 
 ## Known quirks and card errors

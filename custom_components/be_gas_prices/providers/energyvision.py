@@ -66,15 +66,16 @@ way.
 
 Card errors this reads as printed and does not correct:
 
-  - The September 2026 Walloon cards print the connection fee as 0,07500 c
-    EUR/kWh, ten times the regulated 0,0075 that every other supplier
-    prints and EnergyVision's own Walloon cards printed from November 2025
-    to August 2026: the Walloon order of 19 June 2003 sets 0,00075 EUR/kWh
-    for low-voltage electricity and 0,000075 for gas. The law's rate is
-    billed for the months const.py knows it for (_resolve.py).
-  - The Walloon GS1JVG cards of August and September 2026 print a single
-    "Accise speciale 4,876 c EUR/kWh" instead of the two gas bands: the
-    residential electricity excise since 1 August 2026, not a gas rate.
+  - The Walloon cards from September 2026, October included, print the
+    connection fee as 0,07500 c EUR/kWh, ten times the regulated 0,0075
+    that every other supplier prints and EnergyVision's own Walloon cards
+    printed from November 2025 to August 2026: the Walloon order of 19 June
+    2003 sets 0,00075 EUR/kWh for low-voltage electricity and 0,000075 for
+    gas. The law's rate is billed for the months const.py knows it for
+    (_resolve.py).
+  - The Walloon GS1JVG cards from August 2026, October included, print a
+    single "Accise speciale 4,876 c EUR/kWh" instead of the two gas bands:
+    the residential electricity excise since 1 August 2026, not a gas rate.
     The August one also has no connection fee row, which makes that card
     unreadable. The delivery months the gas excise law covers are billed
     at the law's rate regardless.

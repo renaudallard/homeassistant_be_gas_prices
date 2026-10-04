@@ -226,7 +226,7 @@ _TITLE_RE = re.compile(r"\s*(Eneco Aardgas[^\n]*)")
 
 def _require_product(text: str, contract: _ContractDef) -> None:
     """Refuse a card whose title names another product. Flex and Flex One
-    print the same layout and differ only in their base."""
+    print the same layout, so only the title tells them apart."""
     match = _TITLE_RE.match(text)
     title = match.group(1).strip() if match else None
     if title != contract.label:

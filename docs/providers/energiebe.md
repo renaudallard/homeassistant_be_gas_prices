@@ -34,9 +34,10 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 - Card month and product: the title line, "Gas particulier online –
   september 2026" or "Gas vast particulier online – september 2026" ("online"
   is missing on the December 2025 cards, "particulier" on the October 2026
-  variable card: "Gas online – oktober 2026"). The word "vast" must match the
-  contract asked for, and the variable card must print a formula and the
-  fixed card "De energieprijs is een vaste prijs" and no formula.
+  ones: "Gas online – oktober 2026", "Gas vast online – oktober 2026"). The
+  word "vast" must match the contract asked for, and the variable card must
+  print a formula and the fixed card "De energieprijs is een vaste prijs"
+  and no formula.
 - Price: the figure opening the line under "Energieprijs" ("6,88 formule
   ..." or "8,06 looptijd ..."), c EUR/kWh incl. VAT.
 - Fee: "Vaste vergoeding" / "35" / "(€/jaar)", yearly.

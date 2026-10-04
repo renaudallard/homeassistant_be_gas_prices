@@ -249,8 +249,8 @@ def parse_snapshot(
 
 # "Gas particulier online – september 2026", "Gas vast particulier online –
 # september 2026"; the December 2025 cards leave out "online", the October
-# 2026 variable one "particulier". The word "vast" is the only thing on the
-# page naming the product, so it is checked against the contract asked for.
+# 2026 ones "particulier". The word "vast" is the only thing on the page
+# naming the product, so it is checked against the contract asked for.
 _TITLE_RE = re.compile(
     r"^Gas\s+(vast\s+)?(?:particulier\s*)?(?:online\s*)?["
     + SIGN_CHARS

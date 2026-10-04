@@ -109,21 +109,21 @@ on, less the cards refused below.
 
 ## Card errors, read as printed
 
-- Walloon connection fee on the September 2026 cards, both products:
-  **0,07500 €cent/kWh, ten times the regulated 0,0075** (CWaPE). Engie's
-  card prints 0,00750, the supplier survey found 0,0075 on Bolt, Mega,
-  OCTA+, Luminus, Eneco and Ecofix too, and EnergyVision's own Walloon cards
-  printed 0,00750 from November 2025 to August 2026. The Walloon order of
-  19 June 2003 (art. 2) sets the gas fee at 0,000075 EUR/kWh below 1 GWh a
-  year and the low-voltage electricity one at 0,00075: the card prints the
-  electricity rate. It is read as printed and billed at the law's 0,000075
-  EUR/kWh for the months `const.py` knows the law for
-  (`_resolve.resolve_connection_fee`).
-- Walloon GS1JVG, August and September 2026: **"Accise spéciale 4,876
-  €cent/kWh"**, the residential electricity excise since 1 August 2026, in
-  place of the gas bands. The law override in `_resolve.py` bills the gas
-  rate for the months it covers. The August card also has no connection
-  fee row and is refused.
+- Walloon connection fee from the September 2026 cards on, both products,
+  still printed in October: **0,07500 €cent/kWh, ten times the regulated
+  0,0075** (CWaPE). Engie's card prints 0,00750, the supplier survey found
+  0,0075 on Bolt, Mega, OCTA+, Luminus, Eneco and Ecofix too, and
+  EnergyVision's own Walloon cards printed 0,00750 from November 2025 to
+  August 2026. The Walloon order of 19 June 2003 (art. 2) sets the gas fee
+  at 0,000075 EUR/kWh below 1 GWh a year and the low-voltage electricity one
+  at 0,00075: the card prints the electricity rate. It is read as printed
+  and billed at the law's 0,000075 EUR/kWh for the months `const.py` knows
+  the law for (`_resolve.resolve_connection_fee`).
+- Walloon GS1JVG from August 2026, still printed in October: **"Accise
+  spéciale 4,876 €cent/kWh"**, the residential electricity excise since 1
+  August 2026, in place of the gas bands. The law override in `_resolve.py`
+  bills the gas rate for the months it covers. The August card also has no
+  connection fee row and is refused.
 - The August 2026 Walloon GSG re-upload (`_0`, the one the history page
   links) has no connection fee row and is refused; the plain name prints
   0,00750 with the old excise and contribution.

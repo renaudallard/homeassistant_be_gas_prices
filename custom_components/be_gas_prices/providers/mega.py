@@ -58,10 +58,11 @@ which is the price read here. Mega publishes both indices month by month on
 its indexation page as "ZTP mensuel" and "TTF1", in EUR/kWh excluding VAT,
 and that price is the formula at the page's value to the card's rounding.
 
-The first-year ristourne most cards offer (a c EUR/kWh and a fixed fee
-reduction capped at 848 EUR, or a flat amount on the Off-peak cards) is a
-one-off credit granted after twelve or fourteen months and is not part of
-the tariff, so it is not read.
+The first-year ristourne most cards offer (a c EUR/kWh reduction, a fixed
+fee reduction, or both) is a credit over the first contract year, granted
+from the first advance invoice on the October 2026 cards and after twelve
+or fourteen months, capped at 848 EUR, on the cards before them. It is not
+part of the tariff, so it is not read.
 
 Mega's CDN sends the cards with a bogus "Content-Encoding: UTF-8" header,
 which aiohttp ignores as an encoding it does not know.

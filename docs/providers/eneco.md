@@ -31,8 +31,9 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   say "voor Vlaanderen en Wallonië".
 - Vast is "vast tijdens het eerste jaar" and "geldig binnen de grenzen van de
   beschikbare volumes": Eneco may stop selling it before the month ends.
-- Flex is open-ended, Flex One "een contract van 1 jaar". Same layout, factor
-  and fee; only the base differs.
+- Flex is open-ended, Flex One "een contract van 1 jaar". Same layout and
+  factor; the base differs, and from October 2026 the fee too (65,00 on
+  Flex, 50,00 on Flex One).
 - The parser refuses a card whose first line is not the contract's label,
   since Flex and Flex One are otherwise indistinguishable.
 

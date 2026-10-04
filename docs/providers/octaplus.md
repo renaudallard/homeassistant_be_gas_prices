@@ -108,8 +108,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   `https://files.octaplus.be/tariffs/param%C3%A8tres_gaz_fr.pdf`. The module
   asks the short link, which is what the cards name.
 - The PDF is a table "Periode TTF101 Mois TTF103 Trimestre TTF RLP Mois ZTP
-  RLP Mois ZTP RLP Trimestre", one row per delivery month from 07/2024, e.g.
-  "08/2026 53,734 45,112 61,729 61,899 -". A month not over prints "-".
+  RLP Mois ZTP RLP Trimestre", one row per delivery month over a rolling
+  window (10/2024 to 12/2026 on 2026-10-04), e.g. "08/2026 53,734 45,112
+  61,729 61,899 -". A month not over prints "-".
 - `parse_index` checks that heading and returns the ZTP RLP Mois column as
   `{"ZTP RLP M": {"2026-08": 61.899, ...}}` in EUR/MWh. The other columns are
   no gas card's index and are not read.

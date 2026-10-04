@@ -168,13 +168,16 @@ January 2025, January, March and June 2026 were checked.
 - The last known price is the card's current formula at last month's index:
   the September Smart Flex card prices August at `+ 1,15` while the August
   card's formula was `+ 1`.
-- First-year ristourne: most cards grant one (a c EUR/kWh reduction for the
-  first year's consumption and a reduction of the fixed fee, capped at 848
-  EUR, or a flat 63,6 EUR on the Off-peak cards), paid on the first
-  regularisation after twelve uninterrupted months (fourteen on Zen Fixed).
-  Cosy Flex and Smart Fixed grant it only with direct debit; several cards
-  add a direct-debit supplement to the fee reduction. Prepaid grants none.
-  It is not part of the tariff and is not read.
+- First-year ristourne: most cards grant one, a c EUR/kWh reduction, a
+  reduction of the fixed fee (alone on the Off-peak cards, 32 EUR in
+  October 2026), or both. The October 2026 cards grant it "dès la première
+  facture d'acompte" during the first contract year, with no cap or
+  direct-debit condition; most prorate the fee reduction by days of
+  supply, the Walloon and Brussels Zen Fixed cards do not. Up to
+  September 2026 it was paid on the first regularisation after twelve
+  uninterrupted months (fourteen on Zen Fixed), capped at 848 EUR, some
+  cards only with direct debit or with a direct-debit supplement. Prepaid
+  grants none. It is not part of the tariff and is not read.
 
 ## Tests
 

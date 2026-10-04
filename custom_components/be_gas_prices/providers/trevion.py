@@ -33,9 +33,9 @@ listing page links every card it still serves, one per month:
 
 ``-N`` is a reissue. The unsuffixed name of a reissued month keeps answering
 (both ``-202608.pdf`` and ``-202608-1.pdf`` do), so the listing's href is
-what counts and a URL is never built. The listing is also the archive: it
-reaches back to March 2026. It sends neither ETag nor Last-Modified, so
-there is no cheap probe.
+what counts and a URL is never built. The listing is also the archive, a
+rolling window of recent months (April to October 2026 on 4 October 2026).
+It sends neither ETag nor Last-Modified, so there is no cheap probe.
 
 The cards are Word exports. pdfplumber reads their header and energy block
 one glyph per line, because stray whitespace glyphs sit at almost every
