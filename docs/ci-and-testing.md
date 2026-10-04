@@ -218,10 +218,15 @@ up for the day after three network failures in a row.
 
 `scripts/card_texts.py` is the render cache both scripts share: each PDF
 source of a row names the pypdf and pdfplumber versions that rendered its
-text, and a stored text is served only to those same versions, so a reader
-upgrade renders every card afresh, in the archive and in the live check, for
-as long as it takes. The live check serves the archive's OCR readings as
-they are: it installs no engine and checks the figures the archive read.
+text and a digest of the render code (`providers/_pdf.py` with those
+versions, the digest the fixture text cache is named by), and a stored text
+is served only to the same versions and code, so a reader upgrade or a
+render fix renders every card afresh, in the archive and in the live check,
+for as long as it takes. A replay renders such a card again from its kept
+bytes rather than parsing the old text, so a render fix, `_pdf.py` being a
+parser source, also reaches the months the walk no longer downloads. The
+live check serves the archive's OCR readings as they are: it installs no
+engine and checks the figures the archive read.
 
 ## scripts/refresh_postcodes.py
 

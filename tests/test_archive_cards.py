@@ -171,6 +171,8 @@ class _Acme:
     """A supplier whose card is a listing page and a PDF. ``factor`` stands
     for a parser change; ``days`` records the day each parse ran on."""
 
+    regions = frozenset({"wallonia"})
+
     def __init__(self, factor: float = 1.0) -> None:
         self.factor = factor
         self.renders = 0
@@ -193,9 +195,7 @@ class _Acme:
             id="acme",
             label="Acme",
             contracts=(
-                Contract(
-                    id="acme_fix", label="Acme Fix", kind="fixed", regions=frozenset({"wallonia"})
-                ),
+                Contract(id="acme_fix", label="Acme Fix", kind="fixed", regions=self.regions),
             ),
             fetch=self.fetch,
             **kwargs,
@@ -823,15 +823,7 @@ class _ImageAcmeTwoRegions(_ImageAcme):
     """One card, read for both regions: the second is served the first's
     reading from the run's memo."""
 
-    def extractor(self, **kwargs: Any) -> SupplierExtractor:
-        regions = frozenset({"wallonia", "flanders"})
-        return SupplierExtractor(
-            id="acme",
-            label="Acme",
-            contracts=(Contract(id="acme_fix", label="Acme Fix", kind="fixed", regions=regions),),
-            fetch=self.fetch,
-            **kwargs,
-        )
+    regions = frozenset({"wallonia", "flanders"})
 
 
 async def test_an_ocr_reading_served_from_the_memo_is_listed_too(
@@ -936,6 +928,100 @@ async def test_new_readers_render_the_card_again_on_every_run(
         assert acme.renders == 1
         assert summary.failed
     assert card_texts.StoredTexts(out).texts == {}
+
+
+async def test_a_render_fix_renders_the_card_again(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A stored text is served only to the render code that made it, so a
+    fix to how a card is rendered reaches a card whose bytes the archive
+    already holds, and the next run serves what the fix rendered."""
+    out = tmp_path / "gas"
+    code = tmp_path / "_pdf.py"
+    code.write_text("one render\n", encoding="utf-8")
+    monkeypatch.setattr(card_texts, "_RENDER_CODE", code)
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    code.write_text("a fixed render\n", encoding="utf-8")
+    for renders in (1, 0):
+        acme = _Acme()
+        await ac.archive(out, extractors=[acme.extractor()], now=NOW, sleep=_no_sleep)
+        assert acme.renders == renders
+
+
+async def test_a_render_fix_reaches_a_month_no_longer_downloaded(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A replay renders a closed month's card again from its kept bytes
+    when other render code made its text, and parses what the fix reads."""
+    out = tmp_path / "gas"
+    code = tmp_path / "_pdf.py"
+    code.write_text("one render\n", encoding="utf-8")
+    monkeypatch.setattr(card_texts, "_RENDER_CODE", code)
+    await ac.archive(
+        out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep, pdf_dir=tmp_path / "pdfs"
+    )
+    # A month on, the render code is fixed to read the price it misread.
+    web.pages[CARD_URL] = _card("2026-10", "0.09")
+    code.write_text("a fixed render\n", encoding="utf-8")
+    fixed = _Acme()
+    monkeypatch.setitem(
+        ac._RENDERERS, "plain", lambda payload: fixed.render(payload).replace("0.08", "0.07")
+    )
+    summary = await ac.archive(
+        out,
+        extractors=[_Acme().extractor()],
+        now=datetime(2026, 10, 11, 6, 0, tzinfo=UTC),
+        sleep=_no_sleep,
+        pdf_dir=tmp_path / "pdfs",
+        reparse=True,
+    )
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert (summary.reparsed, fixed.renders) == (1, 1)
+    assert row["energy"]["price"] == 0.07
+    assert [s["readers"] for s in row["_sources"] if "pdf" in s] == [card_texts.readers_line()]
+
+
+async def test_a_card_rendered_again_for_a_sibling_row_names_the_current_code(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A replayed row whose card another row already holds a current text of
+    is served that text, and names the render code that made it from then on
+    rather than the code it was first read with."""
+
+    class _TwoRegions(_Acme):
+        regions = frozenset({"wallonia", "flanders"})
+
+    out = tmp_path / "gas"
+    code = tmp_path / "_pdf.py"
+    code.write_text("one render\n", encoding="utf-8")
+    monkeypatch.setattr(card_texts, "_RENDER_CODE", code)
+    await ac.archive(
+        out,
+        extractors=[_TwoRegions().extractor()],
+        now=NOW,
+        sleep=_no_sleep,
+        pdf_dir=tmp_path / "pdfs",
+    )
+    # The flanders row was replayed under the fixed code on a day the
+    # wallonia one could not get its card back.
+    code.write_text("a fixed render\n", encoding="utf-8")
+    flanders = out / "cards/acme/acme_fix/flanders/2026-09.json"
+    row = json.loads(flanders.read_text())
+    for source in row["_sources"]:
+        if "pdf" in source:
+            source["readers"] = card_texts.readers_line()
+    flanders.write_text(json.dumps(row))
+    web.pages[CARD_URL] = _card("2026-10", "0.09")
+    await ac.archive(
+        out,
+        extractors=[_TwoRegions().extractor()],
+        now=datetime(2026, 10, 11, 6, 0, tzinfo=UTC),
+        sleep=_no_sleep,
+        pdf_dir=tmp_path / "pdfs",
+        reparse=True,
+    )
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert [s["readers"] for s in row["_sources"] if "pdf" in s] == [card_texts.readers_line()]
 
 
 async def test_a_card_read_by_its_text_layer_is_not_marked(tmp_path: Path, web: _Session) -> None:

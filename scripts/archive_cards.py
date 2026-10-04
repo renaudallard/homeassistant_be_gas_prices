@@ -37,7 +37,8 @@ cannot serve, plus three keys of the archive's that the reader ignores:
   - ``_seen_on``: the day the card was captured;
   - ``_sources``: every page and PDF the parse read, each with its text under
     ``<out>/texts/<YYYY-MM>/<sha256>.txt`` and, for a PDF, its digest and
-    what read it: the PDF readers' versions, or the OCR engine's;
+    what read it: the PDF readers' versions with a digest of the render
+    code, or the OCR engine's version;
   - ``_via``: ``live`` for the card that was current, ``archive`` for one
     mirrored from the supplier's own archive.
 
@@ -53,7 +54,7 @@ card's, and the workflow uploads each directory as the assets of the release
 of that name; ``<out>/pdfs.json`` then says which release holds each digest.
 The digest is also what keeps a daily run cheap: a card whose bytes the
 archive already holds is served its stored text instead of being rendered
-again, by the same readers only.
+again, by the same readers and render code only.
 
 Every supplier's index publication (its ``fetch_index``) is kept as
 ``<out>/indices/<supplier>.json``, {index: {"YYYY-MM": EUR/MWh}}, merged into
@@ -63,7 +64,9 @@ A parser fix reaches the stored months by itself. When the parser sources
 changed since the rows were last replayed (their digest is stamped in
 ``parser.txt``), or with ``--reparse``, every row is parsed again from the
 texts it names, the clock pinned to the day it was captured and no supplier
-contacted, and rewritten where the parse came out differently.
+contacted, and rewritten where the parse came out differently. A card whose
+text other readers or render code made is rendered again from its kept
+bytes, so a render fix, which is a parser source too, reaches them as well.
 
 ``--backfill N`` also asks every supplier that keeps an archive of its own for
 the N closed months before this one, through the ``fetch_for_month`` the
@@ -134,6 +137,8 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     MIN_TEXT_LAYER_CHARS,
+    extract_pdf_text,
+    extract_pdf_text_layout,
     fetch_pdf_bytes,
     memoise_text_fetches,
     render_through,
@@ -163,6 +168,13 @@ _KEEP_MONTHS = 12
 # with.
 _PKG = ROOT / "custom_components" / "be_gas_prices"
 _PARSER_SOURCES = ("providers/*.py", "const.py", "snapshot_codec.py")
+# The renderer behind each reader variant a row's card is read with, so a
+# replay can render a card again. Eneco's and Luminus's own renderers read
+# only their index tables, which no row names.
+_RENDERERS: dict[str, Callable[[bytes], str]] = {
+    "plain": extract_pdf_text,
+    "layout": extract_pdf_text_layout,
+}
 _LEGEND = (
     "Each month links to what it was parsed from and to what came out of it: `pdf` is the",
     "card itself, in the releases of this repository, `page` the text of a page as it was",
@@ -440,7 +452,8 @@ def _source_entry(key: str, text: str, cards: _Cards) -> dict[str, str]:
 def _mark_reading(entry: dict[str, str], cards: _Cards) -> None:
     """Name what read a PDF source: the OCR engine, which is also how an
     installation learns that its card was read off an image, or the PDF
-    readers, whose text is served again to the same versions only."""
+    readers, whose text is served again to the same versions and render code
+    only."""
     key = (entry["variant"], entry["pdf"])
     engine = cards.ocr.get(key)
     if engine is not None:
@@ -799,8 +812,9 @@ async def _replay_row(
     summary: _Summary,
 ) -> None:
     """Parse one stored row again from the texts it names, offline, and
-    rewrite it when the parse came out differently. The caller pins the
-    clock to the row's capture day."""
+    rewrite it when the parse came out differently. A card whose text other
+    readers or render code made is rendered again from its kept bytes. The
+    caller pins the clock to the row's capture day."""
     out = cards.archive
     supplier, contract, region = path.parts[-4:-1]
     label = f"{supplier}/{contract}/{region}/{path.stem}"
@@ -823,23 +837,32 @@ async def _replay_row(
         summary.unreplayable.append(f"{label}: no capture day or sources")
         return
     memo = _RecordingMemo()
+    readers = readers_line()
+    rendered: set[tuple[str, str]] = set()
     for source in sources:
         text_path = out / source["text"]
         if not text_path.exists():
             summary.unreplayable.append(f"{label}: {source['text']} is missing")
             return
+        renderer = _RENDERERS.get(source["variant"])
+        stale = "pdf" in source and "ocr" not in source and source.get("readers") != readers
         try:
-            text = await _unfold_embedded_cards(read_text(text_path), kept_pdf)
-        except Exception as err:  # a card not put back is a row not replayed
+            if stale and renderer is not None:
+                payload = await kept_pdf(source["pdf"])
+                text = await cards.render(source["variant"], source["url"], payload, renderer)
+                rendered.add((source["variant"], source["pdf"]))
+            else:
+                text = await _unfold_embedded_cards(read_text(text_path), kept_pdf)
+        except Exception as err:  # a card not read back is a row not replayed
             summary.download_failed |= is_transient(err)
             summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
             return
         # Seeded, not touched: only what the parse reads counts as read.
         dict.__setitem__(memo, _memo_key(source), text)
     cards.digests.update({s["url"]: s["pdf"] for s in sources if "pdf" in s})
-    # The row's texts are what read them whatever this run has installed,
-    # and go on naming it: an installation learns from the engine that the
-    # card was read off an image, and newer readers or a newer engine read
+    # A text the replay did not read again from its card goes on naming what
+    # read it, whatever this run has installed: an installation learns from
+    # the engine that the card was read off an image, and a newer engine reads
     # the card again.
     for source in sources:
         if "pdf" not in source:
@@ -847,7 +870,7 @@ async def _replay_row(
         key = (source["variant"], source["pdf"])
         if "ocr" in source:
             cards.ocr[key] = source["ocr"]
-        else:
+        elif key not in rendered:
             cards.readers[key] = source.get("readers", "")
     cards.calls.clear()
     offline: Any = _Offline()

@@ -58,6 +58,17 @@ PARSER_STAMP = "parser.txt"
 # its version stands for both. Their versions are recorded on each source
 # they rendered, like the OCR engine's.
 _READERS = ("pypdf", "pdfplumber")
+# The code that drives them: every text a row stores was rendered by
+# extract_pdf_text or extract_pdf_text_layout. The extractors' own renderers
+# (Eneco's and Luminus's index tables) feed only the index publications,
+# which keep no text.
+_RENDER_CODE = (
+    Path(__file__).resolve().parent.parent
+    / "custom_components"
+    / "be_gas_prices"
+    / "providers"
+    / "_pdf.py"
+)
 # The engine that reads a card published as page images. Its version is
 # recorded on each source it read rather than in the stamp, so a new engine
 # reads those cards again and leaves every other card's text alone.
@@ -87,9 +98,20 @@ def engine_version() -> str:
     return f"{version}+{commit[:12]}" if isinstance(commit, str) else version
 
 
+def render_digest() -> str:
+    """One digest over what turns a card's bytes into text: the render code
+    and the reader versions. Also what the tests key their fixture texts on."""
+    digest = hashlib.sha256(_RENDER_CODE.read_bytes())
+    for name in _READERS:
+        digest.update(f"{name} {_version(name)}".encode())
+    return digest.hexdigest()
+
+
 def readers_line() -> str:
-    """The reader versions a render runs on, as a source records them."""
-    return " ".join(f"{name}=={_version(name)}" for name in _READERS)
+    """The reader versions a render runs on and a digest of the code that
+    drives them, as a source records them."""
+    versions = " ".join(f"{name}=={_version(name)}" for name in _READERS)
+    return f"{versions} render={render_digest()[:16]}"
 
 
 def read_stamp(archive: Path) -> str | None:
@@ -169,12 +191,13 @@ class StoredTexts:
                 if isinstance(source.get("ocr"), str):
                     self.ocr[key] = source["ocr"]
                 elif source.get("readers") != readers:
-                    # A text is served only to the readers that rendered
-                    # it. A pypdf or pdfplumber release can lay a card out
-                    # differently (6.16 and 6.18 did on 2026-09-13 in the
-                    # electricity archive), and a stored text would stand in
-                    # for the new readers, hiding what they make of the card
-                    # for as long as its bytes stay the same.
+                    # A text is served only to the readers and render code
+                    # that rendered it. A pypdf or pdfplumber release can lay
+                    # a card out differently (6.16 and 6.18 did on 2026-09-13
+                    # in the electricity archive), as can a fix to the render
+                    # code, and a stored text would stand in for them, hiding
+                    # what they make of the card for as long as its bytes
+                    # stay the same.
                     continue
                 self.texts[key] = source["text"]
         # What this run rendered, so a second card on the same bytes is

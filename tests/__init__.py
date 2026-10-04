@@ -30,7 +30,6 @@ from __future__ import annotations
 import hashlib
 import os
 from functools import cache
-from importlib.metadata import version
 from pathlib import Path
 from typing import Any, cast
 
@@ -40,6 +39,7 @@ from custom_components.be_gas_prices.providers._pdf import (
     extract_pdf_text,
     extract_pdf_text_layout,
 )
+from scripts.card_texts import render_digest
 
 FIXTURES = Path(__file__).parent / "fixtures"
 _ROOT = Path(__file__).resolve().parent.parent
@@ -53,20 +53,17 @@ _READERS = {
 def _text_cache_dir() -> Path:
     """Where ``fixture_text`` keeps what it read, across runs.
 
-    One directory per reader code: the digest covers ``providers/_pdf.py``
-    and the pypdf and pdfplumber versions, so a change to either reads every
-    card afresh instead of serving text the current code would not produce.
+    One directory per reader code, named by the digest the card archive
+    keys its stored texts on (``card_texts.render_digest``): it covers
+    ``providers/_pdf.py`` and the pypdf and pdfplumber versions, so a change
+    to either reads every card afresh instead of serving text the current
+    code would not produce.
     Under ``tmp/`` by default, which git ignores; ``BE_FIXTURE_TEXT_CACHE``
     moves it, which the gate does so its throwaway worktree reuses the main
     checkout's.
     """
-    readers = hashlib.sha256(
-        (_ROOT / "custom_components" / "be_gas_prices" / "providers" / "_pdf.py").read_bytes()
-    )
-    for dist in ("pypdf", "pdfplumber"):
-        readers.update(f"{dist} {version(dist)}".encode())
     base = os.environ.get("BE_FIXTURE_TEXT_CACHE") or _ROOT / "tmp" / "fixture_text"
-    return Path(base).resolve() / readers.hexdigest()[:16]
+    return Path(base).resolve() / render_digest()[:16]
 
 
 _TEXT_CACHE = _text_cache_dir()
