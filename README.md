@@ -314,8 +314,7 @@ data:
   in a typical month.
 - **Welcome credits are not deducted.** Mega's first-year ristourne, OCTA+'s
   credit note after a year, Luminus's new-customer discounts and Frank's
-  cashbacks (HV, JN, Korting) are not read, so the running cost is the bill
-  before them.
+  cashbacks are not read, so the running cost is the bill before them.
 - **Baarle-Hertog outside Zondereigen** is on the Dutch network of Enexis,
   which is not priced. Its postcode resolves to Fluvius Kempen, which serves
   Zondereigen, and the setup warns about the rest.
@@ -323,19 +322,20 @@ data:
   VAT with business excise rates.
 - **A card's figures are billed as printed** where no regulated figure
   replaces them, errors included. Known on the October 2026 cards:
-  TotalEnergies prints transport as 0,17 c EUR/kWh against Fluxys's
-  0,16536; EBEM still prints Fluvius Kempen's 2025 small-tier term (2,12 c
-  EUR/kWh against 2,27489); Bolt prints ORES's terms 0,091 c EUR/kWh low
-  (4,198 and 2,115), RESA's mid tier as 2,259 for 2,529, and the Brussels
-  levy of a small meter above 5 000 kWh as 12,54 EUR a year for 12,59.
-  Ecofix prints the same ORES terms and RESA mid tier, and gives RESA ORES's
-  mid-tier fixed term (140,93 for 122,05). The daily live check reports each
-  of these as a notice while the card prints that figure, and as a failure
-  if it prints another; TotalEnergies' transport it cannot tell from
-  Fluxys's at two decimals. A distribution tier that is not cheaper per kWh
-  than the one below it is a figure in the wrong cell and is dropped with
-  those above it instead, so a household on them gets a pricing error rather
-  than a wrong bill.
+  TotalEnergies and Elegant print transport as 0,17 c EUR/kWh against
+  Fluxys's 0,16536; EBEM still prints Fluvius Kempen's 2025 small-tier term
+  (2,12 c EUR/kWh against 2,27489); Bolt prints ORES's terms 0,091 c
+  EUR/kWh low (4,198 and 2,115), RESA's mid tier as 2,259 for 2,529, and
+  the Brussels levy of a small meter above 5 000 kWh as 12,54 EUR a year
+  for 12,59. Ecofix prints the same ORES terms and RESA mid tier, ORES's
+  T3 term as 1,548 for 1,639, and gives RESA ORES's mid-tier fixed term
+  (140,93 for 122,05). The daily live check reports each of these as a
+  notice while the card prints that figure, and as a failure if it prints
+  another; the transport at two decimals it cannot tell from Fluxys's, and
+  it does not compare T3 terms. A distribution tier that is not cheaper per
+  kWh than the one below it is a figure in the wrong cell and is dropped
+  with those above it instead, so a household on them gets a pricing error
+  rather than a wrong bill.
 
 ## Development
 

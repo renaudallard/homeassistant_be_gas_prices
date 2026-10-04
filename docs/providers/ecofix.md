@@ -98,6 +98,8 @@ them to it, which a misread digit of a base would break by several EUR/MWh.
   is known for.
 - ORES terms 4,198 (T1) and 2,115 (T2) c€/kWh, as Bolt prints them, where
   every other card prints 4,289 and 2,206.
+- ORES's T3 term 1,548 c€/kWh, the same 0,091 short, where the other cards
+  print 1,639, 1,64 or 1,63 and the grid says 1,63882. Bolt prints no T3.
 - RESA's mid-tier fixed term 140,93, which is ORES's; the other cards print
   122,05.
 - RESA's mid-tier term 2,259 c€/kWh, as Bolt prints it, where the grid says

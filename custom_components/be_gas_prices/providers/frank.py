@@ -26,18 +26,17 @@
 """Frank Energie gas tariff card extractor.
 
 Frank Energie sells one variable gas contract in Flanders in five tiers,
-each with its own monthly card: the standard one, HV (a higher subscription
-for a lower margin), JN, Slim (only beside a Slim electricity contract) and
-Korting (a cashback). The cards are file assets of the Sanity CMS behind the
-site, found with the query the electricity cards use:
+each with its own monthly card: the standard one, HV, JN, Slim (only beside
+a Slim electricity contract) and Korting. The cards are file assets of the
+Sanity CMS behind the site, found with the query the electricity cards use:
 
     https://8navd656.api.sanity.io/v2023-01-01/data/query/production-be
         *[_type=="sanity.fileAsset" && originalFilename match "*Gas*"]
 
 The file names carry the tier and the month: "... Tariefkaart Gas ZTP
-September 2026.pdf" for the standard tier, "... Gas HV September 2026.pdf"
-from September 2026 and "... Gas ZTP HV Augustus 2026.pdf" before. Korting
-files are "VT", Slim ones "SL" or "Slim" from month to month. Frank
+September 2026.pdf" for the standard tier, "... Gas ZTP HV Oktober 2026
+(1).pdf" for HV, whose September 2026 file drops the ZTP. Korting files are
+"VT", Slim ones "SL" or "Slim" from month to month. Frank
 re-uploads a card now and then ("... Maart 2026 (1).pdf", "... 2026 v2.pdf"),
 sometimes after the next month's card, so a card is chosen by the month its
 name gives and only then by upload time. Uploads go back to July 2023, which
@@ -54,8 +53,9 @@ prints the formula at a VNR estimate ("Verwacht volgens methode VNR voor
 september 2026"). Frank publishes the realised index month by month in the
 "Index waarden" table of its terms page, which is what fetch_index reads.
 
-The subscription is printed per month. The cashback three tiers grant (HV,
-JN, Korting) is not read: a snapshot has no field for it.
+The subscription is printed per month. The cashback a tier prints (JN's,
+and HV's and Korting's up to September 2026) is not read: a snapshot has no
+field for it.
 """
 
 from __future__ import annotations
@@ -329,9 +329,9 @@ def parse_snapshot(
 # October) and the month for the standard tier, "Frank Energie Variabel",
 # the tier and the month for the others. The tier reads "HV ZTP",
 # "JN", "Slim" or "Korting ZTP" ("VT ZTP" from October 2026), and "SL" or
-# "Slim ZTP" on older Slim cards. It is the one place the card names its tier, so it is
-# checked against the contract: HV, JN and the standard tier print different
-# formulas. Nothing may follow the tier but "ZTP", which keeps out the
+# "Slim ZTP" on older Slim cards. It is the one place the card names its
+# tier, so it is checked against the contract: the tiers' formulas and fees
+# can differ. Nothing may follow the tier but "ZTP", which keeps out the
 # January 2025 product whose title names both Korting and Slim. The year has
 # to be whole: the March 2026 cards lost the last character of every line
 # ("maart 202", "(EUR/maand 2,9" for 2,92) and are refused rather than read

@@ -78,9 +78,11 @@ takes about 10 s per card on a Raspberry Pi 4 (`sweep_cost_s`).
   - `Compteur Simple : 7,33 € cent/kWh`, printed under "A titre indicatif, ...
     la dernière valeur connue du TTF_M_RLP (du mois précédent)", is
     `IndexedRates.price`. `settled` is False, because TTF_M_RLP is only known
-    once the delivery month is over. The October 2026 Gaz Variable cards
-    leave it blank (`Compteur Simple : € cent/kWh`), and the estimate is then
-    the price.
+    once the delivery month is over. The first issue of the October 2026 Gaz
+    Variable cards, on 1 October, left it blank (`Compteur Simple : € cent/
+    kWh`), and the estimate was then the price. The reissue later that day
+    prints it again (8,78 against an estimate of 8,12 in Wallonia), and the
+    estimate still stands in for a card leaving it blank.
 - DSO table: it runs from `Coûts de distribution - Terme variable` to
   `Accise fédérale`. The columns are all proportional terms first (0-5000,
   5001-150.000 and 150.001-400.000 kWh, c€/kWh), then the three fixed terms
@@ -215,8 +217,8 @@ the October 2026 `2026_10_GAZ-VARIABLE_GAS_WAL_FR.pdf` and
 
 - the variable leg on myComfort Wallonia: index, factor, base, formula
   string, indicative price, fee, month and VAT;
-- the October 2026 Gaz Variable card, whose indicative price is blank,
-  priced at its estimate;
+- the first issue of the October 2026 Gaz Variable card, whose indicative
+  price is blank, priced at its estimate;
 - the October 2026 myEssential card, whose estimate has a dot;
 - the base per region and the fee and formula of each variable product;
 - the price and fee of every fixed card fixture, in all three regions;

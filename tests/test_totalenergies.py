@@ -137,7 +137,7 @@ def test_variable_products(
 
 
 def test_october_gaz_variable_leaves_its_indicative_price_blank() -> None:
-    """From October 2026 the card prints "Compteur Simple : € cent/kWh"
+    """The first October 2026 issue prints "Compteur Simple : € cent/kWh"
     with no figure, and its fee as "100": the estimate, "8,12 Tarif
     mensuel", is the only price it prints."""
     text = _card("2026_10_GAZ-VARIABLE_GAS_WAL_FR.pdf")

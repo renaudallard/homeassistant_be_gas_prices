@@ -326,7 +326,7 @@ def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | Index
     if fee is None or formula is None:
         raise ExtractorError("TotalEnergies: variable price block or formula not found")
     # The indicative price is the formula at the previous month's value.
-    # From October 2026 the card leaves it blank ("Compteur Simple : € cent/
+    # The first October 2026 issue left it blank ("Compteur Simple : € cent/
     # kWh"), and its estimate, the only price it then prints, stands in.
     indicative = _INDICATIVE_RE.search(text)
     price = fee.group(1) if indicative is None else indicative.group(1)

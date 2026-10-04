@@ -140,10 +140,11 @@ printing it: those months are months with no card.
   hier"), a PDF with the table "GAS: TTF_RLP (per maand)", "TTF_RLP (c€/kWh)",
   "MAAND 2025 2026", one row per month. `parse_index_publication` returns it
   in EUR/MWh (x 10); a month not known yet has no figure in the last column.
-- The five other brands link id 1023433; Smappee's page links 985787, which
-  answers 404, while its host serves 1023433. `_fetch_index` tries the
-  brand's own page first, then the other brands' pages, and when all fail
-  raises a transient failure in preference to the brand's own.
+- The six brands link one publication, under an id that changes when it is
+  replaced. Smappee's page once linked an id its host no longer served while
+  the others linked the current one. `_fetch_index` tries the brand's own
+  page first, then the other brands' pages, and when all fail raises a
+  transient failure in preference to the brand's own.
 - The publication has two decimals of c€/kWh where the cards' footnotes
   have three to five, and it is not consistent about rounding: December 2025
   to March 2026 are cut (the cards' 34,058 EUR/MWh for January is published

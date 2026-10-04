@@ -51,8 +51,8 @@ months carry two rows; the first is the later upload.
 The index values are on the brand's "Indexatieparameters" page, which links
 the platform's one publication (``/web/content/<id>``): a PDF with a table
 "TTF_RLP (c€/kWh)" by month and year. It is the same document on every
-brand's host, and Smappee's page links an attachment that no longer exists,
-so the other brands' pages are asked when a brand's own link fails.
+brand's host, and a brand's page has linked an attachment that no longer
+existed, so the other brands' pages are asked when a brand's own link fails.
 
 The card is dated by its own month, and TTF_RLP is the RLP-weighted mean of
 the delivery month's day-ahead prices: only known once the month is over, so

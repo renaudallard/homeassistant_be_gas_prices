@@ -15,8 +15,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   "JN", "Slim"). `fetch` does not read it, but the five cards it picks from
   Sanity are those five links.
 - File names: `Frank Energie Tariefkaart Gas[ ZTP][ <tier>] <Maand> <jaar>.pdf`.
-  From September 2026 "Gas HV September 2026", before that "Gas ZTP HV
-  Augustus 2026" (sometimes with a double space). The standard tier has no
+  The tiers' September 2026 files drop the ZTP ("Gas HV September 2026"),
+  the other months carry it ("Gas ZTP HV Augustus 2026", sometimes with a
+  double space, "Gas ZTP HV Oktober 2026 (1)"). The standard tier has no
   tier word ("Gas ZTP September 2026"). Runs of spaces are collapsed before
   matching; a name without a month ("Gas ZTP Wintervast 2025", a different,
   fixed product) is ignored.
@@ -45,10 +46,13 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   elektriciteitscontract"; JN is "voor klanten met een digitale meter".
 - "June" is JN's name up to May 2025: same wording, the same formula
   (0,1010 x ... + 0,24) and the same 35 EUR cashback as the JN cards after it.
-  JN's base went from 0,24 to 0,44 in April 2026; the other tiers' formulas
-  have not moved since January 2025.
-- HV, JN and Korting print a cashback ("Korting 115 EUR (incl. btw)", 35 and
-  110 in September 2026). A snapshot has no field for it, so it is not read.
+  JN's base went from 0,24 to 0,44 in April 2026. HV printed 8,50 EUR a
+  month and + 0,2 from January 2025 to September 2026; its October 2026 card
+  prints the standard tier's 2,92 and + 0,46. The standard, Slim and Korting
+  formulas have not moved since January 2025.
+- HV, JN and Korting printed a cashback in September 2026 ("Korting 115 EUR
+  (incl. btw)", 35 and 110); from October 2026 only JN does (35). A snapshot
+  has no field for it, so it is not read.
 
 ## How each figure is read (pdfplumber layout text)
 
