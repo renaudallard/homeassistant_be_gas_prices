@@ -375,10 +375,9 @@ class PeriodBilling:
             def energy_for(
                 card: SupplierSnapshot,
                 _signed: EnergyRates | None = None if signed is None else signed.energy,
-                _table: IndexTable | None = table,
                 _data: dict[str, Any] = period,
             ) -> EnergyRates:
-                return contract_leg(card.energy, _signed, _table, _data)
+                return contract_leg(card.energy, _signed, _data)
 
             household = Household(
                 dso=str(period[CONF_DSO]),

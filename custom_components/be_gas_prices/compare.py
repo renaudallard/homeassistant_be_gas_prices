@@ -92,8 +92,8 @@ class OwnContract:
     card: SupplierSnapshot
     # The card is the card archive's reading of one published as images.
     read_by_ocr: bool = False
-    # The supplier's index values the entry prices on, which picked the
-    # card's energy leg: the comparison prices the contract on them too.
+    # The supplier's index values the entry prices on: the comparison
+    # prices the contract on them too.
     table: IndexTable | None = None
 
 

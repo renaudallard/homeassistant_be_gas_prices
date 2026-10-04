@@ -717,9 +717,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if signing is not None:
             today_month = month_key(dt_util.now().date())
             signed = self._snapshot if signing == today_month else self._month_card(signing)
-        return contract_leg(
-            card.energy, None if signed is None else signed.energy, self._index_table, self._data
-        )
+        return contract_leg(card.energy, None if signed is None else signed.energy, self._data)
 
     def month_price(
         self, month: str, *, own_card: bool = False

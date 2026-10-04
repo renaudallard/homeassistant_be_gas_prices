@@ -41,8 +41,8 @@ The rules this encodes:
   of the month sets it whatever the signing date. An indexed leg is priced
   at the index value of the delivery month once the supplier has published
   it, at the latest value it has published before then, and, where it
-  publishes none, at the index the card of the month prices its own figure
-  at.
+  has published none up to then, at the index the card of the month prices
+  its own figure at.
 - The distribution tier and the excise slices follow the household's annual
   volume, and the yearly fixed costs accrue by the day.
 """
@@ -95,18 +95,18 @@ def index_for(table: IndexTable | None, index: str, month: str) -> IndexValue | 
 def contract_leg(
     own: EnergyRates,
     signed: EnergyRates | None,
-    table: IndexTable | None,
     data: dict[str, Any],
 ) -> EnergyRates:
     """The energy leg a month is billed on, from the card of the month
     (``own``), the signing card's leg where one is known and the figures
     the household typed (``data``).
 
-    Where the supplier publishes no value of the index, a card prints only
-    its own month's price. The index that price was set at is read back off
-    the card of the month, and a signed or typed formula is priced at it,
-    so the month moves with the market rather than holding the signing
-    month's figure.
+    For a month the supplier has published no value of the index up to, a
+    card prints only its own month's price. The index that price was set at
+    is read back off the card of the month, and a signed or typed formula is
+    priced at it, so the month moves with the market rather than holding
+    the signing month's figure. A published value prices the formula
+    instead (``resolve_energy_price``).
 
     The custom supplier's typed card is the contract itself: nothing is laid
     over it, not even signing figures an earlier version of the flow asked
@@ -122,9 +122,9 @@ def contract_leg(
         and isinstance(own, IndexedRates)
         and own.index == leg.index
         and own.factor
-        and not (table or {}).get(leg.index)
     ):
-        # Priced off the card of the month, and settled only as that card is.
+        # The price of a month with no value of the index published up to it:
+        # off the card of the month, and settled only as that card is.
         leg = replace(leg, price=leg.at((own.price - own.base) / own.factor), settled=own.settled)
     return leg
 

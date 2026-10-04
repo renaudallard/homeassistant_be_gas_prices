@@ -55,7 +55,7 @@ the household's caliber cannot price it, like a card missing its DSO.
 | --- | --- |
 | `FixedRates` | its price |
 | `VariableRates` | the card's printed price |
-| `IndexedRates` | `factor x index(M) + base` once the supplier has published the index for M; before that, at the latest value it has published (the month is then *provisional*); with no published value at all, the card's printed figure, or a signed or typed formula at the index that figure was set at |
+| `IndexedRates` | `factor x index(M) + base` once the supplier has published the index for M; before that, at the latest value it has published (the month is then *provisional*); with no value published up to M, the card's printed figure, or a signed or typed formula at the index that figure was set at |
 
 An index is always the supplier's own: Engie's ZTPDAM (ICIS Heren), OCTA+'s
 ZTP RLP M, TotalEnergies's TTF_M_RLP each come from that supplier's
@@ -75,10 +75,11 @@ supplier's for each month, so the card of month M sets it whatever the
 signing date. A signing card no one serves any more (neither the supplier's
 archive nor the project's, which keeps twelve months) leaves each month on
 its own card's leg. Figures the household typed from its contract
-(`manual_rate.py`) are laid over that leg. Where the supplier publishes no
-index values (Ecofix), the card of month M prints only its own price: the
-index that price was set at is read back off it, and the signed or typed
-formula is priced at that index.
+(`manual_rate.py`) are laid over that leg. Where the supplier has published no
+index value up to month M (Ecofix publishes none, Trevion's values begin in
+March 2026), the card of month M prints only its own price: the index that
+price was set at is read back off it, and the signed or typed formula is
+priced at that index.
 
 ## The regulated figures the law sets for the delivery month
 
