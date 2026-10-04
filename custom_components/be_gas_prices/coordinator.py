@@ -310,6 +310,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # The archive's OCR reading, as the store says: stored as such
             # again whatever the next check finds, and waited on like one.
             self.card_read_by_ocr = blob.get("read_by_ocr") is True
+            # The fetches of this card that failed in a row, and whether it
+            # was found unreadable: counted on from there, the first tick
+            # after a restart does not delete a Repairs card the user
+            # ignored for the next to raise it afresh.
+            failures = blob.get("failures")
+            self._failures = failures if isinstance(failures, int) else 0
+            self.card_unreadable = blob.get("unreadable") is True
         # A price is only resolved against its own supplier's publication:
         # a table another supplier published, before a change of supplier,
         # is not restored, even under an index name the two share.
@@ -347,6 +354,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
             "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
             "read_by_ocr": self.card_read_by_ocr,
+            "failures": self._failures,
+            "unreadable": self.card_unreadable,
             "index": self._index_table,
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},

@@ -1762,6 +1762,82 @@ async def test_an_ignored_meter_card_stays_ignored_through_a_failed_setup(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_ignored_extractor_card_stays_ignored_through_a_restart(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """The store keeps the count of failed fetches: the first one after a
+    restart does not start it again at one, deleting the card the user
+    ignored for the next to create it afresh. A good fetch still clears it."""
+    card = fetch.return_value
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    store = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[store] = {
+        "version": 1,
+        "key": store,
+        "data": {
+            "snapshot": snapshot_to_json(card),
+            "fetched_at": "2026-09-14T08:00:00+00:00",
+            "failures": 2,
+        },
+    }
+    entry.add_to_hass(hass)
+    issues = ir.async_get(hass)
+    key = f"extractor_failed_{entry.entry_id}"
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        key,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="extractor_failed",
+        translation_placeholders={"entry": "x", "supplier": "y", "error": "z"},
+    )
+    issues.async_ignore(DOMAIN, key, True)
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = entry.runtime_data
+    assert coordinator.failures == 3
+    issue = issues.async_get_issue(DOMAIN, key)
+    assert issue is not None and issue.dismissed_version is not None
+    fetch.side_effect = None
+    await coordinator.async_force_refresh(wait=True)
+    assert coordinator.failures == 0
+    assert issues.async_get_issue(DOMAIN, key) is None
+    await coordinator.async_save()
+    assert hass_storage[store]["data"]["failures"] == 0
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_unreadable_card_stays_marked_through_a_restart(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """The first check after a restart fails on the network: the card the
+    store says is unreadable stays so, rather than its count of failures
+    being read as a layout change."""
+    card = fetch.return_value
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    store = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[store] = {
+        "version": 1,
+        "key": store,
+        "data": {
+            "snapshot": snapshot_to_json(card),
+            "fetched_at": "2026-09-14T08:00:00+00:00",
+            "failures": 2,
+            "unreadable": True,
+        },
+    }
+    entry.add_to_hass(hass)
+    fetch.side_effect = ExtractorError("network error fetching x: timeout")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is not None
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_setup_that_read_the_meter_and_failed_names_the_meter_problem(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
