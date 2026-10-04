@@ -118,8 +118,11 @@ integration uses and checks:
 
 A fetch is tried three times (10 and 30 second pauses, 300 seconds each). A
 failure that `is_transient_fetch_error` or a timeout explains on every
-attempt is TRANSIENT, reported and never filed. Both scripts render in a
-daemon thread of its own (`card_texts.in_daemon_thread`), so a render that
+attempt is TRANSIENT, reported and never filed. After three such fetches in
+a row the supplier is given up on for the run: its remaining cards and its
+index publication are reported as transient without being fetched, so a host
+that never answers does not run the job into its timeout. Both scripts
+render in a daemon thread of its own (`card_texts.in_daemon_thread`), so a render that
 never returns is abandoned at its timeout without holding the run's exit. A card published as page
 images (`CardNotReadableError`) is parsed on the archive's OCR reading of its
 bytes; until the archive has read them, it is a notice, and the archive

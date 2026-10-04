@@ -32,9 +32,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    # The script retries each fetch itself and bounds each attempt, so a
-    # whole run is well under this; it only keeps a hung run from idling for
-    # the six-hour default.
+    # The script retries each fetch itself, bounds each attempt and gives up
+    # on a supplier after three failed fetches in a row, so a host that
+    # accepts and never answers costs minutes rather than its whole card
+    # list. This only keeps a hung run from idling for the six-hour default.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7

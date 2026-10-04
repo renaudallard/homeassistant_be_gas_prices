@@ -131,6 +131,12 @@ _GRACE_DAYS = 5
 # month, so early in a month the newest value can be two months back; a
 # quarterly one after its quarter, whose last month is then four months back.
 _INDEX_MAX_LAG = {"month": 2, "quarter": 4}
+# A supplier whose fetches fail on the network this many times in a row is
+# not answering this runner today, and every further fetch would cost the
+# same retries and pauses: a host that accepts and never answers would run
+# the job into its timeout before anything is reported or committed. Give up
+# on it for the run instead.
+GIVE_UP_AFTER = 3
 
 Status = Literal["ok", "fail", "transient", "notice"]
 
@@ -160,6 +166,28 @@ def is_transient(err: BaseException) -> bool:
     """Whether a failure says nothing about the card: a timeout, or what the
     readers wrap a network error or a 5xx, 403, 408 or 429 status in."""
     return isinstance(err, TimeoutError) or is_transient_fetch_error(str(err))
+
+
+class Patience:
+    """Per-supplier count of transient failures in a row, and the verdict."""
+
+    def __init__(self) -> None:
+        self.failures: dict[str, int] = {}
+        self.given_up: set[str] = set()
+
+    def note(self, supplier: str, err: BaseException) -> bool:
+        """Record one failed fetch; True when the supplier is now given up on."""
+        if not is_transient(err):
+            self.failures[supplier] = 0
+            return False
+        self.failures[supplier] = self.failures.get(supplier, 0) + 1
+        if self.failures[supplier] >= GIVE_UP_AFTER:
+            self.given_up.add(supplier)
+            return True
+        return False
+
+    def ok(self, supplier: str) -> None:
+        self.failures[supplier] = 0
 
 
 async def fetch_with_retry[T](
@@ -301,22 +329,32 @@ async def _check_supplier(
     today: date,
     sleep: Callable[[float], Awaitable[Any]],
 ) -> tuple[list[Check], list[Card]]:
-    """One supplier's cards in turn, then its index publication."""
+    """One supplier's cards in turn, then its index publication. What is
+    left once the supplier is given up on is reported as transient."""
     checks: list[Check] = []
     cards: list[Card] = []
+    patience = Patience()
+    skipped = f"not fetched: gave up on {ex.id} after {GIVE_UP_AFTER} network failures in a row"
     for contract, region in wanted:
         label = f"{ex.id}/{contract}/{region}"
+        if ex.id in patience.given_up:
+            checks.append(Check(f"{label}: fetch", "transient", skipped))
+            continue
         try:
             snapshot = await fetch_with_retry(
                 functools.partial(ex.fetch, session, contract, region), sleep=sleep
             )
         except Exception as err:  # one card must not stop the check
             checks.append(_failure(f"{label}: fetch", err))
+            patience.note(ex.id, err)
             continue
+        patience.ok(ex.id)
         checks.append(Check(f"{label}: fetch", "ok"))
         checks.append(_freshness(label, snapshot, today))
         cards.append(Card(ex, contract, region, snapshot))
-    if ex.fetch_index is not None:
+    if ex.fetch_index is not None and ex.id in patience.given_up:
+        checks.append(Check(f"{ex.id}: index publication", "transient", skipped))
+    elif ex.fetch_index is not None:
         try:
             table = await fetch_with_retry(functools.partial(ex.fetch_index, session), sleep=sleep)
         except Exception as err:  # reported like a card

@@ -106,8 +106,9 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 # scripts/ is not a package; the lines above put it on sys.path so the render
-# cache is the one the live check reads too, and the retry, the card month and
-# the target list are the live check's own.
+# cache is the one the live check reads too, and the retry, the patience with a
+# supplier that does not answer, the card month and the target list are the
+# live check's own.
 from card_texts import (  # type: ignore[import-not-found]  # noqa: E402
     PARSER_STAMP,
     ROWS,
@@ -122,6 +123,8 @@ from card_texts import (  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 from live_check import (  # type: ignore[import-not-found]  # noqa: E402
     BRUSSELS,
+    GIVE_UP_AFTER,
+    Patience,
     fetch_with_retry,
     is_transient,
     label_month,
@@ -155,11 +158,6 @@ _COVERAGE_DIR = "coverage"
 # The running month and the twelve before it, the same retention the other
 # two namespaces keep.
 _KEEP_MONTHS = 12
-# A supplier whose cards fail on the network this many times in a row is not
-# answering this runner today, and every further card would cost the same
-# retries and pauses: give up on it until tomorrow rather than run the job
-# into its timeout with nothing committed.
-_GIVE_UP_AFTER = 3
 # What a parse depends on: the extractors, the shared readers and dataclasses
 # beside them, the constants they key on and the codec the rows are written
 # with.
@@ -339,28 +337,6 @@ class _Summary:
     # Rows the parser now refuses outright: a misread an installation would
     # otherwise go on billing, so they are removed.
     refused: list[str] = field(default_factory=list)
-
-
-class _Patience:
-    """Per-supplier count of transient failures in a row, and the verdict."""
-
-    def __init__(self) -> None:
-        self.failures: dict[str, int] = {}
-        self.given_up: set[str] = set()
-
-    def note(self, supplier: str, err: BaseException) -> bool:
-        """Record one failed fetch; True when the supplier is now given up on."""
-        if not is_transient(err):
-            self.failures[supplier] = 0
-            return False
-        self.failures[supplier] = self.failures.get(supplier, 0) + 1
-        if self.failures[supplier] >= _GIVE_UP_AFTER:
-            self.given_up.add(supplier)
-            return True
-        return False
-
-    def ok(self, supplier: str) -> None:
-        self.failures[supplier] = 0
 
 
 def _read_json(path: Path) -> Any:
@@ -966,7 +942,7 @@ async def archive(
     stamp = read_stamp(out)
     cards = _Cards(out, pdf_dir)
     memo = _RecordingMemo()
-    patience = _Patience()
+    patience = Patience()
 
     async def walk(ex: SupplierExtractor, fetch: Callable[[], Awaitable[Any]], label: str) -> Any:
         """One fetch, retried; None when it failed, which is recorded."""
@@ -1073,7 +1049,7 @@ async def archive(
     for line in summary.failed:
         print(f"  failed {line[:300]}")
     for supplier in summary.given_up:
-        print(f"  gave up on {supplier} after {_GIVE_UP_AFTER} network failures in a row")
+        print(f"  gave up on {supplier} after {GIVE_UP_AFTER} network failures in a row")
     for line in summary.unreplayable:
         print(f"  not replayable {line[:300]}")
     for line in summary.refused:

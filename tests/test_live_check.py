@@ -459,6 +459,40 @@ async def test_failures_are_told_apart_and_set_the_exit_code(tmp_path: Path) -> 
     assert lc.exit_code(await lc.check_fleet(None, healthy, TODAY, sleep=_no_sleep)) == 0
 
 
+async def test_a_supplier_that_does_not_answer_is_given_up_on_for_the_run() -> None:
+    """Every further card of a dead host would cost the same retries and
+    pauses: what is left is reported as transient without being fetched."""
+    asked: list[str] = []
+
+    async def fetch(_session: Any, contract: str, _region: str) -> SupplierSnapshot:
+        asked.append(contract)
+        raise ExtractorError("network error fetching https://acme.test/card.pdf: TimeoutError")
+
+    async def fetch_index(_session: Any) -> dict[str, dict[str, float]]:
+        asked.append("index")
+        return {}
+
+    extractor = SupplierExtractor(
+        id="acme",
+        label="Acme",
+        contracts=tuple(
+            Contract(id=f"acme_{n}", label="Acme", kind="fixed", regions=frozenset({"flanders"}))
+            for n in range(5)
+        ),
+        fetch=fetch,
+        fetch_index=fetch_index,
+    )
+    checks = await lc.check_fleet(None, [extractor], TODAY, sleep=_no_sleep)
+    assert asked == ["acme_0"] * 3 + ["acme_1"] * 3 + ["acme_2"] * 3
+    assert [(c.label, c.status) for c in checks] == [
+        *((f"acme/acme_{n}/flanders: fetch", "transient") for n in range(5)),
+        ("acme: index publication", "transient"),
+    ]
+    assert checks[3].detail == "not fetched: gave up on acme after 3 network failures in a row"
+    assert lc.exit_code(checks) == 2
+    assert lc.render_fingerprint(checks) == ""
+
+
 async def test_a_card_published_as_images_without_a_reading_is_a_notice() -> None:
     """Ecofix's card before the archive has read today's bytes: nothing here
     can read it, so it is reported and not filed."""
