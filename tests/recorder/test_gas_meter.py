@@ -47,6 +47,7 @@ from homeassistant.components.recorder.statistics import (
 )
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.components.recorder.common import (
@@ -72,6 +73,8 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     TIER_T1,
 )
+from custom_components.be_gas_prices.coordinator import GasCoordinator
+from custom_components.be_gas_prices.issues import sync_issues
 from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
 from tests import fixture_text
@@ -158,11 +161,67 @@ async def test_a_slow_energy_manager_is_left_to_finish(hass: HomeAssistant) -> N
         patch.object(EnergyManager, "async_initialize", slow_initialize),
         patch.object(gas_meter, "_ENERGY_MANAGER_TIMEOUT_S", 0.01),
     ):
-        assert await gas_meter.discover_energy_gas_meter(hass) == (None, 0)
+        assert await gas_meter.discover_energy_gas_meter(hass) == (None, None)
         loaded.set()
         manager = await asyncio.wait_for(async_get_manager(hass), timeout=1)
         assert manager.data is not None
         assert await gas_meter.discover_energy_gas_meter(hass) == (METER, 1)
+
+
+async def test_a_slow_energy_manager_leaves_an_ignored_meter_card_alone(
+    hass: HomeAssistant,
+) -> None:
+    """The tick that stops waiting for the energy manager does not know how
+    many gas meters there are: it neither deletes the several-meters card
+    the user ignored nor has the next tick create it afresh."""
+    loaded = asyncio.Event()
+
+    async def slow_initialize(self: EnergyManager) -> None:
+        await loaded.wait()
+        prefs: Any = {
+            "energy_sources": [
+                {"type": "gas", "stat_energy_from": METER},
+                {"type": "gas", "stat_energy_from": "sensor.other_gas_meter"},
+            ]
+        }
+        self.data = prefs
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Engie Flow",
+        data={
+            CONF_REGION: REGION_WALLONIA,
+            CONF_DSO: DSO_ORES,
+            CONF_SUPPLIER: "engie",
+            CONF_CONTRACT: "engie_flow",
+        },
+    )
+    entry.add_to_hass(hass)
+    coordinator = GasCoordinator(hass, entry)
+    issues = ir.async_get(hass)
+    key = f"several_meters_{entry.entry_id}"
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        key,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="several_meters",
+        translation_placeholders={"entry": "x", "supplier": "y", "count": "2"},
+    )
+    issues.async_ignore(DOMAIN, key, True)
+    with (
+        patch.object(EnergyManager, "async_initialize", slow_initialize),
+        patch.object(gas_meter, "_ENERGY_MANAGER_TIMEOUT_S", 0.01),
+    ):
+        assert await coordinator._meter() is None
+        sync_issues(hass, coordinator)
+        loaded.set()
+        await asyncio.wait_for(async_get_manager(hass), timeout=1)
+        assert await coordinator._meter() == METER
+        sync_issues(hass, coordinator)
+    issue = issues.async_get_issue(DOMAIN, key)
+    assert issue is not None and issue.dismissed_version is not None
 
 
 def _card() -> SupplierSnapshot:

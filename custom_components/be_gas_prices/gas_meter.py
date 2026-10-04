@@ -81,12 +81,13 @@ def meter_kind(unit: str | None) -> MeterKind | None:
     return None
 
 
-async def discover_energy_gas_meter(hass: HomeAssistant) -> tuple[str | None, int]:
+async def discover_energy_gas_meter(hass: HomeAssistant) -> tuple[str | None, int | None]:
     """The first gas source of the Energy dashboard, and how many it lists.
 
     (None, 0) when none is configured or the energy component is not
-    available. One meter is billed; the count lets the caller say that the
-    others are ignored.
+    available, (None, None) while the energy manager is still loading and
+    the count is not known. One meter is billed; the count lets the caller
+    say that the others are ignored.
     """
     load = hass.data.get(_ENERGY_MANAGER_LOAD)
     if load is None:
@@ -98,7 +99,7 @@ async def discover_energy_gas_meter(hass: HomeAssistant) -> tuple[str | None, in
             manager = await asyncio.shield(load)
     except TimeoutError:
         _LOGGER.debug("energy manager still loading")
-        return None, 0
+        return None, None
     data = getattr(manager, "data", None)
     if not data:
         return None, 0
