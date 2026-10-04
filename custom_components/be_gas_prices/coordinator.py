@@ -149,10 +149,15 @@ SNAPSHOT_STALE_AFTER_VALIDITY = timedelta(days=7)
 _ARCHIVE_MONTHS_BACK = 12
 
 
+def _digest(value: Any) -> str:
+    """A short digest of what JSON makes of value."""
+    blob = json.dumps(value, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
 def _card_digest(card: SupplierSnapshot) -> str:
     """A card's figures, digested."""
-    blob = json.dumps(snapshot_to_json(card), sort_keys=True, default=str)
-    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+    return _digest(snapshot_to_json(card))
 
 
 class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
@@ -374,8 +379,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def _settings_digest(self) -> str:
         """The entry's settings, digested: what a stored ranking was made
         under."""
-        blob = json.dumps(self._data, sort_keys=True, default=str)
-        return hashlib.sha256(blob.encode()).hexdigest()[:16]
+        return _digest(self._data)
 
     async def async_save(self) -> None:
         """Write the store now, outside a tick."""
@@ -384,17 +388,18 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def card_months_signature(self) -> str:
         """What the year's past months are priced from: the entry's
         settings, each past month's own card and the card in hand as read,
-        the latest index value and the latest calorific value. It moves when
-        any of them changes or lands, a card read again after an update
-        included, which is when the price history is worth drawing again."""
+        the index values and the calorific values. It moves when any of them
+        changes or lands, a card read again after an update or the value of
+        an index that lags the others included, which is when the price
+        history is worth drawing again."""
         today = dt_util.now().date()
         own = [
             f"{month}:{_card_digest(card)}"
             for month in self._months_needed(today)
             if (card := self._month_card(month)) is not None
         ]
-        index = max((max(v) for v in (self._index_table or {}).values() if v), default="")
-        gcv = max(self._gcv, default="")
+        index = _digest(self._index_table)
+        gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
         return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}"
 

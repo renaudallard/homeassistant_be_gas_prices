@@ -2225,6 +2225,25 @@ async def test_the_price_history_stamp_moves_with_a_card_read_again(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_stamp_moves_with_a_lagging_value(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Eneco fills TTF103 to the quarter's end while TTFDAW-RLP-M lags a
+    month or two: a value of the lagging index, or a calorific value of an
+    earlier month, that lands later changes that month's price."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    coordinator._index_table = {"TTF103": {"2026-09": 30.0}, "TTFDAW-RLP-M": {"2026-07": 33.0}}
+    coordinator._gcv = {"2026-08": 11.5}
+    before = coordinator.card_months_signature()
+    coordinator._index_table["TTFDAW-RLP-M"]["2026-08"] = 34.0
+    assert coordinator.card_months_signature() != before
+    before = coordinator.card_months_signature()
+    coordinator._gcv["2026-07"] = 11.4
+    assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_falls_back_like_the_running_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
