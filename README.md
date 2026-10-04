@@ -140,7 +140,8 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 > priced wrong. The Repairs card *card read from its image* says so, and the
 > comparison pages mark such a row `OCR`. The federal levies and the Walloon
 > connection fee are billed from the law, whatever the card prints. An Ecofix
-> entry needs the card archive option on, and the setup does not let it off.
+> entry, or one that left Ecofix this year, needs the card archive option on,
+> and the setup does not let it off.
 
 **Not supported, and why:**
 

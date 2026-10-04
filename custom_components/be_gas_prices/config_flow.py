@@ -133,6 +133,16 @@ def _contracts_for(supplier: str, region: str) -> list[Contract]:
     return [c for c in get_extractor(supplier).contracts if region in c.regions]
 
 
+def _needs_archive(data: dict[str, Any]) -> bool:
+    """Whether the current contract or an earlier one of this year is with a
+    supplier whose cards are page images, which only the archive reads."""
+    images = {extractor.id for extractor in all_extractors() if extractor.images_only}
+    periods = periods_this_year(data, dt_util.now().date())
+    return data[CONF_SUPPLIER] in images or any(
+        period[CONF_SUPPLIER] in images for period, _, _ in periods
+    )
+
+
 def _dso_options(region: str, candidates: tuple[str, ...]) -> list[SelectOptionDict]:
     choices = DSO_CHOICES[region]
     if candidates:
@@ -464,13 +474,14 @@ class _FlowSteps:
                 if user_input.get(key) is None:
                     self._data.pop(key, None)
             self._data.update(user_input)
-        if user_input is not None and (
-            get_extractor(self._data[CONF_SUPPLIER]).images_only
+        if (
+            user_input is not None
             and not user_input.get(CONF_CARD_ARCHIVE)
+            and _needs_archive(self._data)
         ):
-            # Its cards are page images: the archive's reading is the only
-            # card the entry can be priced on. The form comes back with the
-            # rest as entered.
+            # Cards published as page images: the archive's reading is the
+            # only card those days can be priced on. The form comes back
+            # with the rest as entered.
             errors[CONF_CARD_ARCHIVE] = "card_archive_needed"
         elif user_input is not None:
             if not brussels:

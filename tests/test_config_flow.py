@@ -774,6 +774,42 @@ async def test_the_archive_error_keeps_a_cleared_meter_cleared(hass: HomeAssista
     assert (meter.description or {}).get("suggested_value") is None
 
 
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(("until", "refused"), [("2026-05-31", True), ("2025-12-31", False)])
+async def test_an_earlier_images_only_contract_needs_the_card_archive(
+    hass: HomeAssistant, until: str, refused: bool
+) -> None:
+    """The entry left Ecofix: its days of this year are priced on the
+    archive's reading, so the option cannot be off. One that ended last
+    year prices nothing this year and does not hold it on."""
+    entry = _entry(hass)
+    earlier = {
+        CONF_SUPPLIER: "ecofix",
+        CONF_CONTRACT: "ecofix_flexy",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": until,
+    }
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, CONF_PREVIOUS_CONTRACTS: [earlier]}
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+        {CONF_CONTRACT: "engie_flow"},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await _household_options(hass, result["flow_id"])
+    if refused:
+        assert result["errors"] == {CONF_CARD_ARCHIVE: "card_archive_needed"}
+    else:
+        assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
 async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> None:
     entry = _entry(hass)
     own = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.08, 190.0, True, True)

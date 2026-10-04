@@ -141,7 +141,7 @@
       "no_gas_network": "Aucun gestionnaire de réseau de distribution de gaz n'est désigné pour ce code postal. Videz le code postal pour choisir vous-même le gestionnaire.",
       "end_before_start": "La date de fin du contrat doit être postérieure à sa date de début.",
       "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
-      "card_archive_needed": "Ce fournisseur publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
+      "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     }
   },
   "options": {
@@ -323,7 +323,7 @@
       "end_before_start": "La date de fin du contrat doit être postérieure à sa date de début.",
       "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
       "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui.",
-      "card_archive_needed": "Ce fournisseur publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
+      "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     },
     "abort": {
       "compare_done": "Comparaison terminée, rien n'a été modifié."

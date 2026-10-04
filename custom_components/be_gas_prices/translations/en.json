@@ -141,7 +141,7 @@
       "no_gas_network": "No gas network operator is designated for this postcode. Clear the postcode to pick the operator yourself.",
       "end_before_start": "The contract end date must be after its start date.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
-      "card_archive_needed": "This supplier publishes its cards as images, which only the project's card archive reads: turn this option on."
+      "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
     }
   },
   "options": {
@@ -323,7 +323,7 @@
       "end_before_start": "The contract end date must be after its start date.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
       "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today.",
-      "card_archive_needed": "This supplier publishes its cards as images, which only the project's card archive reads: turn this option on."
+      "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
     },
     "abort": {
       "compare_done": "Comparison complete, nothing was changed."
