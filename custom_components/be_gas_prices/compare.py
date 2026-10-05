@@ -29,12 +29,12 @@ A quote is a year of the household's gas on a contract's current card: the
 annual volume at today's all-in price plus a year of fixed costs, on the
 household's own DSO, tier and meter caliber. Every row is priced the same
 way, which is what makes the rows comparable: a fixed contract at its price,
-an indexed one at the price its card prints, or at its index value for the
-month quoted once the supplier has published it. Both are what a household
-signing today would see on the card, not a forecast. An indexed contract is
-never priced at an earlier month's value: suppliers publish on their own
-schedules, so each row would sit on whichever month its supplier last
-published.
+an indexed one at its index value for the month quoted or, until the
+supplier has published that, the month before, which most cards are set at;
+otherwise at the price its card prints. An index set before delivery is
+never priced at the month before, which its card is not set at, and no
+index at an older month's value: suppliers publish on their own schedules,
+so each row would sit on whichever month its supplier last published.
 
 The one-off quote, the ranked comparison and the daily ranking all go
 through :func:`quote_contract`.
@@ -47,10 +47,11 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date, timedelta
 
 import aiohttp
 
-from .bill import bill_month
+from .bill import bill_month, month_key
 from .const import SUPPLIER_CUSTOM
 from .month_cards import current_card
 from .pricing import PricingError
@@ -97,7 +98,8 @@ class OwnContract:
     # The card is the card archive's reading of one published as images.
     read_by_ocr: bool = False
     # The supplier's index values the entry prices on: the comparison
-    # prices the contract on them too, for the month quoted.
+    # prices the contract on them too, for the month quoted or the month
+    # before as any other row.
     table: IndexTable | None = None
 
 
@@ -155,10 +157,17 @@ async def quote_contract(
         except ExtractorError as err:
             return Quote(extractor.id, contract, label, None, None, None, False, False, str(err))
     table = await indices.table(session, extractor)
-    # Only the quoted month's own index values, so a row whose supplier has
-    # not published it yet stays on its card's price, as every other does.
+    # The quoted month's index value or, for an index known only after
+    # delivery, the month before it, which most cards print at. An older
+    # value would put the row on another month than the rest, so a row whose
+    # supplier has published neither stays on its card's price.
+    months = {month}
+    if isinstance(card.energy, IndexedRates) and not card.energy.settled:
+        year, number = (int(part) for part in month.split("-"))
+        months.add(month_key(date(year, number, 1) - timedelta(days=1)))
     current = {
-        index: {month: values[month]} for index, values in (table or {}).items() if month in values
+        index: {key: values[key] for key in months if key in values}
+        for index, values in (table or {}).items()
     }
     try:
         # A year of the household's volume and of fixed costs, on the card as

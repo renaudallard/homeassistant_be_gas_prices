@@ -82,10 +82,12 @@ price was set at is read back off it, and the signed or typed formula is
 priced at that index.
 
 A comparison (`compare.quote_contract`) prices an indexed leg at the index
-value of the month quoted only, and at the card's printed figure (or the
-formula at the index read back off it) while the supplier has not published
-that value: suppliers publish on their own schedules, so the latest earlier
-value would put each row on a different month.
+value of the month quoted or, while the supplier has not published that,
+the month before, which most cards print their price at; failing both, at
+the card's printed figure (or the formula at the index read back off it).
+A settled leg takes the month quoted only, since its card is set at that
+month's own value. An older value is never used: suppliers publish on
+their own schedules, so it would put each row on a different month.
 
 ## The regulated figures the law sets for the delivery month
 

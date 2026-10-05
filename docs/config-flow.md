@@ -39,11 +39,13 @@ reloads the entry.
   household's own contract quoted the same way as above), then the ranked
   table with the household's own row in bold. Nothing is saved.
 - In both tables an indexed contract is priced at the month's own index
-  value once its supplier has published it, else at the price its card
-  prints, never at an earlier month's value: suppliers publish on their own
-  schedules, so the rows would sit on different months. A dagger marks a
-  provisional price and `OCR` a card published as images, quoted on the
-  card archive's reading of it when the entry lets the archive be read
+  value once its supplier has published it, else at the month before's,
+  which most cards are set at, else at the price its card prints. An index
+  set before delivery skips the month before, and none is priced at an
+  older month's value: suppliers publish on their own schedules, so the
+  rows would sit on different months. A dagger marks a provisional price
+  and `OCR` a card published as images, quoted on the card archive's
+  reading of it when the entry lets the archive be read
   (`month_cards.current_card`).
 - **Record a change of contract**: the first day of the new contract; the
   current settings become an earlier contract ending the day before

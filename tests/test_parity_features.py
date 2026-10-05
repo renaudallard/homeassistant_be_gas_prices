@@ -651,9 +651,10 @@ async def test_a_ranking_quotes_a_typed_card_among_the_suppliers() -> None:
 
 async def test_a_ranking_prices_every_indexed_row_on_the_month_quoted() -> None:
     """Suppliers publish their index values on their own schedules: a row
-    whose supplier has not published the month quoted yet is on its card's
-    price like a row with no values at all, not on an earlier month's
-    value, which would rank it on another month than the rest."""
+    whose supplier has published neither the month quoted nor the month
+    before is on its card's price like a row with no values at all, not on
+    an older month's value, which would rank it on another month than the
+    rest."""
     card = _flow_card()
     assert isinstance(card.energy, IndexedRates)
     index = card.energy.index
@@ -689,6 +690,38 @@ async def test_a_ranking_prices_every_indexed_row_on_the_month_quoted() -> None:
     # The month quoted, once published, prices the row and settles it.
     assert published.all_in is not None and card_price.all_in is not None
     assert published.all_in > card_price.all_in and not published.provisional
+
+
+async def test_a_quote_prices_an_unsettled_index_on_the_month_before() -> None:
+    """Most cards print an index known only after delivery at the value of
+    the month before: a quote whose supplier has published that value is on
+    it, as those cards are, rather than on a card printed at a forecast. A
+    settled index is not, since its card prints the month's own value."""
+    card = _flow_card()
+    assert isinstance(card.energy, IndexedRates) and not card.energy.settled
+    index = card.energy.index
+    table = {index: {"2026-09": 40.0}}
+    household = Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0)
+
+    async def quote(leg: IndexedRates) -> Quote:
+        extractor = replace(engie.EXTRACTOR, fetch_index=AsyncMock(return_value=table))
+        return await quote_contract(
+            AsyncMock(),
+            extractor,
+            "engie_flow",
+            "wallonia",
+            household,
+            "2026-10",
+            IndexCache(),
+            use_archive=False,
+            card=replace(card, energy=leg),
+        )
+
+    previous = await quote(card.energy)
+    settled = await quote(replace(card.energy, settled=True))
+    assert previous.all_in is not None and settled.all_in is not None
+    assert previous.provisional
+    assert previous.all_in < settled.all_in
 
 
 async def test_the_own_contract_is_priced_on_the_entry_s_index_values() -> None:
