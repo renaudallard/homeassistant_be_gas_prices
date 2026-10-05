@@ -501,7 +501,7 @@ class _FlowSteps:
                 NumberSelectorConfig(
                     min=0,
                     max=1_000_000,
-                    step=100,
+                    step="any",
                     mode=NumberSelectorMode.BOX,
                     unit_of_measurement="kWh",
                 )

@@ -145,6 +145,9 @@ async def test_postcode_resolves_the_region_and_the_dso(hass: HomeAssistant) -> 
     assert schema is not None
     assert CONF_CONVERSION_FACTOR in schema.schema
     assert CONF_CONVERSION_MODE not in schema.schema
+    # The yearly figure is copied from the bill, so the frontend must not
+    # flag one off a round step.
+    assert schema.schema[CONF_ANNUAL_CONSUMPTION_KWH].config["step"] == "any"
     with patch(
         "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
     ):
