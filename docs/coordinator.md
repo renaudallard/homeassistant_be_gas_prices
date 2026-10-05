@@ -88,9 +88,9 @@ cards (`issues.sync_issues`).
    minute was missed on. A stored ranking made for another contract, or
    under other settings, is not restored, so a change of contract or of the
    household's settings ranks the day again. The household's own row is
-   quoted at what it pays, on the card in hand with its signing and typed
-   figures. A sweep that priced no other contract is not kept, so the next
-   tick tries again.
+   quoted on the card in hand with its signing and typed figures, the same
+   way as every other row. A sweep that priced no other contract is not
+   kept, so the next tick tries again.
 8. The Store is written.
 
 ## What is kept, and where

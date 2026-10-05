@@ -81,6 +81,12 @@ March 2026), the card of month M prints only its own price: the index that
 price was set at is read back off it, and the signed or typed formula is
 priced at that index.
 
+A comparison (`compare.quote_contract`) prices an indexed leg at the index
+value of the month quoted only, and at the card's printed figure (or the
+formula at the index read back off it) while the supplier has not published
+that value: suppliers publish on their own schedules, so the latest earlier
+value would put each row on a different month.
+
 ## The regulated figures the law sets for the delivery month
 
 `resolve_for_delivery` applies them before a month is billed, whatever month

@@ -261,18 +261,18 @@
       },
       "compare_contract": {
         "title": "Te vergelijken contract",
-        "description": "Beide contracten worden berekend voor jouw huishouden: je jaarverbruik, netbeheerder en schijf, volgens elke kaart zoals vandaag gepubliceerd. Je eigen contract wordt in plaats daarvan berekend zoals je item het factureert wanneer het item zijn kaart heeft, met het tarief bij ondertekening of de cijfers die je invulde.",
+        "description": "Beide contracten worden berekend voor jouw huishouden: je jaarverbruik, netbeheerder en schijf, volgens elke kaart zoals vandaag gepubliceerd. Je eigen contract wordt in plaats daarvan berekend volgens de kaart waarop je item het factureert wanneer het item zijn kaart heeft, met het tarief bij ondertekening of de cijfers die je invulde.",
         "data": {
           "contract": "Contract"
         }
       },
       "compare_result": {
         "title": "Offerte",
-        "description": "Een jaar van {annual_kwh} kWh volgens elke kaart zoals vandaag gepubliceerd, alle kosten inbegrepen; je eigen contract zoals je item het factureert wanneer het item zijn kaart heeft. Een kruisje duidt een voorlopige prijs aan, tegen de laatste indexwaarde die de leverancier publiceerde of tegen de prijs op zijn kaart als hij er geen publiceert, die de maand nog kan wijzigen. OCR duidt een kaart aan die als afbeeldingen gepubliceerd is, geprijsd met de lezing van het kaartarchief.\n\n{table}"
+        "description": "Een jaar van {annual_kwh} kWh volgens elke kaart zoals vandaag gepubliceerd, alle kosten inbegrepen; je eigen contract volgens de kaart en de cijfers waarop je item het factureert wanneer het item zijn kaart heeft. Een geïndexeerd contract wordt geprijsd tegen de indexwaarde van deze maand zodra de leverancier ze gepubliceerd heeft, anders tegen de prijs op zijn kaart; een kruisje duidt zo'n prijs aan die de maand nog kan wijzigen. OCR duidt een kaart aan die als afbeeldingen gepubliceerd is, geprijsd met de lezing van het kaartarchief.\n\n{table}"
       },
       "compare_all_result": {
         "title": "Alle contracten, gerangschikt",
-        "description": "Een jaar van {annual_kwh} kWh volgens elke kaart die in je gewest verkocht wordt, zoals vandaag gepubliceerd, goedkoopste eerst, je eigen contract in het vet en, wanneer je item zijn kaart heeft, berekend zoals het item het factureert. Een kruisje duidt een voorlopige prijs aan, tegen de laatste gepubliceerde indexwaarde of tegen de prijs op de kaart als de leverancier er geen publiceert. OCR duidt een kaart aan die als afbeeldingen gepubliceerd is, geprijsd met de lezing van het kaartarchief. Niet bereikt binnen de tijd: {skipped}.\n\n{table}"
+        "description": "Een jaar van {annual_kwh} kWh volgens elke kaart die in je gewest verkocht wordt, zoals vandaag gepubliceerd, goedkoopste eerst, je eigen contract in het vet en, wanneer je item zijn kaart heeft, berekend volgens de kaart en de cijfers waarop het item het factureert. Een geïndexeerd contract wordt geprijsd tegen de indexwaarde van deze maand zodra de leverancier ze gepubliceerd heeft, anders tegen de prijs op zijn kaart; een kruisje duidt zo'n prijs aan die de maand nog kan wijzigen. OCR duidt een kaart aan die als afbeeldingen gepubliceerd is, geprijsd met de lezing van het kaartarchief. Niet bereikt binnen de tijd: {skipped}.\n\n{table}"
       },
       "switch": {
         "title": "Een contractwissel vastleggen",

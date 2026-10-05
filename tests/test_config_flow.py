@@ -849,7 +849,7 @@ async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> Non
 
 
 async def test_options_compare_the_own_contract_quotes_it_once(hass: HomeAssistant) -> None:
-    """Picking the household's own contract shows it once, at what it pays,
+    """Picking the household's own contract shows it once, on the card it holds,
     rather than beside a second quote on the card of the month."""
     entry = _entry(hass)
     own = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.08, 190.0, True, True)

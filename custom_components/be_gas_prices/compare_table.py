@@ -41,9 +41,9 @@ def _price(value: float | None) -> str:
 def quote_table(quotes: list[Quote], *, own: Quote | None) -> str:
     """One row per quote, cheapest first as given, the household's own row in
     bold and the gap to it signed. A row marked with a dagger is provisional:
-    priced at the last index value its supplier published, or at the price
-    its card prints where the supplier publishes none, which the month may
-    still move. OCR marks a card the card archive read off its image."""
+    priced at the price its card prints, which the month may still move,
+    until its supplier publishes the month's index value. OCR marks a card
+    the card archive read off its image."""
     base = None if own is None else own.annual_cost
     lines = [
         "| # | Contract | EUR/year | Gap | EUR/kWh |",

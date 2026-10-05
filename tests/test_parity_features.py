@@ -649,6 +649,48 @@ async def test_a_ranking_quotes_a_typed_card_among_the_suppliers() -> None:
     assert None not in costs and costs == sorted(costs)  # type: ignore[type-var]
 
 
+async def test_a_ranking_prices_every_indexed_row_on_the_month_quoted() -> None:
+    """Suppliers publish their index values on their own schedules: a row
+    whose supplier has not published the month quoted yet is on its card's
+    price like a row with no values at all, not on an earlier month's
+    value, which would rank it on another month than the rest."""
+    card = _flow_card()
+    assert isinstance(card.energy, IndexedRates)
+    index = card.energy.index
+
+    async def fetch(_session: Any, contract: str, _region: str) -> SupplierSnapshot:
+        return replace(card, contract=contract)
+
+    def supplier(name: str, table: dict[str, dict[str, float]] | None) -> SupplierExtractor:
+        return SupplierExtractor(
+            id=name,
+            label=name,
+            contracts=(Contract(id=f"{name}_a", label=f"{name} a", kind="indexed"),),
+            fetch=fetch,
+            fetch_index=None if table is None else AsyncMock(return_value=table),
+        )
+
+    suppliers = (
+        supplier("lagging", {index: {"2026-08": 40.0}}),
+        supplier("published", {index: {"2026-08": 40.0, "2026-10": 80.0}}),
+        supplier("none", None),
+    )
+    household = Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0)
+    with patch("custom_components.be_gas_prices.compare.all_extractors", return_value=suppliers):
+        quotes, _skipped = await rank(
+            AsyncMock(), "wallonia", household, "2026-10", use_archive=False
+        )
+    by_supplier = {q.supplier: q for q in quotes}
+    lagging, published, card_price = (
+        by_supplier[name] for name in ("lagging", "published", "none")
+    )
+    assert lagging.annual_cost == pytest.approx(card_price.annual_cost)
+    assert lagging.provisional and card_price.provisional
+    # The month quoted, once published, prices the row and settles it.
+    assert published.all_in is not None and card_price.all_in is not None
+    assert published.all_in > card_price.all_in and not published.provisional
+
+
 async def test_the_own_contract_is_priced_on_the_entry_s_index_values() -> None:
     """The entry chose its energy leg on its own index table: the comparison
     prices on that table rather than fetching another, which may fail."""

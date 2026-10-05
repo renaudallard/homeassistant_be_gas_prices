@@ -738,7 +738,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                 read_by_ocr=held is not None and held.read_by_ocr,
             )
             if (supplier, user_input[CONF_CONTRACT]) == (data[CONF_SUPPLIER], data[CONF_CONTRACT]):
-                # The household's own contract: one quote, at what it pays.
+                # The household's own contract: one quote, on the card it holds.
                 own = await mine
                 other = own
             else:

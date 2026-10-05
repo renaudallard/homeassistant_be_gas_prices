@@ -94,7 +94,10 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 **Choosing a contract**
 
 - **Ranked comparison of every contract** sold in your region for your own
-  household, optionally once a day with the best saving as a sensor.
+  household, optionally once a day with the best saving as a sensor. An
+  indexed contract is quoted at the price its card prints until its
+  supplier publishes the month's index value, so the rows stay comparable
+  whichever supplier publishes first.
 - **One-off quote** of any contract against your own.
 
 **Running it**

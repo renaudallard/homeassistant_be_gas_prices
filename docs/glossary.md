@@ -17,7 +17,7 @@
 | Index period | The period an index value covers: the delivery month, or a quarter. |
 | Month-ahead (ZTP101, TTF101) | The average of month-ahead quotes taken in the month before delivery; known when the delivery month starts. |
 | OSP levy | The Brussels per-meter levy that funds public-service obligations, by meter caliber. |
-| Provisional | A month priced at an index value published for an earlier month, while its own is not out. |
+| Provisional | An indexed month's price its index may still move: at the value published for an earlier month while its own is not out, or at a card's printed price that is not final for that month. |
 | RLP | Synergrid's residential load profile; an RLP-weighted index weights each day by how much a household draws. |
 | Signing month, signing cohort | The month a contract was signed; its card's formula and fee bind the contract. |
 | Tier (T1, T2, T3) | The distribution tariff's consumption tiers: up to 5 000, 150 000 and 1 000 000 kWh a year. One tier prices all of a year's kWh. |

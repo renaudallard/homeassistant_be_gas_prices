@@ -28,9 +28,13 @@
 A quote is a year of the household's gas on a contract's current card: the
 annual volume at today's all-in price plus a year of fixed costs, on the
 household's own DSO, tier and meter caliber. Every row is priced the same
-way, which is what makes the rows comparable: an indexed contract at the
-last index value its supplier has published, a fixed one at its price. Both
-are what a household signing today would see on the card, not a forecast.
+way, which is what makes the rows comparable: a fixed contract at its price,
+an indexed one at the price its card prints, or at its index value for the
+month quoted once the supplier has published it. Both are what a household
+signing today would see on the card, not a forecast. An indexed contract is
+never priced at an earlier month's value: suppliers publish on their own
+schedules, so each row would sit on whichever month its supplier last
+published.
 
 The one-off quote, the ranked comparison and the daily ranking all go
 through :func:`quote_contract`.
@@ -93,7 +97,7 @@ class OwnContract:
     # The card is the card archive's reading of one published as images.
     read_by_ocr: bool = False
     # The supplier's index values the entry prices on: the comparison
-    # prices the contract on them too.
+    # prices the contract on them too, for the month quoted.
     table: IndexTable | None = None
 
 
@@ -151,6 +155,11 @@ async def quote_contract(
         except ExtractorError as err:
             return Quote(extractor.id, contract, label, None, None, None, False, False, str(err))
     table = await indices.table(session, extractor)
+    # Only the quoted month's own index values, so a row whose supplier has
+    # not published it yet stays on its card's price, as every other does.
+    current = {
+        index: {month: values[month]} for index, values in (table or {}).items() if month in values
+    }
     try:
         # A year of the household's volume and of fixed costs, on the card as
         # this month bills it: the law's levies and the regulated figures a
@@ -159,7 +168,7 @@ async def quote_contract(
             month=month,
             card=card,
             energy=card.energy,
-            table=table,
+            table=current,
             dso=household.dso,
             annual_kwh=household.annual_kwh,
             caliber=household.caliber,
@@ -211,9 +220,9 @@ async def rank(
     remaining contracts are not started, and their count is returned beside
     the ranking so the page can say so. Failed quotes sort last. ``own`` is
     the household's contract, quoted on its own card in place of the card
-    of the month a new customer signs on, so the household sees where what
-    it pays ranks; a custom entry's typed card is no supplier's and is only
-    there this way.
+    of the month a new customer signs on, so the household sees where its
+    own contract ranks; a custom entry's typed card is no supplier's and is
+    only there this way.
     """
     pairs = [
         pair

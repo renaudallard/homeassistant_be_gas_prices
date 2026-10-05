@@ -30,17 +30,21 @@ reloads the entry.
 - **Compare another contract**: pick a supplier (the custom supplier, with
   no card of its own, is not offered) and a contract; both it and
   the household's own contract are quoted (`compare.quote_contract`) and
-  shown side by side, the own one at what the household pays: on the card
-  the entry holds, with its signing card's and typed figures, or a custom
-  entry's typed card. Nothing is saved.
+  shown side by side, the own one on the card the entry holds, with its
+  signing card's and typed figures, or a custom entry's typed card. Nothing
+  is saved.
 - **Compare every contract**: a progress step ranks every contract sold in
   the region (`compare.rank`, 120 s budget, three cards at a time, one
   supplier's in turn so a page or card they share is read once, and the
   household's own contract quoted the same way as above), then the ranked
   table with the household's own row in bold. Nothing is saved.
-- In both tables a dagger marks a provisional price and `OCR` a card
-  published as images, quoted on the card archive's reading of it when the
-  entry lets the archive be read (`month_cards.current_card`).
+- In both tables an indexed contract is priced at the month's own index
+  value once its supplier has published it, else at the price its card
+  prints, never at an earlier month's value: suppliers publish on their own
+  schedules, so the rows would sit on different months. A dagger marks a
+  provisional price and `OCR` a card published as images, quoted on the
+  card archive's reading of it when the entry lets the archive be read
+  (`month_cards.current_card`).
 - **Record a change of contract**: the first day of the new contract; the
   current settings become an earlier contract ending the day before
   (`contract_periods.record_switch`) and the supplier steps set up the new
