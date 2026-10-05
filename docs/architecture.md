@@ -116,7 +116,7 @@ async_setup_entry                       __init__.py
         -> CoordinatorData
     background: async_reprice(), the meter read with what is in hand
     forward platforms: sensor, button
-    background, once the meter is read: price history backfill  backfill.py
+    background, after the meter read: price history backfill  backfill.py
 ```
 
 ## Freshness and fallbacks, at a glance

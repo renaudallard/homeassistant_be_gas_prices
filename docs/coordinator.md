@@ -66,7 +66,14 @@ cards (`issues.sync_issues`).
    reads it once, and cards fetched again land later and are priced by a
    second read. Where the card cannot price the volume setup's tick has,
    held or typed, setup's tick reads the meter after all, since the
-   measured volume may fall in a tier the card does price.
+   measured volume may fall in a tier the card does price. A tick that
+   finds the energy manager still loading, where discovery gives no count,
+   reads no meter either: it publishes the held figures as setup's tick
+   does, for the meter they were read off, keeps them in the Store and
+   leaves the meter card alone. It does not leave `meter_reads_pending`
+   set, since a load that failed never ends: the ranking and the price
+   history go ahead on the held volume, or the typed one when none is held,
+   and the next tick that names the meter reads it.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,
@@ -142,13 +149,14 @@ hand is still stale, and it is what lets the card archive stand in.
 
 ## The automatic price history
 
-`backfill.backfill_once_a_year` runs after each update once the meter is read
-(never while setup's own tick, which reads none, is all there is), from
-the start of the year's window (`window_start`: 1 January, or the contract
-start when the entry counts from it), and does nothing unless what the year
-is drawn from has moved: the calendar year, the entry's settings, each past
-month's own card and the current card as read (so a card read again after an
-update redraws it), and the index values and calorific values (so the
-value of an index that lags the supplier's others redraws it when it lands
-or is revised). It is stamped in the Store, and skipped where Home
-Assistant runs no recorder.
+`backfill.backfill_once_a_year` runs after each update once a tick goes to
+read the meter (never while setup's own tick, which reads none, is all there
+is; one still waiting for the energy manager draws on the held volume, or the
+typed one when none is held), from the start of the year's window
+(`window_start`: 1 January, or the contract start when the entry counts from
+it), and does nothing unless what the year is drawn from has moved: the
+calendar year, the entry's settings, each past month's own card and the
+current card as read (so a card read again after an update redraws it), and
+the index values and calorific values (so the value of an index that lags the
+supplier's others redraws it when it lands or is revised). It is stamped in
+the Store, and skipped where Home Assistant runs no recorder.

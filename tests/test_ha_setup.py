@@ -86,6 +86,7 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
     TIER_T1,
+    TIER_T2,
 )
 from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
@@ -1314,6 +1315,196 @@ async def test_a_restart_on_a_named_meter_shows_its_held_figures(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_restart_waiting_for_the_energy_manager_keeps_the_held_figures(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The Energy dashboard's meter is not known while the energy manager
+    loads: the held figures stand, in the store too, the ranking and the
+    price history go ahead on the held volume rather than wait for a load
+    that may never end, an ignored meter card stays ignored, a failing tick
+    included, and the tick that names the meter reads it."""
+    volumes: list[float] = []
+
+    async def ranked(
+        _session: Any, _region: str, household: Any, _month: str, **_kwargs: Any
+    ) -> Any:
+        volumes.append(household.annual_kwh)
+        return ([], 0)
+
+    drawn: list[float] = []
+
+    async def backfill(_hass: Any, coordinator: Any) -> None:
+        drawn.append(coordinator.household.annual_kwh)
+
+    discover = AsyncMock(return_value=("sensor.gas", 1))
+    consumption = AsyncMock(return_value=_a_year_of_gas())
+    data = {**DATA, CONF_DAILY_COMPARE: True}
+    with (
+        patch("custom_components.be_gas_prices.coordinator.discover_energy_gas_meter", discover),
+        patch(
+            "custom_components.be_gas_prices.coordinator.statistic_kind",
+            AsyncMock(return_value="energy"),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.daily_consumption", consumption),
+        patch("custom_components.be_gas_prices.coordinator.rank", ranked),
+        patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=24 * 60),
+        patch("custom_components.be_gas_prices.backfill_once_a_year", backfill),
+    ):
+        entry = await _setup(hass, data)
+        before = entry.runtime_data.data.current_year_cost
+        assert before is not None
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        issues = ir.async_get(hass)
+        key = f"meter_unit_{entry.entry_id}"
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            key,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="meter_unit",
+            translation_placeholders={"entry": "x", "supplier": "y", "error": "z"},
+        )
+        issues.async_ignore(DOMAIN, key, True)
+        drawn.clear()
+        discover.return_value = (None, None)
+        with patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=0):
+            # Setup's own tick, then the meter read it starts.
+            assert await hass.config_entries.async_setup(entry.entry_id)
+            await hass.async_block_till_done(wait_background_tasks=True)
+            coordinator = entry.runtime_data
+            assert not coordinator.meter_reads_pending
+            assert coordinator.data.current_year_cost == pytest.approx(before)
+            assert coordinator.data.annual_kwh == pytest.approx(3650.0)
+            assert coordinator._held is not None
+            assert coordinator._held["current_year_cost"] == pytest.approx(before)
+            assert volumes[0] == pytest.approx(3650.0)
+            assert drawn[0] == pytest.approx(3650.0)
+            # The held volume falls in a tier the card no longer prices.
+            snapshot = coordinator._snapshot
+            assert snapshot is not None
+            ores = snapshot.dsos[DSO_ORES]
+            t2_only = replace(ores, tiers={TIER_T2: ores.tiers[TIER_T2]})
+            coordinator._snapshot = replace(snapshot, dsos={**snapshot.dsos, DSO_ORES: t2_only})
+            await coordinator.async_refresh()
+            assert not coordinator.last_update_success
+            issue = issues.async_get_issue(DOMAIN, key)
+            assert issue is not None and issue.dismissed_version is not None
+            coordinator._snapshot = snapshot
+            consumption.reset_mock()
+            discover.return_value = ("sensor.gas", 1)
+            await coordinator.async_refresh()
+            await hass.async_block_till_done(wait_background_tasks=True)
+    assert coordinator.last_update_success
+    consumption.assert_awaited()
+    assert coordinator.data.current_year_cost == pytest.approx(before)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_setup_waiting_for_the_energy_manager_does_not_read_twice(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The typed volume falls in a tier the card does not price, and no
+    meter is named to read: setup fails at once and leaves the meter card
+    to the tick that reads it."""
+    card = fetch.return_value
+    ores = card.dsos[DSO_ORES]
+    t1_only = replace(ores, tiers={TIER_T1: ores.tiers[TIER_T1]})
+    fetch.return_value = replace(card, dsos={**card.dsos, DSO_ORES: t1_only})
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    entry.add_to_hass(hass)
+    issues = ir.async_get(hass)
+    key = f"meter_unit_{entry.entry_id}"
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        key,
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="meter_unit",
+        translation_placeholders={"entry": "x", "supplier": "y", "error": "z"},
+    )
+    issues.async_ignore(DOMAIN, key, True)
+    discover = AsyncMock(return_value=(None, None))
+    with patch("custom_components.be_gas_prices.coordinator.discover_energy_gas_meter", discover):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert discover.await_count == 1
+    issue = issues.async_get_issue(DOMAIN, key)
+    assert issue is not None and issue.dismissed_version is not None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_tick_waiting_for_the_energy_manager_leaves_landed_cards_to_price(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """August's card lands while a tick still waiting for the energy manager
+    holds the lock: that tick reads no meter, so the reprice August asks for
+    still runs once it is done and reads the meter the manager names by
+    then."""
+    card = fetch.return_value
+    august = replace(card, publication_label="2026-08", valid_until=date(2026, 8, 31))
+    card_gate = asyncio.Event()
+    fetch_gate = asyncio.Event()
+    meter_gate = asyncio.Event()
+    meter_gate.set()
+    named: tuple[str | None, int | None] = (None, None)
+    asked: list[tuple[str | None, int | None]] = []
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        if month != date(2026, 8, 1):
+            return None
+        await card_gate.wait()
+        return august
+
+    async def slow_fetch(*_args: Any, **_kwargs: Any) -> Any:
+        await fetch_gate.wait()
+        return card
+
+    async def discover(_hass: Any) -> tuple[str | None, int | None]:
+        answer = named
+        asked.append(answer)
+        await meter_gate.wait()
+        return answer
+
+    read = AsyncMock(return_value=("energy", _a_year_of_gas()))
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with (
+        patch.dict(providers.EXTRACTORS, {"engie": stub}),
+        patch("custom_components.be_gas_prices.coordinator.discover_energy_gas_meter", discover),
+        patch(_READ_METER, read),
+    ):
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        for _ in range(20):
+            await asyncio.sleep(0)
+        coordinator = entry.runtime_data
+        # Setup's own tick and the meter read it starts, neither with a meter.
+        assert len(asked) == 2
+        assert not coordinator.meter_reads_pending
+        fetch.side_effect = slow_fetch
+        await coordinator.async_force_refresh()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        # August lands with the forced tick fetching, and its reprice waits.
+        card_gate.set()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        meter_gate.clear()
+        fetch_gate.set()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        assert len(asked) == 3
+        named = ("sensor.gas", 1)
+        meter_gate.set()
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert asked[3:] == [("sensor.gas", 1)]
+    read.assert_awaited_once()
+    assert coordinator.meter == "sensor.gas"
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_month_cards_landing_after_setup_ask_no_supplier_again(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
@@ -2099,8 +2290,8 @@ async def test_a_month_before_the_rolling_year_without_a_factor_keeps_the_costs(
         patch.object(calorific, "list_months", AsyncMock(return_value=months)),
         patch.object(calorific, "fetch_month", fetch_month),
         patch(
-            "custom_components.be_gas_prices.coordinator.GasCoordinator._meter",
-            AsyncMock(return_value="sensor.gas"),
+            "custom_components.be_gas_prices.coordinator.discover_energy_gas_meter",
+            AsyncMock(return_value=("sensor.gas", 1)),
         ),
         patch(
             "custom_components.be_gas_prices.coordinator.statistic_kind",

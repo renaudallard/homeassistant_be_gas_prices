@@ -204,7 +204,11 @@ startup instead of inside it. A figure for a month or a year that has ended
 since, or after a setting was edited or the gas meter changed, reads
 `unknown` until then, as every cost does on a new entry. Only a card that
 cannot price the volume startup has, held or typed, makes it read the meter,
-since the measured volume may fall in a tier the card does price.
+since the measured volume may fall in a tier the card does price. A refresh
+that finds Home Assistant still loading the Energy dashboard's settings,
+which name the gas meter, keeps the held figures the same way and leaves the
+meter to the next refresh; the daily comparison does not wait for it and
+uses the held volume, or the typed one when none is held.
 
 ## Installation
 

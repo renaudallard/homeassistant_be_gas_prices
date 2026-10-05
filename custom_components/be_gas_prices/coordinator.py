@@ -898,7 +898,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             try:
                 data = await self._build(today, deferred=deferred, digest=digest)
             except PricingError:
-                if not deferred:
+                if not deferred or self.meter_count is None:
+                    # Nothing to read the meter with either while the
+                    # energy manager has not named it.
                     raise
                 # The typed or held volume falls in a tier the card does not
                 # price, where the meter's may not: read it now, or every
@@ -912,8 +914,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # missing, for this month or for one the running costs bill.
             self.last_error = self._pricing_error = str(err)
             raise UpdateFailed(str(err)) from err
+        # Not left pending by a tick still waiting for the energy manager,
+        # which may never load: the ranking and the price history go ahead
+        # on the held volume, or the typed one when none is held.
         self.meter_reads_pending = deferred
-        if not deferred:
+        if not deferred and self.meter_count is not None:
+            # One waiting for the energy manager showed the held figures
+            # and priced no card that landed.
             self._cards_priced = landed
         self.maybe_rank(today)
         await self._save_persistent()
@@ -1015,6 +1022,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             return str(configured)
         meter, count = await discover_energy_gas_meter(self.hass)
         self.meter_count = count
+        if count is None:
+            # The energy manager is still loading: the meter the last read
+            # named stands until a tick names one.
+            held = (self._held or {}).get("meter")
+            return held if isinstance(held, str) else None
         return meter
 
     def _held_for(self, today: date, digest: str) -> dict[str, Any]:
@@ -1048,7 +1060,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         return out
 
     async def _read_meter(self, today: date) -> tuple[MeterKind | None, dict[date, float]]:
-        self.meter = await self._meter()
         self.meter_error = ""
         if self.meter is None:
             return None, {}
@@ -1080,14 +1091,19 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         measured = False
         kwh_days: dict[date, float] | None = None
         held: dict[str, Any] = {}
+        # Which meter, from the Energy dashboard's settings and not the
+        # recorder, so the several-meters card stands and figures held for
+        # another one are not shown.
+        self.meter = await self._meter()
+        if self.meter_count is None:
+            # The energy manager is still loading and has not named the
+            # meter: read none, as setup's own tick, and leave the figures
+            # held for a tick that does.
+            deferred = True
         if deferred:
             # No meter read: the figures the last tick that read it left,
             # those still true (_held_for), and the measured volume they
             # priced the tier on.
-            # Which meter, from the Energy dashboard's settings and not the
-            # recorder, so the several-meters card stands and figures held
-            # for another one are not shown.
-            self.meter = await self._meter()
             held = self._held_for(today, digest)
             if held.get("annual_kwh") is not None:
                 measured = True
