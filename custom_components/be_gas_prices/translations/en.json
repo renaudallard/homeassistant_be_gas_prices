@@ -430,7 +430,7 @@
     },
     "extractor_failed": {
       "title": "{supplier} tariff card could not be read",
-      "description": "The card for {entry} failed to parse twice in a row: {error}. The last good card keeps pricing. If this persists the supplier probably changed its layout; please open an issue with the diagnostics."
+      "description": "The card for {entry} failed to parse twice in a row: {error}. The last good card, if any, keeps pricing. If this persists the supplier probably changed its layout; please open an issue with the diagnostics."
     },
     "card_unreadable": {
       "title": "{supplier} publishes its card as images",

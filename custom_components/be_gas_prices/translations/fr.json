@@ -430,7 +430,7 @@
     },
     "extractor_failed": {
       "title": "La carte tarifaire de {supplier} n'a pas pu être lue",
-      "description": "La carte de {entry} n'a pas pu être lue deux fois de suite : {error}. La dernière bonne carte continue de servir. Si cela persiste, le fournisseur a probablement changé sa mise en page ; ouvrez un ticket avec les diagnostics."
+      "description": "La carte de {entry} n'a pas pu être lue deux fois de suite : {error}. La dernière bonne carte, s'il y en a une, continue de servir. Si cela persiste, le fournisseur a probablement changé sa mise en page ; ouvrez un ticket avec les diagnostics."
     },
     "card_unreadable": {
       "title": "{supplier} publie sa carte sous forme d'images",

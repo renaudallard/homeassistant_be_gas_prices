@@ -306,11 +306,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # Only a card for this contract that prices this household's DSO: a
         # move to another region keeps the supplier and the contract, and a
         # card of the old region would stand in for the new one's.
-        if (
+        restored = (
             snapshot is not None
             and (snapshot.supplier, snapshot.contract) == (self.extractor.id, self.contract)
             and str(self._data.get(CONF_DSO)) in snapshot.dsos
-        ):
+        )
+        if restored:
             self._snapshot = snapshot
             self._fetched_at = fetched_at
             self._card_source = "cache"
@@ -318,10 +319,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # The archive's OCR reading, as the store says: stored as such
             # again whatever the next check finds, and waited on like one.
             self.card_read_by_ocr = blob.get("read_by_ocr") is True
-            # The fetches of this card that failed in a row, and whether it
-            # was found unreadable: counted on from there, the first tick
-            # after a restart does not delete a Repairs card the user
-            # ignored for the next to raise it afresh.
+        # The fetches of this card that failed in a row, and whether it was
+        # found unreadable, with or without a card in hand: counted on from
+        # there, the first tick after a restart does not delete a Repairs
+        # card the user ignored for the next to raise it afresh, and setup
+        # retries with no card raise it at all.
+        if restored or blob.get("failures_for") == self._card_key():
             failures = blob.get("failures")
             self._failures = failures if isinstance(failures, int) else 0
             self.card_unreadable = blob.get("unreadable") is True
@@ -364,6 +367,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "read_by_ocr": self.card_read_by_ocr,
             "failures": self._failures,
             "unreadable": self.card_unreadable,
+            "failures_for": self._card_key(),
             "index": self._index_table,
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
@@ -375,6 +379,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "held": self._held,
         }
         await self._store.async_save(payload)
+
+    def _card_key(self) -> list[str]:
+        """The supplier, contract and region the card is fetched for: what
+        the stored count of failed fetches belongs to."""
+        return [self.extractor.id, self.contract, self.region]
 
     def _settings_digest(self) -> str:
         """The entry's settings, digested: what a stored ranking was made
@@ -871,6 +880,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if not reprice_only:
             await self._refresh_snapshot()
         if self._snapshot is None:
+            # Written for a setup retry, whose new coordinator counts the
+            # failed fetches on from the store.
+            await self._save_persistent()
             raise UpdateFailed(self.last_error or "no tariff card available")
         if not reprice_only:
             await self._refresh_index()
@@ -913,6 +925,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # The card cannot price this household: its DSO or its tier is
             # missing, for this month or for one the running costs bill.
             self.last_error = self._pricing_error = str(err)
+            # Written as with no card: a setup retry counts on from the
+            # count this tick's fetch left, not from an older one.
+            await self._save_persistent()
             raise UpdateFailed(str(err)) from err
         # Not left pending by a tick still waiting for the energy manager,
         # which may never load: the ranking and the price history go ahead

@@ -2034,6 +2034,72 @@ async def test_an_unreadable_card_stays_marked_through_a_restart(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(
+    "stored",
+    [None, {"failures": 5, "failures_for": ["engie", "engie_flow", REGION_FLANDERS]}],
+)
+async def test_setup_retries_with_no_card_count_their_failures_on(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+    hass_storage: dict[str, Any],
+    stored: dict[str, Any] | None,
+) -> None:
+    """Each setup retry runs a new coordinator: with no card to keep, the
+    count of failed fetches goes through the store, so the second retry
+    that fails raises the card. A count stored for another card is not
+    counted on."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    store = f"{DOMAIN}.{entry.entry_id}"
+    if stored is not None:
+        hass_storage[store] = {"version": 1, "key": store, "data": stored}
+    entry.add_to_hass(hass)
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    issues = ir.async_get(hass)
+    key = f"extractor_failed_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, key) is None
+    assert hass_storage[store]["data"]["failures"] == 1
+    freezer.tick(timedelta(minutes=10))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert fetch.await_count == 2
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert issues.async_get_issue(DOMAIN, key) is not None
+    await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_good_fetch_that_cannot_price_resets_the_stored_count(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+    hass_storage: dict[str, Any],
+) -> None:
+    """A fetch fails, the next one reads the card but setup cannot price
+    the household on it, and the one after fails again: a single failure
+    since the last good fetch, so no card is raised."""
+    err = ExtractorError("Engie: variable price block or formula not found")
+    fetch.side_effect = [err, fetch.return_value, err]
+    # Sibelga is not on a Walloon card: a card read does not price it.
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_DSO: DSO_SIBELGA})
+    store = f"{DOMAIN}.{entry.entry_id}"
+    entry.add_to_hass(hass)
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    for _ in range(3):
+        freezer.tick(timedelta(minutes=10))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    assert fetch.await_count == 3
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert hass_storage[store]["data"]["failures"] == 1
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+    await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_setup_that_read_the_meter_and_failed_names_the_meter_problem(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

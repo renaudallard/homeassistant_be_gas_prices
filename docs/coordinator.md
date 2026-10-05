@@ -29,9 +29,10 @@ cards (`issues.sync_issues`).
    A failure keeps the card in hand and records `last_error`; a failure a
    retry will not fix counts towards the `extractor_failed` card. With no
    card at all, or a stale one, the card archive is asked for its latest row
-   (`_adopt_archived_card`). With still no card the tick raises
-   `UpdateFailed`, which is what makes a first setup retry. The expert custom supplier builds its card from the
-   entry instead.
+   (`_adopt_archived_card`). With still no card the tick writes the Store,
+   so the next setup retry counts the failures on, and raises
+   `UpdateFailed`, which is what makes a first setup retry. The expert
+   custom supplier builds its card from the entry instead.
 2. **Index values** (`_refresh_index`), twice a day, from the supplier's own
    publication. A failure keeps the table held, or with none held and a
    failure a retry may cure (network, storage, HTTP 5xx, 403, 408, 429) is
@@ -80,7 +81,9 @@ cards (`issues.sync_issues`).
    and the current price is the current month billed at zero kWh. A past
    month whose own card cannot price the household is billed on the current
    card; when the current card cannot either (its DSO row or the tier is
-   missing), the tick records `last_error` and raises `UpdateFailed`.
+   missing), the tick records `last_error`, writes the Store, so a setup
+   retry does not count on a failure count the fetch reset, and raises
+   `UpdateFailed`.
 7. **The daily ranking** (`maybe_rank`), when the entry asks for it, once a
    day at a minute derived from the entry id, in the background, never
    before the meter read setup starts after its own tick has landed. A time
@@ -101,9 +104,11 @@ was found unreadable, the index table, the calorific values of the
 configured station, the past months' cards, the price-history stamp, the last
 daily ranking and the figures the last meter read gave, with the meter,
 settings, year and month they were read and priced for. The failure count
-and the unreadable mark carry the `extractor_failed` and `card_unreadable`
-Repairs cards across a restart, so one the user ignored stays ignored. A
-blob written under another snapshot schema is dropped, not migrated:
+and the unreadable mark, kept for the supplier, contract and region the
+card is fetched for, carry the `extractor_failed` and `card_unreadable`
+Repairs cards across a restart, so one the user ignored stays ignored, and
+across setup retries with no card, so `extractor_failed` is raised there
+too. A blob written under another snapshot schema is dropped, not migrated:
 everything in it is re-derivable. The past months' cards another release
 of the integration stored are read again, even across a restart, so a
 release that reads a card better reaches them, and kept when no card of the

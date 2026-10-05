@@ -430,7 +430,7 @@
     },
     "extractor_failed": {
       "title": "Die Tarifkarte von {supplier} konnte nicht gelesen werden",
-      "description": "Die Karte für {entry} konnte zweimal nacheinander nicht gelesen werden: {error}. Die letzte gute Karte rechnet weiter. Wenn das anhält, hat der Lieferant wahrscheinlich sein Layout geändert; bitte ein Issue mit den Diagnosedaten eröffnen."
+      "description": "Die Karte für {entry} konnte zweimal nacheinander nicht gelesen werden: {error}. Die letzte gute Karte, falls vorhanden, rechnet weiter. Wenn das anhält, hat der Lieferant wahrscheinlich sein Layout geändert; bitte ein Issue mit den Diagnosedaten eröffnen."
     },
     "card_unreadable": {
       "title": "{supplier} veröffentlicht seine Karte als Bilder",

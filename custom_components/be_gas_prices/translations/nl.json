@@ -430,7 +430,7 @@
     },
     "extractor_failed": {
       "title": "Tariefkaart van {supplier} kon niet gelezen worden",
-      "description": "De kaart voor {entry} kon twee keer na elkaar niet gelezen worden: {error}. De laatste goede kaart blijft rekenen. Als dit aanhoudt heeft de leverancier waarschijnlijk zijn opmaak gewijzigd; open een issue met de diagnostiek."
+      "description": "De kaart voor {entry} kon twee keer na elkaar niet gelezen worden: {error}. De laatste goede kaart, als er een is, blijft rekenen. Als dit aanhoudt heeft de leverancier waarschijnlijk zijn opmaak gewijzigd; open een issue met de diagnostiek."
     },
     "card_unreadable": {
       "title": "{supplier} publiceert zijn kaart als afbeeldingen",
