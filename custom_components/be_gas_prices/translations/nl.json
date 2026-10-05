@@ -434,7 +434,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} publiceert zijn kaart als afbeeldingen",
-      "description": "De kaart voor {entry} heeft geen tekstlaag en kan hier dus niet gelezen worden. De laatste goede kaart blijft rekenen; het kaartarchief van het project rekent op zijn eigen lezing van de kaart zodra het die heeft, als het item het archief laat lezen."
+      "description": "De kaart voor {entry} heeft geen tekstlaag en kan hier dus niet gelezen worden. De laatste goede kaart, als er een is, blijft rekenen; het kaartarchief van het project rekent op zijn eigen lezing van de kaart zodra het die heeft, als het item het archief laat lezen."
     },
     "card_read_by_ocr": {
       "title": "{supplier}-tariefkaart gelezen uit haar afbeelding",

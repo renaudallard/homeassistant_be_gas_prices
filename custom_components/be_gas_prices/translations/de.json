@@ -434,7 +434,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} veröffentlicht seine Karte als Bilder",
-      "description": "Die Karte für {entry} hat keine Textebene und kann hier daher nicht gelesen werden. Die letzte gute Karte rechnet weiter; das Kartenarchiv des Projekts rechnet mit seiner eigenen Lesung der Karte, sobald es eine hat, wenn der Eintrag es lesen lässt."
+      "description": "Die Karte für {entry} hat keine Textebene und kann hier daher nicht gelesen werden. Die letzte gute Karte, falls vorhanden, rechnet weiter; das Kartenarchiv des Projekts rechnet mit seiner eigenen Lesung der Karte, sobald es eine hat, wenn der Eintrag es lesen lässt."
     },
     "card_read_by_ocr": {
       "title": "{supplier}-Tarifkarte aus ihrem Bild gelesen",

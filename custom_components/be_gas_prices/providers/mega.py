@@ -55,8 +55,10 @@ printed excluding VAT, in c EUR/kWh with the index in c EUR/kWh ("ZTP x 1,08
 months; the card also prints its formula at the last month the index is
 known for ("pour le mois de aout 2026 ... Compteur mono-horaire : 8.28"),
 which is the price read here. Mega publishes both indices month by month on
-its indexation page as "ZTP mensuel" and "TTF1", in EUR/kWh excluding VAT,
-and that price is the formula at the page's value to the card's rounding.
+its indexation page as "ZTP mensuel" and "TTF1", in EUR/kWh excluding VAT.
+The July to September 2026 cards print the formula at the page's value to
+the card's rounding; the October 2026 ZTP cards print 0,02 to 0,03 c EUR/kWh
+under it, the TTF ones still match.
 
 The first-year ristourne most cards offer (a c EUR/kWh reduction, a fixed
 fee reduction, or both) is a credit over the first contract year, granted

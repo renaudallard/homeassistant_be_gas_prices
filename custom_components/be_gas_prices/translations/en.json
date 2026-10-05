@@ -434,7 +434,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} publishes its card as images",
-      "description": "The card for {entry} has no text layer, so it cannot be read here. The last good card keeps pricing; the project's card archive prices on its own reading of the card once it has one, where the entry lets it be read."
+      "description": "The card for {entry} has no text layer, so it cannot be read here. The last good card, if any, keeps pricing; the project's card archive prices on its own reading of the card once it has one, where the entry lets it be read."
     },
     "card_read_by_ocr": {
       "title": "{supplier} card read from its image",

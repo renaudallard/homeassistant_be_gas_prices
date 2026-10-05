@@ -128,8 +128,16 @@ not a statement about the data.
 
 Every Flex card checked (July, August and September 2026, all six products)
 prints a last known price the formula reproduces at this page's value to
-0,01 c EUR/kWh. The card alone would not do: its rounded price pins the index
-only to about 0,04 EUR/MWh.
+0,01 c EUR/kWh. The October 2026 cards do not all: their September price on
+ZTP is 0,02 to 0,03 c EUR/kWh under the formula at the page's ZTP mensuel of
+75,49847 EUR/MWh (Smart and Cosy Flex 9,84 for 9,862, Online Flex 9,52 for
+9,544, Prepaid Flex 8,83 for 8,855), as if the index were about 75,26 to
+75,32, while Off-peak Flex and Off-peak Impact, on TTF, still round the same
+(9,17 for 9,173). The earlier cards were also published on the last day of
+the month they price, so the publication date does not explain the gap.
+Billing is not affected: a month the page lists is priced at the page's
+value. The card alone would not do: its rounded price pins the index only to
+about 0,04 EUR/MWh.
 
 ## Archive
 

@@ -434,7 +434,7 @@
     },
     "card_unreadable": {
       "title": "{supplier} publie sa carte sous forme d'images",
-      "description": "La carte de {entry} n'a pas de couche texte et ne peut donc pas être lue ici. La dernière bonne carte continue de servir ; l'archive des cartes du projet sert sa propre lecture de la carte dès qu'elle en a une, si l'entrée la laisse lire."
+      "description": "La carte de {entry} n'a pas de couche texte et ne peut donc pas être lue ici. La dernière bonne carte, s'il y en a une, continue de servir ; l'archive des cartes du projet sert sa propre lecture de la carte dès qu'elle en a une, si l'entrée la laisse lire."
     },
     "card_read_by_ocr": {
       "title": "Carte {supplier} lue sur son image",
