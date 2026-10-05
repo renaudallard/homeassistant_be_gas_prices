@@ -7,12 +7,18 @@ Module: `custom_components/be_gas_prices/providers/dots.py`. Tests:
 
 - Product page: https://www.dotsenergy.be/dots-connect-gas-digital links the
   current card as an Odoo attachment,
-  `/web/content/98918?unique=<checksum>&download=true` (served as
-  "Tariefkaart NG Dots Connect - Digital 09_2026.pdf"). The home page links
-  the same attachment. `card_path` requires exactly one attachment link.
+  `/web/content/<id>?unique=<checksum>&download=true`. Each month's card
+  gets a new id (98918 for September 2026, "Tariefkaart NG Dots Connect -
+  Digital 09_2026.pdf"; 110896 for October 2026, "... 10_2026.pdf") and the
+  superseded id keeps serving its old card. `card_path` requires exactly one
+  attachment link.
+- The home page is not an equivalent source: in October 2026 it linked six
+  attachments, both months' gas cards and the Dots Dynamic and Dots Dynamic
+  Insights electricity cards for September and October. Only the product
+  page names the current card.
 - No archive of past cards was found, so there is no `fetch_for_month`.
-- No probe: whether a new card replaces attachment 98918 or gets a new id is
-  not known, and a HEAD on a superseded id would keep reporting no change.
+- No probe: the id changes every month, so a HEAD on a known id never sees a
+  new card.
 
 ## Products and regions
 
