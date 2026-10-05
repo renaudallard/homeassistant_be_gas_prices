@@ -89,10 +89,13 @@ The tarief-archief page's tRPC call:
 `fetch_for_month` asks for the first of the month: Zeker & Vast is
 reissued when its price moves (March 2026 has offers dated the 1st, the 6th
 and the 21st), and the card in force on the 1st is the one taken, where
-`fetch` reads whatever the listing links today. Before 2026 the offers are
-other products (`BEGreenFlexGas`, `BEComfortFlexGas`, `BESmartGas`); the
-one checked, BEGreenFlexGas for June 2025, is a combined electricity and
-gas card headed "Periode november 2024". Those months return None. A future
+`fetch` reads whatever the listing links today. The current product keys
+start on 8 November 2025 (`FlexGas_20251108`, `ComfortFlexGas_20251108`,
+`ZekerVastGas_20251108`), so December 2025 is the first month read. Before
+that the offers are other products (`BEGreenFlexGas`, `BEComfortFlexGas`,
+`BESmartGas`), still the ones in force on 1 November 2025; the one checked,
+BEGreenFlexGas for June 2025, is a combined electricity and gas card headed
+"Periode november 2024". November 2025 and earlier return None. A future
 month returns no offers.
 
 ## Known quirks

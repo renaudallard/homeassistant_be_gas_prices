@@ -93,13 +93,14 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
     publishes 2,69459).
 - Levies, "LES SURCHARGES (c€/kWh)", columns Droits d'accise spéciaux,
   Cotisation sur l'énergie and, on the WL card, Redevance raccordement
-  Wallonie (checked by word position):
+  Wallonie, taken from each row in that order:
   - "Consommation entre 0 & 12.000 kWh 1,0929 0,1058 0,0075": excise first
     slice, energy contribution, connection fee.
   - "Consommation > 12.000 kWh 1,1830 0,00": excise second slice, energy
     contribution.
-  - The connection fee is mandatory on a Walloon card: a WL card without it,
-    or a VL card read for Wallonia, fails the parse.
+  - The connection fee is mandatory on a Walloon card: the first row needs a
+    third figure and the card the "Redevance raccordement Wallonie" heading.
+    A WL card without them, or a VL card read for Wallonia, fails the parse.
   - No Brussels levy: there is no residential Brussels card.
 
 ## The index and where its values come from

@@ -85,9 +85,10 @@ Card errors this reads as printed and does not correct:
     against 4,63 / 2,52 / 2,24 in the months between.
   - The Flemish GS1JVG card of April 2026 prints the excise the law set
     from August (1,09286 / 1,18296) and no energy contribution.
-  - Cards before February 2026 print no transport term at all, so they are
-    refused, and the Walloon cards of December 2025 to February 2026 were
-    published in Dutch (``WAL-nl``), which this does not read.
+  - EnergyVision's cards before February 2026 print no transport term at
+    all, so they are refused; Brusol's January 2026 card prints it and is
+    read. The Walloon GSG cards of December 2025 and February 2026 also
+    exist in Dutch (``WAL-nl``); the French February card is read.
 """
 
 from __future__ import annotations

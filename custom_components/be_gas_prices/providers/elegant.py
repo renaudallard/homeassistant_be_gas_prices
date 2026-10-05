@@ -53,9 +53,10 @@ the tRPC call ``tariefArchief.search`` returns the product offers in force on
 a date, each with a ``tariffChartUrl`` that ``/api/tarief-archief/tariff-chart``
 turns into the PDF. Zeker & Vast is reissued within a month when its price
 moves (March 2026 has offers dated the 1st, the 6th and the 21st), so the
-archive serves the card in force on the first day of the month. Before 2026
-the offers carry other product keys (BEGreenFlexGas and the like) and a
-combined electricity and gas card, which this does not read.
+archive serves the card in force on the first day of the month. The current
+product keys start on 8 November 2025, so December 2025 is the first month
+read; before that the offers carry other product keys (BEGreenFlexGas and
+the like) and a combined electricity and gas card, which this does not read.
 
 The index values come from the same site's ``energyExchanges`` tRPC calls
 behind elegant.be/indexatie, the page the card refers to: one row per

@@ -97,15 +97,17 @@ the layout reader is used here too. Index name: `ZTP-RLP-M`.
   Where a month was uploaded again the plain name is the first upload.
 - Brusol: the delivery-month folder is tried first, then the month before.
   August 2026 is in both, and the later upload (2026-08) carries the new
-  excise; every other month from February 2026 is in exactly one.
+  excise; every other month from January 2026 is in exactly one, January
+  in the 2025-12 folder. September to December 2025 are in neither.
 - The history pages (`/nl-be/historiek-tariefkaarten-gas`,
   `/nl-be/historiek-tariefkaarten-GS1JVG`) are not used. They link a
   GS1JVG card as "GSG 12/2025", a 404 for "EBM gas 03/2026", and for
   August 2026 in Wallonia the `_0` re-upload that has no connection fee.
 
 A card that does not parse or names another month moves on to the next
-candidate; a transient failure raises. Readable months: February 2026
-on, less the cards refused below.
+candidate; a transient failure raises. Readable months: January 2026 on
+in Brussels, February 2026 on in Flanders and Wallonia, less the cards
+refused below.
 
 ## Card errors, read as printed
 
@@ -140,8 +142,11 @@ on, less the cards refused below.
 - The Walloon cards of November 2025 to January 2026 print the high excise
   band as 0,87717 where the Flemish ones print 0,94757; not checked which
   is right. Those cards are refused anyway (no transport column).
-- Cards before February 2026 print no transport term; December 2025 to
-  February 2026 also has Walloon cards in Dutch (`WAL-nl`), not read.
+- EnergyVision's cards before February 2026 print no transport term and
+  are refused. Brusol's January 2026 card prints it (0,165) and is read.
+- The Walloon GSG card of December 2025 and of February 2026 also exists
+  in Dutch (`WAL-nl`). Only the French February card is read; the French
+  December card has no transport column either.
 - The parameter document calls the formula "uitgedrukt in €cent/kWh"; the
   cards print it in EUR/MWh, which is what reproduces their prices.
 
