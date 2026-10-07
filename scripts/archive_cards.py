@@ -70,8 +70,8 @@ bytes, so a render fix, which is a parser source too, reaches them as well.
 
 ``--backfill N`` also asks every supplier that keeps an archive of its own for
 the N closed months before this one, through the ``fetch_for_month`` the
-integration uses, and stores each month not held yet: insurance against a
-supplier dropping its archive.
+integration uses, and stores each card not held yet, under the month it names
+like a live row: insurance against a supplier dropping its archive.
 
 Exits 0 when at least one card was stored or found unchanged and 1 when none
 was. That is the runner's problem rather than a supplier's; the live check is
@@ -1024,10 +1024,18 @@ async def archive(
                         # backfill.
                         summary.absent += 1
                         continue
+                    # Filed under the month the card names, as a live row
+                    # is: a card in force over several months (Bolt's
+                    # variable ones) names the first, and a replay refuses
+                    # a row whose card names another month than its file.
+                    named = _card_month(past, today)
+                    path = out / ROWS / ex.id / contract / region / f"{named}.json"
+                    if named < cutoff or path.exists():
+                        continue
                     sources = _sources_of(memo, cards, seen_month)
                     _write_row(path, _row(past, sources, today, "archive"))
                     summary.backfilled += 1
-                    cards.file(month, _pdfs_of(sources))
+                    cards.file(named, _pdfs_of(sources))
             # Inside the memo: a supplier reading its index off its own cards
             # is served them rather than downloading them again.
             for ex in registry:

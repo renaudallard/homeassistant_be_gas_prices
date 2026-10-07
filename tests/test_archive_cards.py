@@ -429,6 +429,38 @@ async def test_backfill_mirrors_the_supplier_archive_for_months_not_held(
     assert held.read_text() == "{}"
 
 
+async def test_backfill_files_a_card_under_the_month_it_names(
+    tmp_path: Path, web: _Session
+) -> None:
+    """A card in force from July still answers for August. It is filed under
+    July once, the month a replay asks it for again, and a card from before
+    the retention is not stored only to be pruned."""
+    asked: list[date] = []
+
+    async def fetch_for_month(
+        _session: Any, contract: str, _region: str, month: date
+    ) -> SupplierSnapshot | None:
+        asked.append(month)
+        label = "2026-07" if month >= date(2026, 7, 1) else "2025-01"
+        return _snapshot(contract, label, 0.07)
+
+    out = tmp_path / "gas"
+    summary = await ac.archive(
+        out,
+        extractors=[_Acme().extractor(fetch_for_month=fetch_for_month)],
+        now=NOW,
+        sleep=_no_sleep,
+        keep_months=12,
+        backfill_months=3,
+    )
+    assert asked == [date(2026, 8, 1), date(2026, 6, 1)]
+    assert summary.backfilled == 1
+    row = json.loads((out / ROW / "2026-07.json").read_text())
+    assert (row["_via"], row["publication_label"]) == ("archive", "2026-07")
+    assert not (out / ROW / "2026-08.json").exists()
+    assert not (out / ROW / "2025-01.json").exists()
+
+
 async def test_a_parser_change_replays_the_stored_months_on_their_capture_day(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

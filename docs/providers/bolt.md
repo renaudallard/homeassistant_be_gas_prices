@@ -192,6 +192,11 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   it does not read. A transient failure raises. Only the chosen card is read
   with the layout reader; when it does not parse, the month has no card. The
   month cache keeps a closed month's card, so the walk runs once per month.
+- The card archive's backfill files such a card under the month its title
+  names, so asking July 2026 for Plenty Variable gives a June row. A replay
+  walks again on the texts the backfill recorded; a number that answered 404
+  left none, so a Plenty row whose walk passed version 12 is kept as it was
+  and reported as not replayable.
 - Signing months are whole months: a contract signed in June 2026 before the
   22nd was on version 11, but the walk gives version 12, which is not read,
   so the month falls back like any other month without a card. The household

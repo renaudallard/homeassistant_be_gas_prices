@@ -211,7 +211,10 @@ card to learn them from; a card the tool crashes on fails the step, which
 files nothing and lets the run go on.
 
 `--backfill N` also mirrors the N closed months before this one, at most
-`--keep-months`, from every supplier archive, for months not held yet.
+`--keep-months`, from every supplier archive, for months not held yet. Each
+card is filed under the month it names, as a live row is, since a card in
+force over several months (Bolt's variable ones) names the first and a
+replay refuses a row whose card names another month.
 `--only` restricts to a supplier. `--index-only` fetches nothing and only
 rewrites the coverage sheets from what is on disk, which the workflow does
 after the upload so the sheets link the PDFs just kept. A supplier is given
