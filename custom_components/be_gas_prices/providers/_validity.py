@@ -57,20 +57,29 @@ def future_month(year_month: date) -> bool:
     return (year_month.year, year_month.month) > (today.year, today.month)
 
 
+async def card_or_none(load: Awaitable[SupplierSnapshot | None]) -> SupplierSnapshot | None:
+    """The card ``load`` fetches, or None.
+
+    A transient failure raises so the month cache retries it; any other
+    failure is a month with no card.
+    """
+    try:
+        return await load
+    except ExtractorError as err:
+        if is_transient_fetch_error(str(err)):
+            raise
+        return None
+
+
 async def month_card(
     load: Awaitable[SupplierSnapshot | None], year_month: date
 ) -> SupplierSnapshot | None:
     """The card ``load`` fetches, when it is the card for ``year_month``.
 
-    A transient failure raises so the month cache retries it; any other
-    failure is a month with no card, and so is a card naming another month.
+    Failures are as :func:`card_or_none` takes them, and a card naming
+    another month is a month with no card.
     """
-    try:
-        snapshot = await load
-    except ExtractorError as err:
-        if is_transient_fetch_error(str(err)):
-            raise
-        return None
+    snapshot = await card_or_none(load)
     if snapshot is None or snapshot.valid_until != end_of_month(year_month.year, year_month.month):
         return None
     return snapshot

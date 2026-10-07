@@ -3,26 +3,18 @@
 Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
 `tests/test_bolt.py`, fixtures in `tests/fixtures/bolt/`.
 
-## Scope: fixed products only
-
-Bolt sells four variable gas products (Variable, Variable Online, Plenty
-Variable, Plenty Variable Online) and two fixed ones. Only the fixed ones are
-supported. The variable cards say "Dans la facturation, la consommation
-journalière est multipliée par la valeur de la TTF pour cette journée": each
-day is billed at that day's TTF day-ahead value, and the only daily source of
-it forbids reuse. The maintainer decided not to support them, so they are not
-registered, and the module never contacts EEX.
-
 ## Where the cards are
 
-- Card: `https://files.boltenergie.be/pricelists/fix/<fix|plenty_fix>_res_ng_fr_<YYYYMM>.pdf`,
-  the electricity pattern with `_ng_` for `_el_`. One card covers Flanders,
-  Wallonia and Brussels.
+- Fixed cards: `https://files.boltenergie.be/pricelists/fix/<fix|plenty_fix>_res_ng_fr_<YYYYMM>.pdf`,
+  the electricity pattern with `_ng_` for `_el_`.
+- Variable cards: `https://files.boltenergie.be/pricelists/var/<bolt|online|plenty|plenty_online>_res_ng_fr_<n>.pdf`,
+  `n` a version number. One card covers Flanders, Wallonia and Brussels.
 - `fetch` reads the listing https://www.boltenergie.be/fr/listes-des-prix,
-  which links each current card (`pricelists/fix/fix_res_ng_fr_202609.pdf`),
-  and takes the latest month linked for the product. The listing also links
-  the Dutch, professional and variable cards, which the pattern
-  `pricelists/fix/<slug>_res_ng_fr_<6 digits>.pdf` leaves out.
+  which links each current card (`pricelists/fix/fix_res_ng_fr_202609.pdf`,
+  `pricelists/var/online_res_ng_fr_14.pdf`), and takes the latest month or
+  version linked for the product. The listing also links the Dutch and
+  professional cards, which the pattern
+  `pricelists/<fix|var>/<slug>_res_ng_fr_<digits>.pdf` leaves out.
 - Probe: the listing gives the card URL, then a HEAD on the card gives its
   Last-Modified. The card says "Le prix proposé peut évoluer dans le courant
   du mois", and the September 2026 card was last modified on 14 September
@@ -41,12 +33,27 @@ registered, and the module never contacts EEX.
 | `bolt_fix` | Bolt Fixe | fix | Bolt Fixe | fixed | 8,02 c€/kWh, 8,99 €/month |
 | `bolt_plenty_fix` | Bolt Plenty Fixe | plenty_fix | Plenty Fixe | fixed | 8,02 c€/kWh, 3,99 €/month |
 
-- Regions: flanders, wallonia and brussels for both.
-- The two cards print the same price and tables. Plenty Fixe charges the
-  lower platform fee and "vous devez détenir au moins une part de la
+| Contract id | Label | Slug | Card title | Kind | October 2026 |
+|---|---|---|---|---|---|
+| `bolt_variable` | Bolt Variable | bolt | Bolt Variable | indexed (TTF) | 8,34 c€/kWh, 8,99 €/month |
+| `bolt_variable_online` | Bolt Variable Online | online | Bolt Variable Online | indexed (TTF) | 8,34 c€/kWh, 5,99 €/month |
+| `bolt_plenty_variable` | Bolt Plenty Variable | plenty | Plenty Variable | indexed (TTF) | 8,34 c€/kWh, 3,99 €/month |
+| `bolt_plenty_variable_online` | Bolt Plenty Variable Online | plenty_online | Plenty Variable Online | indexed (TTF) | 8,34 c€/kWh, 0,99 €/month |
+
+- Regions: flanders, wallonia and brussels for all six.
+- The two fixed cards print the same price and tables. Plenty Fixe charges
+  the lower platform fee and "vous devez détenir au moins une part de la
   coopérative de 250 euros auprès de Plenty Coop SC".
 - Fixed for a year from the start of the contract; the price applies to
   contracts concluded in the card's month.
+- The four variable cards print the same formula, price and tables and
+  differ by their fee. The Dutch editions of the October 2026 cards print the
+  same price, fee and formula as the French ones.
+- A variable contract has no end date ("De leveringsovereenkomst is van
+  onbepaalde duur") and keeps the formula of the card it was signed on: the
+  general terms of 14/02/2025 put the price in the contract's particular
+  conditions (art. 8.1) and let Bolt change it only with two months'
+  individual notice (art. 13.1 and 13.2).
 
 ## How each figure is read
 
@@ -58,12 +65,19 @@ registered, and the module never contacts EEX.
   e-mail address.
 - Title: "Carte Tarifaire / Bolt Fixe / Septembre 2026 /Résidentiel /Gaz". The
   product must be the contract's card title, or the parse fails. The month
-  gives `publication_label` and `valid_until`. The August 2026 card spells
-  it "Aôut", which folds to "aout".
+  gives `publication_label`, and on a fixed card `valid_until`. A variable
+  card is in force until the next version, so its `valid_until` is None. The
+  August 2026 card spells it "Aôut", which folds to "aout".
 - Energy: "Prix mensuel 8,02" (c€/kWh TTC) and "€ 8,99 / mois", times 12 for
   `yearly_fixed_fee`.
 - VAT: "TTC" everywhere, no rate stated, so `card_vat_rate` is None. The only
   formula the fixed card prints is "Simple Fixe".
+- Variable formula, under "Type de compteur TTF Q3 2026 Formule tarifaire
+  (€/MWh, HTVA)": "Simple 65,38 €/MWh TTF *1,049 + 10,10", the TTF value the
+  printed price is set at, then the formula. Factor and base are divided by
+  1000 for EUR/kWh and grossed by the residential 6%, which reproduces the
+  printed price: (65,38 x 1,049 + 10,10) / 10 x 1,06 = 8,34. The index is
+  filed as "TTF". `price` is the printed "Prix mensuel".
 - DSO table, "Distribution et transport TTC", read between that heading and
   "Taxes et redevances": columns Petite consommation <= 5.000 kWh (Variable
   c€/kWh, Fixe €/an), Consommation moyenne > 5.000 et <= 150.000 kWh (the
@@ -91,6 +105,31 @@ registered, and the module never contacts EEX.
 - Brussels levy, "Obligations de service publique (Bruxelles) €/an": "6 of 10
   m3/h 4 3,56", "6 of 10 m3/h 5 12,54", then 16, 25, 40, 65, 100 and 160
   m3/h. Eight amounts, passed to `osp_table` in row order.
+
+## The index
+
+- The variable cards bill each day at that day's TTF day-ahead value ("Dans
+  la facturation, la consommation journalière est multipliée par la valeur
+  de la TTF pour cette journée"). A consumption the network operator reports
+  without daily values is spread over the days by the Synergrid RLP, which
+  makes the month's bill the RLP-weighted mean of the month.
+- The listing carries that mean as `"priceHistory":{"electricity":[...],
+  "gas":[{"date":"2026-08-31T22:00:00+00:00","price":0.0753495763449174},
+  ...]}`: one row per month, dated the first of the month at midnight in
+  Belgium, priced in EUR/kWh, under no name. `fetch_index` reads it with the
+  JSON decoder from that key, converts to EUR/MWh and keeps the months before
+  the current one (Home Assistant's clock).
+- It matches OCTA+'s "TTF RLP Mois" (EGSI TTF day-ahead weighted by the RLP,
+  https://files.octaplus.be/tariffs/paramètres_gaz_fr.pdf) to 0,03 EUR/MWh
+  every month from September 2025 to September 2026, and to 0,17 from May to
+  August 2025.
+- The running month and the three after it hold forward values, and the
+  running month's changes until the month is over: on 29 September 2026 it
+  held 76,01 for September, which read 75,35 on 7 October.
+- A household whose daily values reach Bolt is billed on its own daily
+  profile, which the monthly mean only approximates.
+- The card's own source for the daily values is
+  https://www.powernext.com/spot-market-data, now EEX. Nothing here reads it.
 
 ## Card errors and differences, read as printed
 
@@ -129,6 +168,31 @@ registered, and the module never contacts EEX.
 - Seen on the current template: 10,99 €/month for Bolt Fixe on the April and
   June cards, 8,99 from July; prices 6,95 (April), 6,21 (June), 5,76 (July),
   7,31 (August), 8,02 (September).
+- Variable cards are addressed by version, and the old versions stay served. On
+  2026-10-07 the French ones were:
+
+  | Version | Title | Formula (EUR/MWh) | Read here |
+  |---|---|---|---|
+  | 10 | Janvier 2025 | TTF * 1,0302 + 9,013 | no, the older two-page template |
+  | 11 | Juin 2026 | TTF * 1,0302 + 9,013 | yes |
+  | 12 | Juin 2026, Bolt Variable and Variable Online only | TTF * 1,09 + 10,90 | no, the Flanders rows and levy column are missing from the text |
+  | 13 | Septembre 2026 | TTF *1,049 + 10,10 | yes |
+  | 14 | Octobre 2026 | TTF *1,049 + 10,10 | yes |
+
+  Plenty and Plenty Online have no version 12 (404). No card is titled July
+  or August 2026.
+- `fetch_for_month` for a variable contract takes the newest version whose
+  title names the month or an earlier one, which is the card in force at the
+  end of that month. It walks down from the version the listing links,
+  reading titles with pypdf (about 9 s a card on a Raspberry Pi, against 40
+  to 45 s for the layout reader), passes over a number that fails to download, and stops at a title
+  it does not read. A transient failure raises. Only the chosen card is read
+  with the layout reader; when it does not parse, the month has no card. The
+  month cache keeps a closed month's card, so the walk runs once per month.
+- Signing months are whole months: a contract signed in June 2026 before the
+  22nd was on version 11, but the walk gives version 12, which is not read,
+  so the month falls back like any other month without a card. The household
+  can type its factor and base instead.
 
 ## Tests
 
@@ -142,6 +206,15 @@ pays pdfplumber's 45 s on a Raspberry Pi):
   table.
 - Walloon levies; the August card ("Aôut", old excise and contribution); a
   levy row missing a value fails.
-- Only the two fixed contracts are registered, in all regions, with no index.
-- `fetch` and `probe` take the card the listing links; `fetch_for_month`
-  URL, another month refused, 404 as None, transient failure raised.
+- The six contracts registered, in all regions, with an index.
+- `fetch` and `probe` take the card the listing links, fixed and variable;
+  `fetch_for_month` URL, another month refused, 404 as None, transient
+  failure raised.
+- Variable cards: the formula against the printed price, the four fees, the
+  tables in each region, another product refused, no `valid_until`.
+- The version walk: September takes version 13; July takes the June card,
+  passing over a missing number, and gets no card since version 12 is not
+  read; a title not read stops the walk; a transient failure raises.
+- The index: the October listing's months up to September, September's
+  forward value left out on the 29 September listing, a listing without the
+  series refused, `fetch_index` on Home Assistant's clock.

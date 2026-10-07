@@ -38,7 +38,8 @@ that the tests call on a fixture's text.
 - `taxes`: `TaxOverlay(excise_bands, energy_contribution, connection_fee,
   osp_by_caliber, vat_rate, card_vat_rate)`.
 - `publication_label` ("YYYY-MM", the card's month), `valid_until` (the last
-  day of it) and `source_url`.
+  day of it, or None for a card in force until the supplier replaces it, as
+  Bolt's variable cards are) and `source_url`.
 
 ## Conventions
 

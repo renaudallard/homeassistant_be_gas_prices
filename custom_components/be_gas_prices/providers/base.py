@@ -114,7 +114,8 @@ class SupplierSnapshot:
     source_url: str
     publication_label: str = ""
     # Last calendar day the card's prices apply to, typically the last day
-    # of its month. None when the card could not be dated.
+    # of its month. None for a card with no end date: the custom supplier's
+    # typed card, or one in force until the supplier replaces it.
     valid_until: date | None = None
 
 

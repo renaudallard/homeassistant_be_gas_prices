@@ -23,14 +23,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Bolt gas card extractor, against the August and September 2026 fixed cards."""
+"""Bolt gas card extractor, against the August and September 2026 fixed cards,
+the June, September and October 2026 variable cards and the listing."""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
@@ -47,7 +49,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
 )
 from custom_components.be_gas_prices.providers import bolt
-from custom_components.be_gas_prices.providers._rates import FixedRates
+from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
     ExtractorError,
     SupplierSnapshot,
@@ -63,6 +65,13 @@ pytestmark = pytest.mark.timeout(180)
 _FIX_202609 = "fix_res_ng_fr_202609.pdf"
 _FIX_202608 = "fix_res_ng_fr_202608.pdf"
 _PLENTY_202609 = "plenty_fix_res_ng_fr_202609.pdf"
+_VAR_14 = "bolt_res_ng_fr_14.pdf"
+_VAR_13 = "bolt_res_ng_fr_13.pdf"
+# The second June 2026 card, whose Flanders rows and levy column are missing
+# from its text.
+_VAR_12 = "bolt_res_ng_fr_12.pdf"
+_VAR_URL = "https://files.boltenergie.be/pricelists/var/bolt_res_ng_fr_{}.pdf"
+_LISTING_202610 = "listing_fr_20261007.html"
 
 
 def _card(name: str) -> str:
@@ -202,12 +211,18 @@ def test_levy_row_missing_a_value_fails_loud() -> None:
         bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, text)
 
 
-def test_only_the_fixed_products_are_registered() -> None:
-    contracts = {c.id: c for c in bolt.EXTRACTOR.contracts}
-    assert set(contracts) == {"bolt_fix", "bolt_plenty_fix"}
-    assert {c.kind for c in contracts.values()} == {"fixed"}
-    assert {c.regions for c in contracts.values()} == {frozenset(REGIONS)}
-    assert bolt.EXTRACTOR.fetch_index is None
+def test_registered_products() -> None:
+    kinds = {c.id: c.kind for c in bolt.EXTRACTOR.contracts}
+    assert kinds == {
+        "bolt_fix": "fixed",
+        "bolt_plenty_fix": "fixed",
+        "bolt_variable": "indexed",
+        "bolt_variable_online": "indexed",
+        "bolt_plenty_variable": "indexed",
+        "bolt_plenty_variable_online": "indexed",
+    }
+    assert {c.regions for c in bolt.EXTRACTOR.contracts} == {frozenset(REGIONS)}
+    assert bolt.EXTRACTOR.fetch_index is not None
 
 
 async def test_fetch_takes_the_card_the_listing_links() -> None:
@@ -283,3 +298,197 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
         pytest.raises(ExtractorError),
     ):
         await bolt.fetch_for_month(AsyncMock(), "bolt_fix", REGION_FLANDERS, date(2026, 8, 1))
+
+
+def _indexed(snap: SupplierSnapshot) -> IndexedRates:
+    assert isinstance(snap.energy, IndexedRates)
+    return snap.energy
+
+
+def test_variable_card_formula_reproduces_its_printed_price() -> None:
+    snap = bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, _card(_VAR_14))
+    energy = _indexed(snap)
+    # "Simple 65,38 €/MWh TTF *1,049 + 10,10" (EUR/MWh, HTVA), grossed by 6%.
+    assert energy.formula == "TTF *1,049 + 10,10"
+    assert energy.index == "TTF"
+    assert energy.factor == pytest.approx(1.049 / 1000 * 1.06)
+    assert energy.base == pytest.approx(10.10 / 1000 * 1.06)
+    assert not energy.settled
+    # "Prix mensuel 8,34" is the formula at the 65,38 the card prints.
+    assert energy.price == pytest.approx(0.0834)
+    assert energy.at(65.38) == pytest.approx(energy.price, abs=0.00005)
+    assert snap.publication_label == "2026-10"
+    # In force until Bolt publishes the next version.
+    assert snap.valid_until is None
+    assert snap.taxes.card_vat_rate is None
+
+
+@pytest.mark.parametrize(
+    ("contract", "name", "fee"),
+    [
+        ("bolt_variable", _VAR_14, 8.99),
+        ("bolt_variable_online", "online_res_ng_fr_14.pdf", 5.99),
+        ("bolt_plenty_variable", "plenty_res_ng_fr_14.pdf", 3.99),
+        ("bolt_plenty_variable_online", "plenty_online_res_ng_fr_14.pdf", 0.99),
+    ],
+)
+def test_variable_products_differ_by_their_fee(contract: str, name: str, fee: float) -> None:
+    energy = _indexed(bolt.parse_snapshot(contract, REGION_WALLONIA, _card(name)))
+    assert energy.formula == "TTF *1,049 + 10,10"
+    assert energy.price == pytest.approx(0.0834)
+    assert energy.yearly_fixed_fee == pytest.approx(fee * 12)
+
+
+def test_variable_card_prints_the_fixed_card_tables() -> None:
+    text = _card(_VAR_14)
+    flanders = bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)
+    assert set(flanders.dsos) == FLUVIUS_KEYS
+    wallonia = bolt.parse_snapshot("bolt_variable", REGION_WALLONIA, text)
+    assert wallonia.dsos[DSO_ORES].tiers[TIER_T1].proportional == pytest.approx(0.04198)
+    assert wallonia.taxes.connection_fee == pytest.approx(0.0000750)
+    brussels = bolt.parse_snapshot("bolt_variable", REGION_BRUSSELS, text)
+    assert brussels.dsos[DSO_SIBELGA].metering_per_year == pytest.approx(24.95)
+    assert brussels.taxes.osp_by_caliber is not None
+    assert brussels.taxes.osp_by_caliber["q10_gt5000"] == pytest.approx(12.54)
+    assert _single_rate(brussels.taxes) == pytest.approx(0.0109286)
+
+
+def test_variable_card_of_the_other_product_is_refused() -> None:
+    with pytest.raises(ExtractorError, match="the card is for Bolt Variable"):
+        bolt.parse_snapshot("bolt_variable_online", REGION_FLANDERS, _card(_VAR_14))
+
+
+async def test_fetch_takes_the_variable_version_the_listing_links() -> None:
+    with (
+        patch.object(
+            bolt, "fetch_text", AsyncMock(return_value=fixture_page("bolt", _LISTING_202610))
+        ),
+        patch.object(
+            bolt,
+            "fetch_pdf_text_layout",
+            AsyncMock(return_value=_card("online_res_ng_fr_14.pdf")),
+        ) as fetched,
+    ):
+        snap = await bolt.fetch(AsyncMock(), "bolt_variable_online", REGION_FLANDERS)
+    url = "https://files.boltenergie.be/pricelists/var/online_res_ng_fr_14.pdf"
+    assert fetched.call_args.args[1] == url
+    assert snap.source_url == url
+
+
+async def test_probe_heads_the_linked_variable_card() -> None:
+    with (
+        patch.object(
+            bolt, "fetch_text", AsyncMock(return_value=fixture_page("bolt", _LISTING_202610))
+        ),
+        patch.object(bolt, "head_freshness_key", AsyncMock(return_value="x")) as head,
+    ):
+        await bolt.probe(AsyncMock(), "bolt_plenty_variable_online", REGION_FLANDERS)
+    assert head.call_args.args[1] == (
+        "https://files.boltenergie.be/pricelists/var/plenty_online_res_ng_fr_14.pdf"
+    )
+
+
+def _versions(served: dict[int, str | Exception]) -> AsyncMock:
+    """fetch_pdf_text serving each version's card read by pypdf, or raising."""
+
+    async def fetch(_session: object, url: str, **_kw: object) -> str:
+        for version, card in served.items():
+            if url == _VAR_URL.format(version):
+                if isinstance(card, Exception):
+                    raise card
+                return fixture_text("bolt", card, "plain")
+        raise ExtractorError(f"HTTP 404 fetching {url}")
+
+    return AsyncMock(side_effect=fetch)
+
+
+async def _variable_month(
+    served: dict[int, str | Exception], year_month: date
+) -> tuple[SupplierSnapshot | None, AsyncMock, AsyncMock]:
+    titles = _versions(served)
+    layout = AsyncMock(side_effect=lambda _s, url, **_kw: _card(url.rsplit("/", 1)[1]))
+    with (
+        patch.object(
+            bolt, "fetch_text", AsyncMock(return_value=fixture_page("bolt", _LISTING_202610))
+        ),
+        patch.object(bolt, "fetch_pdf_text", titles),
+        patch.object(bolt, "fetch_pdf_text_layout", layout),
+    ):
+        snap = await bolt.fetch_for_month(AsyncMock(), "bolt_variable", REGION_WALLONIA, year_month)
+    return snap, titles, layout
+
+
+async def test_past_month_is_the_newest_version_titled_for_it_or_before() -> None:
+    snap, titles, layout = await _variable_month(
+        {14: _VAR_14, 13: _VAR_13, 12: _VAR_12}, date(2026, 9, 1)
+    )
+    assert snap is not None
+    assert snap.publication_label == "2026-09"
+    # September's "Prix mensuel 6,18" at "Simple 45,91 €/MWh TTF *1,049 + 10,10".
+    assert _indexed(snap).price == pytest.approx(0.0618)
+    assert _indexed(snap).at(45.91) == pytest.approx(0.0618, abs=0.00005)
+    assert [c.args[1] for c in titles.call_args_list] == [_VAR_URL.format(14), _VAR_URL.format(13)]
+    assert layout.call_args.args[1] == _VAR_URL.format(13)
+
+
+async def test_a_month_without_a_card_of_its_own_takes_the_one_before() -> None:
+    """No card is titled July 2026: the June one was in force. A number Bolt
+    did not publish is passed over. That June card is the one this module
+    cannot read, so the month has no card."""
+    snap, titles, layout = await _variable_month({14: _VAR_14, 12: _VAR_12}, date(2026, 7, 1))
+    assert snap is None
+    assert [c.args[1] for c in titles.call_args_list] == [
+        _VAR_URL.format(14),
+        _VAR_URL.format(13),
+        _VAR_URL.format(12),
+    ]
+    assert layout.call_args.args[1] == _VAR_URL.format(12)
+
+
+async def test_a_title_not_read_stops_the_walk() -> None:
+    snap, titles, layout = await _variable_month({14: _VAR_14, 13: _FIX_202609}, date(2026, 7, 1))
+    assert snap is None
+    assert titles.call_count == 2
+    layout.assert_not_called()
+
+
+async def test_the_walk_raises_on_a_transient_failure() -> None:
+    with pytest.raises(ExtractorError):
+        await _variable_month(
+            {14: ExtractorError("network error fetching x: TimeoutError")}, date(2026, 9, 1)
+        )
+
+
+def test_index_is_the_listing_series_for_the_months_that_are_over() -> None:
+    table = bolt.parse_index(fixture_page("bolt", _LISTING_202610), date(2026, 10, 7))
+    values = table["TTF"]
+    # "2026-08-31T22:00:00+00:00" is September in Belgium, in EUR/kWh.
+    assert values["2026-09"] == pytest.approx(75.3495763449174)
+    assert values["2026-08"] == pytest.approx(61.7310277897321)
+    assert min(values) == "2025-05"
+    assert max(values) == "2026-09"
+    assert len(values) == 17
+
+
+def test_running_month_forward_value_is_left_out() -> None:
+    """On 29 September the series held 76,01 for September, which became
+    75,35 once the month was over."""
+    values = bolt.parse_index(fixture_page("bolt", "listing_fr.html"), date(2026, 9, 29))["TTF"]
+    assert max(values) == "2026-08"
+
+
+def test_listing_without_the_series_fails_loud() -> None:
+    with pytest.raises(ExtractorError, match="no price history"):
+        bolt.parse_index("<html></html>", date(2026, 10, 7))
+
+
+async def test_fetch_index_uses_home_assistants_month() -> None:
+    with (
+        patch.object(
+            bolt, "fetch_text", AsyncMock(return_value=fixture_page("bolt", _LISTING_202610))
+        ) as listing,
+        freeze_time(datetime(2026, 10, 7, 12)),
+    ):
+        table = await bolt.fetch_index(AsyncMock())
+    assert listing.call_args.args[1] == "https://www.boltenergie.be/fr/listes-des-prix"
+    assert max(table["TTF"]) == "2026-09"

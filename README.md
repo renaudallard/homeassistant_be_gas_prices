@@ -114,7 +114,7 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 | Supplier | Contracts | Source |
 | --- | --- | --- |
 | **Belvus** | Flex Online · Smart Plus *(monthly TTF_RLP)* | Flanders only · [`belvus.py`](./custom_components/be_gas_prices/providers/belvus.py) · [notes](./docs/providers/belvus.md) |
-| **Bolt** | Bolt Fixe · Bolt Plenty Fixe | All three regions · [`bolt.py`](./custom_components/be_gas_prices/providers/bolt.py) · [notes](./docs/providers/bolt.md) |
+| **Bolt** | Bolt Fixe · Bolt Plenty Fixe · Bolt Variable · Bolt Variable Online · Bolt Plenty Variable · Bolt Plenty Variable Online *(TTF day by day, priced on the monthly RLP-weighted mean Bolt publishes; see the note below the table)* | All three regions · [`bolt.py`](./custom_components/be_gas_prices/providers/bolt.py) · [notes](./docs/providers/bolt.md) |
 | **Dots Energy** | Connect - Digital *(a monthly price set on ZTP)*; its card repeats the small tier's term as Fluvius Limburg's mid tier, so a Limburg household above 5 000 kWh gets a pricing error rather than a bill 1,257 c€/kWh too high on distribution until Dots corrects it | Flanders only · [`dots.py`](./custom_components/be_gas_prices/providers/dots.py) · [notes](./docs/providers/dots.md) |
 | **EBEM** | Aardgas Variabel · G@S+ *(monthly ZTP-RLP0)* | Flanders only · [`ebem.py`](./custom_components/be_gas_prices/providers/ebem.py) · [notes](./docs/providers/ebem.md) |
 | **Ecofix** ⚠️ *(cards are page images, read by the card archive)* | Flexy · Flexy Online *(TTF-RLP-M; Ecofix publishes no index values, so each month is priced at the price its card prints)* | Flanders + Wallonia · [`ecofix.py`](./custom_components/be_gas_prices/providers/ecofix.py) · [notes](./docs/providers/ecofix.md) · **see the note below the table** |
@@ -147,11 +147,19 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 > entry, or one that left Ecofix this year, needs the card archive option on,
 > and the setup does not let it off.
 
+> [!NOTE]
+> **Bolt's variable cards bill each day at that day's TTF day-ahead price.**
+> Consumption the network operator reports without daily values is spread
+> over the days by the Synergrid profile, which makes the month's bill the
+> profile-weighted mean of the month, and that is the monthly value Bolt
+> publishes on its price list page. A household whose daily values reach Bolt
+> is billed on its own days, which this mean only approximates. Bolt issues
+> a new variable card on no fixed schedule and a contract keeps the card it
+> was signed on, so a month with no card of its own takes the one in force
+> then.
+
 **Not supported, and why:**
 
-- **Bolt's variable gas cards** settle each day on the TTF day-ahead price.
-  The only daily source of it forbids reuse, so they are left out;
-  Bolt's fixed cards are supported.
 - **DATS 24** left the residential market on 31 August 2026.
 
 ## How the bill is computed

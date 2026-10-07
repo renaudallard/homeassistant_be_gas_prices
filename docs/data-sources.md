@@ -7,7 +7,8 @@ Everything the integration reads besides the suppliers' cards.
 Each supplier with indexed products publishes the values its bills settle
 on, and `SupplierExtractor.fetch_index` reads that publication: Engie's
 indexation page, OCTA+'s parameters PDF, TotalEnergies's history PDF, Eneco's
-indexation PDF, Mega's indexation page, Luminus's indexation PDF, and so on
+indexation PDF, Mega's indexation page, Luminus's indexation PDF, the series
+on Bolt's price list page, and so on
 (see each [provider page](providers/)). The table is fetched twice a day and
 kept in the entry's Store. A supplier's values are never used for another
 supplier's formula: publishers of "the same" hub disagree in the second
