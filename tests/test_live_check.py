@@ -81,6 +81,8 @@ def _snapshot(
     connection_fee: float = 0.0,
     osp: dict[str, float] | None = None,
     energy: Any = None,
+    # Any date: only a card without one is checked differently.
+    valid_until: date | None = date(2026, 9, 30),
 ) -> SupplierSnapshot:
     return SupplierSnapshot(
         supplier=supplier,
@@ -104,6 +106,7 @@ def _snapshot(
         ),
         source_url=f"https://{supplier}.test/card.pdf",
         publication_label=label,
+        valid_until=valid_until,
     )
 
 
@@ -372,6 +375,14 @@ def test_a_card_must_be_for_the_current_month(label: str, today: date, status: s
     the first five days, and stale after them."""
     check = lc._freshness("acme/acme_fix/flanders", _snapshot("acme", label=label), today)
     assert (check.label, check.status) == ("acme/acme_fix/flanders: card month", status)
+
+
+def test_a_card_in_force_until_replaced_is_never_late() -> None:
+    """A card with no end date is the one the supplier links today, whatever
+    month its title names."""
+    snapshot = _snapshot("acme", label="2026-06", valid_until=None)
+    check = lc._freshness("acme/acme_var/flanders", snapshot, TODAY)
+    assert (check.status, check.detail) == ("ok", "2026-06, in force until replaced")
 
 
 def _indexed(index: str, period: str = "month") -> IndexedRates:

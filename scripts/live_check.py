@@ -30,7 +30,7 @@ Fetches every registered (supplier, contract, region) from the supplier's own
 publication with the extractor the integration uses, retrying a failure that
 says nothing about the card, and checks what came back:
 
-  - the card is for the current month;
+  - the card is for the current month, unless it has no end date;
   - every supplier's index publication (its ``fetch_index``) reads, lists
     every index its cards are priced on, and has a recent value for each;
   - the regulated figures agree across the fleet: per DSO the T1 and T2
@@ -260,8 +260,12 @@ def _failure(label: str, err: BaseException) -> Check:
 
 def _freshness(label: str, snapshot: SupplierSnapshot, today: date) -> Check:
     """Whether the card is for the current month. A card for a later month
-    is a supplier publishing early, which is fine."""
+    is a supplier publishing early, which is fine. A card with no end date
+    applies until the supplier replaces it, and the fetch reads the one the
+    supplier links today, so it cannot be late."""
     name = f"{label}: card month"
+    if snapshot.valid_until is None:
+        return Check(name, "ok", f"{snapshot.publication_label}, in force until replaced")
     month = label_month(snapshot.publication_label)
     if month is None:
         return Check(name, "fail", f"unreadable publication label {snapshot.publication_label!r}")

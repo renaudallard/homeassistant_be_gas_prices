@@ -109,7 +109,8 @@ Fetches every registered (supplier, contract, region) with the extractor the
 integration uses and checks:
 
 - the card is for the current month, allowing the previous month in the first
-  five days of a month;
+  five days of a month; a card with no end date (`valid_until` None) applies
+  until the supplier replaces it and is not checked;
 - every `fetch_index` reads, lists each index its cards are priced on, and
   has a recent value for it (two months, four for a quarterly index);
 - the regulated figures agree across the fleet, month by month: per DSO the
