@@ -28,11 +28,13 @@ the June, September and October 2026 variable cards and the listing."""
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from freezegun import freeze_time
+from homeassistant.util import dt as dt_util
 
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
@@ -72,6 +74,7 @@ _VAR_13 = "bolt_res_ng_fr_13.pdf"
 _VAR_12 = "bolt_res_ng_fr_12.pdf"
 _VAR_URL = "https://files.boltenergie.be/pricelists/var/bolt_res_ng_fr_{}.pdf"
 _LISTING_202610 = "listing_fr_20261007.html"
+_BELGIUM = ZoneInfo("Europe/Brussels")
 
 
 def _card(name: str) -> str:
@@ -460,7 +463,7 @@ async def test_the_walk_raises_on_a_transient_failure() -> None:
 
 
 def test_index_is_the_listing_series_for_the_months_that_are_over() -> None:
-    table = bolt.parse_index(fixture_page("bolt", _LISTING_202610), date(2026, 10, 7))
+    table = bolt.parse_index(fixture_page("bolt", _LISTING_202610), date(2026, 10, 7), _BELGIUM)
     values = table["TTF"]
     # "2026-08-31T22:00:00+00:00" is September in Belgium, in EUR/kWh.
     assert values["2026-09"] == pytest.approx(75.3495763449174)
@@ -473,13 +476,15 @@ def test_index_is_the_listing_series_for_the_months_that_are_over() -> None:
 def test_running_month_forward_value_is_left_out() -> None:
     """On 29 September the series held 76,01 for September, which became
     75,35 once the month was over."""
-    values = bolt.parse_index(fixture_page("bolt", "listing_fr.html"), date(2026, 9, 29))["TTF"]
+    values = bolt.parse_index(fixture_page("bolt", "listing_fr.html"), date(2026, 9, 29), _BELGIUM)[
+        "TTF"
+    ]
     assert max(values) == "2026-08"
 
 
 def test_listing_without_the_series_fails_loud() -> None:
     with pytest.raises(ExtractorError, match="no price history"):
-        bolt.parse_index("<html></html>", date(2026, 10, 7))
+        bolt.parse_index("<html></html>", date(2026, 10, 7), _BELGIUM)
 
 
 async def test_fetch_index_uses_home_assistants_month() -> None:
@@ -492,3 +497,26 @@ async def test_fetch_index_uses_home_assistants_month() -> None:
         table = await bolt.fetch_index(AsyncMock())
     assert listing.call_args.args[1] == "https://www.boltenergie.be/fr/listes-des-prix"
     assert max(table["TTF"]) == "2026-09"
+
+
+async def test_index_months_are_belgian_whatever_home_assistants_zone() -> None:
+    """In UTC "2026-08-31T22:00:00+00:00" is still August; read that way,
+    September would take October's forward value."""
+    dt_util.set_default_time_zone(UTC)
+    with (
+        patch.object(
+            bolt, "fetch_text", AsyncMock(return_value=fixture_page("bolt", _LISTING_202610))
+        ),
+        freeze_time(datetime(2026, 10, 7, 12, tzinfo=UTC)),
+    ):
+        values = (await bolt.fetch_index(AsyncMock()))["TTF"]
+    assert values["2026-08"] == pytest.approx(61.7310277897321)
+    assert values["2026-09"] == pytest.approx(75.3495763449174)
+
+
+def test_a_date_without_its_offset_is_refused() -> None:
+    page = fixture_page("bolt", _LISTING_202610)
+    gas = page.index('"gas":[')
+    page = page[:gas] + page[gas:].replace("2026-08-31T22:00:00+00:00", "2026-08-31T22:00:00", 1)
+    with pytest.raises(ExtractorError, match="2026-08-31T22:00:00"):
+        bolt.parse_index(page, date(2026, 10, 7), _BELGIUM)

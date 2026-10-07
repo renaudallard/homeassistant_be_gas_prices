@@ -98,7 +98,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, tzinfo
 
 import aiohttp
 from homeassistant.util import dt as dt_util
@@ -497,16 +497,19 @@ def _osp(text: str) -> dict[str, float]:
 # ---- index values ------------------------------------------------------------
 
 _HISTORY_KEY = '"priceHistory":'
+_BELGIUM = "Europe/Brussels"
 
 
-def parse_index(listing: str, today: date) -> IndexTable:
+def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
     """The listing's monthly gas series in EUR/MWh, the months before
     ``today``'s only.
 
     The series sits in the page's data as {"date": ..., "price": ...} rows,
     each dated the first of its month at midnight in Belgium ("2026-08-31T
-    22:00:00+00:00" is September) and priced in EUR/kWh. The running month
-    and the ones after hold forward values, not what was billed.
+    22:00:00+00:00" is September) and priced in EUR/kWh. The dates are read
+    in ``belgium`` rather than Home Assistant's zone, which west of Belgium
+    would file every value a month early. The running month and the ones
+    after hold forward values, not what was billed.
     """
     start = listing.find(_HISTORY_KEY)
     if start < 0:
@@ -530,9 +533,12 @@ def parse_index(listing: str, today: date) -> IndexTable:
         ):
             raise ExtractorError(f"Bolt: unexpected gas price history row {row!r}")
         try:
-            month = f"{dt_util.as_local(datetime.fromisoformat(stamp)):%Y-%m}"
-        except ValueError as err:
-            raise ExtractorError(f"Bolt: unexpected gas price history date {stamp!r}") from err
+            moment: datetime | None = datetime.fromisoformat(stamp)
+        except ValueError:
+            moment = None
+        if moment is None or moment.tzinfo is None:
+            raise ExtractorError(f"Bolt: unexpected gas price history date {stamp!r}")
+        month = f"{moment.astimezone(belgium):%Y-%m}"
         if month < current:
             values[month] = price * 1000.0
     if not values:
@@ -542,7 +548,10 @@ def parse_index(listing: str, today: date) -> IndexTable:
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     """The monthly means Bolt publishes for the months that are over."""
-    return parse_index(await fetch_text(session, _LISTING_URL), dt_util.now().date())
+    belgium = await dt_util.async_get_time_zone(_BELGIUM)
+    if belgium is None:
+        raise ExtractorError(f"Bolt: no time zone data for {_BELGIUM}")
+    return parse_index(await fetch_text(session, _LISTING_URL), dt_util.now().date(), belgium)
 
 
 EXTRACTOR = SupplierExtractor(
