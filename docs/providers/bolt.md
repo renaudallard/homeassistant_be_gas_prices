@@ -126,7 +126,9 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   https://files.octaplus.be/tariffs/paramètres_gaz_fr.pdf) to 0,03 EUR/MWh
   every month from September 2025 to September 2026, and to 0,17 from May to
   August 2025.
-- The running month and the three after it hold forward values, and the
+- The running month and the months after it, to the end of the series, hold
+  forward values (on 29 September 2026 four months after September, on 7
+  October three after October, both ending in January 2027), and the
   running month's changes until the month is over: on 29 September 2026 it
   held 76,01 for September, which read 75,35 on 7 October.
 - A household whose daily values reach Bolt is billed on its own daily

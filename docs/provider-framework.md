@@ -14,7 +14,7 @@ A supplier module exposes `EXTRACTOR: SupplierExtractor` (`providers/base.py`):
 | `contracts` | `Contract(id, label, kind, regions, professional)` for each product sold. `regions` is where the product is actually published. |
 | `fetch(session, contract, region)` | The current card as a `SupplierSnapshot`. Raises `ExtractorError` on anything mandatory it cannot read; never defaults a missing figure to zero. |
 | `probe(session, contract, region)` | Optional. A cheap freshness key; the same key means the card is unchanged. |
-| `fetch_for_month(session, contract, region, month)` | Optional. The card published for a past month, None where the supplier serves none, `ExtractorError` only on a failure that may recover (`is_transient_fetch_error`). Refuses a card that names another month. Uses Home Assistant's clock. `_validity.month_card` does all but the lookup. |
+| `fetch_for_month(session, contract, region, month)` | Optional. The card published for a past month, None where the supplier serves none, `ExtractorError` only on a failure that may recover (`is_transient_fetch_error`). Refuses a card that names another month, except a card in force until the next one (Bolt's variable cards, `valid_until` None), which names the month it was first published for. Uses Home Assistant's clock. `_validity.month_card` does all but the lookup. |
 | `fetch_index(session)` | Optional. The supplier's own index publication as `{index name: {"YYYY-MM": EUR/MWh}}`. |
 | `deprecated_until`, `deprecated_successor` | A supplier leaving the market. |
 | `sweep_cost_s` | Roughly what one card costs to fetch and parse, for the comparison's scheduling. |
@@ -45,8 +45,9 @@ that the tests call on a fixture's text.
 
 - Figures as the card prints them, converted to EUR. A residential card is VAT
   inclusive (`vat_rate` 0.0); a formula printed excluding VAT is grossed up by
-  the card's own printed rate, and one already carrying "x 1,06" is not
-  grossed again.
+  the card's own printed rate, or the residential 6 % where the card prints
+  none (Energy Together, Bolt, energie.be, OCTA+), and one already carrying
+  "x 1,06" is not grossed again.
 - `IndexedRates.price` is the card's figure at the last known index where it
   prints one, else its printed estimate. `index` names the supplier's own
   series, the key of its `fetch_index` table.

@@ -32,7 +32,9 @@ endpoint its electricity cards come from, with ``energyType=gas``:
         ?documentSlug=<slug>&energyType=gas&language=fr
         &tabValue=<Wallonia|Flanders>
 
-There is no Brussels card: ``tabValue=Brussels`` answers 404. The endpoint
+The current-card endpoint serves no Brussels card (``tabValue=Brussels``
+answers 404); only the archive endpoints list two, Comfy (3 ans) and
+ComfyFlex (3 ans), which are not offered here. The endpoint
 never refuses a slug it has no gas card for: an electricity-only slug is
 served another product's gas card (``smartflex`` gets ComfyFlex, ``dynamic``
 MaxxFlex), and the file name does not tell Comfy+ from Comfy either, so the

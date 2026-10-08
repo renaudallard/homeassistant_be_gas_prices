@@ -35,8 +35,11 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
 | `luminus_basicflex` | Luminus BasicFlex Online | basicflex | ZGR1A0D | indexed, monthly | TTF DAH RLP M |
 
 - Every product is in Flanders and Wallonia (all sixteen cards fetched on
-  29 September 2026). No Brussels card. The social tariff ("Tarif social
-  Gaz" in the archive list) is CREG-set and not listed.
+  29 September 2026). The current-card endpoint has no Brussels card; the
+  archive endpoints list two for Brussels, "Luminus Comfy (3 ans) Gaz" and
+  "Luminus ComfyFlex (3 ans) Gaz" (signing months 2025-06, 2026-09 and
+  2026-10 checked on 8 October 2026), which are not offered here. The social
+  tariff ("Tarif social Gaz" in the archive list) is CREG-set and not listed.
 - The energy leg differs by region (September 2026, Wallonia against
   Flanders: Comfy 9,60/9,37, ComfyFlex base 2,0204/1,8004), so the configured
   region's card is read.
