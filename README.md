@@ -283,6 +283,28 @@ when the last of them found no card at the address (a 404 or 410, or a web
 page served instead), which is a card not published yet or moved rather than
 a layout change.
 
+## How often the integration polls
+
+Every hour, each entry runs one refresh:
+
+- **The tariff card**: the supplier's probe first, a cheap request (a HEAD
+  or a small query) that says whether the card changed. The card is fetched
+  again when it did, when it is 24 hours old for a supplier without a probe,
+  and on every refresh once the month it prices is over, until the next one
+  is out. A fetch has 180 s in all; past that, or on a failure, the last
+  good card keeps pricing and the next refresh tries again.
+- **The supplier's index values**, for an indexed contract, twice a day.
+- **Atrias's calorific values**, once a day, only for an entry converting on
+  its reception station, and only the months not held yet.
+- **Past months' cards**, once each: a month read is kept for good, one no
+  archive holds is asked again a day later.
+- **The gas meter**, from the recorder's statistics, on every refresh.
+
+With *compare daily* on, every contract is ranked once a day, at a minute
+derived from the entry id, so installations do not all fetch every supplier
+at once. The refresh button and `be_gas_prices.refresh` fetch the card, the
+index values and the calorific values now.
+
 ## The card archive
 
 A daily workflow stores every card it parses in the shared
@@ -328,6 +350,37 @@ data:
   start_date: "2026-01-01"               # optional; 1 January, or the contract start when the year counts from it; never before 1 January of last year
   clear: false                           # true deletes the sensors' statistics in full first
 ```
+
+## Diagnostics
+
+**Settings, Devices & services, Belgian Gas Prices**, then the entry's menu,
+**Download diagnostics**: the entry's settings, the last error, whether the
+card was found unreadable, missing or read by OCR, the card as parsed, and
+the computed state (the price breakdown, fixed costs, index, conversion,
+tier, consumption and costs). The postcode, the gas meter, the reception
+station and the meter the entry reads are redacted, so the file can be
+attached to an issue as it is.
+
+## Troubleshooting
+
+- **Repairs**: what needs you shows up under **Settings, System, Repairs**:
+  a stale card (fixing it fetches the card again), a card that could not be
+  read or is missing, one read from its image, a meter that cannot be read
+  and several gas meters on the Energy dashboard.
+- **Debug logging**: add this to `configuration.yaml` and restart, or turn
+  on debug logging from the integration's page, which logs the same:
+
+  ```yaml
+  logger:
+    default: warning
+    logs:
+      custom_components.be_gas_prices: debug
+  ```
+
+  A card that fails, and the traceback of an error no parser expected, are
+  logged as warnings without it.
+- **An issue report**: attach the diagnostics and, for a card that fails,
+  the log lines of a refresh with debug logging on.
 
 ## Known limitations
 
