@@ -317,6 +317,32 @@ async def test_an_unexpected_error_keeps_the_last_card(
     assert "Traceback" in caplog.text
 
 
+async def test_a_card_fetch_past_its_budget_keeps_the_last_card(
+    hass: HomeAssistant, fetch: AsyncMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A supplier that never finishes answering cannot hold the tick: past
+    the budget the fetch is given up like a network failure, which a retry
+    may cure, and the held card keeps pricing. On the real clock, since a
+    frozen one never lets the budget run out."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    card = fetch.return_value
+
+    async def hangs(*_args: Any) -> Any:
+        await asyncio.sleep(3600)
+        return card
+
+    monkeypatch.setattr("custom_components.be_gas_prices.coordinator.CARD_FETCH_BUDGET_S", 0.05)
+    fetch.side_effect = hangs
+    for _ in range(2):
+        await coordinator.async_force_refresh(wait=True)
+    assert coordinator.last_update_success
+    assert "did not finish within" in coordinator.last_error
+    assert coordinator.failures == 0
+    price = hass.states.get("sensor.engie_flow_current_price")
+    assert price is not None and price.state != "unavailable"
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_unexpected_probe_error_leaves_the_card_to_its_age(
     hass: HomeAssistant, fetch: AsyncMock

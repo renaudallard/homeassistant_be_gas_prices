@@ -26,6 +26,9 @@ cards (`issues.sync_issues`).
    unreadable card. A card put up before its month began gives way to the
    running month's own card from the supplier's archive, where it has one;
    an archive that fails to answer fails the fetch, asked again next tick.
+   The fetch has 180 s (`CARD_FETCH_BUDGET_S`, twice Bolt's slowest path
+   measured on a Raspberry Pi 4); one that runs past it is given up like a
+   network failure.
    A failure keeps the card in hand and records `last_error`; a failure a
    retry will not fix counts towards the `extractor_failed` card, or the
    `card_missing` card when it found no card at the address. An error

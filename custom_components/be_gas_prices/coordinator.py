@@ -150,6 +150,12 @@ CALORIFIC_TTL = timedelta(hours=24)
 # supplier has not been readable for a week, or has not published a new month.
 SNAPSHOT_STALE_AGE = timedelta(days=7)
 SNAPSHOT_STALE_AFTER_VALIDITY = timedelta(days=7)
+# What the card fetch of one tick may take. The slowest path measured on a
+# Raspberry Pi 4 under load is Bolt's: its current card in 38 s, and a
+# month's card, which walks back through the versions of a variable card,
+# in up to 54 s more. Twice that, so a slow day still finishes, while a
+# supplier that never finishes answering cannot hold the tick for good.
+CARD_FETCH_BUDGET_S = 180
 # The card archive is asked back this many months for a card to stand in.
 _ARCHIVE_MONTHS_BACK = 12
 
@@ -507,14 +513,15 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 self._fetched_at = dt_util.utcnow()
             return
         try:
-            snapshot, source = await current_card(
-                self._session,
-                self.extractor,
-                self.contract,
-                self.region,
-                f"{dt_util.now().date():%Y-%m}",
-                use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
-            )
+            async with asyncio.timeout(CARD_FETCH_BUDGET_S):
+                snapshot, source = await current_card(
+                    self._session,
+                    self.extractor,
+                    self.contract,
+                    self.region,
+                    f"{dt_util.now().date():%Y-%m}",
+                    use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
+                )
         except CardNotReadableError as err:
             self.card_missing = False
             if self.card_read_by_ocr and self._snapshot is not None:
@@ -538,6 +545,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 self.card_unreadable = False
                 self.card_missing = is_missing_card_error(str(err))
             self._fetch_failed(str(err), transient=transient)
+        except TimeoutError:
+            # Like a network failure: it says nothing about the card, and
+            # the next tick may well finish.
+            self._fetch_failed(
+                f"{self.extractor.label}: the card fetch did not finish within "
+                f"{CARD_FETCH_BUDGET_S} s",
+                transient=True,
+            )
         else:
             self._snapshot = snapshot
             self._fetched_at = dt_util.utcnow()
