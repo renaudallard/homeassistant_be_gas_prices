@@ -138,6 +138,44 @@ async def test_litres_are_converted_to_cubic_metres(
     assert days[date(2026, 9, 2)] == pytest.approx(12.0)
 
 
+async def test_a_meter_that_falls_counts_no_gas_that_day(
+    recorder_mock: Any, hass: HomeAssistant
+) -> None:
+    """A meter replaced or re-based mid-day: its sum drops, and the day it
+    drops on is a day of no gas, not gas flowing back to the network."""
+    await _zone(hass)
+    start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 9, 1)))
+    sums = [0.5 * (n + 1) for n in range(24)]
+    # On the second day the sum falls by 20 m3 at noon and climbs again.
+    sums += [12.0 + 0.5 * (n + 1) - (20.0 if n >= 12 else 0.0) for n in range(24)]
+    sums += [sums[-1] + 0.5 * (n + 1) for n in range(24)]
+    async_import_statistics(
+        hass,
+        StatisticMetaData(
+            mean_type=StatisticMeanType.NONE,
+            has_sum=True,
+            name=None,
+            source="recorder",
+            statistic_id=METER,
+            unit_class="volume",
+            unit_of_measurement="m³",
+        ),
+        [
+            StatisticData(start=start + timedelta(hours=n), state=100.0 + total, sum=total)
+            for n, total in enumerate(sums)
+        ],
+    )
+    await async_wait_recording_done(hass)
+    days = await gas_meter.daily_consumption(
+        hass, METER, "volume", date(2026, 9, 1), date(2026, 9, 3)
+    )
+    assert days == {
+        date(2026, 9, 1): pytest.approx(12.0),
+        date(2026, 9, 2): 0.0,
+        date(2026, 9, 3): pytest.approx(12.0),
+    }
+
+
 async def test_a_unit_nothing_converts_is_refused(recorder_mock: Any, hass: HomeAssistant) -> None:
     await _zone(hass)
     start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 9, 1)))
