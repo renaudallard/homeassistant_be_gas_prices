@@ -102,6 +102,9 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   - Each value must be a figure with decimals or a dash. A row that lost a
     value does not match, so the footnote digit cannot slide into the
     Flanders column.
+  - A card without the Fluvius rows (version 12 of the variable cards) has
+    two columns, Wallonie and Bruxelles: "Accise fédérale (c€/kWh) 0,8724
+    0,8724", "Redevance de raccordement (c€/kWh) 3 0,00750 -".
 - Brussels levy, "Obligations de service publique (Bruxelles) €/an": "6 of 10
   m3/h 4 3,56", "6 of 10 m3/h 5 12,54", then 16, 25, 40, 65, 100 and 160
   m3/h. Eight amounts, passed to `osp_table` in row order.
@@ -153,6 +156,14 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
 - The Brussels levy prints 12,54 for a small meter above 5 000 kWh where the
   Engie and Mega September cards print 12,59, and has no row above 160 m3/h
   (970,41 on those two cards).
+- Version 12 of Bolt Variable and Variable Online (22 June 2026, in force
+  until September, unchanged on 2026-10-08) has no Flanders rows and prints
+  "Prix mensuel 5,16" at "Simple 38,50 €/MWh TTF * 1,09 + 10,90", which is
+  5,60: 5,16 is version 11's formula (TTF * 1,0302 + 9,013) at the same TTF,
+  in all four editions (FR, NL, Bolt, Online). The formula, the one thing
+  version 12 changed, is read and billed at the month's index; the printed
+  price only stands where no index value is published, which June to August
+  all have.
 - The April, June, July and August 2026 cards print the energy contribution
   0,1058 in every region and the excise 0,8724; the August card is therefore
   stale for August deliveries. `_resolve` applies the delivery month's law.
@@ -180,7 +191,7 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   |---|---|---|---|
   | 10 | Janvier 2025 | TTF * 1,0302 + 9,013 | no, the older two-page template |
   | 11 | Juin 2026 | TTF * 1,0302 + 9,013 | yes |
-  | 12 | Juin 2026, Bolt Variable and Variable Online only | TTF * 1,09 + 10,90 | no, the Flanders rows and levy column are missing from the text |
+  | 12 | Juin 2026, Bolt Variable and Variable Online only | TTF * 1,09 + 10,90 | Wallonia and Brussels; the Flanders rows and levy column are missing from the card |
   | 13 | Septembre 2026 | TTF *1,049 + 10,10 | yes |
   | 14 | Octobre 2026 | TTF *1,049 + 10,10 | yes |
 
@@ -202,9 +213,9 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   left none, so a Plenty row whose walk passed version 12 is kept as it was
   and reported as not replayable.
 - Signing months are whole months: a contract signed in June 2026 before the
-  22nd was on version 11, but the walk gives version 12, which is not read,
-  so the month falls back like any other month without a card. The household
-  can type its factor and base instead.
+  22nd was on version 11, but the walk gives version 12. In Flanders, where
+  version 12 is not read, June to August fall back like any other month
+  without a card, and the household can type its factor and base instead.
 
 ## Tests
 
@@ -225,8 +236,10 @@ pays pdfplumber's 45 s on a Raspberry Pi):
 - Variable cards: the formula against the printed price, the four fees, the
   tables in each region, another product refused, no `valid_until`.
 - The version walk: September takes version 13; July takes the June card,
-  passing over a missing number, and gets no card since version 12 is not
-  read; a title not read stops the walk; a transient failure raises.
+  version 12, passing over a missing number; a title not read stops the
+  walk; a transient failure raises.
+- Version 12: refused in Flanders, read in Wallonia and Brussels off its
+  two-column levy table.
 - The index: the October listing's months up to September, September's
   forward value left out on the 29 September listing, a listing without the
   series refused, `fetch_index` on Home Assistant's clock, the months read in

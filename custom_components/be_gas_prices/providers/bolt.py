@@ -429,8 +429,8 @@ _LABELS: dict[str, dict[str, str]] = {
 }
 
 
-def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
-    dsos = read_dsos(
+def _read_dsos(text: str, region: str) -> dict[str, DsoOverlay]:
+    return read_dsos(
         text,
         _LABELS[region],
         _COLUMNS,
@@ -438,6 +438,10 @@ def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
         after="Distribution et transport",
         before="Taxes et redevances",
     )
+
+
+def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
+    dsos = _read_dsos(text, region)
     require_region(dsos, region, "Bolt")
     return dsos
 
@@ -445,29 +449,39 @@ def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
 # A levy row: its label, a footnote digit on some, then one value per region
 # (Flandres, Wallonie, Bruxelles), each a figure with decimals or a dash. A
 # row that lost a value does not match, rather than shifting the footnote
-# digit into the Flanders column.
+# digit into the first column.
 _TAX_VALUE = r"[ \t]+(\d+,\d+|-)"
-_TAX_COLUMN = {REGION_FLANDERS: 0, REGION_WALLONIA: 1, REGION_BRUSSELS: 2}
 
 
-def _tax_cell(text: str, label: str, region: str) -> float | None:
+def _tax_columns(text: str) -> tuple[str, ...]:
+    """The regions of the levy table's columns. Bolt's second June 2026
+    variable card (version 12) prints no Flanders rows, and its levy table
+    lost the Flanders column with them: Wallonia, then Brussels."""
+    if _read_dsos(text, REGION_FLANDERS):
+        return (REGION_FLANDERS, REGION_WALLONIA, REGION_BRUSSELS)
+    return (REGION_WALLONIA, REGION_BRUSSELS)
+
+
+def _tax_cell(text: str, label: str, columns: tuple[str, ...], region: str) -> float | None:
     """The region's value on the levy row ``label``, None for a dash."""
-    match = re.search(rf"^{label}(?:[ \t]+\d)?{_TAX_VALUE * 3}[ \t]*$", text, re.MULTILINE)
+    values = _TAX_VALUE * len(columns)
+    match = re.search(rf"^{label}(?:[ \t]+\d)?{values}[ \t]*$", text, re.MULTILINE)
     if match is None:
         raise ExtractorError(f"Bolt: levy row {label!r} not found")
-    return cell_value(match.group(1 + _TAX_COLUMN[region]))
+    return cell_value(match.group(1 + columns.index(region)))
 
 
 def _taxes(text: str, region: str) -> TaxOverlay:
-    excise = _tax_cell(text, r"Accise fédérale \(c€/kWh\)", region)
+    columns = _tax_columns(text)
+    excise = _tax_cell(text, r"Accise fédérale \(c€/kWh\)", columns, region)
     if excise is None:
         raise ExtractorError("Bolt: no excise for the region")
     # A dash is the card saying no contribution, which the law made so from
     # August 2026; the row itself is still required.
-    contribution = _tax_cell(text, r"Contribution sur l.énergie \(c€/kWh\)", region)
+    contribution = _tax_cell(text, r"Contribution sur l.énergie \(c€/kWh\)", columns, region)
     connection_fee = 0.0
     if region == REGION_WALLONIA:
-        fee = _tax_cell(text, r"Redevance de raccordement \(c€/kWh\)", region)
+        fee = _tax_cell(text, r"Redevance de raccordement \(c€/kWh\)", columns, region)
         if fee is None:
             raise ExtractorError("Bolt: Walloon connection fee not found")
         connection_fee = fee / 100.0

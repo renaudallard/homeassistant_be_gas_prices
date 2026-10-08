@@ -210,8 +210,31 @@ def test_levy_row_missing_a_value_fails_loud() -> None:
         "Contribution sur l'énergie (c€/kWh) 2\n -\n -\n -",
         "Contribution sur l'énergie (c€/kWh) 2\n -\n -",
     )
-    with pytest.raises(ExtractorError, match="Contribution"):
-        bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, text)
+    for region in (REGION_FLANDERS, REGION_WALLONIA):
+        with pytest.raises(ExtractorError, match="Contribution"):
+            bolt.parse_snapshot("bolt_fix", region, text)
+
+
+def test_june_card_without_flanders_reads_wallonia_and_brussels() -> None:
+    """Version 12 prints no Fluvius rows, and its levy rows hold two values,
+    Wallonia's and Brussels'. Its formula is read as printed; its printed
+    price, 5,16, is version 11's formula at the same TTF."""
+    text = _card(_VAR_12)
+    with pytest.raises(ExtractorError, match="DSO rows not found"):
+        bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)
+    for region in (REGION_WALLONIA, REGION_BRUSSELS):
+        snap = bolt.parse_snapshot("bolt_variable", region, text)
+        assert snap.publication_label == "2026-06"
+        assert _indexed(snap).formula == "TTF * 1,09 + 10,90"
+        assert _indexed(snap).yearly_fixed_fee == pytest.approx(10.99 * 12)
+        # "Accise fédérale (c€/kWh) 0,8724 0,8724", "Contribution sur
+        # l'énergie (c€/kWh) 2 0,1058 0,1058"
+        assert _single_rate(snap.taxes) == pytest.approx(0.008724)
+        assert snap.taxes.energy_contribution == pytest.approx(0.001058)
+    # "Redevance de raccordement (c€/kWh) 3 0,00750 -"
+    wallonia = bolt.parse_snapshot("bolt_variable", REGION_WALLONIA, text)
+    assert wallonia.taxes.connection_fee == pytest.approx(0.0000750)
+    assert sorted(wallonia.dsos) == [DSO_ORES, DSO_RESA]
 
 
 def test_registered_products() -> None:
@@ -436,10 +459,11 @@ async def test_past_month_is_the_newest_version_titled_for_it_or_before() -> Non
 
 async def test_a_month_without_a_card_of_its_own_takes_the_one_before() -> None:
     """No card is titled July 2026: the June one was in force. A number Bolt
-    did not publish is passed over. That June card is the one this module
-    cannot read, so the month has no card."""
+    did not publish is passed over."""
     snap, titles, layout = await _variable_month({14: _VAR_14, 12: _VAR_12}, date(2026, 7, 1))
-    assert snap is None
+    assert snap is not None
+    assert snap.publication_label == "2026-06"
+    assert _indexed(snap).formula == "TTF * 1,09 + 10,90"
     assert [c.args[1] for c in titles.call_args_list] == [
         _VAR_URL.format(14),
         _VAR_URL.format(13),
