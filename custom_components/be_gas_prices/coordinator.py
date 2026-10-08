@@ -112,7 +112,12 @@ from .month_cards import (
 )
 from .pricing import PriceBreakdown, PricingError, fixed_costs
 from .providers import get as get_extractor
-from .providers._pdf import guarded, is_transient_fetch_error, memoise_text_fetches
+from .providers._pdf import (
+    guarded,
+    is_missing_card_error,
+    is_transient_fetch_error,
+    memoise_text_fetches,
+)
 from .providers._rates import EnergyRates
 from .providers._resolve import LAW_FIGURES, resolve_for_delivery, tier_for
 from .providers.base import (
@@ -203,6 +208,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # The last error was the card failing to price the household.
         self._pricing_error = ""
         self.card_unreadable = False
+        # The last fetch found no card at the address (a 404 or 410, or a
+        # web page in its place): no layout change, the supplier has none.
+        self.card_missing = False
         # The card in hand is the card archive's OCR reading of a card
         # published as page images.
         self.card_read_by_ocr = False
@@ -337,6 +345,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             failures = blob.get("failures")
             self._failures = failures if isinstance(failures, int) else 0
             self.card_unreadable = blob.get("unreadable") is True
+            self.card_missing = blob.get("missing") is True
         # A price is only resolved against its own supplier's publication:
         # a table another supplier published, before a change of supplier,
         # is not restored, even under an index name the two share.
@@ -376,6 +385,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "read_by_ocr": self.card_read_by_ocr,
             "failures": self._failures,
             "unreadable": self.card_unreadable,
+            "missing": self.card_missing,
             "failures_for": self._card_key(),
             "index": self._index_table,
             "index_supplier": self.extractor.id,
@@ -506,6 +516,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
             )
         except CardNotReadableError as err:
+            self.card_missing = False
             if self.card_read_by_ocr and self._snapshot is not None:
                 # The card archive's reading of last month's card is in hand,
                 # read here, restored from the store or taken as a stand-in,
@@ -521,10 +532,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         except ExtractorError as err:
             transient = is_transient_fetch_error(str(err))
             # A network failure says nothing about the card: one known to be
-            # unreadable stays so, rather than its count of failures being
-            # read as a layout change.
+            # unreadable or missing stays so, rather than its count of
+            # failures being read as a layout change.
             if not transient:
                 self.card_unreadable = False
+                self.card_missing = is_missing_card_error(str(err))
             self._fetch_failed(str(err), transient=transient)
         else:
             self._snapshot = snapshot
@@ -535,6 +547,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._force_refresh = False
             self._failures = 0
             self.card_unreadable = False
+            self.card_missing = False
             self.card_read_by_ocr = source == "ocr"
             self.last_error = ""
             return

@@ -51,6 +51,7 @@ async def async_get_config_entry_diagnostics(
     data = coordinator.data
     payload["last_error"] = coordinator.last_error
     payload["card_unreadable"] = coordinator.card_unreadable
+    payload["card_missing"] = coordinator.card_missing
     payload["card_read_by_ocr"] = coordinator.card_read_by_ocr
     if data is None:
         return payload

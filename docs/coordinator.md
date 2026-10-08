@@ -27,7 +27,8 @@ cards (`issues.sync_issues`).
    running month's own card from the supplier's archive, where it has one;
    an archive that fails to answer fails the fetch, asked again next tick.
    A failure keeps the card in hand and records `last_error`; a failure a
-   retry will not fix counts towards the `extractor_failed` card. An error
+   retry will not fix counts towards the `extractor_failed` card, or the
+   `card_missing` card when it found no card at the address. An error
    no extractor raises on purpose (a parser meeting a page it does not
    expect) is failed the same way, through `providers._pdf.guarded`, with
    its traceback logged; a probe raising one is no signal. With no
@@ -103,13 +104,13 @@ cards (`issues.sync_issues`).
 
 The entry's Store (`.storage/be_gas_prices.<entry_id>`) holds the last card,
 when it was fetched, how many fetches of it failed in a row and whether it
-was found unreadable, the index table, the calorific values of the
+was found unreadable or missing, the index table, the calorific values of the
 configured station, the past months' cards, the price-history stamp, the last
 daily ranking and the figures the last meter read gave, with the meter,
 settings, year and month they were read and priced for. The failure count
-and the unreadable mark, kept for the supplier, contract and region the
-card is fetched for, carry the `extractor_failed` and `card_unreadable`
-Repairs cards across a restart, so one the user ignored stays ignored, and
+and the unreadable and missing marks, kept for the supplier, contract and
+region the card is fetched for, carry the `extractor_failed`,
+`card_missing` and `card_unreadable` Repairs cards across a restart, so one the user ignored stays ignored, and
 across setup retries with no card, so `extractor_failed` is raised there
 too. A blob written under another snapshot schema is dropped, not migrated:
 everything in it is re-derivable. The past months' cards another release

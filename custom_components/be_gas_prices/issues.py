@@ -48,6 +48,7 @@ EXTRACTOR_ISSUE_THRESHOLD = 2
 ISSUES = (
     "snapshot_stale",
     "extractor_failed",
+    "card_missing",
     "card_unreadable",
     "card_read_by_ocr",
     "meter_unit",
@@ -97,11 +98,21 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
         {**base, "error": coordinator.last_error or "-"},
         fixable=True,
     )
+    failed = coordinator.failures >= EXTRACTOR_ISSUE_THRESHOLD and not coordinator.card_unreadable
+    # No card at the address is a card not published yet, a product
+    # withdrawn or a card moved, which a layout report fits none of.
     _sync(
         hass,
         entry.entry_id,
         "extractor_failed",
-        coordinator.failures >= EXTRACTOR_ISSUE_THRESHOLD and not coordinator.card_unreadable,
+        failed and not coordinator.card_missing,
+        {**base, "error": coordinator.last_error or "-"},
+    )
+    _sync(
+        hass,
+        entry.entry_id,
+        "card_missing",
+        failed and coordinator.card_missing,
         {**base, "error": coordinator.last_error or "-"},
     )
     _sync(hass, entry.entry_id, "card_unreadable", coordinator.card_unreadable, base)

@@ -432,6 +432,10 @@
       "title": "{supplier} tariff card could not be read",
       "description": "The card for {entry} failed to parse twice in a row: {error}. The last good card, if any, keeps pricing. If this persists the supplier probably changed its layout; please open an issue with the diagnostics."
     },
+    "card_missing": {
+      "title": "{supplier} tariff card is not available",
+      "description": "The card for {entry} failed twice in a row, the last time because the supplier's site has no card at the address the integration reads: {error}. The supplier may not have published this month's card yet, may have withdrawn the product or may have moved its cards. The last good card, if any, keeps pricing. This clears by itself once the card can be fetched again; if it lasts more than a few days while the supplier still sells the product, please open an issue with the diagnostics."
+    },
     "card_unreadable": {
       "title": "{supplier} publishes its card as images",
       "description": "The card for {entry} has no text layer, so it cannot be read here. The last good card, if any, keeps pricing; the project's card archive prices on its own reading of the card once it has one, where the entry lets it be read."

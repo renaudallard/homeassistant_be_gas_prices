@@ -432,6 +432,10 @@
       "title": "La carte tarifaire de {supplier} n'a pas pu être lue",
       "description": "La carte de {entry} n'a pas pu être lue deux fois de suite : {error}. La dernière bonne carte, s'il y en a une, continue de servir. Si cela persiste, le fournisseur a probablement changé sa mise en page ; ouvrez un ticket avec les diagnostics."
     },
+    "card_missing": {
+      "title": "La carte tarifaire de {supplier} n'est pas disponible",
+      "description": "La carte de {entry} n'a pas pu être lue deux fois de suite, la dernière fois parce que le site du fournisseur n'a aucune carte à l'adresse que lit l'intégration : {error}. Le fournisseur n'a peut-être pas encore publié la carte de ce mois, a peut-être retiré le produit ou déplacé ses cartes. La dernière bonne carte, s'il y en a une, continue de servir. Cette alerte disparaît d'elle-même dès que la carte peut à nouveau être téléchargée ; si cela dure plus de quelques jours alors que le fournisseur propose toujours le produit, ouvrez un ticket avec les diagnostics."
+    },
     "card_unreadable": {
       "title": "{supplier} publie sa carte sous forme d'images",
       "description": "La carte de {entry} n'a pas de couche texte et ne peut donc pas être lue ici. La dernière bonne carte, s'il y en a une, continue de servir ; l'archive des cartes du projet sert sa propre lecture de la carte dès qu'elle en a une, si l'entrée la laisse lire."

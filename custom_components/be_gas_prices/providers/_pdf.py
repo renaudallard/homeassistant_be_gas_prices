@@ -106,6 +106,30 @@ def is_transient_fetch_error(message: str) -> bool:
     return False
 
 
+# The "expected a PDF" message fetch_pdf_bytes writes when the address
+# served a web page: the repr of a payload whose first byte, past any
+# leading whitespace, opens a tag.
+_WEB_PAGE_INSTEAD_OF_CARD = re.compile(
+    r"expected a PDF at .*, payload starts with b['\"](?:\\[nrt]|\s)*<"
+)
+
+
+def is_missing_card_error(message: str) -> bool:
+    """Whether an ExtractorError message says there is no card at the
+    address.
+
+    Permanent for :func:`is_transient_fetch_error`, since a retry will not
+    bring the card back, but not a layout change either: the supplier has
+    not published the month's card yet, withdrew the product or moved its
+    cards. That is a 404 or a 410, read off the ``HTTP <status>`` prefix
+    the fetch helpers write, or a web page served in the card's place, as
+    TotalEnergies answers for a card it does not publish.
+    """
+    if message.startswith("HTTP "):
+        return message[len("HTTP ") :].split(None, 1)[0] in ("404", "410")
+    return _WEB_PAGE_INSTEAD_OF_CARD.match(message) is not None
+
+
 def error_text(err: BaseException) -> str:
     """The exception's message, or its class name when it carries none.
 

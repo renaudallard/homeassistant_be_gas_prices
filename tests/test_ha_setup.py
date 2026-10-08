@@ -219,6 +219,83 @@ async def test_a_network_failure_keeps_an_unreadable_card_marked(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(
+    "error",
+    [
+        "HTTP 404 fetching https://x/card.pdf",
+        "HTTP 410 fetching https://x/card.pdf",
+        "expected a PDF at https://x/card.pdf, payload starts with b'\\n<!DOCTYPE html>'",
+    ],
+)
+async def test_a_card_gone_from_its_address_is_no_layout_change(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any], error: str
+) -> None:
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    issues = ir.async_get(hass)
+    fetch.side_effect = ExtractorError(error)
+    await coordinator.async_force_refresh(wait=True)
+    assert issues.async_get_issue(DOMAIN, f"card_missing_{entry.entry_id}") is None
+    await coordinator.async_force_refresh(wait=True)
+    assert issues.async_get_issue(DOMAIN, f"card_missing_{entry.entry_id}") is not None
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+    assert hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]["missing"] is True
+    # A timeout says nothing about the card: the card stays as it was.
+    fetch.side_effect = ExtractorError("network error fetching https://x: timeout")
+    await coordinator.async_force_refresh(wait=True)
+    assert issues.async_get_issue(DOMAIN, f"card_missing_{entry.entry_id}") is not None
+    # A parse failure is a layout change again.
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    await coordinator.async_force_refresh(wait=True)
+    assert issues.async_get_issue(DOMAIN, f"card_missing_{entry.entry_id}") is None
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is not None
+    fetch.side_effect = None
+    await coordinator.async_force_refresh(wait=True)
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_missing_card_stays_named_through_a_restart(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "failures": 1,
+            "missing": True,
+            "failures_for": ["engie", "engie_flow", REGION_WALLONIA],
+        },
+    }
+    fetch.side_effect = ExtractorError("HTTP 404 fetching https://x/card.pdf")
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, f"card_missing_{entry.entry_id}") is not None
+    assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+@pytest.mark.parametrize(
+    ("message", "missing"),
+    [
+        ("HTTP 404 fetching https://x", True),
+        ("HTTP 410 fetching https://x", True),
+        ("HTTP 403 fetching https://x", False),
+        ("HTTP 500 fetching https://x", False),
+        ("expected a PDF at https://x, payload starts with b'<html>'", True),
+        ("expected a PDF at https://x, payload starts with b'\\r\\n  <!DOCTYPE'", True),
+        ("expected a PDF at https://x, payload starts with b'{\"error\"'", False),
+        ("Engie: variable price block or formula not found", False),
+    ],
+)
+def test_what_counts_as_a_missing_card(message: str, missing: bool) -> None:
+    assert _pdf.is_missing_card_error(message) is missing
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_an_unexpected_error_keeps_the_last_card(
     hass: HomeAssistant, fetch: AsyncMock, caplog: pytest.LogCaptureFixture
 ) -> None:

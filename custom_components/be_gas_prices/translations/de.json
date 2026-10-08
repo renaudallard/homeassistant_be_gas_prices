@@ -432,6 +432,10 @@
       "title": "Die Tarifkarte von {supplier} konnte nicht gelesen werden",
       "description": "Die Karte für {entry} konnte zweimal nacheinander nicht gelesen werden: {error}. Die letzte gute Karte, falls vorhanden, rechnet weiter. Wenn das anhält, hat der Lieferant wahrscheinlich sein Layout geändert; bitte ein Issue mit den Diagnosedaten eröffnen."
     },
+    "card_missing": {
+      "title": "Die Tarifkarte von {supplier} ist nicht verfügbar",
+      "description": "Die Karte für {entry} konnte zweimal nacheinander nicht gelesen werden, zuletzt weil die Website des Lieferanten unter der Adresse, die die Integration liest, keine Karte hat: {error}. Möglicherweise hat der Lieferant die Karte dieses Monats noch nicht veröffentlicht, das Produkt eingestellt oder seine Karten verschoben. Die letzte gute Karte, falls vorhanden, rechnet weiter. Diese Meldung verschwindet von selbst, sobald die Karte wieder abgerufen werden kann; hält es länger als einige Tage an, obwohl der Lieferant das Produkt noch anbietet, bitte ein Issue mit den Diagnosedaten eröffnen."
+    },
     "card_unreadable": {
       "title": "{supplier} veröffentlicht seine Karte als Bilder",
       "description": "Die Karte für {entry} hat keine Textebene und kann hier daher nicht gelesen werden. Die letzte gute Karte, falls vorhanden, rechnet weiter; das Kartenarchiv des Projekts rechnet mit seiner eigenen Lesung der Karte, sobald es eine hat, wenn der Eintrag es lesen lässt."
