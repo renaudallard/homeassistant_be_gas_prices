@@ -573,6 +573,7 @@ class _Listing:
     status = 200
     content_length = None
     charset = None
+    history = ()
     content = _Body()
 
     async def __aenter__(self) -> _Listing:

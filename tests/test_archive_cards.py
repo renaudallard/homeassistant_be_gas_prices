@@ -96,6 +96,7 @@ class _Body:
 class _Response:
     content_length = None
     charset = None
+    history = ()
     status = 200
 
     def __init__(self, body: bytes) -> None:

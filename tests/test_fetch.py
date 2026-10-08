@@ -33,6 +33,7 @@ import aiohttp
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
+from yarl import URL
 
 from custom_components.be_gas_prices.providers import _pdf
 from custom_components.be_gas_prices.providers._pdf import fetch_pdf_bytes, fetch_text
@@ -114,3 +115,59 @@ async def test_a_body_under_the_cap_is_read_whole(socket_enabled: None) -> None:
     finally:
         await server.close()
     assert payload.startswith(b"%PDF-1.7") and len(payload) == 9 + 8 * 1024
+
+
+class _Hop:
+    def __init__(self, url: str) -> None:
+        self.url = URL(url)
+
+
+class _Redirected:
+    """An answer that came through the redirects ``hops`` name."""
+
+    status = 200
+    content_length = None
+    charset = None
+
+    def __init__(self, *hops: str) -> None:
+        self.history = tuple(_Hop(hop) for hop in hops[:-1])
+        self.url = URL(hops[-1])
+
+    async def __aenter__(self) -> _Redirected:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+
+class _Session:
+    def __init__(self, resp: _Redirected) -> None:
+        self.resp = resp
+
+    def get(self, url: str, **_kw: Any) -> _Redirected:
+        return self.resp
+
+
+@pytest.mark.parametrize(
+    "hops",
+    [
+        ("https://totalenergies.be/a.pdf", "http://192.168.1.1/a.pdf"),
+        ("https://a.be/x", "http://a.be/y", "https://a.be/z"),
+    ],
+)
+@pytest.mark.parametrize("fetch", [fetch_text, fetch_pdf_bytes])
+async def test_a_redirect_off_https_is_refused(fetch: Any, hops: tuple[str, ...]) -> None:
+    session: Any = _Session(_Redirected(*hops))
+    with pytest.raises(ExtractorError, match="redirected off https") as err:
+        await fetch(session, hops[0])
+    # The target stays out of what the user is shown.
+    assert "192.168" not in str(err.value)
+
+
+def test_a_redirect_to_another_site_over_https_is_followed() -> None:
+    """TotalEnergies serves its index publication from its storage's host."""
+    resp: Any = _Redirected(
+        "https://totalenergies.be/fr/files/x.pdf",
+        "https://cf.bewebsiteprod.alzp.tgscloud.net/s3fs-public/x.pdf",
+    )
+    _pdf.guard_redirect("https://totalenergies.be/fr/files/x.pdf", resp)
