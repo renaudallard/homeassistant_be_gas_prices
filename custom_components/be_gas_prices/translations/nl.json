@@ -329,7 +329,7 @@
       "compare_done": "Vergelijking klaar, er werd niets gewijzigd."
     },
     "progress": {
-      "compare_all": "Alle contracten die in je gewest verkocht worden, worden berekend. Dit duurt tot twee minuten."
+      "compare_all": "Alle contracten die in je gewest verkocht worden, worden berekend. Dit duurt ongeveer twee minuten, iets langer zolang een trage tariefkaart nog gelezen wordt."
     }
   },
   "selector": {

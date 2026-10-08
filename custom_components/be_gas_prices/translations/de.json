@@ -329,7 +329,7 @@
       "compare_done": "Vergleich abgeschlossen, nichts wurde geändert."
     },
     "progress": {
-      "compare_all": "Alle in Ihrer Region verkauften Verträge werden berechnet. Das dauert bis zu zwei Minuten."
+      "compare_all": "Alle in Ihrer Region verkauften Verträge werden berechnet. Das dauert etwa zwei Minuten, etwas länger, solange eine langsame Tarifkarte noch gelesen wird."
     }
   },
   "selector": {

@@ -329,7 +329,7 @@
       "compare_done": "Comparison complete, nothing was changed."
     },
     "progress": {
-      "compare_all": "Quoting every contract sold in your region. This takes up to two minutes."
+      "compare_all": "Quoting every contract sold in your region. This takes about two minutes, a little more while a slow card is still being read."
     }
   },
   "selector": {

@@ -329,7 +329,7 @@
       "compare_done": "Comparaison terminée, rien n'a été modifié."
     },
     "progress": {
-      "compare_all": "Calcul de tous les contrats vendus dans votre région. Cela prend jusqu'à deux minutes."
+      "compare_all": "Calcul de tous les contrats vendus dans votre région. Cela prend environ deux minutes, un peu plus tant qu'une carte tarifaire lente est encore en lecture."
     }
   },
   "selector": {
