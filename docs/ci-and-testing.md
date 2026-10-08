@@ -39,6 +39,9 @@ cache and 54 seconds with a full one.
   no network.
 - `test_file_ci_issue.py`: `scripts/file_ci_issue.sh` against a fake `gh`
   that answers from files and logs its calls.
+- `test_autorelease.py`: the release job of `autorelease.yml`, its own
+  steps run under `bash -e` against a scratch origin and a fake `gh`: the
+  retries, a re-run over a pushed tag, and a draft left by a failed publish.
 - `tests/recorder/`: tests that need a real recorder database (the gas
   meter's statistics). `recorder_mock` must build its database before `hass`
   exists, so the directory's own `conftest.py` turns the parent's two autouse
