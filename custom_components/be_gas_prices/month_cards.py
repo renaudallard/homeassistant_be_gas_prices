@@ -25,9 +25,9 @@
 
 """The card a past month was billed on.
 
-A month is priced on the card published for it: the supplier's own archive
-where it keeps one, then the project's card archive (be_price_cards, written
-daily by the archive workflow), then nothing, which leaves the caller to
+A month is priced on the card published for it: the project's card archive
+(be_price_cards, written daily by the archive workflow), then the supplier's
+own archive where it keeps one, then nothing, which leaves the caller to
 stand in the current card and say so. A closed month's answer never changes,
 so it is kept for good, absent answers included for a day; a failure that
 may recover is not kept at all.
@@ -233,6 +233,12 @@ class MonthCardCache:
     ) -> MonthCard:
         """The card of a closed ``month``, fetched once and then kept.
 
+        The card archive is asked first: one small file per month, against
+        a PDF download and a parse per month from the supplier, which took
+        up to 54 s for one of Bolt's months on a Raspberry Pi 4. It holds
+        every card captured live and the supplier archives mirrored, so the
+        supplier is asked only for a month it does not hold.
+
         Raises ExtractorError or ArchiveUnavailable on a failure that may
         recover, so the caller prices the month on the current card for now
         and asks again on a later tick.
@@ -249,11 +255,18 @@ class MonthCardCache:
         year, number = (int(part) for part in month.split("-"))
         snapshot: SupplierSnapshot | None = None
         source: CardSource | None = None
-        # A supplier archive that is down says nothing about the month: the
-        # card archive may still hold it, and if it does not, the month is
-        # asked again next tick rather than remembered as absent.
-        unavailable: ExtractorError | None = None
-        if extractor.fetch_for_month is not None:
+        # An archive that is down says nothing about the month: the other
+        # may still hold it, and if it does not, the month is asked again
+        # next tick rather than remembered as absent.
+        unavailable: ExtractorError | ArchiveUnavailable | None = None
+        if use_archive:
+            try:
+                snapshot = await fetch_archived_card(session, extractor.id, contract, region, month)
+            except ArchiveUnavailable as err:
+                unavailable = err
+            if snapshot is not None:
+                source = "archive"
+        if snapshot is None and extractor.fetch_for_month is not None:
             try:
                 snapshot = await guarded(
                     extractor.label,
@@ -263,10 +276,6 @@ class MonthCardCache:
                 unavailable = err
             if snapshot is not None:
                 source = "supplier"
-        if snapshot is None and use_archive:
-            snapshot = await fetch_archived_card(session, extractor.id, contract, region, month)
-            if snapshot is not None:
-                source = "archive"
         if snapshot is None and unavailable is not None:
             raise unavailable
         row = MonthCard(snapshot=snapshot, source=source, fetched_at=now)

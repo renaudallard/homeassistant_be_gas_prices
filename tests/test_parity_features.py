@@ -91,7 +91,7 @@ from custom_components.be_gas_prices.contract_periods import (
 )
 from custom_components.be_gas_prices.daily_ranking import DailyRanking, ranking_minute
 from custom_components.be_gas_prices.manual_rate import manual_leg
-from custom_components.be_gas_prices.month_cards import MonthCardCache
+from custom_components.be_gas_prices.month_cards import ArchiveUnavailable, MonthCardCache
 from custom_components.be_gas_prices.pricing import compute_breakdown, fixed_costs
 from custom_components.be_gas_prices.providers import _pdf, engie
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
@@ -838,6 +838,58 @@ async def test_a_stored_signing_card_past_the_archive_s_reach_is_kept() -> None:
         AsyncMock(), gone, "engie_flow", "wallonia", "2025-06", use_archive=False
     )
     assert row.snapshot == card and not row.reread
+
+
+_ARCHIVED = "custom_components.be_gas_prices.month_cards.fetch_archived_card"
+
+
+async def test_a_past_month_is_read_from_the_card_archive_first() -> None:
+    """One small file from the card archive rather than the supplier's PDF
+    and its parse; the supplier is asked only for a month the archive does
+    not hold."""
+    card = replace(_flow_card(), publication_label="2026-07", valid_until=date(2026, 7, 31))
+    own = AsyncMock(return_value=card)
+    supplier = replace(engie.EXTRACTOR, fetch_for_month=own)
+    cache = MonthCardCache()
+    with patch(_ARCHIVED, AsyncMock(return_value=card)):
+        row = await cache.card(
+            AsyncMock(), supplier, "engie_flow", "wallonia", "2026-07", use_archive=True
+        )
+    assert row.snapshot == card and row.source == "archive"
+    assert own.await_count == 0
+    with patch(_ARCHIVED, AsyncMock(return_value=None)):
+        row = await cache.card(
+            AsyncMock(), supplier, "engie_flow", "wallonia", "2026-06", use_archive=True
+        )
+    assert row.snapshot == card and row.source == "supplier"
+    assert own.await_count == 1
+
+
+async def test_a_card_archive_down_leaves_the_month_to_the_supplier() -> None:
+    card = replace(_flow_card(), publication_label="2026-07", valid_until=date(2026, 7, 31))
+    down = AsyncMock(side_effect=ArchiveUnavailable("HTTP 503 fetching x"))
+    cache = MonthCardCache()
+    with patch(_ARCHIVED, down):
+        row = await cache.card(
+            AsyncMock(),
+            replace(engie.EXTRACTOR, fetch_for_month=AsyncMock(return_value=card)),
+            "engie_flow",
+            "wallonia",
+            "2026-07",
+            use_archive=True,
+        )
+        assert row.source == "supplier"
+        # Neither has it: asked again next tick, not remembered as absent.
+        with pytest.raises(ArchiveUnavailable):
+            await cache.card(
+                AsyncMock(),
+                replace(engie.EXTRACTOR, fetch_for_month=AsyncMock(return_value=None)),
+                "engie_flow",
+                "wallonia",
+                "2026-06",
+                use_archive=True,
+            )
+    assert cache.get("engie", "engie_flow", "wallonia", "2026-06") is None
 
 
 def test_quote_table_bolds_the_own_row_and_signs_the_gap() -> None:

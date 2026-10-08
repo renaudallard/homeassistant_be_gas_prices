@@ -59,7 +59,7 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `pricing.py` | The per-kWh breakdown and the yearly fixed costs of one household on one card. Pure. |
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption out of recorder statistics, in m³ or kWh. |
 | `calorific.py` | Atrias's monthly gross calorific value per gas reception station: the kWh one cubic metre is worth. |
-| `month_cards.py` | The card of a past month: the supplier's archive, then the card archive in be_price_cards. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
+| `month_cards.py` | The card of a past month: the card archive in be_price_cards, then the supplier's archive. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
 | `contract_periods.py` | Contracts the household held earlier in the year, recorded at a switch, billed on their own suppliers' cards. |
 | `manual_rate.py` | Figures the household typed from its own contract, laid over the signing card. |
 | `compare.py`, `compare_table.py`, `daily_ranking.py` | Quoting other contracts for the household, the ranked table, and the daily ranking behind `potential_saving`. |

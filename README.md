@@ -76,8 +76,8 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 **Costs over time**
 
 - **Year-to-date and month-to-date cost** from your gas meter, each month
-  billed on its own card: the supplier's archive where it keeps one, the
-  project's card archive otherwise.
+  billed on its own card: the project's card archive where it holds the
+  month, the supplier's archive otherwise.
 - **Rolling year cost** and a **projected year-end cost**.
 - **Signing-cohort pricing**: set a contract start date and the card of the
   month supply started prices a fixed or indexed contract (or that of the
@@ -301,7 +301,7 @@ page images still embeds the fonts of the text set over its picture, so
 each run looks at the cards it stored and files `[archive-cards] a card
 embeds glyphs the OCR library has not learnt` when one carries such a glyph,
 naming the card to learn it from. An installation reads the archive for a
-past month its supplier no longer serves, for the running month of a card
+past month before the supplier's own archive, for the running month of a card
 published as images, as a stand-in when it holds no card or a stale one, and
 for an earlier contract's running month while that supplier cannot be
 reached. The request names the supplier, the contract, the region and the

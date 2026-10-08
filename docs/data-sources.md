@@ -41,8 +41,9 @@ A card published as page images (Ecofix's) is read there with the OCR engine
 [ocr_price_cards](https://github.com/renaudallard/ocr_price_cards), and each
 source it read records the engine version (`"ocr"` in `_sources`).
 An installation reads the archive (`month_cards.fetch_archived_card`, and
-`fetch_archived_row` for the OCR flag) for a past month the supplier's own
-archive cannot serve, for the running month of a card published as images
+`fetch_archived_row` for the OCR flag) for a past month, before the
+supplier's own archive, which costs a PDF and a parse per month, for the
+running month of a card published as images
 (`month_cards.current_card`), and when its current card cannot be read at
 all or has gone stale. The request names the supplier, the contract,
 the region and the month and nothing else; the *Read the project's card

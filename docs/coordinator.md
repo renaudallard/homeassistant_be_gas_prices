@@ -51,10 +51,11 @@ cards (`issues.sync_issues`).
    too, while nothing is held for the station and a retry may cure it.
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month, and
-   (`PeriodBilling.fill`) the earlier contracts' own. The first tick does
-   this in the background, because it is what setup waits on, and prices
-   again on them when done (`async_reprice`), without asking the supplier
-   or Atrias again.
+   (`PeriodBilling.fill`) the earlier contracts' own, each from the card
+   archive, else the supplier's archive (`MonthCardCache.card`). The first
+   tick does this in the background, because it is what setup waits on, and
+   prices again on them when done (`async_reprice`), without asking the
+   supplier or Atrias again.
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
    source of the Energy dashboard, read as daily changes from today's date
    last year (`running_costs.meter_start`), which covers this year, the
