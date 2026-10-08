@@ -121,6 +121,21 @@ def _in_window(delivery: date, start: tuple[int, int], end: tuple[int, int] | No
     return month >= start and (end is None or month < end)
 
 
+# Belgium's VAT rates above zero. A card stating one of them for its
+# customers puts the law's figures on that rate, as it prints its own; a
+# stated rate outside them is a misread, and the residential gas rate
+# stands. Every card read so far states 6 % or nothing.
+_BELGIAN_VAT_RATES = (0.06, 0.12, 0.21)
+
+
+def _vat_factor(taxes: TaxOverlay) -> float:
+    """What a law figure excluding VAT is multiplied by on ``taxes``'s card."""
+    rate = taxes.card_vat_rate
+    if rate is None or not any(abs(rate - known) < 1e-9 for known in _BELGIAN_VAT_RATES):
+        rate = VAT_RATE_REDUCED
+    return 1 + rate
+
+
 def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
     """``taxes`` with the federal levies the law sets for ``delivery``.
 
@@ -133,12 +148,14 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
     printed.
 
     Only a residential card is touched: its values are VAT inclusive
-    (``vat_rate`` 0.0), which is the basis the law's rate is put on. A
-    professional card prints excluding VAT and is taxed on other rates.
+    (``vat_rate`` 0.0), and the law's rate is put on the VAT the card states
+    (:func:`_vat_factor`). A professional card prints excluding VAT and is
+    taxed on other rates.
     """
     if taxes.vat_rate != 0.0:
         return taxes
     resolved = taxes
+    factor = _vat_factor(taxes)
     if _in_window(delivery, GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL):
         month = (delivery.year, delivery.month)
         low, high = next(
@@ -148,14 +165,14 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
         )
         resolved = replace(
             resolved,
-            excise_bands=excise_bands(low * (1 + VAT_RATE_REDUCED), high * (1 + VAT_RATE_REDUCED)),
+            excise_bands=excise_bands(low * factor, high * factor),
         )
     if _in_window(delivery, ENERGY_CONTRIBUTION_ZEROED_FROM, None):
         resolved = replace(resolved, energy_contribution=0.0)
     elif _in_window(delivery, ENERGY_CONTRIBUTION_KNOWN_FROM, None):
         resolved = replace(
             resolved,
-            energy_contribution=ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA * (1 + VAT_RATE_REDUCED),
+            energy_contribution=ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA * factor,
         )
     return resolved
 
@@ -166,13 +183,14 @@ def resolve_network(
     """``dsos`` with the Fluvius data management fee where a card omits it.
 
     Only within the tariff year the regulated figure is known for, and only
-    on a residential card, whose figures are VAT inclusive.
+    on a residential card, whose figures are VAT inclusive at the rate it
+    states.
     """
     if taxes.vat_rate != 0.0 or not _in_window(
         delivery, FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM, FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL
     ):
         return dsos
-    fee = FLUVIUS_DATA_MANAGEMENT_HTVA * (1 + VAT_RATE_REDUCED)
+    fee = FLUVIUS_DATA_MANAGEMENT_HTVA * _vat_factor(taxes)
     return {
         key: replace(overlay, metering_per_year=fee)
         if key in FLUVIUS_KEYS and overlay.metering_per_year == 0.0

@@ -174,7 +174,9 @@ all_in = (energy + tier_proportional + transport + excise + energy_contribution)
 
 Per year: the supplier's fixed fee, the tier's fixed term, the metering fee
 (Flanders and Brussels) and in Brussels the per-meter levy, accrued by the
-day. VAT is 6% on everything but the Walloon connection fee. The details,
+day. VAT is 6% on everything but the Walloon connection fee; the levies the
+law sets are put on the rate the card states, should a card state another
+one Belgium levies. The details,
 with the sources of every regulated figure, are in
 [docs/pricing-model.md](docs/pricing-model.md).
 

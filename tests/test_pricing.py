@@ -39,6 +39,7 @@ from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_KEMPEN,
     DSO_ORES,
     DSO_SIBELGA,
+    FLUVIUS_DATA_MANAGEMENT_HTVA,
     REGION_BRUSSELS,
     REGION_WALLONIA,
     TIER_T1,
@@ -58,9 +59,10 @@ from custom_components.be_gas_prices.providers._resolve import (
     effective_excise,
     resolve_connection_fee,
     resolve_federal_levies,
+    resolve_network,
     tier_for,
 )
-from custom_components.be_gas_prices.providers.base import SupplierSnapshot, TaxOverlay
+from custom_components.be_gas_prices.providers.base import DsoOverlay, SupplierSnapshot, TaxOverlay
 from tests import fixture_text
 
 
@@ -111,6 +113,22 @@ def test_law_replaces_a_stale_card_from_august_2026() -> None:
         (None, pytest.approx(0.0118296)),
     )
     assert resolved.energy_contribution == 0.0
+
+
+@pytest.mark.parametrize(
+    ("stated", "rate"),
+    [(None, 0.06), (0.06, 0.06), (0.21, 0.21), (0.12, 0.12), (0.6, 0.06), (0.0, 0.06)],
+)
+def test_law_figures_carry_the_vat_the_card_states(stated: float | None, rate: float) -> None:
+    """A card stating 21 % puts the law's figures on 21 % as it prints its
+    own; a stated rate Belgium does not levy is a misread, and 6 % stands."""
+    taxes = replace(_stale_taxes(), card_vat_rate=stated)
+    july = resolve_federal_levies(taxes, date(2026, 7, 1))
+    assert july.excise_bands[0][1] == pytest.approx(0.0087238 / 1.06 * (1 + rate))
+    assert july.energy_contribution == pytest.approx(0.001057668 / 1.06 * (1 + rate))
+    dsos = {"fluvius_imewo": DsoOverlay(tiers={}, transport=0.0, metering_per_year=0.0)}
+    [fee] = (o.metering_per_year for o in resolve_network(dsos, taxes, date(2026, 7, 1)).values())
+    assert fee == pytest.approx(FLUVIUS_DATA_MANAGEMENT_HTVA * (1 + rate))
 
 
 def test_law_bills_a_month_before_august_on_its_own_rates() -> None:

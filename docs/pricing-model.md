@@ -115,7 +115,11 @@ the card was printed for:
   electricity rate, 0,00075, instead.
 
 Each carries its known window in `const.py`; past it the card is read as
-printed. Only residential cards are touched.
+printed. Only residential cards are touched. The figures excluding VAT are
+put on the rate the card states for its customers (`card_vat_rate`) when it
+is one Belgium levies (6, 12 or 21 %), else on the residential 6 %: every
+card read so far states 6 % or nothing, and a stated rate outside those
+three is taken for a misread.
 
 ## The running costs
 
