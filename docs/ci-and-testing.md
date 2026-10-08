@@ -37,6 +37,8 @@ cache and 54 seconds with a full one.
   (`socket_enabled`, since the harness blocks sockets otherwise).
 - `test_live_check.py`, `test_archive_cards.py`: the two daily scripts, with
   no network.
+- `test_file_ci_issue.py`: `scripts/file_ci_issue.sh` against a fake `gh`
+  that answers from files and logs its calls.
 - `tests/recorder/`: tests that need a real recorder database (the gas
   meter's statistics). `recorder_mock` must build its database before `hass`
   exists, so the directory's own `conftest.py` turns the parent's two autouse
