@@ -536,6 +536,21 @@ def test_daily_ranking_saving_and_round_trip() -> None:
     assert DailyRanking.from_quotes(date(2026, 9, 29), quotes, ("s", "zz")).saving is None
 
 
+def test_a_ranking_keeps_what_the_table_shows_and_reads_an_older_one() -> None:
+    quote = replace(_quote("a", 1500.0), all_in=0.0812, provisional=True, read_by_ocr=True)
+    ranking = DailyRanking.from_quotes(date(2026, 9, 29), [quote], ("s", "a"))
+    restored = DailyRanking.from_json(ranking.to_json())
+    assert restored is not None
+    [row] = restored.rows
+    assert (row.all_in, row.provisional, row.read_by_ocr) == (0.0812, True, True)
+    assert row.quote().all_in == 0.0812 and ranking.tabled
+    older = DailyRanking.from_json(
+        {"day": "2026-09-29", "own": ["s", "a"], "rows": [["s", "a", "A", 1500.0]]}
+    )
+    assert older is not None and older.saving == 0.0
+    assert older.rows[0].all_in is None and not older.tabled
+
+
 def test_ranking_minute_is_stable_and_within_the_day() -> None:
     assert ranking_minute("abc") == ranking_minute("abc")
     assert 0 <= ranking_minute("abc") < 24 * 60

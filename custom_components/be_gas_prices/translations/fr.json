@@ -276,6 +276,13 @@
         "title": "Tous les contrats, classés",
         "description": "Une année de {annual_kwh} kWh sur chaque carte vendue dans votre région, telle que publiée aujourd'hui, du moins cher au plus cher, votre contrat en gras et, dès que votre entrée détient sa carte, calculé sur la carte et les chiffres sur lesquels l'entrée le facture. Un contrat indexé est calculé à sa valeur d'index de ce mois ou, tant que son fournisseur ne l'a pas publiée, à celle du mois précédent, sur laquelle la plupart des cartes sont établies ; sinon au prix imprimé sur sa carte. Une croix signale un prix que le mois peut encore faire bouger. OCR signale une carte publiée sous forme d'images, calculée sur la lecture qu'en fait l'archive des cartes. Non atteints dans le temps imparti : {skipped}.\n\n{table}"
       },
+      "compare_all_stored": {
+        "title": "Tous les contrats, classés",
+        "description": "Le classement quotidien du {day} : une année de {annual_kwh} kWh sur chaque carte vendue dans votre région, du moins cher au plus cher, votre contrat en gras, calculé comme dans la comparaison complète. Une croix signale un prix que le mois peut encore faire bouger, OCR une carte publiée sous forme d'images et calculée sur la lecture qu'en fait l'archive des cartes. Un contrat qui n'a pas pu être calculé n'y figure pas. Cochez la case pour calculer à nouveau chaque contrat maintenant, ce qui prend environ deux minutes.\n\n{table}",
+        "data": {
+          "price_again": "Calculer à nouveau chaque contrat maintenant"
+        }
+      },
       "switch": {
         "title": "Enregistrer un changement de contrat",
         "description": "Indiquez le premier jour de fourniture du nouveau contrat. Les paramètres actuels sont conservés comme contrat précédent jusqu'à la veille, calculé sur les cartes de son fournisseur, et les étapes suivantes configurent le nouveau contrat.",

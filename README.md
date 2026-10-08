@@ -266,7 +266,8 @@ Home Assistant installs them from the manifest.
    calorific value from Atrias converts cubic metres to kWh instead.
 
 **Settings, Devices & services, Belgian Gas Prices, Configure** opens a menu:
-edit the settings, quote another contract, rank every contract, record a
+edit the settings, quote another contract, rank every contract (today's daily
+ranking is shown when the entry made one, with a box to price again), record a
 change of contract this year, or remove the last one recorded this year,
 which makes the contract left the current one again (the household's
 settings stay; an end date it had is entered again in the settings).

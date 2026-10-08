@@ -33,7 +33,7 @@ restarts, until the next day's replaces it.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
 
@@ -55,6 +55,25 @@ class RankedRow:
     contract: str
     label: str
     annual_cost: float
+    # What the comparison table shows besides the cost. None in a ranking a
+    # release before them stored, which the table is not drawn from.
+    all_in: float | None = None
+    provisional: bool = False
+    read_by_ocr: bool = False
+
+    def quote(self) -> Quote:
+        """The row as the comparison table takes it."""
+        return Quote(
+            supplier=self.supplier,
+            contract=self.contract,
+            label=self.label,
+            annual_cost=self.annual_cost,
+            all_in=self.all_in,
+            fixed=None,
+            indexed=False,
+            provisional=self.provisional,
+            read_by_ocr=self.read_by_ocr,
+        )
 
 
 @dataclass(frozen=True)
@@ -69,13 +88,26 @@ class DailyRanking:
     def from_quotes(cls, day: date, quotes: list[Quote], own: tuple[str, str]) -> DailyRanking:
         rows = sorted(
             (
-                RankedRow(q.supplier, q.contract, q.label, q.annual_cost)
+                RankedRow(
+                    q.supplier,
+                    q.contract,
+                    q.label,
+                    q.annual_cost,
+                    q.all_in,
+                    q.provisional,
+                    q.read_by_ocr,
+                )
                 for q in quotes
                 if q.annual_cost is not None
             ),
             key=lambda row: (row.annual_cost, row.label),
         )
         return cls(day=day, rows=tuple(rows), own=own)
+
+    @property
+    def tabled(self) -> bool:
+        """Whether the rows carry what the comparison table shows."""
+        return all(row.all_in is not None for row in self.rows)
 
     @property
     def own_cost(self) -> float | None:
@@ -98,7 +130,18 @@ class DailyRanking:
         return {
             "day": self.day.isoformat(),
             "own": list(self.own),
-            "rows": [[r.supplier, r.contract, r.label, r.annual_cost] for r in self.rows],
+            "rows": [
+                [
+                    r.supplier,
+                    r.contract,
+                    r.label,
+                    r.annual_cost,
+                    r.all_in,
+                    r.provisional,
+                    r.read_by_ocr,
+                ]
+                for r in self.rows
+            ],
         }
 
     @classmethod
@@ -109,10 +152,22 @@ class DailyRanking:
             return cls(
                 day=date.fromisoformat(blob["day"]),
                 own=(str(blob["own"][0]), str(blob["own"][1])),
-                rows=tuple(
-                    RankedRow(str(s), str(c), str(label), float(cost))
-                    for s, c, label, cost in blob["rows"]
-                ),
+                rows=tuple(_row_from_json(row) for row in blob["rows"]),
             )
         except (KeyError, TypeError, ValueError, IndexError):
             return None
+
+
+def _row_from_json(row: list[Any]) -> RankedRow:
+    """A stored row: the four fields an older release stored, or all seven."""
+    supplier, contract, label, cost = row[:4]
+    ranked = RankedRow(str(supplier), str(contract), str(label), float(cost))
+    if len(row) == 4:
+        return ranked
+    all_in, provisional, read_by_ocr = row[4:]
+    return replace(
+        ranked,
+        all_in=None if all_in is None else float(all_in),
+        provisional=provisional is True,
+        read_by_ocr=read_by_ocr is True,
+    )

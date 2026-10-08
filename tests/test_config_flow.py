@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
-from datetime import date
+from datetime import date, timedelta
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -38,6 +39,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.be_gas_prices import calorific, config_flow, postcodes
@@ -81,6 +83,7 @@ from custom_components.be_gas_prices.const import (
     SUPPLIER_CUSTOM,
 )
 from custom_components.be_gas_prices.contract_periods import record_switch
+from custom_components.be_gas_prices.daily_ranking import DailyRanking
 
 STATIONS = [
     calorific.Station(ean="541460900000000030", name="RESA LIEGE (GOS)"),
@@ -923,6 +926,88 @@ async def test_compare_all_ranks_a_custom_household_s_own_card(hass: HomeAssista
     placeholders = result["description_placeholders"]
     assert placeholders is not None
     assert "| 2 | **Custom** | 1,600.00 | +0.00 |" in placeholders["table"]
+
+
+async def test_compare_all_shows_today_s_ranking_and_prices_again_on_request(
+    hass: HomeAssistant,
+) -> None:
+    entry = _entry(hass)
+    own = Quote("engie", "engie_flow", "Engie Flow", 1600.0, 0.09, 100.0, True, True)
+    cheaper = Quote("bolt", "bolt_fix", "Bolt Fixe", 1500.0, 0.08, 100.0, False, False)
+    entry.runtime_data = SimpleNamespace(
+        daily_ranking=DailyRanking.from_quotes(
+            dt_util.now().date(), [own, cheaper], ("engie", "engie_flow")
+        )
+    )
+    calls: list[object] = []
+
+    async def live(*args: Any, **_kwargs: Any) -> tuple[list[Quote], int]:
+        calls.append(args)
+        # Long enough for the flow to show its progress first.
+        await asyncio.sleep(0.01)
+        return [cheaper, own], 0
+
+    with patch("custom_components.be_gas_prices.config_flow.rank", live):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "compare_all"}
+        )
+        assert result["step_id"] == "compare_all_stored"
+        placeholders = result["description_placeholders"]
+        assert placeholders is not None
+        assert placeholders["day"] == dt_util.now().date().isoformat()
+        assert "| 1 | Bolt Fixe | 1,500.00 | -100.00 | 0.0800 |" in placeholders["table"]
+        assert "| 2 | **Engie Flow †** | 1,600.00 | +0.00 | 0.0900 |" in placeholders["table"]
+        done = await hass.config_entries.options.async_configure(result["flow_id"], {})
+        assert done["reason"] == "compare_done"
+        assert not calls
+
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "compare_all"}
+        )
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"price_again": True}
+        )
+        await hass.async_block_till_done()
+        result = await hass.config_entries.options.async_configure(result["flow_id"])
+    assert len(calls) == 1
+    assert result["step_id"] == "compare_all_result"
+
+
+@pytest.mark.parametrize("yesterday", [True, False])
+async def test_compare_all_ranks_live_without_a_full_ranking_of_today(
+    hass: HomeAssistant, yesterday: bool
+) -> None:
+    """Yesterday's ranking, or one an older release stored without what the
+    table shows, is not offered. On the real clock, which the flow's
+    progress step needs to run."""
+    today = dt_util.now().date()
+    day = today - timedelta(days=1) if yesterday else today
+    entry = _entry(hass)
+    ranking = DailyRanking.from_json(
+        {
+            "day": day.isoformat(),
+            "own": ["engie", "engie_flow"],
+            "rows": [["engie", "engie_flow", "Engie Flow", 1600.0]]
+            if not yesterday
+            else [["engie", "engie_flow", "Engie Flow", 1600.0, 0.09, False, False]],
+        }
+    )
+    assert ranking is not None
+    entry.runtime_data = SimpleNamespace(daily_ranking=ranking)
+
+    async def live(*_args: Any, **_kwargs: Any) -> tuple[list[Quote], int]:
+        await asyncio.sleep(0.01)
+        return [], 0
+
+    with patch("custom_components.be_gas_prices.config_flow.rank", live):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {"next_step_id": "compare_all"}
+        )
+        assert result["type"] is FlowResultType.SHOW_PROGRESS
+        await hass.async_block_till_done()
 
 
 _EARLIER = {

@@ -276,6 +276,13 @@
         "title": "Alle contracten, gerangschikt",
         "description": "Een jaar van {annual_kwh} kWh volgens elke kaart die in je gewest verkocht wordt, zoals vandaag gepubliceerd, goedkoopste eerst, je eigen contract in het vet en, wanneer je item zijn kaart heeft, berekend volgens de kaart en de cijfers waarop het item het factureert. Een geïndexeerd contract wordt geprijsd tegen zijn indexwaarde van deze maand of, zolang de leverancier die niet gepubliceerd heeft, die van vorige maand, waarop de meeste kaarten gebaseerd zijn; anders tegen de prijs op zijn kaart. Een kruisje duidt een prijs aan die de maand nog kan wijzigen. OCR duidt een kaart aan die als afbeeldingen gepubliceerd is, geprijsd met de lezing van het kaartarchief. Niet bereikt binnen de tijd: {skipped}.\n\n{table}"
       },
+      "compare_all_stored": {
+        "title": "Alle contracten, gerangschikt",
+        "description": "De dagelijkse rangschikking van {day}: een jaar van {annual_kwh} kWh volgens elke kaart die in je gewest verkocht wordt, goedkoopste eerst, je eigen contract in het vet, geprijsd zoals in de volledige vergelijking. Een kruisje duidt een prijs aan die de maand nog kan wijzigen, OCR een kaart die als afbeeldingen gepubliceerd is en geprijsd met de lezing van het kaartarchief. Een contract dat niet geprijsd kon worden, ontbreekt. Vink het vakje aan om nu elk contract opnieuw te prijzen, wat ongeveer twee minuten duurt.\n\n{table}",
+        "data": {
+          "price_again": "Nu elk contract opnieuw prijzen"
+        }
+      },
       "switch": {
         "title": "Een contractwissel vastleggen",
         "description": "Geef de eerste dag waarop het nieuwe contract leverde. De huidige instellingen blijven bewaard als het vorige contract tot de dag ervoor, berekend volgens de kaarten van die leverancier, en de volgende stappen stellen het nieuwe contract in.",

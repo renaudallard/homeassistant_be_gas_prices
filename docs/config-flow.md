@@ -37,7 +37,12 @@ reloads the entry.
   the region (`compare.rank`, 120 s budget, three cards at a time, one
   supplier's in turn so a page or card they share is read once, and the
   household's own contract quoted the same way as above), then the ranked
-  table with the household's own row in bold. Nothing is saved.
+  table with the household's own row in bold. Nothing is saved. When the
+  entry's daily ranking already holds today's (`coordinator.daily_ranking`,
+  whose rows keep the price per kWh, the dagger and the OCR mark the table
+  shows), that ranking is shown instead (`compare_all_stored`), without the
+  contracts it could not price, and a *price again* box ranks live. A
+  ranking an older release stored without those fields is never shown.
 - In both tables an indexed contract is priced at the month's own index
   value once its supplier has published it, else at the month before's,
   which most cards are set at, else at the price its card prints. An index

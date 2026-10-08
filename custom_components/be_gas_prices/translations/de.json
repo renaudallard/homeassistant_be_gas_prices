@@ -276,6 +276,13 @@
         "title": "Alle Verträge, geordnet",
         "description": "Ein Jahr mit {annual_kwh} kWh nach jeder in Ihrer Region verkauften Karte in ihrer heutigen Fassung, die günstigste zuerst, Ihr Vertrag fett und, sobald Ihr Eintrag seine Karte hat, nach der Karte und den Zahlen berechnet, nach denen der Eintrag ihn abrechnet. Ein indexierter Vertrag wird zu seinem Indexwert dieses Monats berechnet oder, solange sein Lieferant diesen nicht veröffentlicht hat, zu dem des Vormonats, auf dem die meisten Karten beruhen; sonst zum Preis auf seiner Karte. Ein Kreuz markiert einen Preis, den der Monat noch verändern kann. OCR markiert eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs. In der Zeit nicht erreicht: {skipped}.\n\n{table}"
       },
+      "compare_all_stored": {
+        "title": "Alle Verträge, geordnet",
+        "description": "Die tägliche Rangliste vom {day}: ein Jahr mit {annual_kwh} kWh nach jeder in Ihrer Region verkauften Karte, die günstigste zuerst, Ihr Vertrag fett, berechnet wie im vollständigen Vergleich. Ein Kreuz markiert einen Preis, den der Monat noch verändern kann, OCR eine als Bilder veröffentlichte Karte, berechnet nach der Lesung des Kartenarchivs. Ein Vertrag, der nicht berechnet werden konnte, fehlt. Setzen Sie das Häkchen, um jetzt jeden Vertrag neu zu berechnen, was etwa zwei Minuten dauert.\n\n{table}",
+        "data": {
+          "price_again": "Jetzt jeden Vertrag neu berechnen"
+        }
+      },
       "switch": {
         "title": "Einen Vertragswechsel erfassen",
         "description": "Geben Sie den ersten Liefertag des neuen Vertrags ein. Die aktuellen Einstellungen bleiben als früherer Vertrag bis zum Vortag erhalten, nach den Karten seines Lieferanten berechnet, und die nächsten Schritte richten den neuen Vertrag ein.",

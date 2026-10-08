@@ -104,6 +104,7 @@ from .contract_periods import (
     removable_switch,
     remove_last_switch,
 )
+from .daily_ranking import DailyRanking
 from .providers import all_extractors
 from .providers import get as get_extractor
 from .providers._rates import Contract
@@ -122,6 +123,8 @@ _DATE_FIELDS = (CONF_CONTRACT_START_DATE, CONF_TARIFF_CARD_DATE, CONF_CONTRACT_E
 _ADVANCED = "advanced"
 _ADVANCED_KEYS = (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE, CONF_YTD_FROM_CONTRACT_START)
 _SIGNED_RATE = "signed_rate"
+# The box on the stored ranking that quotes every contract again.
+_PRICE_AGAIN = "price_again"
 
 
 def _suppliers_for(region: str) -> list[SelectOptionDict]:
@@ -651,6 +654,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         self._ranking: tuple[list[Quote], int] | None = None
         self._rank_task: asyncio.Task[tuple[list[Quote], int]] | None = None
         self._switch_date: str | None = None
+        self._price_again = False
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         options = ["settings", "compare", "compare_all", "switch"]
@@ -804,6 +808,19 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
     async def async_step_compare_all(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        if self._rank_task is None and not self._price_again:
+            # An entry that ranks daily has today's answer already: shown
+            # rather than making the household wait two minutes for it.
+            stored = getattr(
+                getattr(self.config_entry, "runtime_data", None), "daily_ranking", None
+            )
+            if (
+                isinstance(stored, DailyRanking)
+                and stored.day == dt_util.now().date()
+                and stored.rows
+                and stored.tabled
+            ):
+                return await self.async_step_compare_all_stored(ranking=stored)
         if self._rank_task is None:
             data = self.config_entry.data
             self._rank_task = self.hass.async_create_task(
@@ -848,6 +865,29 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                 "table": quote_table(quotes, own=own),
                 "annual_kwh": f"{self._household().annual_kwh:.0f}",
                 "skipped": str(skipped),
+            },
+        )
+
+    async def async_step_compare_all_stored(
+        self, user_input: dict[str, Any] | None = None, *, ranking: DailyRanking | None = None
+    ) -> ConfigFlowResult:
+        """Today's daily ranking, with a box to quote every contract again."""
+        if user_input is not None:
+            if user_input.get(_PRICE_AGAIN):
+                self._price_again = True
+                return await self.async_step_compare_all()
+            return self.async_abort(reason="compare_done")
+        if ranking is None:
+            return self.async_abort(reason="compare_done")
+        quotes = [row.quote() for row in ranking.rows]
+        own = next((q for q in quotes if (q.supplier, q.contract) == ranking.own), None)
+        return self.async_show_form(
+            step_id="compare_all_stored",
+            data_schema=vol.Schema({vol.Optional(_PRICE_AGAIN, default=False): BooleanSelector()}),
+            description_placeholders={
+                "table": quote_table(quotes, own=own),
+                "annual_kwh": f"{self._household().annual_kwh:.0f}",
+                "day": ranking.day.isoformat(),
             },
         )
 

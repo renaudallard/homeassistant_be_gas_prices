@@ -276,6 +276,13 @@
         "title": "Every contract, ranked",
         "description": "A year of {annual_kwh} kWh on every card sold in your region as published today, cheapest first, your own contract in bold and, whenever your entry holds its card, priced on the card and figures the entry bills it on. An indexed contract is priced at its index value for this month or, until its supplier publishes that, last month's, which most cards are set at; otherwise at the price its card prints. A dagger marks a price the month may still move. OCR marks a card published as images, priced on the card archive's reading of it. Not reached within the time budget: {skipped}.\n\n{table}"
       },
+      "compare_all_stored": {
+        "title": "Every contract, ranked",
+        "description": "The daily ranking of {day}: a year of {annual_kwh} kWh on every card sold in your region, cheapest first, your own contract in bold, priced as in the full comparison. A dagger marks a price the month may still move, OCR a card published as images and priced on the card archive's reading of it. A contract that could not be priced is left out. Tick the box to quote every contract again now, which takes about two minutes.\n\n{table}",
+        "data": {
+          "price_again": "Price every contract again now"
+        }
+      },
       "switch": {
         "title": "Record a change of contract",
         "description": "Enter the first day the new contract supplied. The current settings are kept as the earlier contract up to the day before, billed on their own supplier's cards, and the next steps set up the new contract.",
