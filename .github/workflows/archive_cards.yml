@@ -278,6 +278,14 @@ jobs:
         # The walk wrote the coverage sheets before today's uploads were in
         # the manifest; rewrite them now so every month links to a file that
         # exists. No fetch, a second or two.
+        # Runs whenever the walk succeeded, even when an upload failed:
+        # skipped, the push behind it threw away the day's rows and texts,
+        # and a card a supplier replaces at a fixed URL was lost for good. A
+        # row whose card did not land is still read by every installation,
+        # its sheet links no PDF, and the next run offers the card again
+        # while the supplier still serves it.
+        if: ${{ !cancelled() && steps.store.outcome == 'success' }}
+        id: index
         env:
           CARDS_REPO: renaudallard/be_price_cards
         run: >-
@@ -286,6 +294,8 @@ jobs:
           --archive-base-url "https://github.com/${CARDS_REPO}/blob/main/gas"
 
       - name: Write the two READMEs
+        if: ${{ !cancelled() && steps.index.outcome == 'success' }}
+        id: readmes
         # The root README is shared with the electricity and water archive
         # workflows, each of which writes it too: the same text in all three
         # is what keeps them from rewriting one another's every day.
@@ -327,6 +337,7 @@ jobs:
             > tmp/cards/gas/README.md
 
       - name: Commit and push what changed
+        if: ${{ !cancelled() && steps.readmes.outcome == 'success' }}
         id: push
         env:
           CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
