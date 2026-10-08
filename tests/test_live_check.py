@@ -295,17 +295,35 @@ def test_a_documented_card_error_is_a_notice_while_the_card_prints_it() -> None:
             _card(_snapshot(supplier, t1_prop=t1_prop)),
         ]
 
-    known = lc.consensus(fleet("ebem", 0.0212))
+    today = date(2026, 10, 8)
+    known = lc.consensus(fleet("ebem", 0.0212), today)
     assert _failing(known) == {}
     [notice] = [c for c in known if c.status == "notice"]
     assert notice.label == "ebem: fluvius_kempen T1 proportional for 2026-09"
-    assert notice.detail.endswith("; a known card error, see docs/providers/ebem.md")
-    assert list(_failing(lc.consensus(fleet("ebem", 0.0200)))) == [
+    assert notice.detail.endswith(
+        "; a known card error (the 2025 figure kept in 2026), see docs/providers/ebem.md"
+    )
+    assert list(_failing(lc.consensus(fleet("ebem", 0.0200), today))) == [
         "ebem: fluvius_kempen T1 proportional for 2026-09"
     ]
-    assert list(_failing(lc.consensus(fleet("gamma", 0.0212)))) == [
+    assert list(_failing(lc.consensus(fleet("gamma", 0.0212), today))) == [
         "gamma: fluvius_kempen T1 proportional for 2026-09"
     ]
+
+
+@pytest.mark.parametrize(
+    ("today", "allowed"), [(date(2026, 12, 31), True), (date(2027, 1, 1), False)]
+)
+def test_a_known_card_error_is_reported_again_once_its_allowance_lapses(
+    today: date, allowed: bool
+) -> None:
+    fleet = [
+        _card(_snapshot("alpha", t1_prop=0.0227489)),
+        _card(_snapshot("beta", t1_prop=0.0227)),
+        _card(_snapshot("ebem", t1_prop=0.0212)),
+    ]
+    failing = _failing(lc.consensus(fleet, today))
+    assert (failing == {}) is allowed
 
 
 def test_a_single_excise_rate_stands_for_both_slices() -> None:

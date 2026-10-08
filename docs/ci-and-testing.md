@@ -147,7 +147,9 @@ How the cross-check decides:
 - A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
   and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
   T1) is a notice while the card prints that value: it is billed as
-  printed, but already known. Any other value for it fails.
+  printed, but already known. Any other value for it fails, and so does
+  that value once the allowance lapses: each carries its expiry and why it
+  is allowed, and the ones listed now lapse with the 2026 tariff year.
 
 `--texts DIR` points at the `gas/` directory of a `be_price_cards` checkout:
 a card whose bytes the archive holds is served its stored text instead of

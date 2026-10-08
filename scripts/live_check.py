@@ -388,19 +388,59 @@ _LAW_WINDOWS: dict[str, tuple[tuple[int, int], tuple[int, int] | None]] = {
 
 
 # Card errors the provider notes in docs/providers document, by supplier,
-# scope and figure, with the value the card prints. They are billed as
-# printed, but already known, so a card printing that value is a notice; one
-# printing anything else for them is a new departure and fails again.
-_KNOWN_CARD_ERRORS: dict[tuple[str, str, str], float] = {
-    ("bolt", "ores", "T1 proportional"): 0.04198,
-    ("bolt", "ores", "T2 proportional"): 0.02115,
-    ("bolt", "resa", "T2 proportional"): 0.02259,
-    ("bolt", REGION_BRUSSELS, "levy q10_gt5000"): 12.54,
-    ("ebem", "fluvius_kempen", "T1 proportional"): 0.0212,
-    ("ecofix", "ores", "T1 proportional"): 0.04198,
-    ("ecofix", "ores", "T2 proportional"): 0.02115,
-    ("ecofix", "resa", "T2 fixed"): 140.93,
-    ("ecofix", "resa", "T2 proportional"): 0.02259,
+# scope and figure: the value the card prints, the day the allowance lapses
+# and why it is allowed. They are billed as printed, but already known, so a
+# card printing that value is a notice; one printing anything else for them
+# is a new departure and fails again, and so does the same value once the
+# allowance has lapsed. Each one is a 2026 network term or levy, so each
+# lapses with the tariff year: a card printing it in 2027 is news again.
+_TARIFF_YEAR_END = date(2027, 1, 1)
+_KNOWN_CARD_ERRORS: dict[tuple[str, str, str], tuple[float, date, str]] = {
+    ("bolt", "ores", "T1 proportional"): (
+        0.04198,
+        _TARIFF_YEAR_END,
+        "the 2026 grid with an older regulatory balance term",
+    ),
+    ("bolt", "ores", "T2 proportional"): (
+        0.02115,
+        _TARIFF_YEAR_END,
+        "the 2026 grid with an older regulatory balance term",
+    ),
+    ("bolt", "resa", "T2 proportional"): (
+        0.02259,
+        _TARIFF_YEAR_END,
+        "2,529 with two digits swapped",
+    ),
+    ("bolt", REGION_BRUSSELS, "levy q10_gt5000"): (
+        12.54,
+        _TARIFF_YEAR_END,
+        "12,59 on the other cards",
+    ),
+    ("ebem", "fluvius_kempen", "T1 proportional"): (
+        0.0212,
+        _TARIFF_YEAR_END,
+        "the 2025 figure kept in 2026",
+    ),
+    ("ecofix", "ores", "T1 proportional"): (
+        0.04198,
+        _TARIFF_YEAR_END,
+        "the ORES term Bolt prints",
+    ),
+    ("ecofix", "ores", "T2 proportional"): (
+        0.02115,
+        _TARIFF_YEAR_END,
+        "the ORES term Bolt prints",
+    ),
+    ("ecofix", "resa", "T2 fixed"): (
+        140.93,
+        _TARIFF_YEAR_END,
+        "ORES's term printed for RESA",
+    ),
+    ("ecofix", "resa", "T2 proportional"): (
+        0.02259,
+        _TARIFF_YEAR_END,
+        "the RESA term Bolt prints",
+    ),
 }
 
 
@@ -534,13 +574,16 @@ def _filled_from_regulation(figure: Figure) -> bool:
     )
 
 
-def _known_error(figure: Figure) -> bool:
-    """A figure the provider notes document as the card's error."""
+def _known_error(figure: Figure, today: date) -> str | None:
+    """Why a figure the provider notes document as the card's error is
+    allowed today, or None."""
     known = _KNOWN_CARD_ERRORS.get((figure.supplier, figure.scope, figure.name))
-    return known is not None and agree(figure.value, known, figure.unit)
+    if known is None or today >= known[1] or not agree(figure.value, known[0], figure.unit):
+        return None
+    return known[2]
 
 
-def _departures(group: list[Figure]) -> Iterator[Check]:
+def _departures(group: list[Figure], today: date) -> Iterator[Check]:
     """The cards of one figure, month and scope that depart from the rest.
 
     The figure most voters agree with is the consensus, the most precise one
@@ -581,24 +624,27 @@ def _departures(group: list[Figure]) -> Iterator[Check]:
             status, detail = "notice", detail + "; billed from the law for this month"
         elif all(_filled_from_regulation(f) for f in printed_by):
             status, detail = "notice", detail + "; billed the regulated fee for this month"
-        elif all(_known_error(f) for f in printed_by):
+        elif None not in (reasons := {_known_error(f, today) for f in printed_by}):
+            why = "; ".join(sorted(reason for reason in reasons if reason))
             status, detail = (
                 "notice",
-                detail + f"; a known card error, see docs/providers/{supplier}.md",
+                detail + f"; a known card error ({why}), see docs/providers/{supplier}.md",
             )
         yield Check(f"{supplier}: {what}", status, detail)
 
 
-def consensus(cards: Iterable[Card]) -> list[Check]:
+def consensus(cards: Iterable[Card], today: date | None = None) -> list[Check]:
     """Every card that departs from what the fleet prints, figure by figure,
-    among the cards of the same month."""
+    among the cards of the same month. ``today``, Brussels's by default, is
+    what the known card errors lapse against."""
+    today = today or datetime.now(BRUSSELS).date()
     groups: dict[tuple[str, str, str], list[Figure]] = {}
     for card in cards:
         for figure in figures(card):
             groups.setdefault((figure.month, figure.scope, figure.name), []).append(figure)
     checks: list[Check] = []
     for key in sorted(groups):
-        checks.extend(_departures(groups[key]))
+        checks.extend(_departures(groups[key], today))
     return checks
 
 
@@ -629,7 +675,7 @@ async def check_fleet(
             )
         )
     checks = [check for part, _cards in parts for check in part]
-    checks.extend(consensus(card for _part, cards in parts for card in cards))
+    checks.extend(consensus((card for _part, cards in parts for card in cards), today))
     return checks
 
 
