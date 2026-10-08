@@ -616,6 +616,23 @@ async def test_a_ranking_reads_what_a_supplier_s_contracts_share_once() -> None:
     assert web.asked == ["https://acme.test/listing"]
 
 
+async def test_an_earlier_contract_s_months_read_a_shared_page_once() -> None:
+    """Bolt's variable months each walk down the same versions of its card:
+    one fill reads what its months share once."""
+    web = _Web()
+
+    async def fetch_for_month(_session: Any, _contract: str, _region: str, _first: date) -> None:
+        await _pdf.fetch_text(web, "https://acme.test/listing")  # type: ignore[arg-type]
+
+    stub = replace(engie.EXTRACTOR, fetch_for_month=fetch_for_month)
+    data = record_switch(dict(ENTRY), date(2026, 7, 1))
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        await PeriodBilling(MonthCardCache()).fill(
+            AsyncMock(), data, date(2026, 9, 30), use_archive=False
+        )
+    assert web.asked == ["https://acme.test/listing"]
+
+
 async def test_a_ranking_quotes_a_typed_card_among_the_suppliers() -> None:
     """A custom household's own contract is no supplier's: handed to the
     ranking, it is quoted and sorted with the others."""

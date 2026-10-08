@@ -112,7 +112,7 @@ from .month_cards import (
 )
 from .pricing import PriceBreakdown, PricingError, fixed_costs
 from .providers import get as get_extractor
-from .providers._pdf import is_transient_fetch_error
+from .providers._pdf import is_transient_fetch_error, memoise_text_fetches
 from .providers._rates import EnergyRates
 from .providers._resolve import resolve_for_delivery, tier_for
 from .providers.base import (
@@ -709,20 +709,23 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # Nothing to fetch: the typed card is every month's.
             return
         use_archive = bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
-        for month in months:
-            # The cache answers a held month at once, and asks again for one
-            # it holds as absent once that answer has aged.
-            try:
-                await self._months.card(
-                    self._session,
-                    self.extractor,
-                    self.contract,
-                    self.region,
-                    month,
-                    use_archive=use_archive,
-                )
-            except (ExtractorError, ArchiveUnavailable) as err:
-                _LOGGER.debug("%s card for %s not read: %s", self.extractor.label, month, err)
+        # One fill reads a page or card once for all its months: Bolt's
+        # variable months each walk down the same versions of its card.
+        with memoise_text_fetches({}):
+            for month in months:
+                # The cache answers a held month at once, and asks again for
+                # one it holds as absent once that answer has aged.
+                try:
+                    await self._months.card(
+                        self._session,
+                        self.extractor,
+                        self.contract,
+                        self.region,
+                        month,
+                        use_archive=use_archive,
+                    )
+                except (ExtractorError, ArchiveUnavailable) as err:
+                    _LOGGER.debug("%s card for %s not read: %s", self.extractor.label, month, err)
 
     def _month_card(self, month: str) -> SupplierSnapshot | None:
         if self.extractor.id == SUPPLIER_CUSTOM:

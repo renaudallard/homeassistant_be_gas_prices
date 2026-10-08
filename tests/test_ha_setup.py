@@ -91,7 +91,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
 from custom_components.be_gas_prices.month_cards import MonthCard
-from custom_components.be_gas_prices.providers import engie, octaplus
+from custom_components.be_gas_prices.providers import _pdf, engie, octaplus
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from custom_components.be_gas_prices.running_costs import Household
@@ -2859,6 +2859,24 @@ async def test_the_archive_stands_in_for_a_stale_card_with_no_end_date(
     data = entry.runtime_data.data
     assert data.card_source == "archive"
     assert data.snapshot.publication_label == "2026-10"
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_months_of_one_fill_share_what_they_read(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Bolt's variable months each walk down the same versions of its card:
+    one fill reads what its months share once."""
+    memos: list[dict[str, str] | None] = []
+
+    async def for_month(_session: Any, _contract: str, _region: str, _month: date) -> None:
+        memos.append(_pdf._TEXT_MEMO.get())
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        await _setup(hass)
+    assert len(memos) == 8
+    assert memos[0] is not None and all(memo is memos[0] for memo in memos)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

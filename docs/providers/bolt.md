@@ -191,7 +191,9 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   to 45 s for the layout reader), passes over a number that fails to download, and stops at a title
   it does not read. A transient failure raises. Only the chosen card is read
   with the layout reader; when it does not parse, the month has no card. The
-  month cache keeps a closed month's card, so the walk runs once per month.
+  month cache keeps a closed month's card, so the walk runs once for a month
+  that has one. A month with none is asked again the next day, and one fill
+  of the month cache reads each version once for all its months.
 - The card archive's backfill files such a card under the month its title
   names, so asking July 2026 for Plenty Variable gives a June row. A replay
   walks again on the texts the backfill recorded; a number that answered 404

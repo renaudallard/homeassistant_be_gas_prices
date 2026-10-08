@@ -272,7 +272,8 @@ class MonthCardCache:
 
     def to_json(self) -> dict[str, Any]:
         """The held cards for the entry's store; absent months are not kept
-        across a restart, since asking again costs one request."""
+        across a restart, since asking again costs a request or, for Bolt's
+        variable cards, one walk a fill shares between its months."""
         return {
             key: {
                 "snapshot": snapshot_to_json(row.snapshot),

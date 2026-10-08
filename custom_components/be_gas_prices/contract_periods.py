@@ -62,7 +62,7 @@ from .const import (
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card, fetch_archived_card
 from .pricing import PricingError
-from .providers._pdf import is_transient_fetch_error
+from .providers._pdf import is_transient_fetch_error, memoise_text_fetches
 from .providers._rates import EnergyRates
 from .providers.base import (
     CardNotReadableError,
@@ -265,28 +265,32 @@ class PeriodBilling:
         from .providers import get as get_extractor
 
         current = month_key(today)
-        for period, start, end in periods_this_year(data, today):
-            try:
-                extractor = get_extractor(str(period[CONF_SUPPLIER]))
-            except ExtractorError:
-                continue
-            if extractor.id == SUPPLIER_CUSTOM:
-                # The typed card prices every month the contract supplied.
-                continue
-            contract = str(period[CONF_CONTRACT])
-            region = str(period[CONF_REGION])
-            wanted = _months_between(start, end)
-            signing = signing_month(period)
-            if signing is not None and signing not in wanted:
-                wanted.append(signing)
-            for month in wanted:
-                if month < current:
-                    try:
-                        await self._months.card(
-                            session, extractor, contract, region, month, use_archive=use_archive
-                        )
-                    except (ExtractorError, ArchiveUnavailable) as err:
-                        _LOGGER.debug("%s card for %s not read: %s", extractor.label, month, err)
+        # Read once for all the months, as the coordinator's own fill does.
+        with memoise_text_fetches({}):
+            for period, start, end in periods_this_year(data, today):
+                try:
+                    extractor = get_extractor(str(period[CONF_SUPPLIER]))
+                except ExtractorError:
+                    continue
+                if extractor.id == SUPPLIER_CUSTOM:
+                    # The typed card prices every month the contract supplied.
+                    continue
+                contract = str(period[CONF_CONTRACT])
+                region = str(period[CONF_REGION])
+                wanted = _months_between(start, end)
+                signing = signing_month(period)
+                if signing is not None and signing not in wanted:
+                    wanted.append(signing)
+                for month in wanted:
+                    if month < current:
+                        try:
+                            await self._months.card(
+                                session, extractor, contract, region, month, use_archive=use_archive
+                            )
+                        except (ExtractorError, ArchiveUnavailable) as err:
+                            _LOGGER.debug(
+                                "%s card for %s not read: %s", extractor.label, month, err
+                            )
 
     async def bill(
         self,
