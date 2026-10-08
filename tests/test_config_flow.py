@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from datetime import date
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -79,6 +80,7 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
 )
+from custom_components.be_gas_prices.contract_periods import record_switch
 
 STATIONS = [
     calorific.Station(ean="541460900000000030", name="RESA LIEGE (GOS)"),
@@ -1023,6 +1025,45 @@ async def test_options_switch_keeps_the_earlier_contract(hass: HomeAssistant) ->
     assert entry.data[CONF_CONTRACT] == "engie_easy_fixed"
     assert entry.data[CONF_CONTRACT_START_DATE] == "2026-06-01"
     assert entry.title == "Engie Easy Fixe"
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+async def test_a_switch_recorded_this_year_can_be_removed(hass: HomeAssistant) -> None:
+    entry = _entry(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "remove_switch" not in result["menu_options"]
+    before = dict(entry.data)
+    hass.config_entries.async_update_entry(
+        entry,
+        title="Engie Easy Fixe",
+        data={
+            **record_switch(before, date(2026, 6, 1)),
+            CONF_CONTRACT: "engie_easy_fixed",
+            CONF_CONTRACT_END_DATE: "2027-05-31",
+        },
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "remove_switch" in result["menu_options"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "remove_switch"}
+    )
+    assert result["step_id"] == "remove_switch"
+    assert result["description_placeholders"] == {"date": "2026-06-01", "contract": "Engie Flow"}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert dict(entry.data) == before
+    # The title the wizard gave follows the contract back.
+    assert entry.title == "Engie Flow"
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+async def test_a_switch_of_last_year_is_not_offered_for_removal(hass: HomeAssistant) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(
+        entry, data=record_switch(dict(entry.data), date(2025, 11, 1))
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "remove_switch" not in result["menu_options"]
 
 
 async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None:

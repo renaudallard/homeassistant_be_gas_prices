@@ -86,6 +86,8 @@ from custom_components.be_gas_prices.contract_periods import (
     periods_this_year,
     previous_contracts,
     record_switch,
+    removable_switch,
+    remove_last_switch,
 )
 from custom_components.be_gas_prices.daily_ranking import DailyRanking, ranking_minute
 from custom_components.be_gas_prices.manual_rate import manual_leg
@@ -128,6 +130,51 @@ def test_recording_a_switch_keeps_the_old_contract_until_the_day_before() -> Non
     today = date(2026, 9, 1)
     assert periods_this_year(data, today) == [(period, date(2026, 1, 1), date(2026, 6, 14))]
     assert current_period_start(data, date(2026, 1, 1), today) == date(2026, 6, 15)
+
+
+def test_removing_a_switch_puts_the_contract_left_back() -> None:
+    old = {**ENTRY, CONF_CONTRACT_START_DATE: "2024-03-01", CONF_MANUAL_PRICE: 6.5}
+    earlier = record_switch(old, date(2026, 2, 1))
+    switched = record_switch(
+        {
+            **earlier,
+            CONF_SUPPLIER: "bolt",
+            CONF_CONTRACT: "bolt_fix",
+            CONF_DSO: DSO_ORES,
+            CONF_MANUAL_FEE: 70.0,
+            CONF_CONTRACT_END_DATE: "2027-06-30",
+            "gas_meter": "sensor.new_meter",
+        },
+        date(2026, 6, 15),
+    )
+    switched[CONF_SUPPLIER] = "engie"
+    switched[CONF_CONTRACT] = "engie_easy_fixed"
+    switched[CONF_CONTRACT_END_DATE] = "2028-01-31"
+    assert removable_switch(switched, date(2026, 9, 1)) == previous_contracts(switched)[-1]
+    undone = remove_last_switch(switched)
+    # Bolt is the current contract again, as it stood, the switch before it
+    # kept; its end date was not kept by the switch, and the new one's goes.
+    assert undone[CONF_SUPPLIER] == "bolt" and undone[CONF_CONTRACT] == "bolt_fix"
+    assert undone[CONF_CONTRACT_START_DATE] == "2026-02-01"
+    assert undone[CONF_MANUAL_FEE] == 70.0
+    assert CONF_CONTRACT_END_DATE not in undone
+    assert previous_contracts(undone) == previous_contracts(earlier)
+    # The household's own settings stay as they are now.
+    assert undone["gas_meter"] == "sensor.new_meter"
+    # Back to the first contract, with no switch left to remove.
+    first = remove_last_switch(undone)
+    assert first[CONF_CONTRACT] == "engie_flow" and first[CONF_MANUAL_PRICE] == 6.5
+    assert CONF_MANUAL_FEE not in first
+    assert CONF_PREVIOUS_CONTRACTS not in first
+    assert removable_switch(first, date(2026, 9, 1)) is None
+
+
+def test_a_switch_of_an_earlier_year_is_not_removable() -> None:
+    data = record_switch(dict(ENTRY), date(2026, 1, 1))
+    assert removable_switch(data, date(2026, 9, 1)) is None
+    data = record_switch(dict(ENTRY), date(2026, 1, 2))
+    assert removable_switch(data, date(2026, 9, 1)) is not None
+    assert removable_switch(data, date(2027, 1, 5)) is None
 
 
 def test_an_earlier_contract_billed_from_its_start_keeps_that_start() -> None:

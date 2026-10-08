@@ -249,7 +249,8 @@
           "settings": "Modifier les paramètres",
           "compare": "Comparer un autre contrat (devis ponctuel)",
           "compare_all": "Comparer tous les contrats (classement)",
-          "switch": "Enregistrer un changement de contrat cette année"
+          "switch": "Enregistrer un changement de contrat cette année",
+          "remove_switch": "Supprimer le dernier changement de contrat"
         }
       },
       "compare": {
@@ -280,6 +281,10 @@
         "data": {
           "switch_date": "Premier jour du nouveau contrat"
         }
+      },
+      "remove_switch": {
+        "title": "Supprimer le dernier changement de contrat",
+        "description": "Ceci supprime le changement enregistré le {date}, quand vous avez quitté {contract}. {contract} redevient le contrat actuel, avec les paramètres de contrat qu'il avait alors ; les paramètres du ménage (consommation, compteur, conversion) restent tels qu'ils sont. Un changement ne conserve aucune date de fin pour le contrat qu'il clôt : saisissez-la à nouveau dans les paramètres si {contract} en a une. Pour corriger la date d'un changement, supprimez-le, puis enregistrez-le à nouveau avec la bonne date. Validez pour le supprimer."
       },
       "signed_rate": {
         "title": "Tarif à la signature",
@@ -326,7 +331,8 @@
       "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     },
     "abort": {
-      "compare_done": "Comparaison terminée, rien n'a été modifié."
+      "compare_done": "Comparaison terminée, rien n'a été modifié.",
+      "no_switch_recorded": "Aucun changement de contrat n'est enregistré sur cette entrée pour cette année."
     },
     "progress": {
       "compare_all": "Calcul de tous les contrats vendus dans votre région. Cela prend environ deux minutes, un peu plus tant qu'une carte tarifaire lente est encore en lecture."

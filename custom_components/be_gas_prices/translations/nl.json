@@ -249,7 +249,8 @@
           "settings": "Instellingen wijzigen",
           "compare": "Vergelijk een ander contract (eenmalige offerte)",
           "compare_all": "Vergelijk alle contracten (gerangschikt)",
-          "switch": "Een contractwissel van dit jaar vastleggen"
+          "switch": "Een contractwissel van dit jaar vastleggen",
+          "remove_switch": "De laatste contractwissel verwijderen"
         }
       },
       "compare": {
@@ -280,6 +281,10 @@
         "data": {
           "switch_date": "Eerste dag van het nieuwe contract"
         }
+      },
+      "remove_switch": {
+        "title": "De laatste contractwissel verwijderen",
+        "description": "Dit verwijdert de wissel vastgelegd op {date}, toen u {contract} verliet. {contract} wordt opnieuw het huidige contract, met de contractinstellingen van toen; de instellingen van het huishouden (verbruik, meter, omrekening) blijven zoals ze zijn. Een wissel bewaart geen einddatum voor het contract dat hij afsluit, dus geef die opnieuw in bij de instellingen als {contract} er een heeft. Om een wisseldatum te verbeteren, verwijdert u de wissel en legt u hem opnieuw vast met de juiste datum. Bevestig om hem te verwijderen."
       },
       "signed_rate": {
         "title": "Tarief bij ondertekening",
@@ -326,7 +331,8 @@
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     },
     "abort": {
-      "compare_done": "Vergelijking klaar, er werd niets gewijzigd."
+      "compare_done": "Vergelijking klaar, er werd niets gewijzigd.",
+      "no_switch_recorded": "Er is dit jaar geen contractwissel vastgelegd voor deze invoer."
     },
     "progress": {
       "compare_all": "Alle contracten die in je gewest verkocht worden, worden berekend. Dit duurt ongeveer twee minuten, iets langer zolang een trage tariefkaart nog gelezen wordt."

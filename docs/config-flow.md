@@ -54,3 +54,12 @@ reloads the entry.
   The date must be after 1 January, the current contract's start and the
   last recorded change, so the contract it closes supplied a day of the
   year, and not in the future.
+- **Remove the last change of contract**, offered while the last change
+  recorded falls in this year: it names the change and the contract it
+  closed, and on submit (`contract_periods.remove_last_switch`) that
+  contract is the current one again with what the change kept of it
+  (`PERIOD_KEYS`); the new contract's settings go, its end date too, since
+  a change keeps none for the contract it closes. The household's settings
+  and the earlier changes stay. A change recorded with the wrong date is
+  corrected by removing it and recording it again; a new one cannot be
+  earlier than the last.

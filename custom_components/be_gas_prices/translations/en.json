@@ -249,7 +249,8 @@
           "settings": "Edit settings",
           "compare": "Compare another contract (one-off quote)",
           "compare_all": "Compare every contract (ranked)",
-          "switch": "Record a change of contract this year"
+          "switch": "Record a change of contract this year",
+          "remove_switch": "Remove the last change of contract"
         }
       },
       "compare": {
@@ -280,6 +281,10 @@
         "data": {
           "switch_date": "First day of the new contract"
         }
+      },
+      "remove_switch": {
+        "title": "Remove the last change of contract",
+        "description": "This removes the change recorded on {date}, when you left {contract}. {contract} becomes the current contract again, with the contract settings it had then; the household's settings (consumption, meter, conversion) stay as they are. A change keeps no end date for the contract it closes, so enter it again in the settings if {contract} has one. To correct a change date, remove the change, then record it again with the right date. Submit to remove it."
       },
       "signed_rate": {
         "title": "Signing rate",
@@ -326,7 +331,8 @@
       "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
     },
     "abort": {
-      "compare_done": "Comparison complete, nothing was changed."
+      "compare_done": "Comparison complete, nothing was changed.",
+      "no_switch_recorded": "No change of contract is recorded on this entry for this year."
     },
     "progress": {
       "compare_all": "Quoting every contract sold in your region. This takes about two minutes, a little more while a slow card is still being read."

@@ -149,6 +149,45 @@ def record_switch(data: dict[str, Any], switched: date) -> dict[str, Any]:
     return new
 
 
+def removable_switch(data: Mapping[str, Any], today: date) -> dict[str, Any] | None:
+    """The earlier contract the last recorded switch closed, when that
+    switch falls in ``today``'s year.
+
+    Only such a switch prices anything, so only it can be a mistake worth
+    undoing. One recorded in an earlier year is a change long settled, and
+    removing it would put back a contract left before the year began.
+    """
+    periods = previous_contracts(data)
+    if not periods or date.fromisoformat(str(periods[-1]["until"])) < date(today.year, 1, 1):
+        return None
+    return periods[-1]
+
+
+def remove_last_switch(data: Mapping[str, Any]) -> dict[str, Any]:
+    """The entry's data with its last switch undone.
+
+    A switch recorded on the wrong day has no other way out: a new one must
+    be later than the last. The contract it closed is the current one again,
+    with what :func:`record_switch` kept of it, and the new contract's
+    settings go, its end date included, since a switch keeps none for the
+    contract it closes. The household's own settings and the switches
+    recorded before stay.
+    """
+    periods = previous_contracts(data)
+    if not periods:
+        return dict(data)
+    last = periods[-1]
+    new = {
+        key: value
+        for key, value in data.items()
+        if key not in (*PERIOD_KEYS, CONF_CONTRACT_END_DATE, CONF_PREVIOUS_CONTRACTS)
+    }
+    new.update({key: last[key] for key in PERIOD_KEYS if key in last})
+    if len(periods) > 1:
+        new[CONF_PREVIOUS_CONTRACTS] = periods[:-1]
+    return new
+
+
 def periods_this_year(data: dict[str, Any], today: date) -> list[tuple[dict[str, Any], date, date]]:
     """Each earlier contract that supplied part of this year, with the first
     and last day of it that falls in the year. One the entry billed from its

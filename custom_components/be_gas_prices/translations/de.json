@@ -249,7 +249,8 @@
           "settings": "Einstellungen bearbeiten",
           "compare": "Einen anderen Vertrag vergleichen (einmaliges Angebot)",
           "compare_all": "Alle Verträge vergleichen (Rangliste)",
-          "switch": "Einen Vertragswechsel in diesem Jahr erfassen"
+          "switch": "Einen Vertragswechsel in diesem Jahr erfassen",
+          "remove_switch": "Den letzten Vertragswechsel entfernen"
         }
       },
       "compare": {
@@ -280,6 +281,10 @@
         "data": {
           "switch_date": "Erster Tag des neuen Vertrags"
         }
+      },
+      "remove_switch": {
+        "title": "Den letzten Vertragswechsel entfernen",
+        "description": "Dies entfernt den am {date} erfassten Wechsel, bei dem Sie {contract} verlassen haben. {contract} wird wieder der aktuelle Vertrag, mit den damaligen Vertragseinstellungen; die Einstellungen des Haushalts (Verbrauch, Zähler, Umrechnung) bleiben, wie sie sind. Ein Wechsel bewahrt kein Enddatum für den Vertrag, den er abschließt; geben Sie es in den Einstellungen erneut ein, falls {contract} eines hat. Um ein Wechseldatum zu korrigieren, entfernen Sie den Wechsel und erfassen ihn erneut mit dem richtigen Datum. Bestätigen Sie, um ihn zu entfernen."
       },
       "signed_rate": {
         "title": "Tarif bei Vertragsabschluss",
@@ -326,7 +331,8 @@
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     },
     "abort": {
-      "compare_done": "Vergleich abgeschlossen, nichts wurde geändert."
+      "compare_done": "Vergleich abgeschlossen, nichts wurde geändert.",
+      "no_switch_recorded": "Für diesen Eintrag ist in diesem Jahr kein Vertragswechsel erfasst."
     },
     "progress": {
       "compare_all": "Alle in Ihrer Region verkauften Verträge werden berechnet. Das dauert etwa zwei Minuten, etwas länger, solange eine langsame Tarifkarte noch gelesen wird."

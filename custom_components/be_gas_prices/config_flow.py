@@ -96,7 +96,14 @@ from .const import (
     REGIONS,
     SUPPLIER_CUSTOM,
 )
-from .contract_periods import parse_date, periods_this_year, previous_contracts, record_switch
+from .contract_periods import (
+    parse_date,
+    periods_this_year,
+    previous_contracts,
+    record_switch,
+    removable_switch,
+    remove_last_switch,
+)
 from .providers import all_extractors
 from .providers import get as get_extractor
 from .providers._rates import Contract
@@ -637,9 +644,10 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         self._switch_date: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(
-            step_id="init", menu_options=["settings", "compare", "compare_all", "switch"]
-        )
+        options = ["settings", "compare", "compare_all", "switch"]
+        if removable_switch(self.config_entry.data, dt_util.now().date()) is not None:
+            options.append("remove_switch")
+        return self.async_show_menu(step_id="init", menu_options=options)
 
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
@@ -868,3 +876,27 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                 return await self.async_step_supplier()
         schema = vol.Schema({vol.Required(CONF_SWITCH_DATE): DateSelector()})
         return self.async_show_form(step_id="switch", data_schema=schema, errors=errors)
+
+    async def async_step_remove_switch(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Undo the last change of contract recorded this year, after saying
+        which one it is: the way to correct a mistyped change date, by
+        removing it and recording it again."""
+        data = dict(self.config_entry.data)
+        last = removable_switch(data, dt_util.now().date())
+        if last is None:
+            return self.async_abort(reason="no_switch_recorded")
+        if user_input is not None:
+            self._data = remove_last_switch(data)
+            return await self._async_finish()
+        switched = date.fromisoformat(last["until"]) + timedelta(days=1)
+        try:
+            contract = _title(last)
+        except ExtractorError:
+            # A supplier this release no longer knows.
+            contract = str(last[CONF_CONTRACT])
+        return self.async_show_form(
+            step_id="remove_switch",
+            description_placeholders={"date": switched.isoformat(), "contract": contract},
+        )

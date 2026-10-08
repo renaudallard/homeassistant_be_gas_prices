@@ -85,7 +85,8 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   figures of your contract. A variable price is the supplier's for each
   month.
 - **Changed contract during the year?** Record the switch and each contract is
-  billed on its own supplier's cards for its own days.
+  billed on its own supplier's cards for its own days. A switch recorded on
+  the wrong day can be removed and recorded again.
 - **Price history backfill**: the price sensors' statistics are filled back to
   1 January the first time an entry runs in a year, or to the contract start
   when the year counts from it, or to a change of contract recorded this
@@ -264,8 +265,10 @@ Home Assistant installs them from the manifest.
    calorific value from Atrias converts cubic metres to kWh instead.
 
 **Settings, Devices & services, Belgian Gas Prices, Configure** opens a menu:
-edit the settings, quote another contract, rank every contract, or record a
-change of contract this year.
+edit the settings, quote another contract, rank every contract, record a
+change of contract this year, or remove the last one recorded this year,
+which makes the contract left the current one again (the household's
+settings stay; an end date it had is entered again in the settings).
 
 ## Failure mode
 
