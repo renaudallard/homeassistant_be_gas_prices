@@ -2841,6 +2841,27 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_archive_stands_in_for_a_stale_card_with_no_end_date(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A card in force until the next one (Bolt's variable cards) has no end
+    date, so the archive's row is taken by the month it names."""
+    september = replace(fetch.return_value, valid_until=None)
+    october = replace(september, publication_label="2026-10")
+    fetch.return_value = september
+    row = AsyncMock(return_value=(october, False))
+    with patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", row):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+        fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+        freezer.tick(timedelta(days=18))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+    data = entry.runtime_data.data
+    assert data.card_source == "archive"
+    assert data.snapshot.publication_label == "2026-10"
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_own_contract_read_off_an_image_is_quoted_so(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

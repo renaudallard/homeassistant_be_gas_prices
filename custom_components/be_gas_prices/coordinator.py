@@ -160,6 +160,15 @@ def _card_digest(card: SupplierSnapshot) -> str:
     return _digest(snapshot_to_json(card))
 
 
+def _newer(card: SupplierSnapshot, held: SupplierSnapshot) -> bool:
+    """Whether ``card`` is a later card than ``held``: by its end date, or by
+    the month it names where a card has none, being in force until the next
+    one (Bolt's variable cards)."""
+    if card.valid_until is None or held.valid_until is None:
+        return card.publication_label > held.publication_label
+    return card.valid_until > held.valid_until
+
+
 class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     """Fetches the card, reads the meter and prices one household."""
 
@@ -556,7 +565,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             if row is not None:
                 card, read_by_ocr = row
                 held = self._snapshot
-                if held is None or (card.valid_until or date.min) > (held.valid_until or date.min):
+                if held is None or _newer(card, held):
                     self._snapshot = card
                     self._card_source = "archive"
                     self._stand_in = True
