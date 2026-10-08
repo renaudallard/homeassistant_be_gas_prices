@@ -201,14 +201,23 @@ def guard_redirect(url: str, resp: aiohttp.ClientResponse) -> None:
         raise ExtractorError(f"{url} redirected off https; refusing to read the answer")
 
 
-def is_pdf_payload(payload: bytes) -> bool:
-    """Return True if the bytes look like a PDF.
+def strip_pdf_prefix(payload: bytes) -> bytes:
+    """The bytes without a UTF-8 BOM, then blank space, ahead of ``%PDF``.
 
-    PDFs start with the magic bytes ``%PDF``. Some publishers prepend a
-    UTF-8 BOM (3 bytes EF BB BF), as Luminus's pricelist API does, so the
-    BOM is allowed as a one-time prefix.
+    Luminus's pricelist API prepends the BOM, and some servers a newline.
+    Either has to come off rather than merely be tolerated: pdfplumber
+    fails such a file with "No /Root object! - Is this really a PDF?",
+    which reads like a corrupt card rather than a few stray bytes. pypdf
+    recovers on its own, so the pdfplumber readers are the ones this
+    protects.
     """
-    return payload.startswith((b"%PDF", b"\xef\xbb\xbf%PDF"))
+    return payload.removeprefix(b"\xef\xbb\xbf").lstrip(b"\r\n\t ")
+
+
+def is_pdf_payload(payload: bytes) -> bool:
+    """Return True if the bytes look like a PDF: ``%PDF`` once
+    :func:`strip_pdf_prefix` has taken off what may precede it."""
+    return strip_pdf_prefix(payload).startswith(b"%PDF")
 
 
 # An object store that refuses the read answers the proxy in front of it
@@ -275,15 +284,7 @@ async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: 
         # publish), and Engie's API serves valid ones as octet-stream, so
         # the magic bytes are more reliable than the Content-Type header.
         raise ExtractorError(f"expected a PDF at {url}, payload starts with {payload[:80]!r}")
-    # Strip the BOM the validator above deliberately tolerates. Accepting it
-    # there only keeps the download from being rejected; the bytes still have
-    # to parse, and pdfplumber cannot read them: it fails a BOM-prefixed
-    # file with "No /Root object! - Is this really a PDF?", which reads like a
-    # corrupt card rather than three stray bytes. pypdf recovers on its own,
-    # so the pdfplumber readers are the ones this protects.
-    if payload.startswith(b"\xef\xbb\xbf"):
-        payload = payload[3:]
-    return payload
+    return strip_pdf_prefix(payload)
 
 
 async def fetch_pdf_rendered(

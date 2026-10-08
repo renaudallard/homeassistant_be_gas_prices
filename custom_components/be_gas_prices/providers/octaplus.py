@@ -92,6 +92,7 @@ from ._pdf import (
     is_pdf_payload,
     parse_json,
     render_pdf,
+    strip_pdf_prefix,
 )
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, month_card
@@ -260,7 +261,7 @@ def _archive_pdf(body: str, name: str) -> bytes:
         raise ExtractorError(f"OCTA+ archive sheet: bad base64 for {name!r}") from err
     if not is_pdf_payload(payload):
         raise ExtractorError(f"OCTA+ archive sheet: {name!r} is not a PDF")
-    return payload
+    return strip_pdf_prefix(payload)
 
 
 async def fetch_for_month(

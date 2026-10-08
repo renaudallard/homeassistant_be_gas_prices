@@ -171,3 +171,27 @@ def test_a_redirect_to_another_site_over_https_is_followed() -> None:
         "https://cf.bewebsiteprod.alzp.tgscloud.net/s3fs-public/x.pdf",
     )
     _pdf.guard_redirect("https://totalenergies.be/fr/files/x.pdf", resp)
+
+
+async def _card_behind(prefix: bytes) -> bytes:
+    async def card(request: web.Request) -> web.Response:
+        return web.Response(body=prefix + b"%PDF-1.7\n", content_type="application/pdf")
+
+    server, url = await _serve(card)
+    try:
+        async with aiohttp.ClientSession() as session:
+            return await fetch_pdf_bytes(session, url)
+    finally:
+        await server.close()
+
+
+@pytest.mark.parametrize("prefix", [b"", b"\xef\xbb\xbf", b"\r\n", b"\xef\xbb\xbf\n \t"])
+async def test_a_pdf_behind_a_bom_or_blank_lines_is_read_from_its_signature(
+    socket_enabled: None, prefix: bytes
+) -> None:
+    assert await _card_behind(prefix) == b"%PDF-1.7\n"
+
+
+async def test_a_bom_after_a_blank_line_is_no_bom(socket_enabled: None) -> None:
+    with pytest.raises(ExtractorError, match="expected a PDF"):
+        await _card_behind(b"\n\xef\xbb\xbf")
