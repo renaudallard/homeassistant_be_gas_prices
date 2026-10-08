@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date, timedelta
@@ -48,7 +49,7 @@ from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.be_gas_prices import calorific, providers
+from custom_components.be_gas_prices import calorific, diagnostics, providers
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -70,6 +71,7 @@ from custom_components.be_gas_prices.const import (
     CONF_GAS_METER,
     CONF_MANUAL_FACTOR,
     CONF_MANUAL_PRICE,
+    CONF_POSTCODE,
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_STATION,
@@ -3290,3 +3292,44 @@ async def test_a_card_published_as_images_without_a_reading_is_unreadable(
     # Removed while retrying, it is never unloaded: its cards go with it.
     await hass.config_entries.async_remove(entry.entry_id)
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is None
+
+
+_PRIVATE = {
+    CONF_POSTCODE: "4000",
+    CONF_GAS_METER: "sensor.kitchen_gas_meter",
+    CONF_STATION: "541448860003489706",
+}
+
+
+def _assert_private_redacted(payload: dict[str, Any]) -> None:
+    for key in _PRIVATE:
+        assert payload["entry"][key] == "**REDACTED**"
+    dumped = json.dumps(payload, default=str)
+    for value in _PRIVATE.values():
+        assert value not in dumped
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_diagnostics_leave_out_where_the_household_lives_and_its_meter(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    with patch(_READ_METER, AsyncMock(return_value=("energy", _a_year_of_gas()))):
+        entry = await _setup(hass, {**DATA, **_PRIVATE})
+    assert entry.runtime_data.data.meter == "sensor.kitchen_gas_meter"
+    payload = await diagnostics.async_get_config_entry_diagnostics(hass, entry)
+    _assert_private_redacted(payload)
+    assert payload["state"]["meter"] == "**REDACTED**"
+    # What a price is debugged with stays.
+    assert payload["entry"][CONF_SUPPLIER] == "engie"
+    assert payload["snapshot"]["contract"] == "engie_flow"
+    assert payload["state"]["tier"] == entry.runtime_data.data.tier
+
+
+async def test_diagnostics_of_an_entry_not_set_up_redact_its_settings(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data={**DATA, **_PRIVATE})
+    entry.add_to_hass(hass)
+    payload = await diagnostics.async_get_config_entry_diagnostics(hass, entry)
+    assert set(payload) == {"entry"}
+    _assert_private_redacted(payload)
