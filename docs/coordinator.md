@@ -118,12 +118,15 @@ and the unreadable and missing marks, kept for the supplier, contract and
 region the card is fetched for, carry the `extractor_failed`,
 `card_missing` and `card_unreadable` Repairs cards across a restart, so one the user ignored stays ignored, and
 across setup retries with no card, so `extractor_failed` is raised there
-too. A blob written under another snapshot schema is dropped, not migrated:
-everything in it is re-derivable. The past months' cards another release
-of the integration stored are read again, even across a restart, so a
-release that reads a card better reaches them, and kept when no card of the
-month can be found any more. A release that refuses a card an older one
-misread bumps the snapshot schema, which drops them all.
+too. A blob of an older snapshot schema, down to `SNAPSHOT_SCHEMA_FLOOR`,
+is read as it is, so a bump that adds a field keeps the stored cards and the
+archive's rows not yet rewritten: the card is asked for again at once and
+kept only while no fetch succeeds. A blob of a newer schema or below the
+floor is dropped. The past months' cards another release of the integration
+stored are read again, even across a restart, so a release that reads a card
+better reaches them, and kept when no card of the month can be found any
+more. A release that refuses a card an older one misread raises the floor to
+its schema, which drops them all.
 
 ## Staleness
 

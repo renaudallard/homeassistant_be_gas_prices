@@ -27,10 +27,11 @@
 
 One format serves three stores: the entry's own ``.storage`` blob, the
 per-month card cache, and the card archive the ``archive_cards`` workflow
-writes to be_price_cards. A blob written under another schema version is
-refused rather than migrated: everything in it is re-derivable from a card,
-except the archive's rows of contracts the supplier withdrew, which its
-replay keeps as they are. A schema bump must rewrite those by hand.
+writes to be_price_cards. A blob of an older schema down to
+``SNAPSHOT_SCHEMA_FLOOR`` is read as it is, so a bump keeps the cards an
+installation stored and the archive's rows it has not rewritten yet, the
+rows of contracts the supplier withdrew included, which its replay keeps as
+they are. A blob of a newer schema, or one below the floor, is refused.
 """
 
 from __future__ import annotations
@@ -41,11 +42,14 @@ from typing import Any
 from .providers._rates import EnergyRates, FixedRates, IndexedRates, VariableRates
 from .providers.base import DsoOverlay, DsoTier, SupplierSnapshot, TaxOverlay
 
-# Bumped whenever a field is added, removed or changes meaning, so a blob an
-# older release wrote is dropped instead of being read with a wrong shape;
-# and by a release that refuses a card an older one misread, since a stored
-# card no one serves any more is otherwise kept.
+# Bumped whenever a field is added, removed or changes meaning. A field added
+# is read with a default from an older blob, which still prices: the card it
+# holds is fetched again at once and kept only while no fetch succeeds.
 SNAPSHOT_SCHEMA_VERSION = 1
+# The oldest schema still read. Raised to the version only by a bump that
+# changes what a stored field means, or that refuses a card an older release
+# misread: those blobs are then dropped, as every other one was before.
+SNAPSHOT_SCHEMA_FLOOR = 1
 
 
 class SnapshotDecodeError(ValueError):
@@ -167,8 +171,12 @@ def snapshot_to_json(snapshot: SupplierSnapshot) -> dict[str, Any]:
 
 def snapshot_from_json(blob: Any) -> SupplierSnapshot:
     """The snapshot ``blob`` holds, or :class:`SnapshotDecodeError`."""
-    if not isinstance(blob, dict) or blob.get("schema") != SNAPSHOT_SCHEMA_VERSION:
-        raise SnapshotDecodeError("not a snapshot of this schema version")
+    schema = blob.get("schema") if isinstance(blob, dict) else None
+    if (
+        not isinstance(schema, int)
+        or not SNAPSHOT_SCHEMA_FLOOR <= schema <= SNAPSHOT_SCHEMA_VERSION
+    ):
+        raise SnapshotDecodeError(f"not a snapshot of a schema this release reads: {schema!r}")
     try:
         valid_until = blob.get("valid_until")
         return SupplierSnapshot(

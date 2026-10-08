@@ -49,7 +49,7 @@ from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.be_gas_prices import calorific, diagnostics, providers
+from custom_components.be_gas_prices import calorific, diagnostics, providers, snapshot_codec
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -315,6 +315,35 @@ async def test_an_unexpected_error_keeps_the_last_card(
     issue = ir.async_get(hass).async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}")
     assert issue is not None
     assert "Traceback" in caplog.text
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_card_stored_before_a_schema_bump_still_prices(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    hass_storage: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The release after a bump that adds a field: the supplier down at the
+    restart, the card the older release stored keeps pricing."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "snapshot": snapshot_to_json(fetch.return_value),
+            "fetched_at": "2026-09-14T08:00:00+00:00",
+        },
+    }
+    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", 2)
+    fetch.side_effect = ExtractorError("network error fetching https://x: timeout")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.data.card_source == "cache"
+    # Asked for at once all the same, so a newer reading replaces it.
+    assert fetch.await_count >= 1
 
 
 async def test_a_card_fetch_past_its_budget_keeps_the_last_card(

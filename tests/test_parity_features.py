@@ -35,7 +35,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.be_gas_prices import providers
+from custom_components.be_gas_prices import providers, snapshot_codec
 from custom_components.be_gas_prices.compare import (
     IndexCache,
     OwnContract,
@@ -104,7 +104,11 @@ from custom_components.be_gas_prices.providers.base import (
 )
 from custom_components.be_gas_prices.providers.custom import build_snapshot
 from custom_components.be_gas_prices.running_costs import Household, RunningCosts
-from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
+from custom_components.be_gas_prices.snapshot_codec import (
+    SnapshotDecodeError,
+    snapshot_from_json,
+    snapshot_to_json,
+)
 from tests import approx, fixture_text
 
 ENTRY = {
@@ -915,3 +919,35 @@ def test_the_custom_card_follows_the_entry_dso_and_caliber() -> None:
     data = _custom_data()
     data[CONF_CALIBER] = "q16"
     assert build_snapshot(data).taxes.osp_by_caliber == {"q16": 12.59}
+
+
+def test_a_schema_bump_still_reads_older_cards(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A bump that only adds a field keeps what an older release stored and
+    the archive rows it wrote; one that raises the floor drops them, and a
+    newer schema than this release knows is never read."""
+    card = _flow_card()
+    blob = snapshot_to_json(card)
+    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", 2)
+    assert snapshot_from_json(blob) == card
+    assert snapshot_to_json(card)["schema"] == 2
+    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_FLOOR", 2)
+    with pytest.raises(SnapshotDecodeError):
+        snapshot_from_json(blob)
+    with pytest.raises(SnapshotDecodeError):
+        snapshot_from_json({**blob, "schema": 3})
+
+
+def test_month_cards_of_an_older_schema_are_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    card = replace(_flow_card(), publication_label="2026-07", valid_until=date(2026, 7, 31))
+    stored = {
+        "engie/engie_flow/wallonia/2026-07": {
+            "snapshot": snapshot_to_json(card),
+            "source": "archive",
+            "fetched_at": "2026-08-01T00:00:00+00:00",
+        }
+    }
+    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", 2)
+    cache = MonthCardCache()
+    cache.load_json(stored, reread=True)
+    held = cache.get("engie", "engie_flow", "wallonia", "2026-07")
+    assert held is not None and held.snapshot == card and held.reread
