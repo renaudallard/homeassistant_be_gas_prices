@@ -460,6 +460,10 @@
     "several_meters": {
       "title": "Several gas meters in the Energy dashboard",
       "description": "The Energy dashboard lists {count} gas meters and {entry} bills the first one. Set the gas meter in the integration's options to choose."
+    },
+    "contract_withdrawn": {
+      "title": "{supplier} no longer sells {contract}",
+      "description": "{supplier} withdrew {contract}, so its tariff card is no longer published. {entry} keeps pricing on the last card held for it, which stays right while your contract runs on those terms, but it will not change again. If {supplier} moves you to another product, choose \"Record a change of contract this year\" in the entry's options, enter the first day of the new product and pick it. \"Edit settings\" would price the whole year on the new product's cards."
     }
   },
   "services": {
@@ -504,9 +508,6 @@
     },
     "start_date_in_future": {
       "message": "The start date cannot be in the future."
-    },
-    "contract_withdrawn": {
-      "message": "Its supplier withdrew the contract {contract}, whose card is no longer published. Pick another contract in the entry's settings, or type your contract's figures under \"Expert: custom figures\"."
     },
     "card_archive_needed": {
       "message": "{supplier} publishes its cards as images, which only the project's card archive reads, and this entry keeps the archive out. Turn the card archive option on in the entry's settings."

@@ -460,6 +460,10 @@
     "several_meters": {
       "title": "Mehrere Gaszähler im Energie-Dashboard",
       "description": "Das Energie-Dashboard listet {count} Gaszähler und {entry} rechnet mit dem ersten. Wählen Sie den Gaszähler in den Optionen der Integration."
+    },
+    "contract_withdrawn": {
+      "title": "{supplier} verkauft {contract} nicht mehr",
+      "description": "{supplier} hat {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. {entry} rechnet weiter mit der letzten dafür gespeicherten Karte. Sie bleibt richtig, solange Ihr Vertrag zu diesen Bedingungen läuft, ändert sich aber nicht mehr. Stellt {supplier} Sie auf ein anderes Produkt um, wählen Sie in den Optionen des Eintrags „Einen Vertragswechsel in diesem Jahr erfassen“, geben den ersten Tag des neuen Produkts ein und wählen es aus. „Einstellungen bearbeiten“ würde das ganze Jahr auf den Karten des neuen Produkts berechnen."
     }
   },
   "services": {
@@ -504,9 +508,6 @@
     },
     "start_date_in_future": {
       "message": "Das Startdatum darf nicht in der Zukunft liegen."
-    },
-    "contract_withdrawn": {
-      "message": "Der Lieferant hat den Vertrag {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. Wählen Sie in den Einstellungen des Eintrags einen anderen Vertrag, oder geben Sie die Zahlen Ihres Vertrags unter „Expert: custom figures“ ein."
     },
     "card_archive_needed": {
       "message": "{supplier} veröffentlicht seine Karten als Bilder, die nur das Kartenarchiv des Projekts liest, und dieser Eintrag schließt das Archiv aus. Schalten Sie die Option für das Kartenarchiv in den Einstellungen des Eintrags ein."

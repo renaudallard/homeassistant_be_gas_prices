@@ -281,7 +281,10 @@ Repairs card fetches the card again; `extractor_failed` appears after two
 failures in a row that a retry will not fix, and `card_missing` in its place
 when the last of them found no card at the address (a 404 or 410, or a web
 page served instead), which is a card not published yet or moved rather than
-a layout change.
+a layout change. A contract its supplier withdrew keeps pricing on the last
+card held for it, from storage or the card archive, and the
+`contract_withdrawn` Repairs card suggests recording the change of contract
+once the supplier moves you.
 
 ## How often the integration polls
 

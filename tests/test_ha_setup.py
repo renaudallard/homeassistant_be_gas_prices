@@ -837,64 +837,96 @@ async def test_an_images_only_supplier_without_the_archive_stops_the_entry(
     fetch.assert_not_called()
 
 
-async def test_a_withdrawn_contract_stops_the_entry_with_its_reason(
-    hass: HomeAssistant,
-) -> None:
-    """OCTA+ Flux was withdrawn in October 2026: no card of it is read, and
-    the entry says so rather than retrying or blaming a layout change."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="OCTA+ Flux",
-        data={**DATA, CONF_SUPPLIER: "octaplus", CONF_CONTRACT: "octaplus_flux"},
-    )
-    entry.add_to_hass(hass)
-    assert not await hass.config_entries.async_setup(entry.entry_id)
-    assert entry.state is ConfigEntryState.SETUP_ERROR
-    assert entry.reason is not None and "OCTA+ Flux" in entry.reason
-
-
-@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
-async def test_a_withdrawn_contract_s_entry_is_set_up_once_another_is_picked(
-    hass: HomeAssistant,
-) -> None:
+def _flux_card() -> Any:
+    """A card of OCTA+ Flux, withdrawn in October 2026, as the store or the
+    card archive would hold it."""
     card = octaplus.parse_snapshot(
         "octaplus_boostflex",
         REGION_WALLONIA,
         fixture_text("octaplus", "G_OCTA_BOOSTFLEX_RE_WL_FR.pdf", "layout"),
     )
-    stub = replace(
+    return replace(card, contract="octaplus_flux")
+
+
+def _octaplus_stub() -> Any:
+    return replace(
         octaplus.EXTRACTOR,
-        fetch=AsyncMock(return_value=card),
+        fetch=AsyncMock(side_effect=ExtractorError("OCTA+: unknown contract")),
         fetch_index=AsyncMock(return_value={}),
         fetch_for_month=None,
         probe=None,
     )
-    data = {**DATA, CONF_SUPPLIER: "octaplus", CONF_CONTRACT: "octaplus_flux"}
-    entry = MockConfigEntry(domain=DOMAIN, title="OCTA+ Flux", data=data)
-    entry.add_to_hass(hass)
+
+
+_FLUX = {**DATA, CONF_SUPPLIER: "octaplus", CONF_CONTRACT: "octaplus_flux"}
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_keeps_pricing_on_its_last_card(
+    hass: HomeAssistant, hass_storage: dict[str, Any], freezer: FrozenDateTimeFactory
+) -> None:
+    """OCTA+ Flux was withdrawn in October 2026: no card of it is fetched,
+    the card held keeps pricing and never goes stale, and the Repairs card
+    says why and what to do."""
+    entry = MockConfigEntry(domain=DOMAIN, title="OCTA+ Flux", data=_FLUX)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {
+            "snapshot": snapshot_to_json(_flux_card()),
+            "fetched_at": "2026-09-30T08:00:00+00:00",
+        },
+    }
+    stub = _octaplus_stub()
     with patch.dict(providers.EXTRACTORS, {"octaplus": stub}):
-        assert not await hass.config_entries.async_setup(entry.entry_id)
-        assert entry.state is ConfigEntryState.SETUP_ERROR
-        flows = hass.config_entries.options
-        result = await flows.async_init(entry.entry_id)
-        for user_input in (
-            {"next_step_id": "settings"},
-            {},
-            {CONF_REGION: REGION_WALLONIA},
-            {CONF_SUPPLIER: "octaplus"},
-            {CONF_CONTRACT: "octaplus_boostflex"},
-            {CONF_DSO: DSO_ORES},
-            {
-                CONF_ANNUAL_CONSUMPTION_KWH: 17000.0,
-                CONF_CONVERSION_FACTOR: 11.5,
-                CONF_CARD_ARCHIVE: False,
-                CONF_DAILY_COMPARE: False,
-            },
-        ):
-            result = await flows.async_configure(result["flow_id"], user_input)
-        assert result["type"] is FlowResultType.CREATE_ENTRY
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert entry.state is ConfigEntryState.LOADED
+        freezer.tick(timedelta(days=10))
+        await entry.runtime_data.async_refresh()
+    assert stub.fetch.await_count == 0
+    price = hass.states.get("sensor.octa_flux_current_price")
+    assert price is not None and price.state != "unavailable"
+    issues = ir.async_get(hass)
+    issue = issues.async_get_issue(DOMAIN, f"contract_withdrawn_{entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders is not None
+    assert issue.translation_placeholders["contract"] == "OCTA+ Flux"
+    for name in ("snapshot_stale", "extractor_failed", "card_missing"):
+        assert issues.async_get_issue(DOMAIN, f"{name}_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_with_no_card_held_takes_the_archive_s_last(
+    hass: HomeAssistant,
+) -> None:
+    row = AsyncMock(side_effect=[None, (_flux_card(), False)])
+    with (
+        patch.dict(providers.EXTRACTORS, {"octaplus": _octaplus_stub()}),
+        patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", row),
+    ):
+        entry = MockConfigEntry(
+            domain=DOMAIN, title="OCTA+ Flux", data={**_FLUX, CONF_CARD_ARCHIVE: True}
+        )
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.runtime_data.data.card_source == "archive"
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_with_no_card_at_all_retries_and_says_why(
+    hass: HomeAssistant,
+) -> None:
+    with patch.dict(providers.EXTRACTORS, {"octaplus": _octaplus_stub()}):
+        entry = MockConfigEntry(domain=DOMAIN, title="OCTA+ Flux", data=_FLUX)
+        entry.add_to_hass(hass)
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert entry.state is ConfigEntryState.SETUP_RETRY
+    assert entry.reason is not None and "withdrew this contract" in entry.reason
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"contract_withdrawn_{entry.entry_id}")
+    assert issue is not None
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

@@ -287,6 +287,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def region(self) -> str:
         return str(self._data[CONF_REGION])
 
+    @property
+    def withdrawn(self) -> bool:
+        """Whether the supplier withdrew the contract: no card of it is
+        published any more, so the last one held prices it."""
+        return self.contract in self.extractor.withdrawn
+
     def window_start(self, today: date) -> date:
         """The first day the running costs cover: 1 January, or the contract
         start when the entry bills from it and records no earlier contract
@@ -447,7 +453,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     def snapshot_stale(self) -> bool:
         age = self.snapshot_age()
-        if self._snapshot is None or age is None:
+        if self._snapshot is None or age is None or self.withdrawn:
+            # A withdrawn contract's last card will not change again.
             return False
         if age > SNAPSHOT_STALE_AGE:
             return True
@@ -503,6 +510,20 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._stand_in = False
             self.last_error = ""
             self._force_made = self._force_asked
+            return
+        if self.withdrawn:
+            # Nothing to fetch: the last card held, from the store or the
+            # card archive, keeps pricing the contract.
+            self._force_made = self._force_asked
+            self._failures = 0
+            self.card_unreadable = self.card_missing = False
+            if self._snapshot is None:
+                await self._adopt_archived_card()
+            self.last_error = (
+                ""
+                if self._snapshot is not None
+                else f"{self.extractor.label} withdrew this contract and no card of it is held"
+            )
             return
         due, key = await self._card_is_due()
         if not due:

@@ -460,6 +460,10 @@
     "several_meters": {
       "title": "Plusieurs compteurs de gaz dans le tableau de bord Énergie",
       "description": "Le tableau de bord Énergie liste {count} compteurs de gaz et {entry} facture le premier. Choisissez le compteur dans les options de l'intégration."
+    },
+    "contract_withdrawn": {
+      "title": "{supplier} ne vend plus {contract}",
+      "description": "{supplier} a retiré {contract}, dont la carte tarifaire n'est plus publiée. {entry} continue de calculer sur la dernière carte conservée pour ce contrat, qui reste juste tant que votre contrat court à ces conditions, mais qui ne changera plus. Si {supplier} vous fait passer à un autre produit, choisissez « Enregistrer un changement de contrat cette année » dans les options de l'entrée, saisissez le premier jour du nouveau produit et choisissez-le. « Modifier les paramètres » calculerait toute l'année sur les cartes du nouveau produit."
     }
   },
   "services": {
@@ -504,9 +508,6 @@
     },
     "start_date_in_future": {
       "message": "La date de début ne peut pas être dans le futur."
-    },
-    "contract_withdrawn": {
-      "message": "Le fournisseur a retiré le contrat {contract}, dont la carte tarifaire n'est plus publiée. Choisissez un autre contrat dans les paramètres de l'entrée, ou saisissez les chiffres de votre contrat sous « Expert: custom figures »."
     },
     "card_archive_needed": {
       "message": "{supplier} publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit, et cette entrée exclut l'archive. Activez l'option de l'archive des cartes dans les paramètres de l'entrée."

@@ -53,6 +53,7 @@ ISSUES = (
     "card_read_by_ocr",
     "meter_unit",
     "several_meters",
+    "contract_withdrawn",
 )
 
 
@@ -116,6 +117,17 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
         {**base, "error": coordinator.last_error or "-"},
     )
     _sync(hass, entry.entry_id, "card_unreadable", coordinator.card_unreadable, base)
+    _sync(
+        hass,
+        entry.entry_id,
+        "contract_withdrawn",
+        coordinator.withdrawn,
+        {
+            **base,
+            "contract": coordinator.extractor.contract_label(coordinator.contract)
+            or coordinator.contract,
+        },
+    )
     # The card cannot be read here either way, but while the archive's OCR
     # reading prices the entry, that is what the user needs to know.
     _sync(hass, entry.entry_id, "card_read_by_ocr", coordinator.card_read_by_ocr, base)

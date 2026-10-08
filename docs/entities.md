@@ -52,6 +52,7 @@ checks none, so the next one does.
 | `card_read_by_ocr` | The entry prices on the card archive's OCR reading of a card published as images (Ecofix). Informational; clears by itself when the supplier publishes a readable card again. |
 | `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. |
 | `several_meters` | The Energy dashboard lists several gas meters and none is set in the options. |
+| `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card archive's latest row) keeps pricing and never goes stale, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
 
 ## Diagnostics
 

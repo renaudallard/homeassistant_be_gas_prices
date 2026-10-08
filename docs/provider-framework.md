@@ -18,7 +18,7 @@ A supplier module exposes `EXTRACTOR: SupplierExtractor` (`providers/base.py`):
 | `fetch_index(session)` | Optional. The supplier's own index publication as `{index name: {"YYYY-MM": EUR/MWh}}`. |
 | `deprecated_until`, `deprecated_successor` | A supplier leaving the market. |
 | `sweep_cost_s` | Roughly what one card costs to fetch and parse, for the comparison's scheduling. |
-| `withdrawn` | The labels of the contracts the supplier withdrew, by id: an entry naming one stops at setup with that reason, and its wizard title and its row in a comparison keep the label (`contract_label`). |
+| `withdrawn` | The labels of the contracts the supplier withdrew, by id: an entry naming one fetches nothing and keeps pricing on the last card it holds, from its store or the card archive, under a `contract_withdrawn` Repairs card, and its wizard title and its row in a comparison keep the label (`contract_label`). |
 | `images_only` | The supplier publishes its cards as page images, which only the card archive's reading prices: the flow requires the archive, and an entry without it stops at setup. |
 
 Each module also has a pure `parse_snapshot(contract, region, text, ...)`

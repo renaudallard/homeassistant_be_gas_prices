@@ -173,18 +173,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
             translation_key="card_archive_needed",
             translation_placeholders={"supplier": coordinator.extractor.label},
         )
-    if coordinator.contract not in {c.id for c in coordinator.extractor.contracts}:
-        # A contract its supplier withdrew: no card of it is read any more,
-        # and the entry is set up again once its settings name another.
-        raise ConfigEntryError(
-            translation_domain=DOMAIN,
-            translation_key="contract_withdrawn",
-            translation_placeholders={
-                "contract": coordinator.extractor.withdrawn.get(
-                    coordinator.contract, coordinator.contract
-                )
-            },
-        )
     await coordinator.async_load_persistent()
     entry.runtime_data = coordinator
     await coordinator.async_config_entry_first_refresh()
