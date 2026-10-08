@@ -246,7 +246,8 @@ Home Assistant installs them from the manifest.
    blank to pick both yourself. A postcode with no gas network is refused.
 2. **Supplier** and **contract**, with an optional **contract start date**:
    it prices a fixed or indexed contract on the card of the month supply
-   started. The folded **Advanced** section holds what most households leave
+   started, and can be neither in the future nor before a change of
+   contract recorded on the entry. The folded **Advanced** section holds what most households leave
    alone: a **tariff card month** when you signed on another month's card,
    the **end date** for a renewal reminder, counting this year's cost from
    the contract start, and a switch to type the figures of your contract

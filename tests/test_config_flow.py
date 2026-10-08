@@ -1066,6 +1066,48 @@ async def test_a_switch_of_last_year_is_not_offered_for_removal(hass: HomeAssist
     assert "remove_switch" not in result["menu_options"]
 
 
+async def _contract_step(hass: HomeAssistant, entry: MockConfigEntry) -> ConfigFlowResult:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "contract"
+    return result
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(
+    ("start", "error"),
+    [
+        ("2026-09-16", "start_date_in_future"),
+        ("2026-05-31", "start_date_before_switch"),
+        ("2026-03-01", "start_date_before_switch"),
+        ("2026-06-01", None),
+        ("2026-09-15", None),
+    ],
+)
+async def test_a_contract_start_is_checked_against_today_and_the_last_switch(
+    hass: HomeAssistant, start: str, error: str | None
+) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(
+        entry, data=record_switch(dict(entry.data), date(2026, 6, 1))
+    )
+    result = await _contract_step(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONTRACT: "engie_flow", CONF_CONTRACT_START_DATE: start}
+    )
+    if error is None:
+        assert result["step_id"] == "dso"
+    else:
+        assert result["step_id"] == "contract"
+        assert result["errors"] == {CONF_CONTRACT_START_DATE: error}
+
+
 async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None:
     entry = _entry(hass)
     hass.config_entries.async_update_entry(entry, title="My house")

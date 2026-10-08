@@ -140,6 +140,7 @@
       "unknown_postcode": "Dies ist keine belgische Postleitzahl, die die Integration kennt.",
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
+      "start_date_in_future": "Der Vertragsbeginn darf nicht in der Zukunft liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     }
@@ -326,6 +327,8 @@
       "unknown_postcode": "Dies ist keine belgische Postleitzahl, die die Integration kennt.",
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
+      "start_date_in_future": "Der Vertragsbeginn darf nicht in der Zukunft liegen.",
+      "start_date_before_switch": "Der Vertragsbeginn darf nicht vor dem zuletzt für diesen Eintrag erfassten Vertragswechsel liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
       "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute.",
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."

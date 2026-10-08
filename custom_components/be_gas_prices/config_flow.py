@@ -317,9 +317,18 @@ class _FlowSteps:
             given = {k: v for k, v in user_input.items() if k != _ADVANCED}
             given.update(user_input.get(_ADVANCED, {}))
             signed = bool(given.pop(_SIGNED_RATE, False))
-            start = given.get(CONF_CONTRACT_START_DATE)
+            start = parse_date(given.get(CONF_CONTRACT_START_DATE))
             end = given.get(CONF_CONTRACT_END_DATE)
-            if start and end and str(end) <= str(start):
+            earlier = previous_contracts(self._data)
+            # The last day the contract left by the last switch supplied.
+            left = date.fromisoformat(earlier[-1]["until"]) if earlier else date.min
+            if start is not None and start > dt_util.now().date():
+                errors[CONF_CONTRACT_START_DATE] = "start_date_in_future"
+            elif start is not None and start <= left:
+                # The contract set up supplies from the last switch on: an
+                # earlier start would look its signing card up too early.
+                errors[CONF_CONTRACT_START_DATE] = "start_date_before_switch"
+            elif start and end and str(end) <= str(start):
                 errors["base"] = "end_before_start"
             else:
                 for key in _DATE_FIELDS:
