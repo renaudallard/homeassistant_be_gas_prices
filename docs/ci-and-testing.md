@@ -181,11 +181,11 @@ A row is rewritten only when the parse changed, so a quiet day writes
 nothing. Months older than `--keep-months` (12) are removed, with the texts
 no row names any more.
 
-When the parser sources or the OCR engine change (their digest is stamped in
-`parser.txt`), or with `--reparse`, every row is parsed again from its stored
-texts: the clock pinned to its capture day with freezegun, a session that
-refuses every request, the texts served through the memo and
-`render_through`. A card that arrived inside JSON (OCTA+'s archive) stores a
+When the parser sources, the PDF readers or the OCR engine change (their
+digest is stamped in `parser.txt`), or with `--reparse`, every row is parsed
+again from its stored texts: the clock pinned to its capture day with
+freezegun, a session that refuses every request, the texts served through
+the memo and `render_through`. A card that arrived inside JSON (OCTA+'s archive) stores a
 `{{card:<sha256>}}` reference and gets its bytes back from the release. A
 row the parser now refuses, or reads as another month's, is removed, so no
 installation bills on the old reading; one that asks for something it never
@@ -195,7 +195,8 @@ A card the text readers refuse as page images is read with the OCR engine,
 [ocr_price_cards](https://github.com/renaudallard/ocr_price_cards), from its
 trusted text: a line on which it refused a mark is left out, so a mandatory
 figure it could not read fails the parse rather than being guessed. The
-engine is installed from its main branch; its version and git commit are
+engine is installed from its main branch; its version and git commit, with
+the versions of the pypdfium2, numpy and pdfplumber it reads with, are
 recorded on each source it read, and a stored reading is served again only
 to the same engine, so a new glyph library reads those cards again and no
 other: today's when the walk downloads it, a closed month's from its kept
@@ -230,8 +231,9 @@ versions, the digest the fixture text cache is named by), and a stored text
 is served only to the same versions and code, so a reader upgrade or a
 render fix renders every card afresh, in the archive and in the live check,
 for as long as it takes. A replay renders such a card again from its kept
-bytes rather than parsing the old text, so a render fix, `_pdf.py` being a
-parser source, also reaches the months the walk no longer downloads. The
+bytes rather than parsing the old text, so a render fix or a reader upgrade,
+both in the replay stamp, also reaches the months the walk no longer
+downloads. The
 live check serves the archive's OCR readings as they are: it installs no
 engine and checks the figures the archive read.
 

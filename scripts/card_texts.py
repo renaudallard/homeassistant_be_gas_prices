@@ -70,9 +70,13 @@ _RENDER_CODE = (
     / "_pdf.py"
 )
 # The engine that reads a card published as page images. Its version is
-# recorded on each source it read rather than in the stamp, so a new engine
-# reads those cards again and leaves every other card's text alone.
+# recorded on each source it read, so a new engine reads those cards again
+# and leaves every other card's text alone.
 OCR_ENGINE = "ocr-price-cards"
+# What the engine reads a card with: pypdfium2 renders the pages, numpy
+# matches the glyphs and pdfplumber lays out the words. They are installed
+# beside it unpinned, so one of them moving is the engine moving.
+_ENGINE_LIBRARIES = ("pypdfium2", "numpy", "pdfplumber")
 
 
 def _version(name: str) -> str:
@@ -84,9 +88,9 @@ def _version(name: str) -> str:
 
 def engine_version() -> str:
     """The OCR engine's version, with the commit pip recorded when it was
-    installed from git: it is installed from its main branch, where a new
-    glyph library does not move the version number. ``absent`` when it is
-    not installed."""
+    installed from git, and the versions of the libraries it reads with: it
+    is installed from its main branch, where a new glyph library does not
+    move the version number. ``absent`` when it is not installed."""
     version = _version(OCR_ENGINE)
     if version == "absent":
         return version
@@ -95,7 +99,10 @@ def engine_version() -> str:
         commit = json.loads(direct or "{}").get("vcs_info", {}).get("commit_id")
     except (ValueError, AttributeError):
         commit = None
-    return f"{version}+{commit[:12]}" if isinstance(commit, str) else version
+    if isinstance(commit, str):
+        version = f"{version}+{commit[:12]}"
+    libraries = " ".join(f"{name}=={_version(name)}" for name in _ENGINE_LIBRARIES)
+    return f"{version} {libraries}"
 
 
 def render_digest() -> str:

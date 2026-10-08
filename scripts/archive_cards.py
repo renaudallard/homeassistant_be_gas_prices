@@ -60,14 +60,14 @@ Every supplier's index publication (its ``fetch_index``) is kept as
 ``<out>/indices/<supplier>.json``, {index: {"YYYY-MM": EUR/MWh}}, merged into
 what earlier runs kept, so a month the supplier's page stopped listing stays.
 
-A parser fix reaches the stored months by itself. When the parser sources
-or the OCR engine changed since the rows were last replayed (their digest is
-stamped in ``parser.txt``), or with ``--reparse``, every row is parsed again
-from the texts it names, the clock pinned to the day it was captured and no
-supplier contacted, and rewritten where the parse came out differently. A
-card whose text other readers, render code or OCR engine made is read again
-from its kept bytes, so a render fix, which is a parser source too, and a new
-glyph library reach them as well.
+A parser fix reaches the stored months by itself. When the parser sources,
+the PDF readers or the OCR engine changed since the rows were last replayed
+(their digest is stamped in ``parser.txt``), or with ``--reparse``, every row
+is parsed again from the texts it names, the clock pinned to the day it was
+captured and no supplier contacted, and rewritten where the parse came out
+differently. A card whose text other readers, render code or OCR engine made
+is read again from its kept bytes, so a render fix, a reader upgrade and a
+new glyph library reach them as well.
 
 ``--backfill N`` also asks every supplier that keeps an archive of its own for
 the N closed months before this one, through the ``fetch_for_month`` the
@@ -755,9 +755,10 @@ def _write_coverage(
 
 
 def _parser_digest() -> str:
-    """One digest over every source a parse depends on, and the OCR engine,
-    so a new glyph library replays the months read off page images."""
-    digest = hashlib.sha256(engine_version().encode("utf-8"))
+    """One digest over every source a parse depends on, and what reads the
+    cards: the PDF readers and the OCR engine, so a new release of either
+    replays the months the walk no longer downloads."""
+    digest = hashlib.sha256(f"{readers_line()} {engine_version()}".encode())
     for pattern in _PARSER_SOURCES:
         for path in sorted(_PKG.glob(pattern)):
             digest.update(path.relative_to(_PKG).as_posix().encode("utf-8"))

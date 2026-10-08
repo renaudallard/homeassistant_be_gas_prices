@@ -993,6 +993,56 @@ async def test_new_readers_render_the_card_again_on_every_run(
     assert card_texts.StoredTexts(out).texts == {}
 
 
+async def test_a_reader_upgrade_reaches_a_month_no_longer_downloaded(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A pypdf release and nothing else: the replay it starts renders a
+    closed month's card again from its kept bytes."""
+    out = tmp_path / "gas"
+    pdfs = tmp_path / "pdfs"
+
+    def readers(line: str) -> None:
+        monkeypatch.setattr(card_texts, "readers_line", lambda: line)
+        monkeypatch.setattr(ac, "readers_line", lambda: line)
+
+    readers("pypdf==1 pdfplumber==1")
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep, pdf_dir=pdfs)
+    web.pages[CARD_URL] = _card("2026-10", "0.09")
+    readers("pypdf==2 pdfplumber==1")
+    upgraded = _Acme()
+    monkeypatch.setitem(ac._RENDERERS, "plain", upgraded.render)
+    summary = await ac.archive(
+        out,
+        extractors=[_Acme().extractor()],
+        now=datetime(2026, 10, 11, 6, 0, tzinfo=UTC),
+        sleep=_no_sleep,
+        pdf_dir=pdfs,
+    )
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert (summary.replayed, upgraded.renders) == (2, 1)
+    assert [s["readers"] for s in row["_sources"] if "pdf" in s] == ["pypdf==2 pdfplumber==1"]
+
+
+def test_the_engine_moves_with_the_libraries_it_reads_with(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """numpy and pypdfium2 are installed unpinned beside the engine, so a
+    new release of either reads the cards again like a new engine."""
+
+    class _Installed:
+        def read_text(self, name: str) -> str:
+            return '{"vcs_info": {"commit_id": "a5c8a17ccad7b3e4"}}'
+
+    versions = {"ocr-price-cards": "0.4.2", "pypdfium2": "5.14.0", "numpy": "2.5.3"}
+    versions["pdfplumber"] = "0.11.9"
+    monkeypatch.setattr(card_texts, "_version", versions.__getitem__)
+    monkeypatch.setattr(card_texts.importlib.metadata, "distribution", lambda name: _Installed())
+    before = card_texts.engine_version()
+    assert before.startswith("0.4.2+a5c8a17ccad7 ")
+    versions["numpy"] = "2.6.0"
+    assert card_texts.engine_version() != before
+
+
 async def test_a_render_fix_renders_the_card_again(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
