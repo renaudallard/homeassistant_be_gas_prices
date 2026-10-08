@@ -1,0 +1,61 @@
+{
+  "entity": {
+    "sensor": {
+      "current_price": {
+        "default": "mdi:fire"
+      },
+      "current_price_m3": {
+        "default": "mdi:fire"
+      },
+      "energy_component": {
+        "default": "mdi:fire"
+      },
+      "network_component": {
+        "default": "mdi:pipe"
+      },
+      "taxes_component": {
+        "default": "mdi:bank"
+      },
+      "fixed_costs_eur_per_year": {
+        "default": "mdi:cash-multiple"
+      },
+      "supplier_fixed_fee_eur_per_year": {
+        "default": "mdi:cash"
+      },
+      "conversion_factor": {
+        "default": "mdi:swap-horizontal"
+      },
+      "year_to_date_consumption": {
+        "default": "mdi:meter-gas"
+      },
+      "projected_year_cost": {
+        "default": "mdi:chart-line"
+      },
+      "projected_year_end_cost": {
+        "default": "mdi:chart-line"
+      },
+      "projected_year_consumption": {
+        "default": "mdi:meter-gas-outline"
+      },
+      "rolling_year_consumption": {
+        "default": "mdi:meter-gas"
+      },
+      "potential_saving": {
+        "default": "mdi:piggy-bank"
+      }
+    },
+    "button": {
+      "refresh": {
+        "default": "mdi:refresh"
+      }
+    }
+  },
+  "services": {
+    "refresh": {
+      "service": "mdi:refresh"
+    },
+    "backfill_statistics": {
+      "service": "mdi:history"
+    }
+  }
+}

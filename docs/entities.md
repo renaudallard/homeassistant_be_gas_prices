@@ -1,6 +1,8 @@
 # Entities, services, diagnostics and Repairs
 
-Every entity of an entry hangs off one device named after the entry.
+Every entity of an entry hangs off one device named after the entry. The
+icons of the entities and services are in `icons.json`; a cost sensor and
+the contract end date keep their device class's icon.
 
 ## Sensors
 
