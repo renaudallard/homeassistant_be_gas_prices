@@ -219,6 +219,90 @@ async def test_a_network_failure_keeps_an_unreadable_card_marked(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_unexpected_error_keeps_the_last_card(
+    hass: HomeAssistant, fetch: AsyncMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A parser that trips over a card it does not expect fails like one
+    that refuses it: the held card keeps pricing, the failure is counted
+    towards the layout card, and its traceback is logged."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    fetch.side_effect = ValueError("could not convert string to float: '-'")
+    for _ in range(2):
+        await coordinator.async_force_refresh(wait=True)
+    price = hass.states.get("sensor.engie_flow_current_price")
+    assert price is not None and price.state != "unavailable"
+    assert "could not convert" in price.attributes["last_error"]
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}")
+    assert issue is not None
+    assert "Traceback" in caplog.text
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_unexpected_probe_error_leaves_the_card_to_its_age(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    probe = AsyncMock(side_effect=KeyError("_createdAt"))
+    stub = replace(providers.EXTRACTORS["engie"], probe=probe)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        await entry.runtime_data.async_refresh()
+    price = hass.states.get("sensor.engie_flow_current_price")
+    assert price is not None and price.state != "unavailable"
+    assert probe.await_count >= 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_archive_stands_in_after_an_unexpected_error(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    card = fetch.return_value
+    fetch.side_effect = IndexError("list index out of range")
+    with patch(
+        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        AsyncMock(return_value=(card, False)),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.runtime_data.data.card_source == "archive"
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_unexpected_index_error_keeps_the_held_table(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    index = AsyncMock(side_effect=[TABLE, ValueError("bad month")])
+    stub = replace(providers.EXTRACTORS["engie"], fetch_index=index)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        freezer.tick(timedelta(hours=13))
+        await coordinator.async_refresh()
+        assert coordinator.last_update_success
+        assert coordinator.data.index is not None
+        freezer.tick(timedelta(hours=1))
+        await coordinator.async_refresh()
+    # Refused for the usual twelve hours, as a page the parser refuses.
+    assert index.await_count == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_unexpected_month_card_error_prices_on_the_current_card(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    month = AsyncMock(side_effect=TypeError("'NoneType' object is not subscriptable"))
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=month)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        await coordinator.async_refresh()
+    assert month.await_count > 0
+    assert coordinator.last_update_success
+    price = hass.states.get("sensor.engie_flow_current_price")
+    assert price is not None and price.state != "unavailable"
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_disabling_a_retrying_entry_clears_its_repairs_cards(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

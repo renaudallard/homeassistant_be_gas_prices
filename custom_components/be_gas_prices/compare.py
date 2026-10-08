@@ -56,7 +56,7 @@ from .const import SUPPLIER_CUSTOM
 from .month_cards import current_card
 from .pricing import PricingError
 from .providers import all_extractors
-from .providers._pdf import memoise_text_fetches
+from .providers._pdf import guarded, memoise_text_fetches
 from .providers._rates import IndexedRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
 from .running_costs import Household
@@ -122,7 +122,7 @@ class IndexCache:
                 table: IndexTable | None = None
                 if extractor.fetch_index is not None:
                     try:
-                        table = await extractor.fetch_index(session)
+                        table = await guarded(extractor.label, extractor.fetch_index(session))
                     except ExtractorError as err:
                         _LOGGER.debug("%s index values unavailable: %s", extractor.label, err)
                 self._tables[extractor.id] = table

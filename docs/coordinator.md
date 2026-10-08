@@ -27,7 +27,10 @@ cards (`issues.sync_issues`).
    running month's own card from the supplier's archive, where it has one;
    an archive that fails to answer fails the fetch, asked again next tick.
    A failure keeps the card in hand and records `last_error`; a failure a
-   retry will not fix counts towards the `extractor_failed` card. With no
+   retry will not fix counts towards the `extractor_failed` card. An error
+   no extractor raises on purpose (a parser meeting a page it does not
+   expect) is failed the same way, through `providers._pdf.guarded`, with
+   its traceback logged; a probe raising one is no signal. With no
    card at all, or a stale one, the card archive is asked for its latest row
    (`_adopt_archived_card`). With still no card the tick writes the Store,
    so the next setup retry counts the failures on, and raises

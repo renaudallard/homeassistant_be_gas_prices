@@ -120,6 +120,25 @@ def error_text(err: BaseException) -> str:
     return str(err) or type(err).__name__
 
 
+async def guarded[T](label: str, call: Awaitable[T]) -> T:
+    """Await an extractor's ``call``, an error none raises on purpose
+    turned into an ExtractorError.
+
+    Such an error is a parser meeting a page it does not expect. Let out,
+    it escaped the tick and made every entity unavailable while the held
+    card could still price them. It is now failed like a card the parser
+    refuses, and its traceback logged for the bug report.
+    """
+    try:
+        return await call
+    except ExtractorError:
+        raise
+    except Exception as err:
+        _LOGGER.warning("%s: unexpected error", label, exc_info=True)
+        name = type(err).__name__
+        raise ExtractorError(f"{label}: {name}: {err}" if str(err) else f"{label}: {name}") from err
+
+
 # 64 MiB: far above any real tariff card, so it never trips on a legitimate
 # one while bounding what a broken or hostile CDN can pull into the
 # coordinator's memory in one fetch.

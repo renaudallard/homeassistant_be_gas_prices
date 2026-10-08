@@ -44,7 +44,7 @@ import aiohttp
 from homeassistant.util import dt as dt_util
 
 from .const import CARD_ARCHIVE_URL
-from .providers._pdf import USER_AGENT, error_text, is_transient_fetch_error
+from .providers._pdf import USER_AGENT, error_text, guarded, is_transient_fetch_error
 from .providers.base import (
     CardNotReadableError,
     ExtractorError,
@@ -160,7 +160,7 @@ async def current_card(
     month being priced on the next one's.
     """
     try:
-        snapshot = await extractor.fetch(session, contract, region)
+        snapshot = await guarded(extractor.label, extractor.fetch(session, contract, region))
     except CardNotReadableError as err:
         if not use_archive:
             raise
@@ -181,8 +181,9 @@ async def current_card(
     ):
         year, number = (int(part) for part in month.split("-"))
         try:
-            running = await extractor.fetch_for_month(
-                session, contract, region, date(year, number, 1)
+            running = await guarded(
+                extractor.label,
+                extractor.fetch_for_month(session, contract, region, date(year, number, 1)),
             )
         except ExtractorError as err:
             if is_transient_fetch_error(str(err)):
@@ -247,8 +248,9 @@ class MonthCardCache:
         unavailable: ExtractorError | None = None
         if extractor.fetch_for_month is not None:
             try:
-                snapshot = await extractor.fetch_for_month(
-                    session, contract, region, date(year, number, 1)
+                snapshot = await guarded(
+                    extractor.label,
+                    extractor.fetch_for_month(session, contract, region, date(year, number, 1)),
                 )
             except ExtractorError as err:
                 unavailable = err

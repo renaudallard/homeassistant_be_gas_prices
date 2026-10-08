@@ -62,7 +62,7 @@ from .const import (
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card, fetch_archived_card
 from .pricing import PricingError
-from .providers._pdf import is_transient_fetch_error, memoise_text_fetches
+from .providers._pdf import guarded, is_transient_fetch_error, memoise_text_fetches
 from .providers._rates import EnergyRates
 from .providers.base import (
     CardNotReadableError,
@@ -239,7 +239,7 @@ class PeriodBilling:
         table = None
         if extractor.fetch_index is not None:
             try:
-                table = await extractor.fetch_index(session)
+                table = await guarded(extractor.label, extractor.fetch_index(session))
             except ExtractorError as err:
                 _LOGGER.debug("%s index values not read: %s", extractor.label, err)
                 if (held is None or held[1] is None) and is_transient_fetch_error(str(err)):

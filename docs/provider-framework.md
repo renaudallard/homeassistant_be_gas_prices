@@ -24,6 +24,11 @@ A supplier module exposes `EXTRACTOR: SupplierExtractor` (`providers/base.py`):
 Each module also has a pure `parse_snapshot(contract, region, text, ...)`
 that the tests call on a fixture's text.
 
+Every caller awaits `fetch`, `fetch_for_month` and `fetch_index` through
+`_pdf.guarded`, which turns any other exception into an `ExtractorError`
+naming its class, with the traceback logged, so a parser bug fails like a
+card the parser refuses and the held card keeps pricing.
+
 ## The snapshot
 
 `SupplierSnapshot` holds:

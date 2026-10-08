@@ -112,7 +112,7 @@ from .month_cards import (
 )
 from .pricing import PriceBreakdown, PricingError, fixed_costs
 from .providers import get as get_extractor
-from .providers._pdf import is_transient_fetch_error, memoise_text_fetches
+from .providers._pdf import guarded, is_transient_fetch_error, memoise_text_fetches
 from .providers._rates import EnergyRates
 from .providers._resolve import LAW_FIGURES, resolve_for_delivery, tier_for
 from .providers.base import (
@@ -454,7 +454,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """
         key = None
         if self.extractor.probe is not None:
-            key = await self.extractor.probe(self._session, self.contract, self.region)
+            try:
+                key = await self.extractor.probe(self._session, self.contract, self.region)
+            except Exception:
+                # A probe answers None on any failure it expects: one it
+                # does not is no signal either, and the card's age decides.
+                _LOGGER.warning("%s: probe failed", self.extractor.label, exc_info=True)
         # Read past the probe, which can take seconds: every fetch forced by
         # now is made by this tick, a press during the probe included, and
         # the press's own tick has nothing left to fetch.
@@ -597,7 +602,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if self._index_fetched_at is not None and now - self._index_fetched_at < INDEX_TTL:
             return
         try:
-            self._index_table = await fetch(self._session)
+            self._index_table = await guarded(self.extractor.label, fetch(self._session))
         except ExtractorError as err:
             _LOGGER.warning("%s: index values not refreshed: %s", self.extractor.label, err)
             if self._index_table is None and is_transient_fetch_error(str(err)):
