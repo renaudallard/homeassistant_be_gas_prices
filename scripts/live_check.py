@@ -88,7 +88,7 @@ from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-
 from homeassistant.util import dt as dt_util  # noqa: E402
 
 from custom_components.be_gas_prices.const import (  # noqa: E402
-    ENERGY_CONTRIBUTION_ZEROED_FROM,
+    ENERGY_CONTRIBUTION_KNOWN_FROM,
     FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
     FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
     FLUVIUS_KEYS,
@@ -382,7 +382,7 @@ _CONNECTION_FEE = "connection fee"
 _LAW_WINDOWS: dict[str, tuple[tuple[int, int], tuple[int, int] | None]] = {
     _EXCISE_LOW: (GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL),
     _EXCISE_HIGH: (GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL),
-    _CONTRIBUTION: (ENERGY_CONTRIBUTION_ZEROED_FROM, None),
+    _CONTRIBUTION: (ENERGY_CONTRIBUTION_KNOWN_FROM, None),
     _CONNECTION_FEE: (WALLOON_CONNECTION_FEE_KNOWN_FROM, WALLOON_CONNECTION_FEE_KNOWN_UNTIL),
 }
 

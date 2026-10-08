@@ -102,7 +102,7 @@ today, and refuses a card naming another month than the one asked for.
 - Empty House: its own formula and no fee. EASY Fixe and Empower Fixe.
 - Wallonia: the ORES collapse and RESA row in full, the connection fee, the
   August 2026 excise, no energy contribution. The July 2026 EASY Variable
-  card: its energy contribution and excise, billed on for a July delivery,
+  card: its energy contribution and excise, July's law for a July delivery,
   and refused without the contribution row.
 - Flanders: the Kempen row with data management. Brussels: the Sibelga row
   and the nine levy amounts.

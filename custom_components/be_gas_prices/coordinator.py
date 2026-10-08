@@ -114,7 +114,7 @@ from .pricing import PriceBreakdown, PricingError, fixed_costs
 from .providers import get as get_extractor
 from .providers._pdf import is_transient_fetch_error, memoise_text_fetches
 from .providers._rates import EnergyRates
-from .providers._resolve import resolve_for_delivery, tier_for
+from .providers._resolve import LAW_FIGURES, resolve_for_delivery, tier_for
 from .providers.base import (
     CardNotReadableError,
     ExtractorError,
@@ -406,10 +406,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def card_months_signature(self) -> str:
         """What the year's past months are priced from: the entry's
         settings, each past month's own card and the card in hand as read,
-        the index values and the calorific values. It moves when any of them
-        changes or lands, a card read again after an update or the value of
-        an index that lags the others included, which is when the price
-        history is worth drawing again."""
+        the index values, the calorific values and the figures of the law. It
+        moves when any of them changes or lands, a card read again after an
+        update or the value of an index that lags the others included, which
+        is when the price history is worth drawing again."""
         today = dt_util.now().date()
         own = [
             f"{month}:{_card_digest(card)}"
@@ -419,7 +419,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         index = _digest(self._index_table)
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
-        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}"
+        law = _digest(LAW_FIGURES)
+        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}"
 
     # ---- the card ---------------------------------------------------------
 

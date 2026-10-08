@@ -2501,6 +2501,19 @@ async def test_the_price_history_stamp_moves_with_a_lagging_value(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_stamp_moves_with_the_law(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A release that learns the excise of more months prices them anew,
+    though no card changed."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    before = coordinator.card_months_signature()
+    with patch("custom_components.be_gas_prices.coordinator.LAW_FIGURES", ((2024, 1),)):
+        assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_falls_back_like_the_running_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

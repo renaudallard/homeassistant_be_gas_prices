@@ -136,7 +136,8 @@ refused below.
   Walloon cards against 4,63 / 2,52 / 2,24 on the others.
 - Sibelga metering 24,96 where the regulator and Engie give 24,95.
 - The high excise band on the April to July 2026 cards is 0,96229, the
-  first-quarter rate (all but the April GS1JVG Flemish card below).
+  first-quarter rate (all but the April GS1JVG Flemish card below). The
+  law override bills each quarter's rate.
 - The Flemish GS1JVG card of April 2026 prints the August excise (1,09286 /
   1,18296) and no energy contribution.
 - The Walloon cards of November 2025 to January 2026 print the high excise

@@ -129,19 +129,33 @@ TIER_BOUNDS_KWH: Final[tuple[tuple[str, float], ...]] = (
 # 12 000 kWh at one rate, the rest at the other.
 EXCISE_BAND_KWH: Final = 12_000.0
 
-# The residential special excise the programme law of 30 May 2026 set from
-# 1 August 2026, in EUR/kWh EXCLUDING VAT (10,31 and 11,16 EUR/MWh), and the
-# months it is known to cover. A federal levy: one rate for the whole country,
-# so a card printing another one for a delivery month in this window is stale
+# The residential special excise by delivery month, in EUR/kWh EXCLUDING VAT
+# for the two slices, each rate applying from its month until the next one's:
+# the quarterly adjustment of art. 420 on the high slice until July 2026, then
+# the rates the programme law of 30 May 2026 set from 1 August 2026 (10,31 and
+# 11,16 EUR/MWh). Figures of the FPS Finance excise tariff (TarBel, annex 7,
+# codes Q570 to Q588). A federal levy: one rate for the whole country, so a
+# card printing another one for a delivery month in this window is stale
 # rather than different. Ecofix, Sparki, Belvus and the six Energy Together
-# brands still printed the pre-August figures in September 2026.
+# brands still printed the pre-August figures in September 2026, and most
+# cards of April to June 2026 the first quarter's.
 #
 # Only a rate IN EFFECT belongs here. The same law steps the rate up again on
 # 1 January 2027, 2028 and 2029, and the quarterly adjustment of art. 420
 # still applies on top, so encoding the schedule ahead would bill a
-# prediction. Past the end of the window the card is read as before.
-GAS_EXCISE_RESIDENTIAL_HTVA: Final[tuple[float, float]] = (0.01031, 0.01116)
-GAS_EXCISE_KNOWN_FROM: Final = (2026, 8)
+# prediction. Past the end of the window the card is read as before. The
+# window starts with the earliest month a backfill can bill.
+GAS_EXCISE_RESIDENTIAL_HTVA: Final[tuple[tuple[tuple[int, int], float, float], ...]] = (
+    ((2025, 1), 0.00823, 0.0089393),
+    ((2025, 4), 0.00823, 0.0087266),
+    ((2025, 7), 0.00823, 0.0082752),
+    ((2025, 10), 0.00823, 0.0088971),
+    ((2026, 1), 0.00823, 0.0090782),
+    ((2026, 4), 0.00823, 0.0093061),
+    ((2026, 7), 0.00823, 0.0093315),
+    ((2026, 8), 0.01031, 0.01116),
+)
+GAS_EXCISE_KNOWN_FROM: Final = GAS_EXCISE_RESIDENTIAL_HTVA[0][0]
 GAS_EXCISE_KNOWN_UNTIL: Final = (2027, 1)  # exclusive
 
 # The Fluvius data management fee for a yearly-read gas meter ("Jaaropname
@@ -169,9 +183,14 @@ WALLOON_CONNECTION_FEE: Final = 0.000075
 WALLOON_CONNECTION_FEE_KNOWN_FROM: Final = (2003, 7)
 WALLOON_CONNECTION_FEE_KNOWN_UNTIL: Final = (2027, 1)  # exclusive
 
-# The month the federal energy contribution on residential gas stopped being
-# levied: the same law set it to zero from 1 August 2026. Compared against the
-# DELIVERY month, since the levy is law rather than a contract term.
+# The federal energy contribution on residential gas, in EUR/kWh EXCLUDING
+# VAT (0,9978 EUR/MWh, art. 419 i) of the programme law of 27 December 2004,
+# TarBel codes Q516 and Q517), from the start of the excise window, and the
+# month it stopped being levied: the programme law of 30 May 2026 set it to
+# zero from 1 August 2026. Compared against the DELIVERY month, since the levy
+# is law rather than a contract term.
+ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA: Final = 0.0009978
+ENERGY_CONTRIBUTION_KNOWN_FROM: Final = GAS_EXCISE_KNOWN_FROM
 ENERGY_CONTRIBUTION_ZEROED_FROM: Final = (2026, 8)
 
 # Belgian VAT on residential gas (Royal Decree nr. 20, table A, XIV).

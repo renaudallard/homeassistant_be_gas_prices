@@ -361,7 +361,10 @@ async def test_a_month_before_the_window_is_priced_on_its_own_card(
     price = coordinator.data.breakdown.all_in
     assert means[-10:] == [pytest.approx(price)] * 10
     if held:
-        assert means[0] == pytest.approx(price - card.energy.price + 0.05)
+        # December 2025 is billed on that quarter's excise, which is below
+        # January's on the 5 000 kWh above the first slice.
+        excise = 5_000.0 / 17_000.0 * (0.0090782 - 0.0088971) * 1.06
+        assert means[0] == pytest.approx(price - card.energy.price + 0.05 - excise)
 
 
 @pytest.mark.freeze_time("2026-09-15 00:30:00+02:00")

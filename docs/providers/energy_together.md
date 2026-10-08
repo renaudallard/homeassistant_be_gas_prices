@@ -171,8 +171,8 @@ printing it: those months are months with no card.
 
 - The misassigned labels and the 2025 table, above.
 - Every card from February 2025 to September 2026 prints the same tax block:
-  excise 0,8724 / 0,9457 c€/kWh and contribution 0,1057. From August 2026 the
-  law override replaces them. Before that, 0,8724 is the law's 8,23 EUR/MWh
+  excise 0,8724 / 0,9457 c€/kWh and contribution 0,1057. The law override
+  replaces them from January 2025. 0,8724 is the law's 8,23 EUR/MWh
   with VAT, but 0,9457 matches none of the 2026 rates above 12 000 kWh
   (0,96229 in January to March, 0,98645 in April to June, 0,98914 in July,
   VAT inclusive).

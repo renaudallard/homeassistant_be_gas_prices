@@ -90,7 +90,8 @@ listing's href for the month and refuses a card naming another month.
   Fluvius 2026 tariffs: Kempen T1 2,28 (2,27489), Midden-Vlaanderen T1 2,31
   (2,31716), West T1 2,70 (2,69459). Read as printed.
 - The high excise band on the April to June 2026 cards is 0,96229, the
-  first-quarter rate; July's 0,98914 is right.
+  first-quarter rate; July's 0,98914 is right. The law override bills each
+  quarter's rate.
 - The May 2026 card prints 5,51 where its formula at the value it names
   (46,00) gives 5,5035; the June card prints 5,60 where 46,94 gives 5,6052.
 - The value named is cut rather than rounded at times (61,72 for 61,729).

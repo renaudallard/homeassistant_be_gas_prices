@@ -172,7 +172,8 @@ def test_wallonia_levies() -> None:
 
 def test_a_july_card_prints_the_energy_contribution() -> None:
     """Up to July 2026 the cards print "Cotisation sur l'énergie 0,10577",
-    which a July delivery is billed on; the August law zeroed it."""
+    the law's 0,9978 EUR/MWh rounded, which a July delivery is billed on;
+    the August law zeroed it."""
     snap = engie.parse_snapshot(
         "engie_easy_variable", REGION_WALLONIA, _card("G_EASY_R_GREY_C_I_12_W_F_202607.pdf")
     )
@@ -183,7 +184,7 @@ def test_a_july_card_prints_the_energy_contribution() -> None:
         (None, pytest.approx(0.0098914)),
     )
     july = resolve_for_delivery(snap, date(2026, 7, 1))
-    assert july.taxes.energy_contribution == pytest.approx(0.0010577)
+    assert july.taxes.energy_contribution == pytest.approx(0.0009978 * 1.06)
 
 
 def test_a_card_before_august_without_the_contribution_is_refused() -> None:

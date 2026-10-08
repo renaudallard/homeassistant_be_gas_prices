@@ -183,14 +183,14 @@ These were seen on the September 2026 cards and compared with
   - the distribution terms (ORES 4,29 for 4,28944).
 
   The excise is replaced by the law's rates for the delivery months
-  `const.py` knows the law for, August to December 2026
+  `const.py` knows the law for, January 2025 to December 2026
   (`_resolve.resolve_federal_levies`), and so is the Walloon connection fee,
   billed at the law's 0,0075 c€/kWh where the card prints 0,01
   (`_resolve.resolve_connection_fee`). Transport and the distribution terms
   are billed as printed.
 - The energy contribution is still printed at 0,11 c€/kWh. It has been 0
-  since 2026-08-01, and was 0,105767 before that. The law override sets it to
-  zero for delivery months from August 2026.
+  since 2026-08-01, and was 0,105767 before that. The law override bills
+  0,105767 up to July 2026 and zero for delivery months from August 2026.
 - Fluvius Kempen's T1 fixed term is 16,16 €/year. The Fluvius tariff sheet
   and Engie's card have 16,17.
 - Sibelga's metering fee is 24,96 €/year. The regulated figure in

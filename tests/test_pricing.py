@@ -113,8 +113,27 @@ def test_law_replaces_a_stale_card_from_august_2026() -> None:
     assert resolved.energy_contribution == 0.0
 
 
-def test_law_leaves_a_month_before_august_as_printed() -> None:
-    assert resolve_federal_levies(_stale_taxes(), date(2026, 7, 1)) == _stale_taxes()
+def test_law_bills_a_month_before_august_on_its_own_rates() -> None:
+    """July 2026: the quarterly high slice of art. 420 and the energy
+    contribution, not what a card of another month prints."""
+    resolved = resolve_federal_levies(_stale_taxes(), date(2026, 7, 1))
+    assert resolved.excise_bands == (
+        (12_000.0, pytest.approx(0.0087238)),
+        (None, pytest.approx(0.00989139)),
+    )
+    assert resolved.energy_contribution == pytest.approx(0.001057668)
+
+
+def test_law_takes_each_quarter_s_excise() -> None:
+    march = resolve_federal_levies(_stale_taxes(), date(2026, 3, 1))
+    april = resolve_federal_levies(_stale_taxes(), date(2026, 4, 1))
+    assert march.excise_bands[1][1] == pytest.approx(0.0090782 * 1.06)
+    assert april.excise_bands[1][1] == pytest.approx(0.0093061 * 1.06)
+    assert march.excise_bands[0][1] == april.excise_bands[0][1] == pytest.approx(0.0087238)
+
+
+def test_law_leaves_a_month_before_the_window_as_printed() -> None:
+    assert resolve_federal_levies(_stale_taxes(), date(2024, 12, 1)) == _stale_taxes()
 
 
 def test_law_expires_into_the_card_in_january_2027() -> None:

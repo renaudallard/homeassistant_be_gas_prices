@@ -25,8 +25,8 @@ all_in = (energy + tier_proportional + transport + excise + energy_contribution)
   `effective_excise` blends the two into one rate per kWh at the household's
   volume. CWaPE publishes 1,119360 c EUR/kWh for its 17 000 kWh reference
   household from August 2026, which is exactly that blend (a test pins it).
-- `energy_contribution` has been zero for residential gas since 1 August
-  2026.
+- `energy_contribution` is 0,9978 EUR/MWh excluding VAT up to July 2026 and
+  zero for residential gas since 1 August 2026.
 - The Walloon connection fee (0,0075 c EUR/kWh) carries no VAT, so it is added
   after VAT.
 
@@ -94,12 +94,17 @@ their own schedules, so it would put each row on a different month.
 `resolve_for_delivery` applies them before a month is billed, whatever month
 the card was printed for:
 
-- The special excise from 1 August 2026: 10,31 and 11,16 EUR/MWh excluding
-  VAT (programme law of 30 May 2026), known until January 2027. Ecofix,
-  Sparki, Belvus and the Energy Together brands still printed the
+- The special excise from January 2025, known until January 2027: 8,23
+  EUR/MWh excluding VAT on the first slice and the quarterly adjustment of
+  the second up to July 2026 (9,0782 in January to March 2026, 9,3061 in
+  April to June, 9,3315 in July, from the FPS Finance excise tariff), then
+  10,31 and 11,16 EUR/MWh from 1 August 2026 (programme law of 30 May 2026).
+  Most April to June 2026 cards still printed the first quarter's rate.
+  Ecofix, Sparki, Belvus and the Energy Together brands still printed the
   pre-August excise on their September 2026 cards, and OCTA+ and
   TotalEnergies a pre-August energy contribution.
-- The energy contribution, zero from 1 August 2026.
+- The energy contribution, 0,9978 EUR/MWh excluding VAT from January 2025 to
+  July 2026, zero from 1 August 2026.
 - Fluvius's data management fee, 17,85 EUR/year excluding VAT for every area
   in 2026, where a Flemish card prints none (Luminus's 2026 cards), the
   custom supplier's typed card with metering left at 0 included.

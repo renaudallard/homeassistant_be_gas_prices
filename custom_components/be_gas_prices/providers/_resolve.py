@@ -38,6 +38,8 @@ from datetime import date
 
 from ..const import (
     CALIBER_Q10,
+    ENERGY_CONTRIBUTION_KNOWN_FROM,
+    ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA,
     ENERGY_CONTRIBUTION_ZEROED_FROM,
     FLUVIUS_DATA_MANAGEMENT_HTVA,
     FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
@@ -58,6 +60,23 @@ from ..const import (
 )
 from ._network import excise_bands
 from .base import DsoOverlay, SupplierSnapshot, TaxOverlay
+
+# Every figure of the law the resolvers below bill on, and the months they
+# cover: a release that learns more of them prices past months anew, which
+# the price history stamp has to notice.
+LAW_FIGURES = (
+    GAS_EXCISE_RESIDENTIAL_HTVA,
+    GAS_EXCISE_KNOWN_UNTIL,
+    ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA,
+    ENERGY_CONTRIBUTION_KNOWN_FROM,
+    ENERGY_CONTRIBUTION_ZEROED_FROM,
+    FLUVIUS_DATA_MANAGEMENT_HTVA,
+    FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
+    FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
+    WALLOON_CONNECTION_FEE,
+    WALLOON_CONNECTION_FEE_KNOWN_FROM,
+    WALLOON_CONNECTION_FEE_KNOWN_UNTIL,
+)
 
 
 def tier_for(annual_kwh: float) -> str:
@@ -121,13 +140,23 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
         return taxes
     resolved = taxes
     if _in_window(delivery, GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL):
-        low, high = GAS_EXCISE_RESIDENTIAL_HTVA
+        month = (delivery.year, delivery.month)
+        low, high = next(
+            (low, high)
+            for start, low, high in reversed(GAS_EXCISE_RESIDENTIAL_HTVA)
+            if start <= month
+        )
         resolved = replace(
             resolved,
             excise_bands=excise_bands(low * (1 + VAT_RATE_REDUCED), high * (1 + VAT_RATE_REDUCED)),
         )
     if _in_window(delivery, ENERGY_CONTRIBUTION_ZEROED_FROM, None):
         resolved = replace(resolved, energy_contribution=0.0)
+    elif _in_window(delivery, ENERGY_CONTRIBUTION_KNOWN_FROM, None):
+        resolved = replace(
+            resolved,
+            energy_contribution=ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA * (1 + VAT_RATE_REDUCED),
+        )
     return resolved
 
 

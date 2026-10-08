@@ -167,7 +167,7 @@ def test_nothing_is_laid_over_a_typed_custom_card() -> None:
 
 def test_bill_month_applies_the_law_to_the_delivery_month() -> None:
     """A card still printing the pre-August excise and energy contribution is
-    billed on the law's figures for a September delivery."""
+    billed on the law's figures of each delivery month."""
     card = _flow()
     stale = replace(
         card,
@@ -203,7 +203,9 @@ def test_bill_month_applies_the_law_to_the_delivery_month() -> None:
         days=31,
         days_in_year=365,
     )
-    assert july.breakdown.taxes == pytest.approx(0.008724 + 0.001058 + 0.000075)
+    # July's own law: 10 000 kWh a year stay in the first slice, and the
+    # energy contribution is still levied.
+    assert july.breakdown.taxes == pytest.approx((0.00823 + 0.0009978) * 1.06 + 0.000075)
     assert not july.provisional
 
 
