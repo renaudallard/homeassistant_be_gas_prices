@@ -27,11 +27,16 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import aiohttp
+import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 
-from custom_components.be_gas_prices.providers._pdf import fetch_text
+from custom_components.be_gas_prices.providers import _pdf
+from custom_components.be_gas_prices.providers._pdf import fetch_pdf_bytes, fetch_text
+from custom_components.be_gas_prices.providers.base import ExtractorError
 
 
 async def test_a_page_in_another_charset_is_read_not_raised(socket_enabled: None) -> None:
@@ -48,3 +53,64 @@ async def test_a_page_in_another_charset_is_read_not_raised(socket_enabled: None
     async with TestServer(app) as server, aiohttp.ClientSession() as session:
         text = await fetch_text(session, str(server.make_url("/")))
     assert text.startswith("Maintenance planifi")
+
+
+async def _serve(handler: Any, path: str = "/") -> tuple[TestServer, str]:
+    app = web.Application()
+    app.router.add_get(path, handler)
+    server = TestServer(app)
+    await server.start_server()
+    return server, str(server.make_url(path))
+
+
+async def _streamed(request: web.Request) -> web.StreamResponse:
+    """A body sent in chunks with no Content-Length, as a chunked answer is."""
+    resp = web.StreamResponse()
+    resp.content_type = "application/pdf"
+    await resp.prepare(request)
+    await resp.write(b"%PDF-1.7\n")
+    for _ in range(8):
+        await resp.write(b" " * 1024)
+    await resp.write_eof()
+    return resp
+
+
+@pytest.mark.parametrize("fetch", [fetch_text, fetch_pdf_bytes])
+async def test_a_body_past_the_cap_is_refused_as_it_streams(
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, fetch: Any
+) -> None:
+    monkeypatch.setattr(_pdf, "MAX_RESPONSE_BYTES", 4096)
+    server, url = await _serve(_streamed)
+    try:
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ExtractorError, match="more than 4096 bytes"):
+                await fetch(session, url)
+    finally:
+        await server.close()
+
+
+async def test_a_body_declared_past_the_cap_is_refused_unread(
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(_pdf, "MAX_RESPONSE_BYTES", 4096)
+
+    async def large(request: web.Request) -> web.Response:
+        return web.Response(body=b"%PDF" + b" " * 8192, content_type="application/pdf")
+
+    server, url = await _serve(large)
+    try:
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ExtractorError, match="declared 8196 bytes"):
+                await fetch_pdf_bytes(session, url)
+    finally:
+        await server.close()
+
+
+async def test_a_body_under_the_cap_is_read_whole(socket_enabled: None) -> None:
+    server, url = await _serve(_streamed)
+    try:
+        async with aiohttp.ClientSession() as session:
+            payload = await fetch_pdf_bytes(session, url)
+    finally:
+        await server.close()
+    assert payload.startswith(b"%PDF-1.7") and len(payload) == 9 + 8 * 1024

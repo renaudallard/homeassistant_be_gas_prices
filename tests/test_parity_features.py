@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
@@ -563,8 +564,16 @@ async def test_a_card_published_as_images_is_quoted_on_the_archive_reading() -> 
     assert refused.error is not None and refused.annual_cost is None
 
 
+class _Body:
+    async def iter_chunked(self, _size: int) -> AsyncIterator[bytes]:
+        yield b"listing"
+
+
 class _Listing:
     status = 200
+    content_length = None
+    charset = None
+    content = _Body()
 
     async def __aenter__(self) -> _Listing:
         return self

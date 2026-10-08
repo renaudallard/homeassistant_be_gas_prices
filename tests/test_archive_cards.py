@@ -40,7 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -85,12 +85,22 @@ def _card(month: str, price: str) -> bytes:
     return f"%PDF-1.4 month {month} price {price}".encode("ascii")
 
 
+class _Body:
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    async def iter_chunked(self, _size: int) -> AsyncIterator[bytes]:
+        yield self._body
+
+
 class _Response:
     content_length = None
+    charset = None
     status = 200
 
     def __init__(self, body: bytes) -> None:
         self._body = body
+        self.content = _Body(body)
 
     async def text(self, errors: str = "strict") -> str:
         return self._body.decode("utf-8", errors=errors)

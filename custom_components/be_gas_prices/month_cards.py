@@ -35,6 +35,7 @@ may recover is not kept at all.
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
@@ -44,7 +45,13 @@ import aiohttp
 from homeassistant.util import dt as dt_util
 
 from .const import CARD_ARCHIVE_URL
-from .providers._pdf import USER_AGENT, error_text, guarded, is_transient_fetch_error
+from .providers._pdf import (
+    USER_AGENT,
+    error_text,
+    guarded,
+    is_transient_fetch_error,
+    read_capped,
+)
 from .providers.base import (
     CardNotReadableError,
     ExtractorError,
@@ -110,11 +117,11 @@ async def fetch_archived_row(
                 return None
             if resp.status >= 400:
                 raise ArchiveUnavailable(f"HTTP {resp.status} fetching {url}")
-            blob = await resp.json(content_type=None)
+            blob = json.loads(await read_capped(resp, url))
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ArchiveUnavailable(f"network error fetching {url}: {error_text(err)}") from err
-    except ValueError as err:
-        _LOGGER.warning("card archive row %s is not JSON: %s", url, err)
+    except (ExtractorError, ValueError) as err:
+        _LOGGER.warning("card archive row %s not read: %s", url, err)
         return None
     try:
         snapshot = snapshot_from_json(blob)

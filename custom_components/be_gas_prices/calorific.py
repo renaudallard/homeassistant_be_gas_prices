@@ -63,7 +63,7 @@ from homeassistant.util.ssl import create_client_context
 
 from .const import ATRIAS_API_URL, ATRIAS_CONFIG_URL
 from .providers._parse import to_float
-from .providers._pdf import USER_AGENT, error_text
+from .providers._pdf import USER_AGENT, error_text, read_capped, read_text_capped
 from .providers.base import ExtractorError
 
 _INTERMEDIATE = Path(__file__).with_name("certs") / "godaddy_g2_intermediate.pem"
@@ -104,11 +104,13 @@ async def subscription_key(session: aiohttp.ClientSession) -> str:
                 raise CalorificError(f"HTTP {resp.status} fetching {ATRIAS_CONFIG_URL}")
             # Not strict, so a page in another charset fails the key search
             # below as a CalorificError rather than escaping as a decode error.
-            body = await resp.text(errors="replace")
+            body = await read_text_capped(resp, ATRIAS_CONFIG_URL)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise CalorificError(
             f"network error fetching {ATRIAS_CONFIG_URL}: {error_text(err)}"
         ) from err
+    except ExtractorError as err:
+        raise CalorificError(str(err)) from err
     match = _KEY_RE.search(body)
     if match is None:
         raise CalorificError("Atrias runtime config carries no subscription key")
@@ -135,9 +137,11 @@ async def _get(
         ) as resp:
             if resp.status >= 400:
                 raise CalorificError(f"HTTP {resp.status} fetching {url}")
-            return await resp.read()
+            return await read_capped(resp, url)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise CalorificError(f"network error fetching {url}: {error_text(err)}") from err
+    except ExtractorError as err:
+        raise CalorificError(str(err)) from err
 
 
 async def list_months(

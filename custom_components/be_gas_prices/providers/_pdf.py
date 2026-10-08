@@ -139,27 +139,46 @@ async def guarded[T](label: str, call: Awaitable[T]) -> T:
         raise ExtractorError(f"{label}: {name}: {err}" if str(err) else f"{label}: {name}") from err
 
 
-# 64 MiB: far above any real tariff card, so it never trips on a legitimate
-# one while bounding what a broken or hostile CDN can pull into the
-# coordinator's memory in one fetch.
-_MAX_PDF_BYTES = 64 * 1024 * 1024
+# 64 MiB: far above any real tariff card or page, so it never trips on a
+# legitimate one while bounding what a broken or hostile server can pull
+# into Home Assistant's memory in one fetch.
+MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 
 
-async def _read_pdf_bytes(resp: aiohttp.ClientResponse, url: str) -> bytes:
-    """Read a (PDF) response body, rejecting an endpoint that declares a
-    Content-Length far larger than any real tariff card.
+async def read_capped(resp: aiohttp.ClientResponse, url: str) -> bytes:
+    """Read a response body, refusing one past :data:`MAX_RESPONSE_BYTES`.
 
-    Reading the whole body keeps the magic-byte / parse path simple; the
-    guard only refuses payloads the server itself advertises as oversize
-    (a streamed response with no Content-Length still reads normally,
-    which is fine for the trusted supplier endpoints we fetch).
+    Content-Length is only a hint: a chunked answer carries none and a
+    server can lie, so the cap holds on the bytes read as well. The bytes
+    counted are the decoded ones, so a compressed answer is held to it too.
     """
     declared = resp.content_length
-    if declared is not None and declared > _MAX_PDF_BYTES:
+    if declared is not None and declared > MAX_RESPONSE_BYTES:
         raise ExtractorError(
-            f"refusing PDF at {url}: declared {declared} bytes (limit {_MAX_PDF_BYTES})"
+            f"refusing {url}: declared {declared} bytes (limit {MAX_RESPONSE_BYTES})"
         )
-    return await resp.read()
+    payload = bytearray()
+    async for chunk in resp.content.iter_chunked(65536):
+        payload.extend(chunk)
+        if len(payload) > MAX_RESPONSE_BYTES:
+            raise ExtractorError(f"refusing {url}: more than {MAX_RESPONSE_BYTES} bytes")
+    return bytes(payload)
+
+
+async def read_text_capped(resp: aiohttp.ClientResponse, url: str) -> str:
+    """Read a text body under the cap, in the charset it declares or UTF-8.
+
+    Not strict: a page in another charset than it declares (a maintenance
+    page in Latin-1) is then refused by its parser as an ExtractorError
+    rather than raised as a UnicodeDecodeError.
+    """
+    payload = await read_capped(resp, url)
+    try:
+        return payload.decode(resp.charset or "utf-8", errors="replace")
+    except (LookupError, UnicodeError):
+        # A charset Python does not know ("utf8mb4"), or a codec with no
+        # replace handler (idna).
+        return payload.decode("utf-8", errors="replace")
 
 
 def is_pdf_payload(payload: bytes) -> bool:
@@ -218,7 +237,7 @@ async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: 
         ) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
-            payload = await _read_pdf_bytes(resp, url)
+            payload = await read_capped(resp, url)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ExtractorError(f"network error fetching {url}: {error_text(err)}") from err
 
@@ -586,10 +605,7 @@ async def fetch_text(
         ) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
-            # Not strict: a page in another charset than it declares (a
-            # maintenance page in Latin-1) is then refused by the parser as
-            # an ExtractorError rather than raised as a UnicodeDecodeError.
-            body = await resp.text(errors="replace")
+            body = await read_text_capped(resp, url)
             # Only a success is memoised. A failure is re-attempted by the
             # next caller, which is what the negative cache one layer up is
             # for; caching it here would give it a second, untracked lifetime.
