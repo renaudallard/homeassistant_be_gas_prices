@@ -271,6 +271,20 @@ def test_regions_follow_the_codes_engie_publishes() -> None:
     )
 
 
+async def test_fetch_links_the_card_it_read() -> None:
+    """The endpoint answers 400 without a document, so the snapshot names
+    the card's own address."""
+    with patch.object(
+        engie,
+        "fetch_pdf_text",
+        AsyncMock(return_value=_card("G_EASY_R_GREY_C_I_12_W_F_202609.pdf")),
+    ) as fetched:
+        snap = await engie.fetch(AsyncMock(), "engie_easy_variable", REGION_WALLONIA)
+    url = fetched.call_args.args[1]
+    assert "document=G_EASY_R_GREY_C_I_12_W_F" in url
+    assert snap.source_url == url
+
+
 async def test_fetch_for_month_counts_the_offset_in_brussels_time() -> None:
     """Just after midnight on 1 September in Brussels a UTC host is still on
     31 August. The offset for August is 1, not 0, or the archive would return

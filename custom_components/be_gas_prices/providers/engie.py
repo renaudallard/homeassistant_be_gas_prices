@@ -212,7 +212,7 @@ async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -
 async def _read(
     session: aiohttp.ClientSession, contract_id: str, region: str, url: str
 ) -> SupplierSnapshot:
-    return parse_snapshot(contract_id, region, await fetch_pdf_text(session, url))
+    return parse_snapshot(contract_id, region, await fetch_pdf_text(session, url), url)
 
 
 async def fetch_for_month(
@@ -243,7 +243,9 @@ async def fetch_for_month(
     return await month_card(_read(session, contract_id, region, url), year_month)
 
 
-def parse_snapshot(contract_id: str, region: str, text: str) -> SupplierSnapshot:
+def parse_snapshot(
+    contract_id: str, region: str, text: str, source_url: str = _API_URL
+) -> SupplierSnapshot:
     """Parse one regional card's text as pypdf extracts it."""
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Engie")
     _region_code(contract, region)
@@ -263,7 +265,7 @@ def parse_snapshot(contract_id: str, region: str, text: str) -> SupplierSnapshot
             osp_by_caliber=_osp(text) if region == REGION_BRUSSELS else None,
             card_vat_rate=vat_rate,
         ),
-        source_url=_API_URL,
+        source_url=source_url,
         publication_label=f"{card_month:%Y-%m}",
         valid_until=end_of_month(card_month.year, card_month.month),
     )
