@@ -284,7 +284,9 @@ under `gas/`: the parsed card per supplier, contract, region and month, the
 text the parse read, the PDF itself as a release asset, and each supplier's
 index table. A card published as page images is read there with the OCR
 engine, and the row says so; a card it cannot read whole is filed as
-`[archive-cards] the OCR could not read a card`. The OCR reads a font only through the glyphs it
+`[archive-cards] the OCR could not read a card`. A new version of the
+engine reads every month read off page images again, from its kept PDF.
+The OCR reads a font only through the glyphs it
 has learnt, and no Ecofix card it learnt from sets a bold 4, 7, 8, 9, Q, X,
 Y or Z, which a gas formula set in bold would need; a card published as
 page images still embeds the fonts of the text set over its picture, so

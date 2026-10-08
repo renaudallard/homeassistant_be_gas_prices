@@ -61,12 +61,13 @@ Every supplier's index publication (its ``fetch_index``) is kept as
 what earlier runs kept, so a month the supplier's page stopped listing stays.
 
 A parser fix reaches the stored months by itself. When the parser sources
-changed since the rows were last replayed (their digest is stamped in
-``parser.txt``), or with ``--reparse``, every row is parsed again from the
-texts it names, the clock pinned to the day it was captured and no supplier
-contacted, and rewritten where the parse came out differently. A card whose
-text other readers or render code made is rendered again from its kept
-bytes, so a render fix, which is a parser source too, reaches them as well.
+or the OCR engine changed since the rows were last replayed (their digest is
+stamped in ``parser.txt``), or with ``--reparse``, every row is parsed again
+from the texts it names, the clock pinned to the day it was captured and no
+supplier contacted, and rewritten where the parse came out differently. A
+card whose text other readers, render code or OCR engine made is read again
+from its kept bytes, so a render fix, which is a parser source too, and a new
+glyph library reach them as well.
 
 ``--backfill N`` also asks every supplier that keeps an archive of its own for
 the N closed months before this one, through the ``fetch_for_month`` the
@@ -754,8 +755,9 @@ def _write_coverage(
 
 
 def _parser_digest() -> str:
-    """One digest over every source a parse depends on."""
-    digest = hashlib.sha256()
+    """One digest over every source a parse depends on, and the OCR engine,
+    so a new glyph library replays the months read off page images."""
+    digest = hashlib.sha256(engine_version().encode("utf-8"))
     for pattern in _PARSER_SOURCES:
         for path in sorted(_PKG.glob(pattern)):
             digest.update(path.relative_to(_PKG).as_posix().encode("utf-8"))
@@ -813,8 +815,8 @@ async def _replay_row(
 ) -> None:
     """Parse one stored row again from the texts it names, offline, and
     rewrite it when the parse came out differently. A card whose text other
-    readers or render code made is rendered again from its kept bytes. The
-    caller pins the clock to the row's capture day."""
+    readers, render code or OCR engine made is read again from its kept
+    bytes. The caller pins the clock to the row's capture day."""
     out = cards.archive
     supplier, contract, region = path.parts[-4:-1]
     label = f"{supplier}/{contract}/{region}/{path.stem}"
@@ -838,6 +840,7 @@ async def _replay_row(
         return
     memo = _RecordingMemo()
     readers = readers_line()
+    engine = engine_version()
     rendered: set[tuple[str, str]] = set()
     for source in sources:
         text_path = out / source["text"]
@@ -845,7 +848,12 @@ async def _replay_row(
             summary.unreplayable.append(f"{label}: {source['text']} is missing")
             return
         renderer = _RENDERERS.get(source["variant"])
-        stale = "pdf" in source and "ocr" not in source and source.get("readers") != readers
+        if "pdf" not in source:
+            stale = False
+        elif "ocr" in source:
+            stale = source["ocr"] != engine
+        else:
+            stale = source.get("readers") != readers
         try:
             if stale and renderer is not None:
                 payload = await kept_pdf(source["pdf"])
@@ -861,16 +869,17 @@ async def _replay_row(
         dict.__setitem__(memo, _memo_key(source), text)
     cards.digests.update({s["url"]: s["pdf"] for s in sources if "pdf" in s})
     # A text the replay did not read again from its card goes on naming what
-    # read it, whatever this run has installed: an installation learns from
-    # the engine that the card was read off an image, and a newer engine reads
-    # the card again.
+    # read it: an installation learns from the engine that the card was read
+    # off an image.
     for source in sources:
         if "pdf" not in source:
             continue
         key = (source["variant"], source["pdf"])
+        if key in rendered:
+            continue
         if "ocr" in source:
             cards.ocr[key] = source["ocr"]
-        elif key not in rendered:
+        else:
             cards.readers[key] = source.get("readers", "")
     cards.calls.clear()
     offline: Any = _Offline()

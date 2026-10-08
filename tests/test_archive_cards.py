@@ -40,6 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -901,29 +902,59 @@ def test_main_writes_the_ocr_failures_one_a_line(
     assert report.read_text() == ""
 
 
-async def test_a_replay_under_another_engine_keeps_the_reading_marked(
+async def test_a_new_engine_reads_a_month_no_longer_downloaded_again(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """In October a new engine and a parser change: September's row, parsed
-    again from its stored text, still names the engine that read it."""
+    """In October a new engine is installed and nothing else changed:
+    September's card, read off page images, is read again from its kept
+    bytes, and the row names the engine that read it."""
     out = tmp_path / "gas"
-    monkeypatch.setattr(ac, "_ocr_text", lambda payload: "month 2026-09 price 0.09")
+    pdfs = tmp_path / "pdfs"
+    read: list[bytes] = []
+
+    def ocr(misread: str) -> Callable[[bytes], str]:
+        def read_card(payload: bytes) -> str:
+            read.append(payload)
+            return payload.decode("ascii").replace("0.08", misread)
+
+        return read_card
+
+    def no_text_layer(payload: bytes) -> str:
+        raise CardNotReadableError("card has no text layer")
+
+    monkeypatch.setitem(ac._RENDERERS, "plain", no_text_layer)
+    monkeypatch.setattr(ac, "_ocr_text", ocr("0.03"))
     monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+aaaaaaaaaaaa")
-    await ac.archive(out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep)
+    await ac.archive(
+        out, extractors=[_ImageAcme().extractor()], now=NOW, sleep=_no_sleep, pdf_dir=pdfs
+    )
+    september = out / ROW / "2026-09.json"
+    assert json.loads(september.read_text(encoding="utf-8"))["energy"]["price"] == 0.03
     web.pages[CARD_URL] = _card("2026-10", "0.10")
-    monkeypatch.setattr(ac, "_ocr_text", lambda payload: "month 2026-10 price 0.10")
+    monkeypatch.setattr(ac, "_ocr_text", ocr("0.08"))
     monkeypatch.setattr(ac, "engine_version", lambda: "0.3.0+bbbbbbbbbbbb")
-    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
     summary = await ac.archive(
         out,
         extractors=[_ImageAcme().extractor()],
         now=datetime(2026, 10, 2, 6, tzinfo=UTC),
         sleep=_no_sleep,
+        pdf_dir=pdfs,
     )
-    assert summary.replayed == 2
-    september = json.loads((out / ROW / "2026-09.json").read_text(encoding="utf-8"))
-    card = next(s for s in september["_sources"] if s["url"] == CARD_URL)
-    assert card["ocr"] == "0.3.0+aaaaaaaaaaaa"
+    assert (summary.replayed, summary.reparsed) == (2, 1)
+    assert read[1:] == [_card("2026-10", "0.10"), _card("2026-09", "0.08")]
+    row = json.loads(september.read_text(encoding="utf-8"))
+    assert row["energy"]["price"] == 0.08
+    card = next(s for s in row["_sources"] if s["url"] == CARD_URL)
+    assert card["ocr"] == "0.3.0+bbbbbbbbbbbb"
+    # The next run holds both readings and replays nothing.
+    summary = await ac.archive(
+        out,
+        extractors=[_ImageAcme().extractor()],
+        now=datetime(2026, 10, 3, 6, tzinfo=UTC),
+        sleep=_no_sleep,
+        pdf_dir=pdfs,
+    )
+    assert (summary.replayed, len(read)) == (0, 3)
 
 
 class _NewReadersAcme(_Acme):
