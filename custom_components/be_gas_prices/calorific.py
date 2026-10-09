@@ -31,15 +31,18 @@ connection is fed from, published monthly for every station in Belgium by
 Atrias, the market's clearing house:
 
     https://api.atrias.be/roots/download/SectorData/02 Gross Calorific Values/
-        <YYYY>/GCV<YYYYMM>.txt?subscription-key=<key>
+        <YYYY>/GCV<YYYYMM>.txt
 
 The key is the public one Atrias's own site carries in ``runtime-config.js``;
-it is read from there rather than copied into this file. A month's file lands
-in the first days of the next month. The value is in kWh per normal cubic
-metre: the DSO also corrects the metered volume for pressure and temperature
-(9 C is assumed without a volume converter), which this value leaves out,
-so the factor printed on the bill is the default and this is for a household
-without one at hand.
+it is read from there rather than copied into this file. It goes in a
+``subscription-key`` header, as that site sends it, and not in the URL:
+aiohttp puts the URL in some of its error messages, a connect timeout for
+one, and those end up in the log. A month's file lands in the first days of
+the next month. The value is in kWh per normal cubic metre: the DSO also
+corrects the metered volume for pressure and temperature (9 C is assumed
+without a volume converter), which this value leaves out, so the factor
+printed on the bill is the default and this is for a household without one
+at hand.
 
 api.atrias.be does not send its intermediate certificate, so a plain TLS
 handshake fails verification. The public "Go Daddy Secure Certificate
@@ -125,13 +128,14 @@ async def _get(
     session: aiohttp.ClientSession,
     context: ssl.SSLContext,
     url: str,
-    params: dict[str, str],
+    key: str,
+    params: dict[str, str] | None = None,
 ) -> bytes:
     try:
         async with session.get(
             url,
             params=params,
-            headers={"User-Agent": USER_AGENT},
+            headers={"User-Agent": USER_AGENT, "subscription-key": key},
             ssl=context,
             timeout=_TIMEOUT,
         ) as resp:
@@ -157,7 +161,8 @@ async def list_months(
         session,
         context,
         f"{ATRIAS_API_URL}/folder/list",
-        {"folder": _FOLDER, "subscription-key": key},
+        key,
+        {"folder": _FOLDER},
     )
     try:
         years = json.loads(payload)
@@ -223,4 +228,4 @@ async def fetch_month(
 ) -> dict[Station, float]:
     """The calorific values of the month file at ``path``, as listed."""
     url = f"{ATRIAS_API_URL}/download/{quote(path, safe='')}"
-    return parse_gcv_file(await _get(session, context, url, {"subscription-key": key}))
+    return parse_gcv_file(await _get(session, context, url, key))
