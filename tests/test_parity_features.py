@@ -319,6 +319,18 @@ async def test_an_earlier_contract_s_index_is_asked_again_after_a_failure() -> N
     assert fetch_index.await_count == 2
 
 
+async def test_an_earlier_contract_s_index_keeps_a_closed_month_dropped() -> None:
+    fetch_index = AsyncMock(
+        side_effect=[{"ZTP101": {"2026-07": 53.0, "2026-08": 61.768}}, {"ZTP101": {}}]
+    )
+    extractor = replace(providers.EXTRACTORS["engie"], fetch_index=fetch_index)
+    billing = PeriodBilling(MonthCardCache())
+    await billing._table(AsyncMock(), extractor, date(2026, 9, 15))
+    assert await billing._table(AsyncMock(), extractor, date(2026, 9, 16)) == {
+        "ZTP101": {"2026-07": 53.0, "2026-08": 61.768}
+    }
+
+
 async def test_an_earlier_contract_s_index_page_refused_waits_a_day() -> None:
     """A page the parser refuses fails the same way next hour: not read
     every tick, as a network failure with nothing held is."""

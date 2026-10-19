@@ -37,6 +37,7 @@ from custom_components.be_gas_prices.bill import (
     bill_month,
     contract_leg,
     index_for,
+    merged_index,
     resolve_energy_price,
 )
 from custom_components.be_gas_prices.const import (
@@ -81,6 +82,22 @@ def test_index_for_prefers_the_month_then_the_latest_before_it() -> None:
     assert index_for(TABLE, "ZTPDAM", "2026-06") is None
     assert index_for(None, "ZTPDAM", "2026-09") is None
     assert index_for(TABLE, "ZTP101", "2026-09") is None
+
+
+def test_a_value_the_source_no_longer_gives_is_kept_for_a_closed_month() -> None:
+    held = {
+        "TTF_RLP": {"2026-02": 33.3, "2026-03": 51.0, "2026-10": 76.0},
+        "OLD": {"2026-01": 30.0},
+    }
+    fetched = {"TTF_RLP": {"2026-03": 51.26, "2026-09": 75.35}}
+    assert merged_index(held, fetched, "2026-10") == {
+        # February dropped by the source, March corrected by it; October's
+        # forward value is the source's alone and goes with it.
+        "TTF_RLP": {"2026-02": 33.3, "2026-03": 51.26, "2026-09": 75.35},
+        "OLD": {"2026-01": 30.0},
+    }
+    assert merged_index(None, fetched, "2026-10") == fetched
+    assert fetched == {"TTF_RLP": {"2026-03": 51.26, "2026-09": 75.35}}
 
 
 def test_an_indexed_leg_is_priced_on_its_month() -> None:

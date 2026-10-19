@@ -42,7 +42,7 @@ from typing import Any
 
 import aiohttp
 
-from .bill import contract_leg, month_key
+from .bill import contract_leg, merged_index, month_key
 from .const import (
     CONF_CALIBER,
     CONF_CONTRACT,
@@ -278,7 +278,7 @@ class PeriodBilling:
         table = None
         if extractor.fetch_index is not None:
             try:
-                table = await guarded(extractor.label, extractor.fetch_index(session))
+                fetched = await guarded(extractor.label, extractor.fetch_index(session))
             except ExtractorError as err:
                 _LOGGER.debug("%s index values not read: %s", extractor.label, err)
                 if (held is None or held[1] is None) and is_transient_fetch_error(str(err)):
@@ -288,6 +288,8 @@ class PeriodBilling:
                 # A held table keeps pricing, and a page the parser refuses
                 # will be refused next hour too: asked again tomorrow.
                 table = None if held is None else held[1]
+            else:
+                table = merged_index(None if held is None else held[1], fetched, month_key(today))
         self._tables[extractor.id] = (today, table)
         return table
 

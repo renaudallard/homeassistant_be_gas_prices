@@ -45,7 +45,10 @@ cards (`issues.sync_issues`).
 2. **Index values** (`_refresh_index`), twice a day, from the supplier's own
    publication. A failure keeps the table held, or with none held and a
    failure a retry may cure (network, storage, HTTP 5xx, 403, 408, 429) is
-   asked again on the next tick.
+   asked again on the next tick. A value held for a closed month stays
+   when the publication no longer gives it (`bill.merged_index`), as a
+   value printed on a card does once the card leaves the supplier's
+   listing; the running month's and later ones are the publication's own.
 3. **Calorific values** (`_refresh_calorific`), daily, for a household that
    converts on its reception station: every month Atrias lists since
    January of last year, only the months not held yet. Atrias's key or month

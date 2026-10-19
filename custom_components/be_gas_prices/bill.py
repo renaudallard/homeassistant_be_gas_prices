@@ -92,6 +92,25 @@ def index_for(table: IndexTable | None, index: str, month: str) -> IndexValue | 
     return IndexValue(values[latest], latest)
 
 
+def merged_index(held: IndexTable | None, fetched: IndexTable, month: str) -> IndexTable:
+    """``fetched``, with every value ``held`` has for a month before ``month``
+    that ``fetched`` no longer gives.
+
+    A supplier that publishes a value only on the cards it still links
+    (Trevion's next month's card, Belvus's last twelve) drops it once that
+    card leaves the listing, though the month it settled stays settled. A
+    value for ``month`` or a later one is the publication's alone: a
+    forward value it took back is not kept.
+    """
+    table = {name: dict(values) for name, values in fetched.items()}
+    for name, values in (held or {}).items():
+        kept = table.setdefault(name, {})
+        for key, value in values.items():
+            if key < month:
+                kept.setdefault(key, value)
+    return table
+
+
 def contract_leg(
     own: EnergyRates,
     signed: EnergyRates | None,

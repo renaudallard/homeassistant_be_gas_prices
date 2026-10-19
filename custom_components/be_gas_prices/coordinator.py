@@ -58,7 +58,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from . import calorific, excise_law, fluvius
-from .bill import IndexValue, bill_month, contract_leg, month_key
+from .bill import IndexValue, bill_month, contract_leg, merged_index, month_key
 from .compare import OwnContract, rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -656,7 +656,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if self._index_fetched_at is not None and now - self._index_fetched_at < INDEX_TTL:
             return
         try:
-            self._index_table = await guarded(self.extractor.label, fetch(self._session))
+            fetched = await guarded(self.extractor.label, fetch(self._session))
         except ExtractorError as err:
             _LOGGER.warning("%s: index values not refreshed: %s", self.extractor.label, err)
             if self._index_table is None and is_transient_fetch_error(str(err)):
@@ -666,6 +666,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 return
             # A held table keeps pricing, and a source that refuses the
             # read will refuse it next hour too: not worth an hourly retry.
+        else:
+            self._index_table = merged_index(
+                self._index_table, fetched, month_key(dt_util.now().date())
+            )
         self._index_fetched_at = now
 
     async def _refresh_calorific(self) -> None:

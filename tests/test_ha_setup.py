@@ -2930,6 +2930,23 @@ async def test_a_stored_index_table_is_its_own_supplier_s_only(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_closed_month_the_index_source_drops_keeps_its_value(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A source that stops giving July, as Trevion does once July's card
+    leaves its listing, does not take July's value with it."""
+    index = AsyncMock(side_effect=[TABLE, {"ZTPDAM": {"2026-08": 61.6}}])
+    stub = replace(providers.EXTRACTORS["engie"], fetch_index=index)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass)
+        coordinator = entry.runtime_data
+        freezer.tick(timedelta(hours=13))
+        await coordinator.async_refresh()
+    assert index.await_count == 2
+    assert coordinator._index_table == {"ZTPDAM": {"2026-07": 53.116, "2026-08": 61.6}}
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_failed_index_fetch_with_no_table_held_is_asked_again_next_tick(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
