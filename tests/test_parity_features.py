@@ -82,6 +82,7 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.contract_periods import (
     PeriodBilling,
+    Unpriced,
     current_period_start,
     periods_this_year,
     previous_contracts,
@@ -293,7 +294,7 @@ async def test_an_earlier_contract_on_the_custom_supplier_is_billed_on_its_typed
         5_000.0,
         use_archive=True,
     )
-    assert (costs, missing) == ([], ["Expert: custom figures"])
+    assert (costs, missing) == ([], [Unpriced("Expert: custom figures", date(2026, 5, 31))])
 
 
 def test_a_contract_that_ended_last_year_is_not_billed_this_year() -> None:

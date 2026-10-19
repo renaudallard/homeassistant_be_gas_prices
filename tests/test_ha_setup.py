@@ -966,17 +966,19 @@ async def test_a_withdrawn_contract_with_no_card_at_all_retries_and_says_why(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(("until", "this_month"), [("2026-05-31", []), ("2026-09-09", ["dats24"])])
 async def test_an_earlier_contract_that_cannot_be_priced_is_named(
-    hass: HomeAssistant, fetch: AsyncMock
+    hass: HomeAssistant, fetch: AsyncMock, until: str, this_month: list[str]
 ) -> None:
-    """Its days are missing from the year's cost, which the sensor says."""
+    """Its days are missing from the year's cost, which the sensor says; the
+    month's cost names it only when it supplied part of the month."""
     days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(258)}
     gone = {
         CONF_SUPPLIER: "dats24",
         CONF_CONTRACT: "dats24_variable",
         CONF_REGION: REGION_WALLONIA,
         CONF_DSO: DSO_ORES,
-        "until": "2026-05-31",
+        "until": until,
     }
     with patch(
         "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
@@ -986,6 +988,13 @@ async def test_an_earlier_contract_that_cannot_be_priced_is_named(
     cost = hass.states.get("sensor.engie_flow_current_year_cost")
     assert cost is not None and cost.state != "unknown"
     assert cost.attributes["unpriced_contracts"] == ["dats24"]
+    year_end = hass.states.get("sensor.engie_flow_projected_year_end_cost")
+    assert year_end is not None and year_end.attributes["unpriced_contracts"] == ["dats24"]
+    month = hass.states.get("sensor.engie_flow_current_month_cost")
+    assert month is not None and month.attributes["unpriced_contracts"] == this_month
+    # Its gas is the household's all the same: the meter recorded it.
+    volume = hass.states.get("sensor.engie_flow_year_to_date_consumption")
+    assert volume is not None and float(volume.state) == pytest.approx(2580.0)
 
 
 @pytest.mark.freeze_time("2026-09-15 23:05:00+02:00")

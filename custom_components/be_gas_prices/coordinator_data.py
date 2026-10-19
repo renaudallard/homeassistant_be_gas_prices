@@ -92,6 +92,8 @@ class CoordinatorData:
     # Earlier contracts of the year that could not be priced, whose days are
     # missing from the running costs.
     unpriced_periods: tuple[str, ...] = field(default_factory=tuple)
+    # Those of them that supplied part of the running month.
+    unpriced_this_month: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def price_m3(self) -> float | None:

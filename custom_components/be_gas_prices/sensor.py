@@ -118,6 +118,12 @@ def _fixed_attributes(data: CoordinatorData) -> dict[str, Any]:
     }
 
 
+def _unpriced_attributes(data: CoordinatorData) -> dict[str, Any]:
+    # Earlier contracts of the year whose supplier or card could not price
+    # them: their days are not in the cost.
+    return {"unpriced_contracts": list(data.unpriced_periods)}
+
+
 def _year_attributes(data: CoordinatorData) -> dict[str, Any]:
     return {
         "ytd_kwh": None if data.ytd_kwh is None else round(data.ytd_kwh, 1),
@@ -134,9 +140,7 @@ def _year_attributes(data: CoordinatorData) -> dict[str, Any]:
             for bill in data.months
         ],
         "months_on_current_card": list(data.months_on_current_card),
-        # Earlier contracts of the year whose supplier or card could not
-        # price them: their days are not in the cost.
-        "unpriced_contracts": list(data.unpriced_periods),
+        **_unpriced_attributes(data),
         "meter": data.meter,
     }
 
@@ -149,6 +153,8 @@ def _month_attributes(data: CoordinatorData) -> dict[str, Any]:
     month = data.months[-1].month
     bills = [bill for bill in data.months if bill.month == month]
     return {
+        # The earlier contracts no card priced that supplied part of it.
+        "unpriced_contracts": list(data.unpriced_this_month),
         "kwh": round(sum(bill.kwh for bill in bills), 1),
         "energy_eur": round(sum(bill.energy_cost for bill in bills), 2),
         "network_eur": round(sum(bill.network_cost for bill in bills), 2),
@@ -280,6 +286,7 @@ SENSORS: tuple[GasSensorDescription, ...] = (
         native_unit_of_measurement="EUR",
         suggested_display_precision=2,
         value_fn=lambda d: _money(d.projected_year_end_cost),
+        attributes_fn=_unpriced_attributes,
     ),
     GasSensorDescription(
         key="projected_year_consumption",

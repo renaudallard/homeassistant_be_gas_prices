@@ -36,7 +36,7 @@ from __future__ import annotations
 import contextlib
 import logging
 from collections.abc import Callable, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -216,6 +216,15 @@ def current_period_start(data: dict[str, Any], default: date, today: date) -> da
     return max(default, periods[-1][2] + timedelta(days=1))
 
 
+@dataclass(frozen=True)
+class Unpriced:
+    """An earlier contract of the year no card could price, by the label
+    the sensors name it with, and the last day of it this year."""
+
+    label: str
+    until: date
+
+
 class PeriodBilling:
     """Prices the earlier contracts of the year on their own suppliers' cards.
 
@@ -343,7 +352,7 @@ class PeriodBilling:
         *,
         use_archive: bool,
         fill: bool = True,
-    ) -> tuple[list[RunningCosts], list[str]]:
+    ) -> tuple[list[RunningCosts], list[Unpriced]]:
         """What each earlier contract of the year cost, and the ones that
         could not be priced (their supplier is gone or its card unreadable).
         ``fill`` fetches their months' cards first. A month without a card of
@@ -354,7 +363,7 @@ class PeriodBilling:
         if fill:
             await self.fill(session, data, today, use_archive=use_archive)
         costs: list[RunningCosts] = []
-        missing: list[str] = []
+        missing: list[Unpriced] = []
         # One index read per supplier and tick, however many earlier
         # contracts it supplied.
         tables: dict[str, IndexTable | None] = {}
@@ -363,14 +372,14 @@ class PeriodBilling:
             try:
                 extractor = get_extractor(str(period[CONF_SUPPLIER]))
             except ExtractorError:
-                missing.append(str(period[CONF_SUPPLIER]))
+                missing.append(Unpriced(str(period[CONF_SUPPLIER]), end))
                 continue
             contract = str(period[CONF_CONTRACT])
             region = str(period[CONF_REGION])
             custom = extractor.id == SUPPLIER_CUSTOM
             if custom and CONF_CUSTOM_PRICE not in period:
                 # Recorded before a switch kept the typed card.
-                missing.append(extractor.label)
+                missing.append(Unpriced(extractor.label, end))
                 continue
             signing = None if custom else signing_month(period)
 
@@ -401,7 +410,7 @@ class PeriodBilling:
                     session, extractor, contract, region, today, use_archive
                 )
             if end_card is None:
-                missing.append(extractor.label)
+                missing.append(Unpriced(extractor.label, end))
                 continue
             if extractor.id not in tables:
                 tables[extractor.id] = await self._table(session, extractor, today)
@@ -467,7 +476,7 @@ class PeriodBilling:
                         cost = cost_on(fallback)
                 if cost is None:
                     _LOGGER.warning("%s: earlier contract not priced: %s", extractor.label, err)
-                    missing.append(extractor.label)
+                    missing.append(Unpriced(extractor.label, end))
                     continue
                 end_on_current = True
             if end_on_current:

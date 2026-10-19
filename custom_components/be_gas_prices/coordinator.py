@@ -269,6 +269,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.backfill_stamp: str | None = None
         self._periods = PeriodBilling(self._months)
         self.unpriced_periods: list[str] = []
+        # Those of them that supplied part of the running month.
+        self.unpriced_this_month: list[str] = []
         # The last daily ranking (compare.py), kept across restarts, and the
         # task computing the next one.
         self.daily_ranking: DailyRanking | None = None
@@ -1164,6 +1166,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 out["unpriced"] = [str(name) for name in unpriced]
             if held.get("month") == month_key(today):
                 out["current_month_cost"] = number("current_month_cost")
+                unpriced = held.get("unpriced_month")
+                if isinstance(unpriced, list):
+                    out["unpriced_month"] = [str(name) for name in unpriced]
         return out
 
     async def _read_meter(self, today: date) -> tuple[MeterKind | None, dict[date, float]]:
@@ -1195,6 +1200,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         )
         costs: RunningCosts | None = None
         earlier: list[RunningCosts] = []
+        # What the meter recorded over the earlier contracts' days, priced
+        # or not: a contract no card prices still used its gas.
+        earlier_kwh = 0.0
         measured = False
         kwh_days: dict[date, float] | None = None
         held: dict[str, Any] = {}
@@ -1218,10 +1226,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     dso=household.dso, caliber=household.caliber, annual_kwh=held["annual_kwh"]
                 )
             self.unpriced_periods = list(held.get("unpriced", []))
+            self.unpriced_this_month = list(held.get("unpriced_month", []))
         else:
             # Named afresh on every tick: last year's earlier contracts are
             # no part of this year's cost.
             self.unpriced_periods = []
+            self.unpriced_this_month = []
             kind, meter_days = await self._read_meter(today)
             kwh_days = (
                 to_kwh(meter_days, self._factor_for(kind), date(today.year, 1, 1))
@@ -1247,8 +1257,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 energy_for=self._energy_for,
                 table=self._index_table,
             )
-            if periods_this_year(self._data, today):
-                earlier, self.unpriced_periods = await self._periods.bill(
+            periods = periods_this_year(self._data, today)
+            earlier_kwh = sum(
+                kwh
+                for day, kwh in kwh_days.items()
+                if any(first <= day <= last for _period, first, last in periods)
+            )
+            if periods:
+                earlier, unpriced = await self._periods.bill(
                     self._session,
                     self._data,
                     today,
@@ -1257,6 +1273,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
                     fill=not self._filling(),
                 )
+                self.unpriced_periods = [u.label for u in unpriced]
+                self.unpriced_this_month = [
+                    u.label for u in unpriced if month_key(u.until) == month_key(today)
+                ]
         month = month_key(today)
         now_bill = bill_month(
             month=month,
@@ -1283,7 +1303,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             () if costs is None else costs.months
         )
         earlier_cost = sum(period.current_year_cost for period in earlier)
-        earlier_kwh = sum(period.ytd_kwh for period in earlier)
         if deferred:
             rolling = held.get("rolling_year_kwh")
             year_cost = held.get("current_year_cost")
@@ -1325,6 +1344,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     "projected_year_end_cost": year_end_cost,
                     "projected_year_kwh": year_end_kwh,
                     "unpriced": list(self.unpriced_periods),
+                    "unpriced_month": list(self.unpriced_this_month),
                 }
         return CoordinatorData(
             snapshot=snapshot,
@@ -1361,4 +1381,5 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             projected_year_kwh=year_end_kwh,
             meter=self.meter,
             unpriced_periods=tuple(self.unpriced_periods),
+            unpriced_this_month=tuple(self.unpriced_this_month),
         )
