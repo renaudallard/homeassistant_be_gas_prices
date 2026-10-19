@@ -321,6 +321,7 @@ class _FlowSteps:
             given.update(user_input.get(_ADVANCED, {}))
             signed = bool(given.pop(_SIGNED_RATE, False))
             start = parse_date(given.get(CONF_CONTRACT_START_DATE))
+            card = parse_date(given.get(CONF_TARIFF_CARD_DATE))
             end = given.get(CONF_CONTRACT_END_DATE)
             earlier = previous_contracts(self._data)
             # The last day the contract left by the last switch supplied.
@@ -331,6 +332,10 @@ class _FlowSteps:
                 # The contract set up supplies from the last switch on: an
                 # earlier start would look its signing card up too early.
                 errors[CONF_CONTRACT_START_DATE] = "start_date_before_switch"
+            elif card is not None and f"{card:%Y-%m}" > f"{dt_util.now():%Y-%m}":
+                # A card to come prices nothing until its month, and then
+                # every month from the start at once.
+                errors["base"] = "tariff_card_date_in_future"
             elif start and end and str(end) <= str(start):
                 errors["base"] = "end_before_start"
             else:

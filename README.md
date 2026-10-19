@@ -255,9 +255,10 @@ manifest.
 2. **Supplier** and **contract**, with an optional **contract start date**:
    it prices a fixed or indexed contract on the card of the month supply
    started, and can be neither in the future nor before a change of
-   contract recorded on the entry. The folded **Advanced** section holds what most households leave
-   alone: a **tariff card month** when you signed on another month's card,
-   the **end date** for a renewal reminder, counting this year's cost from
+   contract recorded on the entry. The folded **Advanced** section holds
+   what most households leave alone: a **tariff card month** when you signed
+   on another month's card, not a month to come, the **end date** for a
+   renewal reminder, counting this year's cost from
    the contract start, and a switch to type the figures of your contract
    when they differ from the card or the card cannot be reached.
 3. **Network operator**, only asked without a postcode and outside

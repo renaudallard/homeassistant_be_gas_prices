@@ -1193,6 +1193,32 @@ async def test_a_contract_start_is_checked_against_today_and_the_last_switch(
         assert result["errors"] == {CONF_CONTRACT_START_DATE: error}
 
 
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(
+    ("card", "error"),
+    [("2026-10-01", "tariff_card_date_in_future"), ("2026-09-30", None), ("2025-11-05", None)],
+)
+async def test_a_tariff_card_month_to_come_is_refused(
+    hass: HomeAssistant, card: str, error: str | None
+) -> None:
+    """Its card is no one's until its month, which would then reprice every
+    month from the start at once."""
+    result = await _contract_step(hass, _entry(hass))
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_CONTRACT: "engie_flow",
+            CONF_CONTRACT_START_DATE: "2025-12-01",
+            "advanced": {CONF_TARIFF_CARD_DATE: card},
+        },
+    )
+    if error is None:
+        assert result["step_id"] == "dso"
+    else:
+        assert result["step_id"] == "contract"
+        assert result["errors"] == {"base": error}
+
+
 async def test_settings_keep_a_title_the_user_typed(hass: HomeAssistant) -> None:
     entry = _entry(hass)
     hass.config_entries.async_update_entry(entry, title="My house")
