@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import io
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -50,6 +51,18 @@ _WORKBOOK = (
     "/sites/fluvius/files/2025-11/"
     "distributienettarieven-gas-afname-fluvius-antwerpen-01012026-31122026.xlsx"
 )
+
+
+def _damaged(workbook: bytes) -> bytes:
+    """``workbook`` with bytes flipped inside the worksheet's compressed
+    data: the zip directory still reads, the inflate does not."""
+    with zipfile.ZipFile(io.BytesIO(workbook)) as z:
+        info = z.getinfo("xl/worksheets/sheet1.xml")
+    start = info.header_offset + 30 + len(info.filename.encode()) + len(info.extra) + 50
+    data = bytearray(workbook)
+    for i in range(start, start + 30):
+        data[i] ^= 0xFF
+    return bytes(data)
 
 
 @pytest.fixture(autouse=True)
@@ -158,6 +171,7 @@ async def test_a_year_not_listed_yet_yields_nothing_until_the_backoff() -> None:
         ("a maintenance page answered with 200", b"<html>maintenance</html>"),
         ("an empty body", b""),
         ("a truncated workbook", _SHEET_2026[:4000]),
+        ("a workbook with damaged compressed data", _damaged(_SHEET_2026)),
     ],
 )
 async def test_a_body_that_is_not_a_sheet_never_raises(label: str, body: bytes) -> None:

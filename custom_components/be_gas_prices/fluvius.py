@@ -53,6 +53,7 @@ import io
 import logging
 import re
 import zipfile
+import zlib
 from datetime import datetime
 from typing import Any, Final
 
@@ -119,10 +120,13 @@ async def ensure_tariff_sheet(session: aiohttp.ClientSession, year: int) -> None
             KeyError,
             IndexError,
             zipfile.BadZipFile,
+            zlib.error,
+            EOFError,
             ET.ParseError,
             DefusedXmlException,
         ) as err:
-            # The page came back and is not the workbook as expected.
+            # The page came back and is not the workbook as expected, or
+            # its compressed data is damaged or cut short.
             _LOGGER.warning("Fluvius %d gas tariff sheet could not be read: %s", year, err)
             fee = None
         if fee is None:
