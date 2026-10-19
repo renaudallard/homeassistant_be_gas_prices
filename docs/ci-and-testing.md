@@ -155,12 +155,13 @@ How the cross-check decides:
 - A supplier's vote is the module that parses it, so the six Energy Together
   brands count once.
 - A tie is a notice: two voters against two is not a verdict on either.
-- The excise and the Walloon connection fee are measured against the law
-  too: the run reads article 419 from Justel first (`federal: gas excise
-  law`, a failure when the page is not the article), and a month whose
-  fleet mostly prints another figure than the one billed fails as
-  `federal: excise ... against the law` or `wallonia: connection fee ...
-  against the law`. So does a fleet mostly stating another VAT rate than
+- The excise, the energy contribution and the Walloon connection fee are
+  measured against the law too: the run reads article 419 from Justel first
+  (`federal: gas excise law`, a failure when the page is not the article),
+  and a month whose fleet mostly prints another figure than the one billed
+  fails as `federal: excise ... against the law`, `federal: energy
+  contribution ... against the law` (zero from August 2026) or `wallonia:
+  connection fee ... against the law`. So does a fleet mostly stating another VAT rate than
   `VAT_RATE_REDUCED` (`federal: VAT rate ... against the law`), the rate
   every card that states none is billed on; a card stating another rate
   than the rest is billed on it, so it fails as a departure, never a

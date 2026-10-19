@@ -299,6 +299,27 @@ def test_a_federal_levy_the_law_sets_for_the_month_is_a_notice() -> None:
     assert [c.status for c in outside if "contribution" in c.label] == ["notice"]
 
 
+def test_a_fleet_printing_an_energy_contribution_again_fails_against_the_law() -> None:
+    """The integration bills none from August 2026: a levy brought back
+    would go unbilled. Before August the fleet's 0,10577 is the law's."""
+
+    def fleet(label: str, contribution: float) -> list[Any]:
+        return [
+            _card(_snapshot(supplier, label=label, contribution=contribution))
+            for supplier in ("alpha", "beta", "gamma")
+        ]
+
+    assert _failing(lc.consensus(fleet("2026-11", 0.0010577))) == {
+        "federal: energy contribution for 2026-11 against the law": (
+            "alpha, beta, gamma print 0.10577 c EUR/kWh where the integration bills 0 c EUR/kWh"
+        )
+    }
+    # The synthetic excise is August's, so July's fails on its own.
+    july = _failing(lc.consensus(fleet("2026-07", 0.0010577)))
+    assert not any("contribution" in label for label in july)
+    assert _failing(lc.consensus(fleet("2026-11", 0.0))) == {}
+
+
 def test_a_fluvius_card_without_data_management_is_a_notice_in_its_year() -> None:
     """The integration bills the regulated fee where a Fluvius row prints
     none, for the tariff year const.py knows; a wrong fee that is printed is

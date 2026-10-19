@@ -130,6 +130,17 @@ def law_excise(delivery: date) -> tuple[float, float] | None:
     )
 
 
+def law_contribution(delivery: date) -> float | None:
+    """The residential energy contribution, EUR/kWh excluding VAT, the law
+    sets for ``delivery``: zero from August 2026, 0,9978 EUR/MWh from January
+    2025, and None before, where the card is read as printed."""
+    if _in_window(delivery, ENERGY_CONTRIBUTION_ZEROED_FROM, None):
+        return 0.0
+    if _in_window(delivery, ENERGY_CONTRIBUTION_KNOWN_FROM, None):
+        return ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA
+    return None
+
+
 # Belgium's VAT rates above zero. A card stating one of them for its
 # customers puts the law's figures on that rate, as it prints its own; a
 # stated rate outside them is a misread, and the residential gas rate
@@ -172,13 +183,9 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
             resolved,
             excise_bands=excise_bands(low * factor, high * factor),
         )
-    if _in_window(delivery, ENERGY_CONTRIBUTION_ZEROED_FROM, None):
-        resolved = replace(resolved, energy_contribution=0.0)
-    elif _in_window(delivery, ENERGY_CONTRIBUTION_KNOWN_FROM, None):
-        resolved = replace(
-            resolved,
-            energy_contribution=ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA * factor,
-        )
+    contribution = law_contribution(delivery)
+    if contribution is not None:
+        resolved = replace(resolved, energy_contribution=contribution * factor)
     return resolved
 
 

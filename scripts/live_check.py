@@ -94,7 +94,6 @@ from homeassistant.util import dt as dt_util  # noqa: E402
 
 from custom_components.be_gas_prices import excise_law, fluvius  # noqa: E402
 from custom_components.be_gas_prices.const import (  # noqa: E402
-    ENERGY_CONTRIBUTION_KNOWN_FROM,
     EXCISE_LAW_URL,
     FLUVIUS_KEYS,
     REGION_BRUSSELS,
@@ -114,7 +113,10 @@ from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     render_through,
 )
 from custom_components.be_gas_prices.providers._rates import IndexedRates  # noqa: E402
-from custom_components.be_gas_prices.providers._resolve import law_excise  # noqa: E402
+from custom_components.be_gas_prices.providers._resolve import (  # noqa: E402
+    law_contribution,
+    law_excise,
+)
 from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     CardNotReadableError,
     SupplierExtractor,
@@ -383,15 +385,11 @@ _CONTRIBUTION = "energy contribution"
 _CONNECTION_FEE = "connection fee"
 _VAT = "VAT rate"
 # The levies the integration bills from the law rather than from the card
-# (providers/_resolve.py): the energy contribution for the months const.py
-# knows the law for, and the excise and the Walloon connection fee for the
-# months _law_figure gives. A card printing another figure for such a month is
-# still wrong and reported, but nobody is billed on it, so it does not fail
-# the check.
+# (providers/_resolve.py): the excise, the energy contribution and the
+# Walloon connection fee, for the months _law_figure gives. A card printing
+# another figure for such a month is still wrong and reported, but nobody is
+# billed on it, so it does not fail the check.
 _EXCISE_SLICES = {_EXCISE_LOW: 0, _EXCISE_HIGH: 1}
-_LAW_WINDOWS: dict[str, tuple[tuple[int, int], tuple[int, int] | None]] = {
-    _CONTRIBUTION: (ENERGY_CONTRIBUTION_KNOWN_FROM, None),
-}
 
 
 # Card errors the provider notes in docs/providers document, by supplier,
@@ -598,10 +596,10 @@ def agree(a: float, b: float, unit: str) -> bool:
 
 def _law_figure(name: str, month: str) -> float | None:
     """What the integration bills ``month`` on for the figure ``name``, as a
-    residential card prints it: the excise of a slice including VAT, the
-    VAT exempt Walloon connection fee, and the residential VAT rate it puts
-    a figure printed excluding VAT on where a card states none. None when it
-    bills the card's."""
+    residential card prints it: the excise of a slice and the energy
+    contribution including VAT, the VAT exempt Walloon connection fee, and
+    the residential VAT rate it puts a figure printed excluding VAT on where
+    a card states none. None when it bills the card's."""
     parsed = label_month(month)
     if parsed is None:
         return None
@@ -609,6 +607,9 @@ def _law_figure(name: str, month: str) -> float | None:
         return VAT_RATE_REDUCED
     if name == _CONNECTION_FEE:
         return WALLOON_CONNECTION_FEE if parsed >= WALLOON_CONNECTION_FEE_KNOWN_FROM else None
+    if name == _CONTRIBUTION:
+        contribution = law_contribution(date(parsed[0], parsed[1], 1))
+        return None if contribution is None else contribution * (1 + VAT_RATE_REDUCED)
     slice_ = _EXCISE_SLICES.get(name)
     if slice_ is None:
         return None
@@ -618,14 +619,7 @@ def _law_figure(name: str, month: str) -> float | None:
 
 def _billed_from_law(name: str, month: str) -> bool:
     # A card stating another VAT rate Belgium levies is billed on it.
-    if name != _VAT and _law_figure(name, month) is not None:
-        return True
-    window = _LAW_WINDOWS.get(name)
-    parsed = label_month(month)
-    if window is None or parsed is None:
-        return False
-    start, end = window
-    return parsed >= start and (end is None or parsed < end)
+    return name != _VAT and _law_figure(name, month) is not None
 
 
 def _sheet_fee(figure: Figure) -> float | None:
