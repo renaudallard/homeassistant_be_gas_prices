@@ -31,8 +31,11 @@ all_in = (energy + tier_proportional + transport + excise + energy_contribution)
   after VAT.
 
 Residential cards print everything VAT inclusive, so `TaxOverlay.vat_rate` is
-0.0 and the multiplier is 1. A formula printed excluding VAT is grossed up by
-the card's own rate in its parser. `PriceBreakdown` reports each part VAT
+0.0 and the multiplier is 1. A formula printed excluding VAT is grossed up in
+its parser by the residential 6 % (`VAT_RATE_REDUCED`): Bolt's, energie.be's,
+OCTA+'s and the Energy Together brands' cards state no rate, and that rate
+reproduces their printed prices. The live check fails when most cards that
+state a rate state another one. `PriceBreakdown` reports each part VAT
 inclusive, so `energy + network + taxes == all_in`.
 
 ## The year's fixed costs

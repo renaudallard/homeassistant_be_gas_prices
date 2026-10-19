@@ -35,7 +35,8 @@ says nothing about the card, and checks what came back:
     every index its cards are priced on, and has a recent value for each;
   - the regulated figures agree across the fleet: per DSO the T1 and T2
     terms, transport and metering, and the federal excise, the energy
-    contribution, the Walloon connection fee and the Brussels per-meter levy.
+    contribution, the VAT rate a card states, the Walloon connection fee and
+    the Brussels per-meter levy.
     The regulators and the law set these for everyone, so a card printing
     something the other suppliers' cards of the same month do not is stale or
     misread, and the integration bills what the card prints. Where it bills
@@ -45,8 +46,9 @@ says nothing about the card, and checks what came back:
     document as the card's error, the departure is a notice rather than a
     failure;
   - the excise law on Justel and this year's Fluvius gas tariff sheet read as
-    the integration reads them, and the fleet's excise, Walloon connection fee
-    and Fluvius metering fee measured against what the integration bills.
+    the integration reads them, and the fleet's excise, VAT rate, Walloon
+    connection fee and Fluvius metering fee measured against what the
+    integration bills.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -378,6 +380,7 @@ _EXCISE_LOW = "excise up to 12000 kWh"
 _EXCISE_HIGH = "excise above 12000 kWh"
 _CONTRIBUTION = "energy contribution"
 _CONNECTION_FEE = "connection fee"
+_VAT = "VAT rate"
 # The levies the integration bills from the law rather than from the card
 # (providers/_resolve.py): the energy contribution for the months const.py
 # knows the law for, and the excise and the Walloon connection fee for the
@@ -504,6 +507,11 @@ def figures(card: Card) -> Iterator[Figure]:
     rows.append(("federal", _EXCISE_LOW, "EUR/kWh", taxes.excise_bands[0][1]))
     rows.append(("federal", _EXCISE_HIGH, "EUR/kWh", taxes.excise_bands[-1][1]))
     rows.append(("federal", _CONTRIBUTION, "EUR/kWh", taxes.energy_contribution))
+    if taxes.card_vat_rate is not None:
+        # The rate the card states for its customers: the law's figures and
+        # the formulas printed excluding VAT are put on 6 % on every card
+        # that states none.
+        rows.append(("federal", _VAT, "rate", taxes.card_vat_rate))
     if card.region == REGION_WALLONIA:
         rows.append((REGION_WALLONIA, _CONNECTION_FEE, "EUR/kWh", taxes.connection_fee))
     if card.region == REGION_BRUSSELS:
@@ -526,7 +534,7 @@ def figures(card: Card) -> Iterator[Figure]:
 # of a c EUR/kWh and of a euro a year. A figure read back coarser than that
 # lost its trailing zeros, not its digits: EnergyVision's "2,20" reads as
 # 0.022, and taken at face value it would agree with Bolt's 2,115 and hide it.
-_COARSEST = {"EUR/kWh": 1e-4, "EUR/year": 1e-2}
+_COARSEST = {"EUR/kWh": 1e-4, "EUR/year": 1e-2, "rate": 1e-4}
 
 
 def _step(value: float, unit: str) -> float:
@@ -545,6 +553,8 @@ def shown(value: float, unit: str) -> str:
     """A figure the way the cards print it: per kWh in c EUR, per year in EUR."""
     if unit == "EUR/kWh":
         return f"{round(value * 100, 7):.10g} c EUR/kWh"
+    if unit == "rate":
+        return f"{round(value * 100, 5):.10g} %"
     return f"{round(value, 5):.10g} {unit}"
 
 
@@ -557,10 +567,14 @@ def agree(a: float, b: float, unit: str) -> bool:
 def _law_figure(name: str, month: str) -> float | None:
     """What the integration bills ``month`` on for the figure ``name``, as a
     residential card prints it: the excise of a slice including VAT, the
-    VAT exempt Walloon connection fee. None when it bills the card's."""
+    VAT exempt Walloon connection fee, and the residential VAT rate it puts
+    a figure printed excluding VAT on where a card states none. None when it
+    bills the card's."""
     parsed = label_month(month)
     if parsed is None:
         return None
+    if name == _VAT:
+        return VAT_RATE_REDUCED
     if name == _CONNECTION_FEE:
         return WALLOON_CONNECTION_FEE if parsed >= WALLOON_CONNECTION_FEE_KNOWN_FROM else None
     slice_ = _EXCISE_SLICES.get(name)
@@ -571,7 +585,8 @@ def _law_figure(name: str, month: str) -> float | None:
 
 
 def _billed_from_law(name: str, month: str) -> bool:
-    if _law_figure(name, month) is not None:
+    # A card stating another VAT rate Belgium levies is billed on it.
+    if name != _VAT and _law_figure(name, month) is not None:
         return True
     window = _LAW_WINDOWS.get(name)
     parsed = label_month(month)

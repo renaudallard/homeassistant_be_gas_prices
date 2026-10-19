@@ -332,6 +332,25 @@ async def test_this_year_s_fluvius_sheet_is_read_before_the_fleet(
     assert fluvius.data_management_fee(2026) == (17.85 if status == "ok" else None)
 
 
+def _stating(snapshot: SupplierSnapshot, rate: float) -> SupplierSnapshot:
+    return replace(snapshot, taxes=replace(snapshot.taxes, card_vat_rate=rate))
+
+
+def test_the_vat_rate_the_cards_state_is_measured_against_the_law() -> None:
+    """A card stating another rate is billed on it, so it fails; the fleet
+    stating another rate than const.py's 6 % fails against the law, since
+    every card that states none is billed on that. A card that states no
+    rate does not vote."""
+    fleet = [_card(_stating(_snapshot(sid), 0.06)) for sid in ("alpha", "beta")]
+    assert _failing(lc.consensus([*fleet, _card(_snapshot("delta"))])) == {}
+    odd = _card(_stating(_snapshot("gamma"), 0.12))
+    assert list(_failing(lc.consensus([*fleet, odd]))) == ["gamma: federal VAT rate for 2026-09"]
+    raised = [_card(_stating(_snapshot(sid), 0.09)) for sid in ("alpha", "beta")]
+    [(label, detail)] = _failing(lc.consensus(raised)).items()
+    assert label == "federal: VAT rate for 2026-09 against the law"
+    assert detail == "alpha, beta print 9 % where the integration bills 6 %"
+
+
 def test_a_documented_card_error_is_a_notice_while_the_card_prints_it() -> None:
     """EBEM's Kempen T1 of 2,12 is documented; another figure from EBEM, or
     the same one from another supplier, is a new departure."""

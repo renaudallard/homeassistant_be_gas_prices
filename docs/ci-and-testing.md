@@ -125,7 +125,8 @@ integration uses and checks:
   has a recent value for it (two months, four for a quarterly index);
 - the regulated figures agree across the fleet, month by month: per DSO the
   T1 and T2 terms, transport and metering; the federal excise and energy
-  contribution; the Walloon connection fee; the Brussels levy by caliber.
+  contribution; the VAT rate a card states for its customers; the Walloon
+  connection fee; the Brussels levy by caliber.
 
 A fetch is tried three times (10 and 30 second pauses, 300 seconds each). A
 failure that `is_transient_fetch_error` or a timeout explains on every
@@ -153,7 +154,11 @@ How the cross-check decides:
   law`, a failure when the page is not the article), and a month whose
   fleet mostly prints another figure than the one billed fails as
   `federal: excise ... against the law` or `wallonia: connection fee ...
-  against the law`.
+  against the law`. So does a fleet mostly stating another VAT rate than
+  `VAT_RATE_REDUCED` (`federal: VAT rate ... against the law`), the rate
+  every card that states none is billed on; a card stating another rate
+  than the rest is billed on it, so it fails as a departure, never a
+  notice.
 - A departure the integration does not bill is a notice rather than a
   failure: the excise of a month the law read from Justel or `const.py`
   sets, the Walloon connection fee of any month since the order of 2003,

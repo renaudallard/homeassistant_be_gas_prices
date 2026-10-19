@@ -134,7 +134,7 @@ def law_excise(delivery: date) -> tuple[float, float] | None:
 # customers puts the law's figures on that rate, as it prints its own; a
 # stated rate outside them is a misread, and the residential gas rate
 # stands. Every card read so far states 6 % or nothing.
-_BELGIAN_VAT_RATES = (0.06, 0.12, 0.21)
+_BELGIAN_VAT_RATES = (VAT_RATE_REDUCED, 0.12, 0.21)
 
 
 def _vat_factor(taxes: TaxOverlay) -> float:
