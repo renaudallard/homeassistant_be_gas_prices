@@ -2830,6 +2830,26 @@ async def test_a_flemish_tick_reads_fluvius_s_sheet_of_this_year(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(("until", "asked"), [("2026-05-31", [2026]), ("2025-12-31", [])])
+async def test_an_earlier_flemish_contract_reads_fluvius_s_sheet(
+    hass: HomeAssistant, fetch: AsyncMock, until: str, asked: list[int]
+) -> None:
+    """A household that switched and then moved to Wallonia bills its
+    Flemish months of this year on the year's Fluvius fee where their card
+    prints none; one that left Flanders before the year began asks nothing."""
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_flow",
+        CONF_REGION: REGION_FLANDERS,
+        CONF_DSO: DSO_FLUVIUS_IMEWO,
+        "until": until,
+    }
+    await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]})
+    ensure: Any = fluvius.ensure_tariff_sheet
+    assert [call.args[1] for call in ensure.await_args_list] == asked
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_falls_back_like_the_running_costs(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

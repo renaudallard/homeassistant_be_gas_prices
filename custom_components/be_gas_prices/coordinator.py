@@ -310,6 +310,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """The first day the current contract supplied this year."""
         return current_period_start(self._data, self.window_start(today), today)
 
+    def _billed_in_flanders(self, today: date) -> bool:
+        """Whether a contract billed this year is Flemish: the current one,
+        or an earlier one of a household that has moved since."""
+        return self.region == REGION_FLANDERS or any(
+            period.get(CONF_REGION) == REGION_FLANDERS
+            for period, _first, _last in periods_this_year(self._data, today)
+        )
+
     def switch_day(self) -> date | None:
         """The day the current contract took over from the last one recorded
         at a switch, whatever its year, None when none is recorded."""
@@ -966,7 +974,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # The excise the law sets, which every residential month is
             # resolved against when it is priced below.
             await excise_law.ensure_excise_law(self._session)
-            if self.region == REGION_FLANDERS:
+            if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the
                 # price history of one is per kWh.
