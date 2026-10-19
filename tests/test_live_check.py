@@ -320,6 +320,36 @@ def test_a_fleet_printing_an_energy_contribution_again_fails_against_the_law() -
     assert _failing(lc.consensus(fleet("2026-11", 0.0))) == {}
 
 
+def test_a_fluvius_card_without_data_management_waits_on_a_sheet_that_did_not_answer() -> None:
+    """Fluvius did not answer, so no fee is held: a row printing none is
+    transient, never filed, as on 2026-10-19 when the runner's DNS timed out
+    on www.fluvius.be. A row printing another fee still fails."""
+    fluvius._cache.clear()
+
+    def fleet(metering: float) -> list[Any]:
+        return [
+            _card(_snapshot("alpha", label="2026-10")),
+            _card(_snapshot("beta", label="2026-10")),
+            _card(_snapshot("gamma", label="2026-10", metering=metering)),
+        ]
+
+    excise_law._HELD.clear()
+    tarbel._HELD.clear()
+    unread = lc.consensus(fleet(0.0), date(2026, 10, 19), sheet_unread=True)
+    [check] = [c for c in unread if "metering" in c.label]
+    assert (check.label, check.status) == (
+        "gamma: fluvius_kempen metering for 2026-10",
+        "transient",
+    )
+    assert check.detail.endswith("; the Fluvius sheet did not answer")
+    assert list(_failing(lc.consensus(fleet(0.0), date(2026, 10, 19)))) == [
+        "gamma: fluvius_kempen metering for 2026-10"
+    ]
+    assert list(_failing(lc.consensus(fleet(17.0), date(2026, 10, 19), sheet_unread=True))) == [
+        "gamma: fluvius_kempen metering for 2026-10"
+    ]
+
+
 def test_a_fluvius_card_without_data_management_is_a_notice_in_its_year() -> None:
     """The integration bills the regulated fee where a Fluvius row prints
     none, for the tariff year const.py knows; a wrong fee that is printed is
@@ -748,7 +778,10 @@ async def test_the_custom_and_withdrawn_suppliers_are_not_checked() -> None:
 def test_main_writes_the_fingerprint_and_returns_the_code(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    async def check_fleet(*_args: Any, **_kwargs: Any) -> list[Any]:
+    fleets: list[dict[str, Any]] = []
+
+    async def check_fleet(*_args: Any, **kwargs: Any) -> list[Any]:
+        fleets.append(kwargs)
         return [lc.Check("gone/gone_fix/flanders: fetch", "fail", "HTTP 404")]
 
     async def check_excise_law(*_args: Any, **_kwargs: Any) -> Any:
@@ -771,6 +804,15 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert capsys.readouterr().out.startswith(
         "# Live check: 3 pass, 1 fail, 0 transient, 0 notices"
     )
+    assert fleets[-1]["sheet_unread"] is False
+
+    async def sheet_down(*_args: Any, **_kwargs: Any) -> Any:
+        return lc.Check("fluvius: 2026 gas tariff sheet", "transient", "network error")
+
+    monkeypatch.setattr(lc, "check_fluvius_sheet", sheet_down)
+    assert lc.main() == 1
+    assert fleets[-1]["sheet_unread"] is True
+    capsys.readouterr()
 
     async def crash(*_args: Any, **_kwargs: Any) -> list[Any]:
         raise RuntimeError("a bug in the check")

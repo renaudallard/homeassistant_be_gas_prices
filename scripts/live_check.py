@@ -640,6 +640,12 @@ def _filled_from_regulation(figure: Figure) -> bool:
     return figure.value == 0.0 and _sheet_fee(figure) is not None
 
 
+def _awaits_sheet(figure: Figure) -> bool:
+    """A Fluvius row that prints no data management fee: billed the year's
+    fee off the tariff sheet once the integration has read it."""
+    return figure.name == "metering" and figure.scope in FLUVIUS_KEYS and figure.value == 0.0
+
+
 def _billed(first: Figure) -> tuple[float, str] | None:
     """What the integration bills for ``first``'s figure and month whatever
     the card prints, and where that comes from, or None."""
@@ -659,13 +665,15 @@ def _known_error(figure: Figure, today: date) -> str | None:
     return known[2]
 
 
-def _departures(group: list[Figure], today: date) -> Iterator[Check]:
+def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterator[Check]:
     """The cards of one figure, month and scope that depart from the rest.
 
     The figure most voters agree with is the consensus, the most precise one
     among equals so the report shows the regulator's digits. A disagreement
     with no majority is reported as a notice: two voters against two is not a
-    verdict on either.
+    verdict on either. While the Fluvius sheet did not answer (``sheet_unread``),
+    a Fluvius row printing no fee is transient: the source did not answer,
+    which says nothing about the card.
     """
     first = group[0]
     unit = first.unit
@@ -716,6 +724,8 @@ def _departures(group: list[Figure], today: date) -> Iterator[Check]:
             status, detail = "notice", detail + "; billed from the law for this month"
         elif all(_filled_from_regulation(f) for f in printed_by):
             status, detail = "notice", detail + "; billed the regulated fee for this month"
+        elif sheet_unread and all(_awaits_sheet(f) for f in printed_by):
+            status, detail = "transient", detail + "; the Fluvius sheet did not answer"
         elif None not in (reasons := {_known_error(f, today) for f in printed_by}):
             why = "; ".join(sorted(reason for reason in reasons if reason))
             status, detail = (
@@ -725,10 +735,13 @@ def _departures(group: list[Figure], today: date) -> Iterator[Check]:
         yield Check(f"{supplier}: {what}", status, detail)
 
 
-def consensus(cards: Iterable[Card], today: date | None = None) -> list[Check]:
+def consensus(
+    cards: Iterable[Card], today: date | None = None, *, sheet_unread: bool = False
+) -> list[Check]:
     """Every card that departs from what the fleet prints, figure by figure,
     among the cards of the same month. ``today``, Brussels's by default, is
-    what the known card errors lapse against."""
+    what the known card errors lapse against; ``sheet_unread`` says the
+    year's Fluvius sheet did not answer."""
     today = today or datetime.now(BRUSSELS).date()
     groups: dict[tuple[str, str, str], list[Figure]] = {}
     for card in cards:
@@ -736,7 +749,7 @@ def consensus(cards: Iterable[Card], today: date | None = None) -> list[Check]:
             groups.setdefault((figure.month, figure.scope, figure.name), []).append(figure)
     checks: list[Check] = []
     for key in sorted(groups):
-        checks.extend(_departures(groups[key], today))
+        checks.extend(_departures(groups[key], today, sheet_unread))
     return checks
 
 
@@ -746,6 +759,7 @@ async def check_fleet(
     today: date,
     *,
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    sheet_unread: bool = False,
 ) -> list[Check]:
     """Every check of the run, in report order.
 
@@ -767,7 +781,8 @@ async def check_fleet(
             )
         )
     checks = [check for part, _cards in parts for check in part]
-    checks.extend(consensus((card for _part, cards in parts for card in cards), today))
+    fleet = (card for _part, cards in parts for card in cards)
+    checks.extend(consensus(fleet, today, sheet_unread=sheet_unread))
     return checks
 
 
@@ -904,12 +919,12 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             # Every render goes through a hook that runs it in a daemon
             # thread, so one that never returns cannot hold the exit.
             hooks.enter_context(render_through(_render if cache is None else cache.render))
-            checks = [
-                await check_excise_law(session),
-                await check_excise_tariff(session),
-                await check_fluvius_sheet(session, today),
-            ]
-            checks += await check_fleet(session, all_extractors(), today)
+            checks = [await check_excise_law(session), await check_excise_tariff(session)]
+            sheet = await check_fluvius_sheet(session, today)
+            checks.append(sheet)
+            checks += await check_fleet(
+                session, all_extractors(), today, sheet_unread=sheet.status == "transient"
+            )
     print(render_report(checks))
     if cache is not None:
         print(

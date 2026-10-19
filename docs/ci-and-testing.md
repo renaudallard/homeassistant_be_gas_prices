@@ -180,6 +180,9 @@ How the cross-check decides:
   <year> gas tariff sheet`, a failure when none is listed or it gives no
   fee), and a Fluvius area whose fleet mostly prints another metering fee
   than the sheet's fails as `... metering ... against the Fluvius sheet`.
+  While the sheet does not answer (a transient check), a Fluvius row
+  printing no fee is transient too: its fee is the sheet's, which the
+  integration bills once read.
 - A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
   and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
   T1) is a notice while the card prints that value: it is billed as
