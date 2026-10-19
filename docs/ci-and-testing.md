@@ -137,6 +137,12 @@ integration uses and checks:
   contribution; the VAT rate a card states for its customers; the Walloon
   connection fee; the Brussels levy by caliber.
 
+Before the check, the runner resolves names through nsec.arnor.org over
+DNS-over-TLS: Fluvius serves its zone from its own two nameservers, which
+never answer a GitHub runner, whichever resolver asks (the Azure one, 1.1.1.1
+or 8.8.8.8), so `www.fluvius.be` never resolved there. If nsec.arnor.org
+cannot resolve Fluvius and Engie, the runner's own resolver is put back.
+
 A fetch is tried three times (10 and 30 second pauses, 300 seconds each). A
 failure that `is_transient_fetch_error` or a timeout explains on every
 attempt is TRANSIENT, reported and never filed. After three such fetches in

@@ -57,6 +57,37 @@ jobs:
           # proved, without a second copy of the numbers.
           pip install -c requirements-dev.txt pypdf pdfplumber aiohttp homeassistant defusedxml
 
+      - name: Resolve names through nsec.arnor.org over TLS
+        # Fluvius serves fluvius.be from two nameservers that never answer a
+        # GitHub runner, whichever resolver asks (the Azure one, 1.1.1.1 or
+        # 8.8.8.8), so www.fluvius.be did not resolve and its tariff sheet
+        # was never read. The runner's resolver still finds nsec.arnor.org,
+        # and systemd-resolved then asks it over DNS-over-TLS, checking its
+        # certificate. If that cannot resolve a name, the runner's resolver
+        # is put back so the other suppliers are still checked.
+        run: |
+          iface=$(ip -o route show default | awk '{print $5; exit}')
+          servers=$(getent ahostsv4 nsec.arnor.org | awk '{print $1}' | sort -u |
+            sed 's/$/#nsec.arnor.org/')
+          if [ -z "$servers" ]; then
+            echo "nsec.arnor.org did not resolve; keeping the runner's resolver"
+            exit 0
+          fi
+          # Kept to put back: "resolvectl revert" would also drop the
+          # servers DHCP gave the link and leave the runner with none.
+          runner=$(resolvectl dns "$iface" | cut -d: -f2-)
+          sudo resolvectl dns "$iface" $servers
+          sudo resolvectl dnsovertls "$iface" yes
+          sudo resolvectl flush-caches
+          if getent hosts www.fluvius.be && getent hosts www.engie.be; then
+            resolvectl status "$iface"
+          else
+            echo "nsec.arnor.org resolved nothing; back to$runner"
+            sudo resolvectl dnsovertls "$iface" no
+            sudo resolvectl dns "$iface" $runner
+            sudo resolvectl flush-caches
+          fi
+
       - name: Check out the archive's texts
         # A card the archiver walked earlier and still holds is not rendered
         # again: the check downloads and parses it and takes the render from
