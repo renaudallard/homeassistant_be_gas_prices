@@ -426,6 +426,11 @@ attached to an issue as it is.
   Zondereigen, and the setup warns about the rest.
 - **Professional contracts are not offered.** Their cards are priced excluding
   VAT with business excise rates.
+- **One network operator per entry, for every month.** A household whose
+  commune changed operator is billed its earlier months on the new one:
+  Zwijndrecht and Burcht (2070) moved from Fluvius Antwerpen to Fluvius
+  Midden-Vlaanderen on 1 January 2026, so a price history drawn back into
+  2025 there is 0,03 c EUR/kWh high on the small tier.
 - **A card's figures are billed as printed** where no regulated figure
   replaces them, errors included. Known on the October 2026 cards:
   TotalEnergies and Elegant print transport as 0,17 c EUR/kWh against

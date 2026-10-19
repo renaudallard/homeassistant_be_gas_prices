@@ -182,10 +182,11 @@ These were seen on the September 2026 cards and compared with
     such by Engie, Luminus, Mega and others);
   - the distribution terms (ORES 4,29 for 4,28944).
 
-  The excise is replaced by the law's rates for the delivery months
-  `const.py` knows the law for, January 2025 to December 2026
-  (`_resolve.resolve_federal_levies`), and so is the Walloon connection fee,
-  billed at the law's 0,0075 c€/kWh where the card prints 0,01
+  The excise is replaced by the rates in force for the delivery month
+  (`_resolve.resolve_federal_levies`: FPS Finance's quarters, `const.py`'s
+  from January 2025 to July 2026, and article 419 on Justel from August
+  2026), and so is the Walloon connection fee, billed at the law's 0,0075
+  c€/kWh with no end where the card prints 0,01
   (`_resolve.resolve_connection_fee`). Transport and the distribution terms
   are billed as printed.
 - The energy contribution is still printed at 0,11 c€/kWh. It has been 0
