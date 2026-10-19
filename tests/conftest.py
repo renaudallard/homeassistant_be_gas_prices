@@ -111,6 +111,34 @@ def _excise_law_as_published(
     excise_law._HELD.clear()
 
 
+_TARBEL_WORKBOOK = Path(__file__).resolve().parent / "fixtures" / "tarbel" / "accijnzen.xlsx"
+
+
+@pytest.fixture(scope="session")
+def excise_tariff_periods() -> tuple[tuple[date, date | None, float, float], ...]:
+    """FPS Finance's excise tariff as served on 2026-10-19, its version of
+    1 August 2026, parsed once."""
+    from custom_components.be_gas_prices import tarbel
+
+    return tarbel.parse(_TARBEL_WORKBOOK.read_bytes())
+
+
+@pytest.fixture(autouse=True)
+def _excise_tariff_as_published(
+    excise_tariff_periods: tuple[tuple[date, date | None, float, float], ...],
+) -> Iterator[None]:
+    """The tick reads FPS Finance's excise tariff. Tests see it as it was
+    published instead of the network, and whatever a test holds is put back
+    before the next one."""
+    from custom_components.be_gas_prices import tarbel
+
+    tarbel._HELD.clear()
+    tarbel.hold(excise_tariff_periods)
+    with patch.object(tarbel, "ensure_tariff", AsyncMock()):
+        yield
+    tarbel._HELD.clear()
+
+
 # The data management fee each year's Fluvius gas tariff sheet prints, EUR/year
 # excluding VAT.
 FLUVIUS_FEES = {2025: 17.51, 2026: 17.85}

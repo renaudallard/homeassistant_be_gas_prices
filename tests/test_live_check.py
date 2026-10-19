@@ -46,7 +46,7 @@ from typing import Any
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-from custom_components.be_gas_prices import excise_law, fluvius
+from custom_components.be_gas_prices import excise_law, fluvius, tarbel
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
@@ -488,6 +488,33 @@ async def test_the_excise_law_is_read_before_the_fleet(
     assert bool(excise_law._HELD) == (status == "ok")
 
 
+@pytest.mark.parametrize(
+    ("payload", "status"),
+    [
+        (None, "ok"),
+        (b"<html>maintenance</html>", "fail"),
+        (ExtractorError("HTTP 503 fetching https://eservices.minfin.fgov.be"), "transient"),
+    ],
+)
+async def test_the_excise_tariff_is_read_before_the_fleet(
+    monkeypatch: pytest.MonkeyPatch, payload: bytes | Exception | None, status: str
+) -> None:
+    """FPS Finance's quarters, held for the fleet; a workbook that is not
+    annex 7 fails, a network failure is transient."""
+    published = (Path(__file__).parent / "fixtures" / "tarbel" / "accijnzen.xlsx").read_bytes()
+
+    async def fetch_bytes(*_args: Any, **_kwargs: Any) -> bytes:
+        if isinstance(payload, Exception):
+            raise payload
+        return published if payload is None else payload
+
+    monkeypatch.setattr(tarbel, "fetch_bytes", fetch_bytes)
+    tarbel._HELD.clear()
+    check = await lc.check_excise_tariff(None, sleep=_no_sleep)
+    assert (check.label, check.status) == ("federal: gas excise tariff", status)
+    assert bool(tarbel._HELD) == (status == "ok")
+
+
 def test_a_single_excise_rate_stands_for_both_slices() -> None:
     excise_law._HELD.clear()
     cards = [
@@ -727,10 +754,14 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     async def check_excise_law(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: gas excise law", "ok")
 
+    async def check_excise_tariff(*_args: Any, **_kwargs: Any) -> Any:
+        return lc.Check("federal: gas excise tariff", "ok")
+
     async def check_fluvius_sheet(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("fluvius: 2026 gas tariff sheet", "ok")
 
     monkeypatch.setattr(lc, "check_excise_law", check_excise_law)
+    monkeypatch.setattr(lc, "check_excise_tariff", check_excise_tariff)
     monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
     monkeypatch.setattr(lc, "check_fleet", check_fleet)
     fingerprint = tmp_path / "failures.txt"
@@ -738,7 +769,7 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert lc.main() == 1
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     assert capsys.readouterr().out.startswith(
-        "# Live check: 2 pass, 1 fail, 0 transient, 0 notices"
+        "# Live check: 3 pass, 1 fail, 0 transient, 0 notices"
     )
 
     async def crash(*_args: Any, **_kwargs: Any) -> list[Any]:

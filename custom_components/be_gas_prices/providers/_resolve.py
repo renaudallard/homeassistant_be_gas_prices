@@ -36,7 +36,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
-from .. import excise_law, fluvius
+from .. import excise_law, fluvius, tarbel
 from ..const import (
     CALIBER_Q10,
     ENERGY_CONTRIBUTION_KNOWN_FROM,
@@ -116,18 +116,22 @@ def _in_window(delivery: date, start: tuple[int, int], end: tuple[int, int] | No
 
 def law_excise(delivery: date) -> tuple[float, float] | None:
     """The residential excise up to the band and above it, EUR/kWh excluding
-    VAT, the law sets for ``delivery``: as read from Justel from the day the
-    wording in force dates, the quarterly figures const.py holds before it,
-    and None outside both."""
-    held = excise_law.excise_for(delivery)
-    if held is not None:
-        return held
-    if not _in_window(delivery, GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL):
-        return None
-    month = (delivery.year, delivery.month)
-    return next(
-        (low, high) for start, low, high in reversed(GAS_EXCISE_RESIDENTIAL_HTVA) if start <= month
-    )
+    VAT, in force for ``delivery``: the period FPS Finance's excise tariff
+    lists for it (tarbel.py), the quarterly notices of art. 420 included;
+    else the quarterly figures const.py holds; else article 419 as read from
+    Justel, from the day the wording in force dates, its voted steps for the
+    years to come included; and None outside all three."""
+    listed = tarbel.excise_for(delivery)
+    if listed is not None:
+        return listed
+    if _in_window(delivery, GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL):
+        month = (delivery.year, delivery.month)
+        return next(
+            (low, high)
+            for start, low, high in reversed(GAS_EXCISE_RESIDENTIAL_HTVA)
+            if start <= month
+        )
+    return excise_law.excise_for(delivery)
 
 
 def law_contribution(delivery: date) -> float | None:

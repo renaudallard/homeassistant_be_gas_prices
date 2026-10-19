@@ -97,17 +97,27 @@ their own schedules, so it would put each row on a different month.
 `resolve_for_delivery` applies them before a month is billed, whatever month
 the card was printed for:
 
-- The special excise from January 2025: 8,23 EUR/MWh excluding VAT on the
-  first slice and the quarterly adjustment of the second up to July 2026
-  (9,0782 in January to March 2026, 9,3061 in April to June, 9,3315 in July,
-  from the FPS Finance excise tariff), typed in `const.py` since Justel does
-  not consolidate the quarterly notices. From 1 August 2026 it is read from
-  article 419 of the programme law of 27 December 2004 on Justel
-  (`excise_law.py`): 10,31 and 11,16 EUR/MWh, then the steps the programme
-  law of 30 May 2026 voted (11,39 and 12,24 from 1 January 2027, and on
-  through 2029), each billed from its own month. The law is read daily and
-  kept in the entry's Store; while it has never been read, a month from
-  August 2026 bills the excise its card prints.
+- The special excise, which article 419 of the programme law of
+  27 December 2004 sets per year and article 420 §3/1 moves every quarter
+  on the quarter's gas price, by a notice in the Moniteur belge that Justel
+  does not consolidate. A month is billed, in this order:
+  - on the period FPS Finance's excise tariff lists for it (TarBel's annex
+    7, `tarbel.py`), the quarterly notices included: 8,23 EUR/MWh excluding
+    VAT on the first slice and 9,0782 on the second in January to March
+    2026, 9,3061 in April to June, 9,3315 in July, then 10,31 and 11,16 from
+    August to December 2026;
+  - else on the quarters from January 2025 to July 2026 typed in `const.py`
+    from the same tariff, for an entry that has not read it;
+  - else on article 419 as Justel serves it (`excise_law.py`), from the day
+    its wording dates (1 August 2026), with the steps the programme law of
+    30 May 2026 voted (11,39 and 12,24 from 1 January 2027, and on through
+    2029), each billed from its own month until a notice for its quarter is
+    listed.
+
+  Both are read daily and kept in the entry's Store; while neither has
+  been read, a month from August 2026 bills the excise its card prints, and
+  a card that prints none for gas (EnergyVision's Walloon fixed card) cannot
+  price it.
   Most April to June 2026 cards still printed the first quarter's rate.
   Ecofix, Sparki, Belvus and the Energy Together brands still printed the
   pre-August excise on their September 2026 cards, and OCTA+ and

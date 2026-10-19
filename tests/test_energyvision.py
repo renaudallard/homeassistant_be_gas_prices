@@ -32,7 +32,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.be_gas_prices import excise_law
+from custom_components.be_gas_prices import excise_law, tarbel
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
     DSO_ORES,
@@ -157,6 +157,7 @@ def test_wallonia_fixed_card_prints_the_electricity_excise() -> None:
         (None, pytest.approx(0.0118296)),
     )
     excise_law._HELD.clear()
+    tarbel._HELD.clear()
     with pytest.raises(PricingError, match="no gas excise"):
         compute_breakdown(resolve_for_delivery(snap, date(2026, 9, 1)), DSO_ORES, 17_000.0, 0.0796)
 

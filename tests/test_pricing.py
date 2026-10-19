@@ -32,7 +32,7 @@ from datetime import date
 
 import pytest
 
-from custom_components.be_gas_prices import excise_law
+from custom_components.be_gas_prices import excise_law, tarbel
 from custom_components.be_gas_prices.const import (
     CALIBER_GT160,
     CALIBER_Q10,
@@ -150,7 +150,13 @@ def test_law_takes_each_quarter_s_excise() -> None:
     assert march.excise_bands[0][1] == april.excise_bands[0][1] == pytest.approx(0.0087238)
 
 
-def test_law_leaves_a_month_before_the_window_as_printed() -> None:
+def test_law_leaves_a_month_before_both_tables_as_printed() -> None:
+    """FPS Finance's tariff lists the quarters from April 2023, const.py
+    from January 2025: before both the card is read."""
+    assert resolve_federal_levies(_stale_taxes(), date(2023, 3, 1)) == _stale_taxes()
+    december = resolve_federal_levies(_stale_taxes(), date(2024, 12, 1))
+    assert december.excise_bands[1][1] == pytest.approx(0.0092894 * 1.06)
+    tarbel._HELD.clear()
     assert resolve_federal_levies(_stale_taxes(), date(2024, 12, 1)) == _stale_taxes()
 
 
@@ -167,15 +173,30 @@ def test_law_steps_the_excise_in_january_2027() -> None:
 
 
 def test_without_the_law_a_month_past_the_table_is_billed_as_printed() -> None:
-    """Justel never read and nothing stored: the months from August 2026 are
-    not in const.py's table, so the card's excise stands rather than a rate
-    the law may have stepped since."""
+    """Neither Justel nor FPS Finance ever read and nothing stored: the
+    months from August 2026 are not in const.py's table, so the card's excise
+    stands rather than a rate the law may have stepped since."""
     excise_law._HELD.clear()
+    september = resolve_federal_levies(_stale_taxes(), date(2026, 9, 1))
+    # FPS Finance's tariff alone gives the quarter.
+    assert september.excise_bands[1][1] == pytest.approx(0.01116 * 1.06)
+    tarbel._HELD.clear()
     assert resolve_federal_levies(_stale_taxes(), date(2026, 9, 1)).excise_bands == (
         _stale_taxes().excise_bands
     )
     july = resolve_federal_levies(_stale_taxes(), date(2026, 7, 1))
     assert july.excise_bands[1][1] == pytest.approx(0.0093315 * 1.06)
+
+
+def test_a_quarter_s_notice_wins_over_the_law_s_yearly_rate() -> None:
+    """Article 420 moves the slices every quarter by a notice Justel does not
+    give: once FPS Finance's tariff lists the quarter, it is billed, and the
+    law's voted step stands in only for the quarters it does not list."""
+    tarbel.hold(((date(2027, 1, 1), date(2027, 3, 31), 0.01139, 0.01139),))
+    january = resolve_federal_levies(_stale_taxes(), date(2027, 1, 1))
+    assert january.excise_bands[1][1] == pytest.approx(0.01139 * 1.06)
+    april = resolve_federal_levies(_stale_taxes(), date(2027, 4, 1))
+    assert april.excise_bands[1][1] == pytest.approx(0.01224 * 1.06)
 
 
 def test_law_does_not_touch_a_professional_card() -> None:

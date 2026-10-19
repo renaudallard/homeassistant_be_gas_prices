@@ -270,17 +270,15 @@ def _storage_error_code(payload: bytes) -> str | None:
     return match.group(1).decode("ascii", "replace").strip() or None
 
 
-async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int = 30) -> bytes:
-    """Download ``url`` and return its bytes once validated as a PDF.
+async def fetch_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int = 30) -> bytes:
+    """GET ``url`` and return its body, capped as any download is.
 
-    Shared by the three ``fetch_pdf_text*`` variants. Catches TimeoutError
-    alongside ClientError: aiohttp's ClientTimeout fires
-    asyncio.TimeoutError (== builtins.TimeoutError on 3.11+), which is NOT
-    a ClientError subclass, so a slow supplier endpoint would otherwise
-    bubble a bare TimeoutError out of discover/fetch and crash the
-    live-check. The ``network error fetching`` prefix is load-bearing -
-    :func:`is_transient_fetch_error` keys on it to decide whether to retry -
-    so only this function and :func:`fetch_text` may write it.
+    Catches TimeoutError alongside ClientError: aiohttp's ClientTimeout
+    fires asyncio.TimeoutError (== builtins.TimeoutError on 3.11+), which is
+    NOT a ClientError subclass, so a slow endpoint would otherwise bubble a
+    bare TimeoutError out of discover/fetch and crash the live-check. The
+    ``network error fetching`` prefix is load-bearing:
+    :func:`is_transient_fetch_error` keys on it to decide whether to retry.
     """
     try:
         async with session.get(
@@ -291,10 +289,17 @@ async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: 
             guard_redirect(url, resp)
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
-            payload = await read_capped(resp, url)
+            return await read_capped(resp, url)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ExtractorError(f"network error fetching {url}: {error_text(err)}") from err
 
+
+async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int = 30) -> bytes:
+    """Download ``url`` and return its bytes once validated as a PDF.
+
+    Shared by the three ``fetch_pdf_text*`` variants.
+    """
+    payload = await fetch_bytes(session, url, timeout=timeout)
     if not is_pdf_payload(payload):
         # An object store refusing the read is the one non-PDF payload no
         # code change can fix, so it gets its own prefix and lands on the

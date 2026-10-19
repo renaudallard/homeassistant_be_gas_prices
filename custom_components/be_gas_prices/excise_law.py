@@ -35,9 +35,11 @@ so a step is billed in its own month without anyone editing a constant.
 The day the rate in force took effect is read off the amendment that wrote
 it: Justel brackets every passage an amendment wrote and titles the bracket
 with that amendment's entry into force, so the date is the one of the
-innermost bracket around the rate. The months before it were billed on the
-quarterly adjustments of article 420, which Justel does not consolidate; the
-table in const.py holds them.
+innermost bracket around the rate. Article 420 §3/1 moves both slices every
+quarter by a notice Justel does not consolidate: FPS Finance's excise tariff
+lists those (tarbel.py) and is billed first, so what is read here bills a
+quarter the tariff does not list yet, a year's voted step until its first
+notice.
 
 What is read is held for the process, the law read again daily, and kept in
 every entry's store so a restart without the network still knows it. A later
@@ -274,13 +276,14 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
         _failed_at = now
         return
     except ExtractorError as err:
-        # With nothing held, a month past the table in const.py is billed the
-        # excise its card prints, which a stale card gets wrong, so say so
-        # once per retry. A held copy goes on billing the law.
+        # With nothing held, a month neither FPS Finance's tariff nor the
+        # table in const.py gives is billed the excise its card prints, which
+        # a stale card gets wrong, so say so once per retry. A held copy goes
+        # on billing the law.
         log = _LOGGER.debug if _HELD else _LOGGER.warning
         log(
-            "The gas excise law could not be fetched from Justel, so each card's "
-            "own excise is billed past the months const.py holds: %s",
+            "The gas excise law could not be fetched from Justel, so a month FPS "
+            "Finance's tariff does not list is billed its card's own excise: %s",
             err,
         )
         _failed_at = now

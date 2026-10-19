@@ -26,9 +26,10 @@
 """Constants for the Belgian Gas Prices integration.
 
 No supplier prices live here: every rate comes from a live tariff card. The
-few regulated figures that do are set by law for the whole country, carry the
-months they are known to cover, and expire into "read the card" past them;
-the excise past its quarterly table is read from the law (excise_law.py).
+few regulated figures that do are set by law for the whole country and carry
+the months they are known to cover. The excise is read from FPS Finance's
+excise tariff (tarbel.py) and from the law on Justel (excise_law.py); its
+quarters typed here stand in while the tariff is not held.
 """
 
 from __future__ import annotations
@@ -130,18 +131,20 @@ TIER_BOUNDS_KWH: Final[tuple[tuple[str, float], ...]] = (
 # 12 000 kWh at one rate, the rest at the other.
 EXCISE_BAND_KWH: Final = 12_000.0
 
-# The residential special excise is read from the law (excise_law.py) from
-# the day the wording in force took effect, 1 August 2026, with the steps the
-# same law votes for later years. Before that day it was the quarterly
-# adjustment of art. 420 on the high slice, which Justel does not consolidate,
-# so those months are typed here by delivery month, in EUR/kWh EXCLUDING VAT
-# for the two slices, each rate applying from its month until the next one's.
-# Figures of the FPS Finance excise tariff (TarBel, annex 7, codes Q570 to
-# Q588). A federal levy: one rate for the whole country, so a card printing
-# another one for a delivery month in this window is stale rather than
-# different; most cards of April to June 2026 printed the first quarter's.
-# The window starts with the earliest month a backfill can bill and ends
-# where the law takes over.
+# The residential special excise moves every quarter by a notice under art.
+# 420 §3/1, which Justel does not consolidate. FPS Finance's excise tariff
+# lists each quarter (tarbel.py) and is billed first; past what it lists,
+# art. 419 as Justel serves it from 1 August 2026, with the steps the law
+# votes for later years (excise_law.py). The quarters from January 2025 to
+# July 2026, the earliest a backfill can bill up to the wording of 1 August,
+# are also typed here by delivery month, in EUR/kWh EXCLUDING VAT for the two
+# slices, each rate applying from its month until the next one's: TarBel's
+# figures (annex 7, codes Q570 to Q583), for an entry that has not read the
+# tariff and for the day FPS Finance drops those codes; Justel gives none of
+# them. A federal levy: one
+# rate for the whole country, so a card printing another one for a delivery
+# month is stale rather than different; most cards of April to June 2026
+# printed the first quarter's.
 GAS_EXCISE_RESIDENTIAL_HTVA: Final[tuple[tuple[tuple[int, int], float, float], ...]] = (
     ((2025, 1), 0.00823, 0.0089393),
     ((2025, 4), 0.00823, 0.0087266),
@@ -160,6 +163,14 @@ GAS_EXCISE_KNOWN_UNTIL: Final = (2026, 8)  # exclusive
 EXCISE_LAW_URL: Final = (
     "https://www.ejustice.just.fgov.be/cgi_loi/change_lg.pl"
     "?language=fr&la=F&table_name=loi&cn=2004122730"
+)
+
+# FPS Finance's excise tariff (TarBel, annex 7 to the declaration), read by
+# tarbel.py: the rates in force by period, the quarterly notices of art. 420
+# included. Dutch, because the parser anchors on the Dutch wording.
+TARBEL_URL: Final = (
+    "https://eservices.minfin.fgov.be/extTariffBrowser/"
+    "FileResourceForHomePageServlet?fname=accijnzen.xlsx&lang=NL"
 )
 
 # The Walloon connection fee on gas ("redevance de raccordement", art. 40 of

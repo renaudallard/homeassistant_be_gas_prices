@@ -49,9 +49,33 @@ text of article 419 of the programme law of 27 December 2004:
 A page that is not the article as expected (another band, a rate past
 0,05 EUR/kWh, a missing slice) is refused whole. It is read once a day, a
 failure waits six hours, and what was read is kept in each entry's Store.
-The months before 1 August 2026 are the quarterly figures typed in
-`const.py`. The live check reads the same page and fails when most of the
-fleet prints another excise than the one billed.
+It bills a month FPS Finance's excise tariff does not list yet, below. The
+live check reads the same page and fails when most of the fleet prints
+another excise than the one billed.
+
+## FPS Finance's excise tariff (TarBel)
+
+Article 420 §3/1 moves both household slices every quarter on the quarter's
+gas price, by a notice in the Moniteur belge that Justel does not
+consolidate. `tarbel.py` reads the rates in force from the workbook FPS
+Finance publishes for excise declarations (annex 7):
+
+- `GET https://eservices.minfin.fgov.be/extTariffBrowser/FileResourceForHomePageServlet?fname=accijnzen.xlsx&lang=NL`,
+  in Dutch, about 280 KB, its unpacked size capped at 16 MiB;
+- sheet `Q`, the rows "Aardgas gebruikt als verwarmingsbrandstof voor
+  niet-zakelijk gebruik, m.u.v. de beschermde residentiële afnemer", "van 0
+  tot 12 MWh" or "vanaf 12 MWh", "van toepassing vanaf ... tot en met ...",
+  in EUR per MWh, the ordinary and the special excise (codes 100 and 200)
+  added; the energy contribution's own codes and the protected customer's
+  are left out, and the columns are found by their headers.
+
+The version of 1 August 2026 lists April 2023 to December 2026, the quarters
+`const.py` types among them, figure for figure. A workbook that is not as
+expected (a slice or a period missing, another unit, overlapping periods) is
+refused whole. It is read once a day, a failure waits six hours, what was
+read is kept in each entry's Store, and a period the workbook later drops
+stays held. A month it lists is billed on it before anything else; the live
+check reads it too.
 
 ## Fluvius's gas tariff sheet
 

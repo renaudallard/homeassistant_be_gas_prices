@@ -53,6 +53,18 @@ _WORKBOOK = (
 )
 
 
+def _flagged(workbook: bytes, offset: int, value: int) -> bytes:
+    """``workbook`` with one byte of the worksheet's central directory entry
+    set: offset 8 the encryption flag, 6 the zip version to extract."""
+    name = b"xl/worksheets/sheet1.xml"
+    start = workbook.find(b"PK\x01\x02")
+    while workbook[start + 46 : start + 46 + len(name)] != name:
+        start = workbook.find(b"PK\x01\x02", start + 4)
+    data = bytearray(workbook)
+    data[start + offset] |= value
+    return bytes(data)
+
+
 def _damaged(workbook: bytes) -> bytes:
     """``workbook`` with bytes flipped inside the worksheet's compressed
     data: the zip directory still reads, the inflate does not."""
@@ -172,6 +184,8 @@ async def test_a_year_not_listed_yet_yields_nothing_until_the_backoff() -> None:
         ("an empty body", b""),
         ("a truncated workbook", _SHEET_2026[:4000]),
         ("a workbook with damaged compressed data", _damaged(_SHEET_2026)),
+        ("a directory entry flagged encrypted", _flagged(_SHEET_2026, 8, 0x01)),
+        ("a directory entry of a zip version to come", _flagged(_SHEET_2026, 6, 199)),
     ],
 )
 async def test_a_body_that_is_not_a_sheet_never_raises(label: str, body: bytes) -> None:

@@ -37,7 +37,10 @@ cache and 54 seconds with a full one.
 - `test_calorific.py`: Atrias's monthly calorific value files.
 - `test_excise_law.py`: article 419 read from Justel's page as served,
   refused when it is not the article, and the daily read and its backoff.
-  `conftest.py` holds the article as published for every other test.
+  `test_tarbel.py`: FPS Finance's excise tariff as served, the quarters
+  `const.py` types against it, refused when it is not annex 7, and the
+  daily read, its backoff and the Store. `conftest.py` holds the article
+  and the tariff as published for every other test.
 - `test_fetch.py`: the shared HTTP helpers against a local server
   (`socket_enabled`, since the harness blocks sockets otherwise).
 - `test_live_check.py`, `test_archive_cards.py`: the two daily scripts, with
@@ -157,15 +160,16 @@ How the cross-check decides:
 - A tie is a notice: two voters against two is not a verdict on either.
 - The excise, the energy contribution and the Walloon connection fee are
   measured against the law too: the run reads article 419 from Justel first
-  (`federal: gas excise law`, a failure when the page is not the article),
-  and a month whose fleet mostly prints another figure than the one billed
-  fails as `federal: excise ... against the law`, `federal: energy
-  contribution ... against the law` (zero from August 2026) or `wallonia:
-  connection fee ... against the law`. So does a fleet mostly stating another VAT rate than
-  `VAT_RATE_REDUCED` (`federal: VAT rate ... against the law`), the rate
-  every card that states none is billed on; a card stating another rate
-  than the rest is billed on it, so it fails as a departure, never a
-  notice.
+  (`federal: gas excise law`, a failure when the page is not the article)
+  and FPS Finance's excise tariff (`federal: gas excise tariff`, a failure
+  when the workbook is not annex 7), and a month whose fleet mostly prints
+  another figure than the one billed fails as `federal: excise ... against
+  the law`, `federal: energy contribution ... against the law` (zero from
+  August 2026) or `wallonia: connection fee ... against the law`. So does a
+  fleet mostly stating another VAT rate than `VAT_RATE_REDUCED` (`federal:
+  VAT rate ... against the law`), the rate every card that states none is
+  billed on; a card stating another rate than the rest is billed on it, so
+  it fails as a departure, never a notice.
 - A departure the integration does not bill is a notice rather than a
   failure: the excise of a month the law read from Justel or `const.py`
   sets, the Walloon connection fee of any month since the order of 2003,

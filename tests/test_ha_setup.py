@@ -56,6 +56,7 @@ from custom_components.be_gas_prices import (
     fluvius,
     providers,
     snapshot_codec,
+    tarbel,
 )
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
@@ -2828,6 +2829,40 @@ async def test_the_excise_law_is_read_by_the_tick_and_kept_in_the_store(
     assert hass_storage[store]["data"]["excise_law"] == stored
     before = coordinator.card_months_signature()
     excise_law.hold(((date(2027, 4, 1), 0.012, 0.013),))
+    assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """FPS Finance's quarters are read before a month is priced, kept for a
+    restart without the network, and a quarter newly listed draws the price
+    history again."""
+    stored = tarbel.held_table()
+    tarbel._HELD.clear()
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    store = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[store] = {
+        "version": 1,
+        "key": store,
+        "data": {
+            "snapshot": snapshot_to_json(fetch.return_value),
+            "fetched_at": "2026-09-14T08:00:00+00:00",
+            "tarbel": stored,
+        },
+    }
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert tarbel.held_table() == stored
+    ensure: Any = tarbel.ensure_tariff
+    ensure.assert_awaited()
+    coordinator = entry.runtime_data
+    await coordinator.async_save()
+    assert hass_storage[store]["data"]["tarbel"] == stored
+    before = coordinator.card_months_signature()
+    tarbel.hold(((date(2027, 1, 1), date(2027, 3, 31), 0.01139, 0.01139),))
     assert coordinator.card_months_signature() != before
 
 

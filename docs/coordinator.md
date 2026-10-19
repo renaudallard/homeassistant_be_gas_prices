@@ -55,8 +55,10 @@ cards (`issues.sync_issues`).
    list failing is asked again on the next tick; a month file failing is
    too, while nothing is held for the station and a retry may cure it.
    Then **the excise law** (`excise_law.ensure_excise_law`), daily for the
-   whole process, from Justel: a failure keeps what is held (read before,
-   or restored from the Store) and is asked again six hours later. An
+   whole process, from Justel, and **FPS Finance's excise tariff**
+   (`tarbel.ensure_tariff`), the quarters the notices set, the same way: a
+   failure keeps what is held (read before, or restored from the Store) and
+   is asked again six hours later. An
    entry billing a Flemish contract this year, the current one or one it
    left before moving, then reads **Fluvius's gas tariff sheet**
    (`fluvius.ensure_tariff_sheet`) of this year, once for the process,
@@ -187,8 +189,8 @@ calendar year, the entry's settings, each past month's own card and the
 current card as read (so a card read again after an update redraws it), and
 the index values and calorific values (so the value of an index that lags the
 supplier's others redraws it when it lands or is revised), the figures of the
-law (so a release, a Justel read or a Fluvius sheet that gives another
-month's redraws it), and the tier the measured volume falls in (so a year
+law (so a release, a Justel or FPS Finance read or a Fluvius sheet that
+gives another month's redraws it), and the tier the measured volume falls in (so a year
 that crosses into another tier redraws its hours on it; the excise blend
 within a tier, a few hundredths of a cent, does not). It is stamped in
 the Store, and skipped where Home Assistant runs no recorder.

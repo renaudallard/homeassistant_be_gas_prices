@@ -57,7 +57,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import calorific, excise_law, fluvius
+from . import calorific, excise_law, fluvius, tarbel
 from .bill import IndexValue, bill_month, contract_leg, merged_index, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -380,6 +380,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 if isinstance(values, dict)
             }
         excise_law.restore(blob.get("excise_law"))
+        tarbel.restore(blob.get("tarbel"))
         fluvius.restore(blob.get("fluvius"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
@@ -416,6 +417,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
             "excise_law": excise_law.held_table(),
+            "tarbel": tarbel.held_table(),
             "fluvius": fluvius.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
@@ -458,7 +460,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         index = _digest(self._index_table)
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
-        law = _digest([LAW_FIGURES, excise_law.held_table(), fluvius.held_table()])
+        law = _digest(
+            [LAW_FIGURES, excise_law.held_table(), tarbel.held_table(), fluvius.held_table()]
+        )
         tier = "" if self.household is None else tier_for(self.household.annual_kwh)
         return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}|{tier}"
 
@@ -976,9 +980,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if not reprice_only:
             await self._refresh_index()
             await self._refresh_calorific()
-            # The excise the law sets, which every residential month is
-            # resolved against when it is priced below.
+            # The excise the law sets and the one FPS Finance's tariff lists
+            # by quarter, which every residential month is resolved against
+            # when it is priced below.
             await excise_law.ensure_excise_law(self._session)
+            await tarbel.ensure_tariff(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the

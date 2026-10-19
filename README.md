@@ -69,8 +69,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 - **The levies from the law**: for the delivery months the law is known for,
   the special excise, the energy contribution and the Walloon connection fee
   are what the law sets, whatever a stale or wrong card prints. The excise is
-  read daily from the law itself on Justel, with the steps it has already
-  voted for the coming years.
+  read daily from FPS Finance's excise tariff, which lists each quarter the
+  law's notices set, and from the law itself on Justel, with the steps it has
+  already voted for the coming years.
 - **The Fluvius fee a card leaves out**: a Flemish card that prints no data
   management fee (Luminus's) is billed the one on Fluvius's tariff sheet of
   the delivery year.
@@ -310,8 +311,9 @@ Every hour, each entry runs one refresh:
 - **The supplier's index values**, for an indexed contract, twice a day.
 - **Atrias's calorific values**, once a day, only for an entry converting on
   its reception station, and only the months not held yet.
-- **The excise law** on Justel (ejustice.just.fgov.be), once a day; a
-  failure keeps what was read and waits six hours.
+- **The excise law** on Justel (ejustice.just.fgov.be) and **FPS Finance's
+  excise tariff** (eservices.minfin.fgov.be), once a day each; a failure
+  keeps what was read and waits six hours.
 - **Fluvius's gas tariff sheet** of this year, once, for an entry billing a
   Flemish contract this year (an earlier one included): the data management
   fee a card may leave out. A failure waits six hours.

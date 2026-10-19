@@ -45,10 +45,10 @@ says nothing about the card, and checks what came back:
     fee the card leaves out), or the card prints a figure its provider notes
     document as the card's error, the departure is a notice rather than a
     failure;
-  - the excise law on Justel and this year's Fluvius gas tariff sheet read as
-    the integration reads them, and the fleet's excise, VAT rate, Walloon
-    connection fee and Fluvius metering fee measured against what the
-    integration bills.
+  - the excise law on Justel, FPS Finance's excise tariff and this year's
+    Fluvius gas tariff sheet read as the integration reads them, and the
+    fleet's excise, energy contribution, VAT rate, Walloon connection fee
+    and Fluvius metering fee measured against what the integration bills.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -92,7 +92,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
-from custom_components.be_gas_prices import excise_law, fluvius  # noqa: E402
+from custom_components.be_gas_prices import excise_law, fluvius, tarbel  # noqa: E402
 from custom_components.be_gas_prices.const import (  # noqa: E402
     EXCISE_LAW_URL,
     FLUVIUS_KEYS,
@@ -789,6 +789,24 @@ async def check_excise_law(
     return Check(label, "ok")
 
 
+async def check_excise_tariff(
+    session: aiohttp.ClientSession,
+    *,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> Check:
+    """FPS Finance's excise tariff read as the integration reads it, and held
+    for the fleet's excise to be measured against: run before the fleet. It
+    gives the quarters the notices of art. 420 set, which Justel does not."""
+    label = "federal: gas excise tariff"
+    try:
+        tarbel.hold(
+            await fetch_with_retry(functools.partial(tarbel.fetch_tariff, session), sleep=sleep)
+        )
+    except Exception as err:  # reported like a card
+        return _failure(label, err)
+    return Check(label, "ok")
+
+
 async def check_fluvius_sheet(
     session: aiohttp.ClientSession,
     today: date,
@@ -886,7 +904,11 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             # Every render goes through a hook that runs it in a daemon
             # thread, so one that never returns cannot hold the exit.
             hooks.enter_context(render_through(_render if cache is None else cache.render))
-            checks = [await check_excise_law(session), await check_fluvius_sheet(session, today)]
+            checks = [
+                await check_excise_law(session),
+                await check_excise_tariff(session),
+                await check_fluvius_sheet(session, today),
+            ]
             checks += await check_fleet(session, all_extractors(), today)
     print(render_report(checks))
     if cache is not None:

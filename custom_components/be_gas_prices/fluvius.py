@@ -49,20 +49,16 @@ is not asked again.
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import re
-import zipfile
-import zlib
 from datetime import datetime
 from typing import Any, Final
 
 import aiohttp
-from defusedxml import ElementTree as ET  # type: ignore[import-untyped]
-from defusedxml.common import DefusedXmlException  # type: ignore[import-untyped]
 from homeassistant.util import dt as dt_util
 
-from .providers._pdf import USER_AGENT, fetch_text, guard_redirect, read_capped
+from . import xlsx
+from .providers._pdf import fetch_bytes, fetch_text
 from .providers.base import ExtractorError
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,9 +77,6 @@ _MAX_UNPACKED_BYTES: Final = 4 * 1024 * 1024
 _MIN_FEE: Final = 1.0
 _MAX_FEE: Final = 100.0
 _FEE_LABEL: Final = "Jaaropname"
-
-_NS: Final = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
-_SHEET: Final = "xl/worksheets/sheet1.xml"
 
 # year -> EUR/year excluding VAT.
 _cache: dict[int, float] = {}
@@ -115,16 +108,7 @@ async def ensure_tariff_sheet(session: aiohttp.ClientSession, year: int) -> None
         except (ExtractorError, aiohttp.ClientError, TimeoutError) as err:
             _LOGGER.debug("Fluvius %d gas tariff sheet not fetched: %s", year, err)
             fee = None
-        except (
-            ValueError,
-            KeyError,
-            IndexError,
-            zipfile.BadZipFile,
-            zlib.error,
-            EOFError,
-            ET.ParseError,
-            DefusedXmlException,
-        ) as err:
+        except xlsx.UNREADABLE as err:
             # The page came back and is not the workbook as expected, or
             # its compressed data is damaged or cut short.
             _LOGGER.warning("Fluvius %d gas tariff sheet could not be read: %s", year, err)
@@ -156,47 +140,8 @@ async def fetch_fee(session: aiohttp.ClientSession, year: int) -> float | None:
     if sheet is None:
         _LOGGER.debug("Fluvius %d gas publication page links no workbook", year)
         return None
-    url = _SITE + sheet.group(1)
-    async with session.get(
-        url,
-        headers={"User-Agent": USER_AGENT},
-        timeout=aiohttp.ClientTimeout(total=_TIMEOUT),
-    ) as resp:
-        guard_redirect(url, resp)
-        resp.raise_for_status()
-        payload = await read_capped(resp, url)
+    payload = await fetch_bytes(session, _SITE + sheet.group(1), timeout=_TIMEOUT)
     return parse_sheet(payload, year)
-
-
-def _rows(payload: bytes) -> list[dict[str, str]]:
-    """The worksheet's cells as text, one ``{column: text}`` per row."""
-    with zipfile.ZipFile(io.BytesIO(payload)) as z:
-        if sum(info.file_size for info in z.infolist()) > _MAX_UNPACKED_BYTES:
-            raise ValueError("workbook unpacks past the size cap")
-        try:
-            shared = ET.fromstring(z.read("xl/sharedStrings.xml"))
-        except KeyError:
-            strings: list[str] = []
-        else:
-            strings = [
-                "".join(t.text or "" for t in si.iter(_NS + "t")) for si in shared.iter(_NS + "si")
-            ]
-        sheet = ET.fromstring(z.read(_SHEET))
-    rows: list[dict[str, str]] = []
-    for row in sheet.iter(_NS + "row"):
-        cells: dict[str, str] = {}
-        for cell in row.iter(_NS + "c"):
-            kind = cell.get("t")
-            if kind == "inlineStr":
-                text = "".join(t.text or "" for t in cell.iter(_NS + "t"))
-            else:
-                value = cell.find(_NS + "v")
-                if value is None or value.text is None:
-                    continue
-                text = strings[int(value.text)] if kind == "s" else value.text
-            cells[cell.get("r", "").rstrip("0123456789")] = text.strip()
-        rows.append(cells)
-    return rows
 
 
 def parse_sheet(payload: bytes, year: int) -> float | None:
@@ -207,7 +152,7 @@ def parse_sheet(payload: bytes, year: int) -> float | None:
     single figure on the fee's row, or prints one outside the bounds. Raises
     on a payload that is not a workbook; the caller logs it.
     """
-    rows = _rows(payload)
+    rows = xlsx.rows(payload, max_unpacked=_MAX_UNPACKED_BYTES)
     title = f"aardgas - tarieflijst periodieke distributienettarieven {year}"
     if not any(title in text.lower() for row in rows for text in row.values()):
         return None
