@@ -109,15 +109,20 @@ def to_kwh(
     return out
 
 
+def _last_year(day: date) -> date:
+    """``day``'s date last year; 29 February has no twin and takes the 28th."""
+    try:
+        return day.replace(year=day.year - 1)
+    except ValueError:
+        return date(day.year - 1, 2, 28)
+
+
 def meter_start(today: date) -> date:
     """The first day the costs read off the meter: today's date last year,
     before this year's 1 January, the rolling year and the days the year-end
     projection reads last year. A day before it has no use, so it is not
     read."""
-    try:
-        return today.replace(year=today.year - 1)
-    except ValueError:  # 29 February has no twin
-        return date(today.year - 1, 2, 28)
+    return _last_year(today)
 
 
 def rolling_year_kwh(days: Mapping[date, float], today: date) -> float | None:
@@ -247,12 +252,8 @@ def _remaining_days_last_year(kwh_days: Mapping[date, float], today: date) -> fl
     day = today
     end = date(today.year, 12, 31)
     while day <= end:
-        try:
-            last_year = day.replace(year=day.year - 1)
-        except ValueError:  # 29 February has no twin
-            day += timedelta(days=1)
-            continue
-        value = kwh_days.get(last_year)
+        # A 29 February still to come takes its gas from last year's 28th.
+        value = kwh_days.get(_last_year(day))
         if value is None:
             return None
         if day == today:

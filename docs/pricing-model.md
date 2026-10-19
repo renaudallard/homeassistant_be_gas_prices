@@ -158,7 +158,8 @@ on today's card when it is not held or cannot price the household.
 - `projected_year_end_cost`: the year so far as billed, plus last year's
   same remaining days at today's price and the remaining days' fixed costs;
   unknown unless every one of those days is on record. Today counts among
-  them, for what last year's same day used beyond what today has so far.
+  them, for what last year's same day used beyond what today has so far,
+  and a 29 February still to come on last year's 28 February.
 
 ## Cubic metres and kWh
 

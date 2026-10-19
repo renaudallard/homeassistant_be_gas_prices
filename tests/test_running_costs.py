@@ -456,6 +456,16 @@ def test_the_meter_is_read_from_today_s_date_last_year(today: date, start: date)
     assert meter_start(today) == start
 
 
+def test_29_february_still_to_come_uses_last_year_s_28th() -> None:
+    today = date(2028, 1, 15)
+    days = {date(2027, 1, 1) + timedelta(days=n): 10.0 for n in range(365)}
+    days[date(2027, 2, 28)] = 73.2
+    days[today] = 10.0
+    # Today's twin used no more than today has; the 351 days from 16 January
+    # to 31 December read their twins, 28 February 2027 twice.
+    assert _remaining_days_last_year(days, today) == pytest.approx(349 * 10.0 + 2 * 73.2)
+
+
 @pytest.mark.parametrize("today", [date(2028, 6, 15), date(2029, 1, 20), date(2027, 6, 15)])
 def test_the_days_read_project_the_year_end_across_a_29_february(today: date) -> None:
     """Every day from meter_start to today on record: the rolling year and
