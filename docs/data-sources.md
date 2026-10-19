@@ -124,12 +124,15 @@ and counts as none.
 
 `scripts/refresh_postcodes.py` builds `postcode_map.py` from bpost's
 postcode list and Synergrid's DSO lookup: for each of the 1 146 postcodes
-with a province, the gas DSO of every locality Synergrid files under it.
+with a province, and for a postcode bpost lists without one where an
+override names it (SHAPE's 7010), the gas DSO of every locality Synergrid
+files under it.
 Where Synergrid disagrees with Fluvius's open data, the Flemish regulator or
 CWaPE's per-postcode table, `OVERRIDES` in the script corrects the entry,
 each with its evidence in a comment (Voeren has no gas network although
 Synergrid names Fluvius Limburg; Andenne is RESA, not ORES; eighteen Walloon
-postcodes Synergrid leaves without gas are ORES). Run it once a year: DSOs
+postcodes Synergrid leaves without gas are ORES, and so is SHAPE, where ORES
+counts some 550 residential gas access points). Run it once a year: DSOs
 merge and communes move between them.
 
 `postcodes.resolve` gives the region and the postcode's DSOs, and the setup

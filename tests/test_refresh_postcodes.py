@@ -155,3 +155,23 @@ def test_a_whole_map_is_written(output: Path, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(rp, "build", lambda _bpost: (_table(rp.MIN_POSTCODES), {}))
     assert rp.main() == 0
     assert '"1000": (' in output.read_text(encoding="utf-8")
+
+
+def test_a_postcode_without_a_province_is_read_where_an_override_names_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """bpost gives SHAPE's 7010 no province, as it does institutions'
+    postcodes, but ORES counts its gas access points: kept for its override."""
+    page = b'<a href="https://x/zipcodes_num_fr_2025.xls">'
+    header = dict(enumerate(rp.BPOST_HEADER))
+    rows: list[dict[int, Any]] = [
+        header,
+        {0: 7000.0, 1: "Mons", 2: "", 3: "Mons", 4: "Hainaut"},
+        {0: 7010.0, 1: "SHAPE", 2: "", 3: "", 4: ""},
+        {0: 1011.0, 1: "Bruxelles (Parlement)", 2: "", 3: "", 4: ""},
+    ]
+    monkeypatch.setattr(rp, "_get", lambda _url: page)
+    monkeypatch.setattr(rp, "xls_rows", lambda _data: rows)
+    _url, postcodes = rp.bpost_postcodes()
+    assert postcodes == {"7000": ["Mons"], "7010": ["SHAPE"]}
+    assert rp.OVERRIDES["7010"] == ("ores",)

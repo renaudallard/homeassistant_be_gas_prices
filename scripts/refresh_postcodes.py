@@ -180,6 +180,10 @@ OVERRIDES: dict[str, tuple[str, ...]] = {
     "7901": ("ores",),  # Thieulain, 71
     "7904": ("ores",),  # Tourpes, 6
     "7951": ("ores",),  # Tongre-Notre-Dame, 71
+    # SHAPE, in Casteau, which bpost lists without a province and CWaPE has
+    # no page for. ORES counts 544 residential and 91 professional gas
+    # access points there.
+    "7010": ("ores",),
 }
 
 
@@ -393,12 +397,12 @@ def bpost_postcodes() -> tuple[str, dict[str, list[str]]]:
         raise SourceError(f"{url}: unexpected header {rows[:1]}")
     postcodes: dict[str, list[str]] = {}
     for row in rows[1:]:
+        code, name = row.get(0), row.get(1)
         # Rows without a province are postcodes bpost gives institutions,
         # companies and sorting centres (parliaments, broadcasters, "Brussel
-        # X"), not places with gas meters.
-        if not row.get(4):
+        # X"), not places with gas meters, but for the ones OVERRIDES names.
+        if not row.get(4) and not (isinstance(code, float) and f"{int(code)}" in OVERRIDES):
             continue
-        code, name = row.get(0), row.get(1)
         if not isinstance(code, float) or not isinstance(name, str) or not 1000 <= code <= 9999:
             raise SourceError(f"{url}: unexpected row {row}")
         postcodes.setdefault(f"{int(code)}", []).append(name)
