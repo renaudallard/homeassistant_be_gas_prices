@@ -158,6 +158,26 @@ def _failing(checks: list[Any]) -> dict[str, str]:
     return {c.label: c.detail for c in checks if c.status == "fail"}
 
 
+def test_a_dso_row_without_t2_fails_unless_documented() -> None:
+    """Most households are on T2: a row the parser could not give one leaves
+    them unpriced, which no fleet figure would show."""
+    snapshot = _snapshot("dots")
+    row = snapshot.dsos["fluvius_kempen"]
+    cut = replace(
+        snapshot,
+        dsos={"fluvius_kempen": replace(row, tiers={"t1": row.tiers["t1"]})},
+    )
+    today = date(2026, 10, 19)
+    assert lc._tiers("dots/x/flanders", _extractor("dots"), snapshot, today).status == "ok"
+    check = lc._tiers("dots/x/flanders", _extractor("dots"), cut, today)
+    assert (check.status, check.detail) == ("fail", "fluvius_kempen: no T2 term read")
+    limburg = replace(cut, dsos={"fluvius_limburg": cut.dsos["fluvius_kempen"]})
+    assert lc._tiers("dots/x/flanders", _extractor("dots"), limburg, today).status == "notice"
+    lapsed = lc._tiers("dots/x/flanders", _extractor("dots"), limburg, date(2027, 1, 1))
+    assert lapsed.status == "fail"
+    assert lc._tiers("x/x/flanders", _extractor("acme"), limburg, today).status == "fail"
+
+
 def test_a_card_printing_no_gas_excise_gives_no_excise_figure() -> None:
     """EnergyVision's Walloon fixed card prints the electricity excise in
     place of the gas one, which is not read: nothing to measure."""

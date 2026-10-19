@@ -361,6 +361,7 @@ async def _check_supplier(
         patience.ok(ex.id)
         checks.append(Check(f"{label}: fetch", "ok"))
         checks.append(_freshness(label, snapshot, today))
+        checks.append(_tiers(label, ex, snapshot, today))
         cards.append(Card(ex, contract, region, snapshot))
     if ex.fetch_index is not None and ex.id in patience.given_up:
         checks.append(Check(f"{ex.id}: index publication", "transient", skipped))
@@ -448,6 +449,36 @@ _KNOWN_CARD_ERRORS: dict[tuple[str, str, str], tuple[float, date, str]] = {
         "the RESA term Bolt prints",
     ),
 }
+
+
+# DSO rows whose T2 a card is documented to misprint, by supplier and DSO:
+# the day the allowance lapses, and why. The parser drops a T2 whose rate
+# is not below T1's, and the household above 5 000 kWh there gets a pricing
+# error rather than a bill.
+_KNOWN_MISSING_T2: dict[tuple[str, str], tuple[date, str]] = {
+    ("dots", "fluvius_limburg"): (_TARIFF_YEAR_END, "its T1 term printed as T2"),
+}
+
+
+def _tiers(label: str, ex: SupplierExtractor, snapshot: SupplierSnapshot, today: date) -> Check:
+    """Whether every DSO row of a residential card prices T2, the tier of
+    most households: a row without it leaves every one of them there
+    unpriced, and gives the fleet no figure to compare."""
+    name = f"{label}: T2 rows"
+    if snapshot.taxes.vat_rate != 0.0:
+        return Check(name, "ok", "a professional card")
+    missing = sorted(dso for dso, overlay in snapshot.dsos.items() if TIER_T2 not in overlay.tiers)
+    if not missing:
+        return Check(name, "ok")
+    known = {
+        dso: _KNOWN_MISSING_T2[(ex.id, dso)][1]
+        for dso in missing
+        if (ex.id, dso) in _KNOWN_MISSING_T2 and today < _KNOWN_MISSING_T2[(ex.id, dso)][0]
+    }
+    detail = "; ".join(
+        f"{dso}: {known[dso]}" if dso in known else f"{dso}: no T2 term read" for dso in missing
+    )
+    return Check(name, "notice" if len(known) == len(missing) else "fail", detail)
 
 
 @dataclass(frozen=True)

@@ -121,6 +121,12 @@ integration uses and checks:
 - the card is for the current month, allowing the previous month in the first
   five days of a month; a card with no end date (`valid_until` None) applies
   until the supplier replaces it and is not checked;
+- every DSO row of a residential card prices T2, the tier of most
+  households (`T2 rows`): the parser drops a T2 whose rate is not below
+  T1's, which leaves them unpriced and the fleet nothing to compare. Dots'
+  Fluvius Limburg row, documented, is a notice until 2027
+  (`_KNOWN_MISSING_T2`). T3, which only some cards print and which no
+  residential household reaches, is not checked;
 - every `fetch_index` reads, lists each index its cards are priced on, and
   has a recent value for it (two months, four for a quarterly index);
 - the regulated figures agree across the fleet, month by month: per DSO the
