@@ -30,7 +30,9 @@ from __future__ import annotations
 import sys
 import threading
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -79,3 +81,31 @@ def _render_threads_wound_down() -> Iterator[None]:
     for thread in threading.enumerate():
         if thread.name == RENDER_THREAD:
             thread.join(timeout=10)
+
+
+_JUSTEL_PAGE = (
+    Path(__file__).resolve().parent / "fixtures" / "justel" / "loi_programme_2004_fr.html"
+)
+
+
+@pytest.fixture(scope="session")
+def excise_law_steps() -> tuple[tuple[date, float, float], ...]:
+    """Article 419 as Justel served it on 2026-10-19, parsed once."""
+    from custom_components.be_gas_prices import excise_law
+
+    return excise_law.parse(_JUSTEL_PAGE.read_bytes().decode("iso-8859-1"))
+
+
+@pytest.fixture(autouse=True)
+def _excise_law_as_published(
+    excise_law_steps: tuple[tuple[date, float, float], ...],
+) -> Iterator[None]:
+    """The tick reads the excise law from Justel. Tests see the article as it
+    was published instead of the network, and whatever a test holds is put
+    back before the next one."""
+    from custom_components.be_gas_prices import excise_law
+
+    excise_law._HELD[:] = excise_law_steps
+    with patch.object(excise_law, "ensure_excise_law", AsyncMock()):
+        yield
+    excise_law._HELD.clear()

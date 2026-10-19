@@ -32,6 +32,7 @@ from datetime import date
 
 import pytest
 
+from custom_components.be_gas_prices import excise_law
 from custom_components.be_gas_prices.const import (
     CALIBER_GT160,
     CALIBER_Q10,
@@ -154,13 +155,28 @@ def test_law_leaves_a_month_before_the_window_as_printed() -> None:
     assert resolve_federal_levies(_stale_taxes(), date(2024, 12, 1)) == _stale_taxes()
 
 
-def test_law_expires_into_the_card_in_january_2027() -> None:
-    """The law steps the excise again on 1 January 2027 and the quarterly
-    adjustment still applies, so no rate is assumed past the window. The
-    energy contribution stays abolished."""
+def test_law_steps_the_excise_in_january_2027() -> None:
+    """The steps the law has voted are billed in their own month: 11,39 and
+    12,24 EUR/MWh from 1 January 2027. The energy contribution stays
+    abolished."""
     resolved = resolve_federal_levies(_stale_taxes(), date(2027, 1, 1))
-    assert resolved.excise_bands == _stale_taxes().excise_bands
+    assert resolved.excise_bands == (
+        (12_000.0, pytest.approx(0.01139 * 1.06)),
+        (None, pytest.approx(0.01224 * 1.06)),
+    )
     assert resolved.energy_contribution == 0.0
+
+
+def test_without_the_law_a_month_past_the_table_is_billed_as_printed() -> None:
+    """Justel never read and nothing stored: the months from August 2026 are
+    not in const.py's table, so the card's excise stands rather than a rate
+    the law may have stepped since."""
+    excise_law._HELD.clear()
+    assert resolve_federal_levies(_stale_taxes(), date(2026, 9, 1)).excise_bands == (
+        _stale_taxes().excise_bands
+    )
+    july = resolve_federal_levies(_stale_taxes(), date(2026, 7, 1))
+    assert july.excise_bands[1][1] == pytest.approx(0.0093315 * 1.06)
 
 
 def test_law_does_not_touch_a_professional_card() -> None:

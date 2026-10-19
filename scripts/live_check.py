@@ -87,28 +87,31 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
+from custom_components.be_gas_prices import excise_law  # noqa: E402
 from custom_components.be_gas_prices.const import (  # noqa: E402
     ENERGY_CONTRIBUTION_KNOWN_FROM,
+    EXCISE_LAW_URL,
     FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
     FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
     FLUVIUS_KEYS,
-    GAS_EXCISE_KNOWN_FROM,
-    GAS_EXCISE_KNOWN_UNTIL,
     REGION_BRUSSELS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
     TIER_T1,
     TIER_T2,
+    VAT_RATE_REDUCED,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
     WALLOON_CONNECTION_FEE_KNOWN_UNTIL,
 )
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
+    fetch_text,
     is_transient_fetch_error,
     memoise_text_fetches,
     render_through,
 )
 from custom_components.be_gas_prices.providers._rates import IndexedRates  # noqa: E402
+from custom_components.be_gas_prices.providers._resolve import law_excise  # noqa: E402
 from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     CardNotReadableError,
     SupplierExtractor,
@@ -375,13 +378,13 @@ _EXCISE_HIGH = "excise above 12000 kWh"
 _CONTRIBUTION = "energy contribution"
 _CONNECTION_FEE = "connection fee"
 # The levies the integration bills from the law rather than from the card for
-# the months const.py knows the law for (providers/_resolve.py): the federal
-# ones and the Walloon connection fee. A card printing another figure for such
-# a month is still wrong and reported, but nobody is billed on it, so it does
-# not fail the check.
+# the months const.py knows the law for (providers/_resolve.py): the energy
+# contribution and the Walloon connection fee, and the excise of any month the
+# law read from Justel or const.py's table covers (law_excise). A card
+# printing another figure for such a month is still wrong and reported, but
+# nobody is billed on it, so it does not fail the check.
+_EXCISE_SLICES = {_EXCISE_LOW: 0, _EXCISE_HIGH: 1}
 _LAW_WINDOWS: dict[str, tuple[tuple[int, int], tuple[int, int] | None]] = {
-    _EXCISE_LOW: (GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL),
-    _EXCISE_HIGH: (GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL),
     _CONTRIBUTION: (ENERGY_CONTRIBUTION_KNOWN_FROM, None),
     _CONNECTION_FEE: (WALLOON_CONNECTION_FEE_KNOWN_FROM, WALLOON_CONNECTION_FEE_KNOWN_UNTIL),
 }
@@ -551,7 +554,20 @@ def agree(a: float, b: float, unit: str) -> bool:
     return abs(a - b) <= max(_step(a, unit), _step(b, unit)) + 1e-12
 
 
+def _law_excise(name: str, month: str) -> float | None:
+    """The excise including VAT the integration bills ``month`` on for the
+    slice ``name`` names, or None when it bills the card's."""
+    slice_ = _EXCISE_SLICES.get(name)
+    parsed = label_month(month)
+    if slice_ is None or parsed is None:
+        return None
+    rates = law_excise(date(parsed[0], parsed[1], 1))
+    return None if rates is None else rates[slice_] * (1 + VAT_RATE_REDUCED)
+
+
 def _billed_from_law(name: str, month: str) -> bool:
+    if _law_excise(name, month) is not None:
+        return True
     window = _LAW_WINDOWS.get(name)
     parsed = label_month(month)
     if window is None or parsed is None:
@@ -597,6 +613,21 @@ def _departures(group: list[Figure], today: date) -> Iterator[Check]:
     values = sorted({f.value for f in group})
     support = {v: {f.voter for f in group if agree(f.value, v, unit)} for v in values}
     best = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
+    law = _law_excise(first.name, first.month)
+    if (
+        law is not None
+        and len(support[best]) >= 2
+        and len(support[best]) > len({f.voter for f in group if agree(f.value, law, unit)})
+    ):
+        # Most of the fleet prints another excise than the one billed: the
+        # law changed and was misread, or a rate the table holds is wrong.
+        # Every residential month is billed on it.
+        yield Check(
+            f"federal: {first.name} for {first.month} against the law",
+            "fail",
+            f"{', '.join(sorted({f.supplier for f in group if agree(f.value, best, unit)}))} "
+            f"print {shown(best, unit)} where the integration bills {shown(law, unit)}",
+        )
     rivals = [v for v in values if not agree(v, best, unit)]
     if not rivals:
         return
@@ -679,6 +710,24 @@ async def check_fleet(
     return checks
 
 
+async def check_excise_law(
+    session: aiohttp.ClientSession,
+    *,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> Check:
+    """Article 419 read from Justel, as the integration reads it, and held
+    for the fleet's excise to be measured against: run before the fleet."""
+    label = "federal: gas excise law"
+    try:
+        page = await fetch_with_retry(
+            functools.partial(fetch_text, session, EXCISE_LAW_URL, timeout=30), sleep=sleep
+        )
+        excise_law.hold(excise_law.parse(page))
+    except Exception as err:  # reported like a card
+        return _failure(label, err)
+    return Check(label, "ok")
+
+
 def exit_code(checks: Iterable[Check]) -> int:
     statuses = {check.status for check in checks}
     if "fail" in statuses:
@@ -752,7 +801,8 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             # Every render goes through a hook that runs it in a daemon
             # thread, so one that never returns cannot hold the exit.
             hooks.enter_context(render_through(_render if cache is None else cache.render))
-            checks = await check_fleet(session, all_extractors(), today)
+            checks = [await check_excise_law(session)]
+            checks += await check_fleet(session, all_extractors(), today)
     print(render_report(checks))
     if cache is not None:
         print(

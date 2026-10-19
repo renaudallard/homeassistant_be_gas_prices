@@ -46,6 +46,7 @@ from typing import Any
 import pytest
 import yaml  # type: ignore[import-untyped]
 
+from custom_components.be_gas_prices import excise_law
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
@@ -232,9 +233,9 @@ def test_brands_on_one_template_count_once() -> None:
 
 
 def test_a_federal_levy_the_law_sets_for_the_month_is_a_notice() -> None:
-    """September 2026 is inside the excise window of const.py, so a stale
-    excise is not billed and does not fail; February 2027 is past it, and
-    the card's figure would be billed."""
+    """The law read from Justel sets September 2026's excise, so a stale
+    excise is not billed and does not fail. With the law unread, February
+    2027 is past const.py's table, and the card's figure would be billed."""
 
     def fleet(label: str) -> list[Any]:
         return [
@@ -250,6 +251,7 @@ def test_a_federal_levy_the_law_sets_for_the_month_is_a_notice() -> None:
         "gamma: federal excise above 12000 kWh for 2026-09",
         "gamma: federal energy contribution for 2026-09",
     }
+    excise_law._HELD.clear()
     outside = lc.consensus(fleet("2027-02"))
     assert sorted(_failing(outside)) == [
         "gamma: federal excise above 12000 kWh for 2027-02",
@@ -263,6 +265,9 @@ def test_a_fluvius_card_without_data_management_is_a_notice_in_its_year() -> Non
     """The integration bills the regulated fee where a Fluvius row prints
     none, for the tariff year const.py knows; a wrong fee that is printed is
     billed, and so is a missing one past that year."""
+    # The synthetic excise is not 2027's: measured against the law here, it
+    # would fail on its own.
+    excise_law._HELD.clear()
 
     def fleet(label: str, metering: float) -> list[Any]:
         return [
@@ -326,7 +331,52 @@ def test_a_known_card_error_is_reported_again_once_its_allowance_lapses(
     assert (failing == {}) is allowed
 
 
+def test_the_fleet_s_excise_is_measured_against_the_law() -> None:
+    """Every card agreeing is not enough: the excise is billed from the law,
+    so a fleet printing another one for a month the law sets means the law
+    was misread or changed. February 2027 is on the step of 1 January."""
+
+    def fleet(excise: tuple[float, float]) -> list[Any]:
+        return [_card(_snapshot(sid, label="2027-02", excise=excise)) for sid in ("alpha", "beta")]
+
+    assert sorted(_failing(lc.consensus(fleet((0.0109, 0.0118))))) == [
+        "federal: excise above 12000 kWh for 2027-02 against the law",
+        "federal: excise up to 12000 kWh for 2027-02 against the law",
+    ]
+    assert _failing(lc.consensus(fleet((0.0120734, 0.0129744)))) == {}
+
+
+@pytest.mark.parametrize(
+    ("page", "status"),
+    [
+        (None, "ok"),
+        ("<html>maintenance</html>", "fail"),
+        (ExtractorError("HTTP 503 fetching https://www.ejustice.just.fgov.be"), "transient"),
+    ],
+)
+async def test_the_excise_law_is_read_before_the_fleet(
+    monkeypatch: pytest.MonkeyPatch, page: str | Exception | None, status: str
+) -> None:
+    """Read as the integration reads it and held for the fleet; a page that
+    is not the article fails, a network failure is transient."""
+    published = (
+        Path(__file__).parent / "fixtures" / "justel" / "loi_programme_2004_fr.html"
+    ).read_bytes()
+
+    async def fetch_text(*_args: Any, **_kwargs: Any) -> str:
+        if isinstance(page, Exception):
+            raise page
+        return published.decode("iso-8859-1") if page is None else page
+
+    monkeypatch.setattr(lc, "fetch_text", fetch_text)
+    excise_law._HELD.clear()
+    check = await lc.check_excise_law(None, sleep=_no_sleep)
+    assert (check.label, check.status) == ("federal: gas excise law", status)
+    assert bool(excise_law._HELD) == (status == "ok")
+
+
 def test_a_single_excise_rate_stands_for_both_slices() -> None:
+    excise_law._HELD.clear()
     cards = [
         _card(_snapshot("alpha", label="2027-02")),
         _card(_snapshot("beta", label="2027-02")),
@@ -550,13 +600,17 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     async def check_fleet(*_args: Any, **_kwargs: Any) -> list[Any]:
         return [lc.Check("gone/gone_fix/flanders: fetch", "fail", "HTTP 404")]
 
+    async def check_excise_law(*_args: Any, **_kwargs: Any) -> Any:
+        return lc.Check("federal: gas excise law", "ok")
+
+    monkeypatch.setattr(lc, "check_excise_law", check_excise_law)
     monkeypatch.setattr(lc, "check_fleet", check_fleet)
     fingerprint = tmp_path / "failures.txt"
     monkeypatch.setattr(sys, "argv", ["live_check.py", "--fingerprint", str(fingerprint)])
     assert lc.main() == 1
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     assert capsys.readouterr().out.startswith(
-        "# Live check: 0 pass, 1 fail, 0 transient, 0 notices"
+        "# Live check: 1 pass, 1 fail, 0 transient, 0 notices"
     )
 
     async def crash(*_args: Any, **_kwargs: Any) -> list[Any]:

@@ -68,7 +68,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   year, and the federal excise is billed per slice of the annual volume.
 - **The levies from the law**: for the delivery months the law is known for,
   the special excise, the energy contribution and the Walloon connection fee
-  are what the law sets, whatever a stale or wrong card prints.
+  are what the law sets, whatever a stale or wrong card prints. The excise is
+  read daily from the law itself on Justel, with the steps it has already
+  voted for the coming years.
 - **Cubic metres to kWh**: the factor printed on your bill, or without one
   the monthly calorific value of your gas reception station, published by
   Atrias.
@@ -302,6 +304,8 @@ Every hour, each entry runs one refresh:
 - **The supplier's index values**, for an indexed contract, twice a day.
 - **Atrias's calorific values**, once a day, only for an entry converting on
   its reception station, and only the months not held yet.
+- **The excise law** on Justel (ejustice.just.fgov.be), once a day; a
+  failure keeps what was read and waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
 - **The gas meter**, from the recorder's statistics, on every refresh.

@@ -49,7 +49,13 @@ from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
-from custom_components.be_gas_prices import calorific, diagnostics, providers, snapshot_codec
+from custom_components.be_gas_prices import (
+    calorific,
+    diagnostics,
+    excise_law,
+    providers,
+    snapshot_codec,
+)
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -2761,6 +2767,40 @@ async def test_the_price_history_stamp_moves_with_the_law(
     before = coordinator.card_months_signature()
     with patch("custom_components.be_gas_prices.coordinator.LAW_FIGURES", ((2024, 1),)):
         assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_excise_law_is_read_by_the_tick_and_kept_in_the_store(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """The tick reads the law before it prices a month, the store keeps it for
+    a restart without the network, and a law read anew draws the price
+    history again."""
+    stored = excise_law.held_table()
+    excise_law._HELD.clear()
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    store = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[store] = {
+        "version": 1,
+        "key": store,
+        "data": {
+            "snapshot": snapshot_to_json(fetch.return_value),
+            "fetched_at": "2026-09-14T08:00:00+00:00",
+            "excise_law": stored,
+        },
+    }
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert excise_law.held_table() == stored
+    ensure: Any = excise_law.ensure_excise_law
+    ensure.assert_awaited()
+    coordinator = entry.runtime_data
+    await coordinator.async_save()
+    assert hass_storage[store]["data"]["excise_law"] == stored
+    before = coordinator.card_months_signature()
+    excise_law.hold(((date(2027, 4, 1), 0.012, 0.013),))
+    assert coordinator.card_months_signature() != before
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

@@ -27,8 +27,8 @@
 
 Ticks hourly. Each tick keeps the supplier's card fresh (a cheap probe where
 the supplier offers one, a 24-hour TTL otherwise), refreshes the supplier's
-index values and the calorific values once a day, reads the gas meter out of
-the recorder, and prices the household on all of it.
+index values, the calorific values and the excise law once a day, reads the
+gas meter out of the recorder, and prices the household on all of it.
 
 A card that cannot be fetched is never a reason to stop pricing: the last
 good one keeps serving, restored from the entry's store across a restart,
@@ -57,7 +57,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import calorific
+from . import calorific, excise_law
 from .bill import IndexValue, bill_month, contract_leg, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -368,6 +368,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 for name, values in table.items()
                 if isinstance(values, dict)
             }
+        excise_law.restore(blob.get("excise_law"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
@@ -402,6 +403,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "index": self._index_table,
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
+            "excise_law": excise_law.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
             "backfill": self.backfill_stamp,
@@ -441,7 +443,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         index = _digest(self._index_table)
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
-        law = _digest(LAW_FIGURES)
+        law = _digest([LAW_FIGURES, excise_law.held_table()])
         return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}"
 
     # ---- the card ---------------------------------------------------------
@@ -954,6 +956,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if not reprice_only:
             await self._refresh_index()
             await self._refresh_calorific()
+            # The excise the law sets, which every residential month is
+            # resolved against when it is priced below.
+            await excise_law.ensure_excise_law(self._session)
         today = dt_util.now().date()
         needed = self._months_needed(today)
         if self._first_tick:

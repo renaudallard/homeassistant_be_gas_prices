@@ -94,11 +94,17 @@ their own schedules, so it would put each row on a different month.
 `resolve_for_delivery` applies them before a month is billed, whatever month
 the card was printed for:
 
-- The special excise from January 2025, known until January 2027: 8,23
-  EUR/MWh excluding VAT on the first slice and the quarterly adjustment of
-  the second up to July 2026 (9,0782 in January to March 2026, 9,3061 in
-  April to June, 9,3315 in July, from the FPS Finance excise tariff), then
-  10,31 and 11,16 EUR/MWh from 1 August 2026 (programme law of 30 May 2026).
+- The special excise from January 2025: 8,23 EUR/MWh excluding VAT on the
+  first slice and the quarterly adjustment of the second up to July 2026
+  (9,0782 in January to March 2026, 9,3061 in April to June, 9,3315 in July,
+  from the FPS Finance excise tariff), typed in `const.py` since Justel does
+  not consolidate the quarterly notices. From 1 August 2026 it is read from
+  article 419 of the programme law of 27 December 2004 on Justel
+  (`excise_law.py`): 10,31 and 11,16 EUR/MWh, then the steps the programme
+  law of 30 May 2026 voted (11,39 and 12,24 from 1 January 2027, and on
+  through 2029), each billed from its own month. The law is read daily and
+  kept in the entry's Store; while it has never been read, a month from
+  August 2026 bills the excise its card prints.
   Most April to June 2026 cards still printed the first quarter's rate.
   Ecofix, Sparki, Belvus and the Energy Together brands still printed the
   pre-August excise on their September 2026 cards, and OCTA+ and
@@ -114,8 +120,8 @@ the card was printed for:
   EnergyVision's September 2026 Walloon cards print the low-voltage
   electricity rate, 0,00075, instead.
 
-Each carries its known window in `const.py`; past it the card is read as
-printed. Only residential cards are touched. The figures excluding VAT are
+Each other figure carries its known window in `const.py`; past it the card
+is read as printed. Only residential cards are touched. The figures excluding VAT are
 put on the rate the card states for its customers (`card_vat_rate`) when it
 is one Belgium levies (6, 12 or 21 %), else on the residential 6 %: every
 card read so far states 6 % or nothing, and a stated rate outside those

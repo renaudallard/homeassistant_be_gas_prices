@@ -27,7 +27,8 @@
 
 No supplier prices live here: every rate comes from a live tariff card. The
 few regulated figures that do are set by law for the whole country, carry the
-months they are known to cover, and expire into "read the card" past them.
+months they are known to cover, and expire into "read the card" past them;
+the excise past its quarterly table is read from the law (excise_law.py).
 """
 
 from __future__ import annotations
@@ -129,22 +130,18 @@ TIER_BOUNDS_KWH: Final[tuple[tuple[str, float], ...]] = (
 # 12 000 kWh at one rate, the rest at the other.
 EXCISE_BAND_KWH: Final = 12_000.0
 
-# The residential special excise by delivery month, in EUR/kWh EXCLUDING VAT
-# for the two slices, each rate applying from its month until the next one's:
-# the quarterly adjustment of art. 420 on the high slice until July 2026, then
-# the rates the programme law of 30 May 2026 set from 1 August 2026 (10,31 and
-# 11,16 EUR/MWh). Figures of the FPS Finance excise tariff (TarBel, annex 7,
-# codes Q570 to Q588). A federal levy: one rate for the whole country, so a
-# card printing another one for a delivery month in this window is stale
-# rather than different. Ecofix, Sparki, Belvus and the six Energy Together
-# brands still printed the pre-August figures in September 2026, and most
-# cards of April to June 2026 the first quarter's.
-#
-# Only a rate IN EFFECT belongs here. The same law steps the rate up again on
-# 1 January 2027, 2028 and 2029, and the quarterly adjustment of art. 420
-# still applies on top, so encoding the schedule ahead would bill a
-# prediction. Past the end of the window the card is read as before. The
-# window starts with the earliest month a backfill can bill.
+# The residential special excise is read from the law (excise_law.py) from
+# the day the wording in force took effect, 1 August 2026, with the steps the
+# same law votes for later years. Before that day it was the quarterly
+# adjustment of art. 420 on the high slice, which Justel does not consolidate,
+# so those months are typed here by delivery month, in EUR/kWh EXCLUDING VAT
+# for the two slices, each rate applying from its month until the next one's.
+# Figures of the FPS Finance excise tariff (TarBel, annex 7, codes Q570 to
+# Q588). A federal levy: one rate for the whole country, so a card printing
+# another one for a delivery month in this window is stale rather than
+# different; most cards of April to June 2026 printed the first quarter's.
+# The window starts with the earliest month a backfill can bill and ends
+# where the law takes over.
 GAS_EXCISE_RESIDENTIAL_HTVA: Final[tuple[tuple[tuple[int, int], float, float], ...]] = (
     ((2025, 1), 0.00823, 0.0089393),
     ((2025, 4), 0.00823, 0.0087266),
@@ -153,10 +150,17 @@ GAS_EXCISE_RESIDENTIAL_HTVA: Final[tuple[tuple[tuple[int, int], float, float], .
     ((2026, 1), 0.00823, 0.0090782),
     ((2026, 4), 0.00823, 0.0093061),
     ((2026, 7), 0.00823, 0.0093315),
-    ((2026, 8), 0.01031, 0.01116),
 )
 GAS_EXCISE_KNOWN_FROM: Final = GAS_EXCISE_RESIDENTIAL_HTVA[0][0]
-GAS_EXCISE_KNOWN_UNTIL: Final = (2027, 1)  # exclusive
+GAS_EXCISE_KNOWN_UNTIL: Final = (2026, 8)  # exclusive
+
+# Article 419 of the programme law of 27 December 2004 as Justel consolidates
+# it, read by excise_law.py. French, because the parser anchors on the French
+# wording, and served in ISO-8859-1, which the page declares.
+EXCISE_LAW_URL: Final = (
+    "https://www.ejustice.just.fgov.be/cgi_loi/change_lg.pl"
+    "?language=fr&la=F&table_name=loi&cn=2004122730"
+)
 
 # The Fluvius data management fee for a yearly-read gas meter ("Jaaropname
 # (o.a. digitale gasmeter G4 en G6)"), in EUR/year EXCLUDING VAT: one figure

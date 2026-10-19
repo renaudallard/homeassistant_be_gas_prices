@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
+from .. import excise_law
 from ..const import (
     CALIBER_Q10,
     ENERGY_CONTRIBUTION_KNOWN_FROM,
@@ -121,6 +122,22 @@ def _in_window(delivery: date, start: tuple[int, int], end: tuple[int, int] | No
     return month >= start and (end is None or month < end)
 
 
+def law_excise(delivery: date) -> tuple[float, float] | None:
+    """The residential excise up to the band and above it, EUR/kWh excluding
+    VAT, the law sets for ``delivery``: as read from Justel from the day the
+    wording in force dates, the quarterly figures const.py holds before it,
+    and None outside both."""
+    held = excise_law.excise_for(delivery)
+    if held is not None:
+        return held
+    if not _in_window(delivery, GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL):
+        return None
+    month = (delivery.year, delivery.month)
+    return next(
+        (low, high) for start, low, high in reversed(GAS_EXCISE_RESIDENTIAL_HTVA) if start <= month
+    )
+
+
 # Belgium's VAT rates above zero. A card stating one of them for its
 # customers puts the law's figures on that rate, as it prints its own; a
 # stated rate outside them is a misread, and the residential gas rate
@@ -143,9 +160,9 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
     for the whole country, so the delivery month decides them, not the month
     the card was printed in. Ecofix, Sparki, Belvus and the Energy Together
     brands still printed the pre-August excise on their September 2026 cards,
-    and OCTA+ and TotalEnergies a pre-August energy contribution. Within the months the law is known
-    for, the law's rate replaces the card's; outside them the card is read as
-    printed.
+    and OCTA+ and TotalEnergies a pre-August energy contribution. Within the
+    months the law is known for (:func:`law_excise`), the law's rate replaces
+    the card's; outside them the card is read as printed.
 
     Only a residential card is touched: its values are VAT inclusive
     (``vat_rate`` 0.0), and the law's rate is put on the VAT the card states
@@ -156,13 +173,9 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
         return taxes
     resolved = taxes
     factor = _vat_factor(taxes)
-    if _in_window(delivery, GAS_EXCISE_KNOWN_FROM, GAS_EXCISE_KNOWN_UNTIL):
-        month = (delivery.year, delivery.month)
-        low, high = next(
-            (low, high)
-            for start, low, high in reversed(GAS_EXCISE_RESIDENTIAL_HTVA)
-            if start <= month
-        )
+    excise = law_excise(delivery)
+    if excise is not None:
+        low, high = excise
         resolved = replace(
             resolved,
             excise_bands=excise_bands(low * factor, high * factor),

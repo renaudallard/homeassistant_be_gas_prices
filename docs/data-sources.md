@@ -33,6 +33,26 @@ station from Atrias:
 and is added to an otherwise standard client context; verification is never
 turned off.
 
+## The excise law (Justel)
+
+`excise_law.py` reads the residential special excise from the consolidated
+text of article 419 of the programme law of 27 December 2004:
+
+- `GET https://www.ejustice.just.fgov.be/cgi_loi/change_lg.pl?language=fr&la=F&table_name=loi&cn=2004122730`,
+  in French and ISO-8859-1;
+- under natural gas, "consommation non professionnelle", "b) autres", the
+  two slices (up to and above 12 MWh), each a rate followed by the steps
+  already voted ("A partir du 1er janvier 2027: ...");
+- the day the rate in force took effect is the entry into force of the
+  amendment bracket around it (1 August 2026).
+
+A page that is not the article as expected (another band, a rate past
+0,05 EUR/kWh, a missing slice) is refused whole. It is read once a day, a
+failure waits six hours, and what was read is kept in each entry's Store.
+The months before 1 August 2026 are the quarterly figures typed in
+`const.py`. The live check reads the same page and fails when most of the
+fleet prints another excise than the one billed.
+
 ## The card archive
 
 The `archive_cards` workflow stores every card it parses daily in the
