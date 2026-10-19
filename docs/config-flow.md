@@ -12,7 +12,7 @@ once in `_FlowSteps` over `self._data`.
 | `unpriced_network` | Nothing | A warning: part of the postcode is on a network no Belgian card prices (Baarle-Hertog's Enexis), so continue only on the postcode's Belgian DSO. |
 | `region` | Region | Only when no postcode resolved. |
 | `supplier` | Supplier | Suppliers with a contract in the region, withdrawn ones hidden, the custom supplier last. |
-| `contract` | Contract, start date; folded in an `advanced` section: tariff card month, end date, count from start, type the contract's figures | The section's fields are stored flat with the others; the last one is not stored. The section opens unfolded when the entry uses one of its settings. A start in the future, a start before the last change of contract recorded (the contract set up supplies from it on), a tariff card month after this one and an end before the start are refused. Blanked dates are removed. Count from start is not offered while a change of contract is recorded this year, since the year then starts with the earlier contract. Typing the figures is not offered for the custom supplier, whose card is already the typed figures, and turning it off removes them. |
+| `contract` | Contract, start date; folded in an `advanced` section: tariff card date, end date, count from start, type the contract's figures | The section's fields are stored flat with the others; the last one is not stored. The section opens unfolded when the entry uses one of its settings. A start in the future, a start before the last change of contract recorded (the contract set up supplies from it on), a tariff card date after today and an end before the start are refused. Blanked dates are removed. Count from start is not offered while a change of contract is recorded this year, since the year then starts with the earlier contract. Typing the figures is not offered for the custom supplier, whose card is already the typed figures, and turning it off removes them. |
 | `signed_rate` | Price or factor and base, yearly fee | Only when the contract form asks to type the figures; all optional. The factor is at most 1 c€/kWh per €/MWh (`MANUAL_FACTOR_MAX`): a formula with its index in c€/kWh prints ten times that, and a factor past it stored before the cap is not billed, the card's standing in. See `manual_rate.py`. |
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved, and skipped when one is left: every postcode with gas names a single DSO, and Brussels has only Sibelga. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Brussels levy only in Brussels. The energy contribution and the Walloon connection fee are not asked, since the law sets them for every month billed; an older entry's typed figures for them go when it is saved. |
@@ -55,7 +55,7 @@ reloads the entry.
 - **Record a change of contract**: the first day of the new contract; the
   current settings become an earlier contract ending the day before
   (`contract_periods.record_switch`) and the supplier steps set up the new
-  one, without the old contract's card month, end date or typed figures.
+  one, without the old contract's tariff card date, end date or typed figures.
   The date must be after 1 January, the current contract's start and the
   last recorded change, so the contract it closes supplied a day of the
   year, and not in the future.

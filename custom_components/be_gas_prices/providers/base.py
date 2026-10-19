@@ -150,6 +150,10 @@ class SupplierExtractor:
     fetch: SnapshotFetcher
     probe: SnapshotProbe | None = None
     fetch_for_month: ArchivedSnapshotFetcher | None = None
+    # The card in force on one day, for a supplier that reissues a card within
+    # its month: the signing card of a household that names the day it
+    # signed. None where a month has one card.
+    fetch_on_day: ArchivedSnapshotFetcher | None = None
     # The supplier's own publication of the index values its indexed prices
     # settle on. None for a supplier selling fixed prices only.
     fetch_index: IndexFetcher | None = None

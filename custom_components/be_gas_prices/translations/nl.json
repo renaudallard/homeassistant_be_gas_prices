@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, vul die maand dan in onder Geavanceerd.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart van Elegant die binnen de maand opnieuw werd uitgegeven, vul dan de dag van je handtekening in onder Geavanceerd.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"
@@ -45,13 +45,13 @@
             "name": "Geavanceerd",
             "description": "De meeste gezinnen kunnen deze laten zoals ze zijn.",
             "data": {
-              "tariff_card_date": "Maand van de tariefkaart",
+              "tariff_card_date": "Datum van de tariefkaart",
               "contract_end_date": "Einddatum contract",
               "ytd_from_contract_start": "De kosten van dit jaar tellen vanaf de start van het contract",
               "signed_rate": "De cijfers van mijn contract invullen"
             },
             "data_description": {
-              "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
+              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke.",
               "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
               "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
               "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
@@ -139,7 +139,7 @@
       "no_gas_network": "Voor deze postcode is geen distributienetbeheerder voor gas aangeduid. Maak de postcode leeg om zelf de netbeheerder te kiezen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
       "start_date_in_future": "De startdatum van het contract kan niet in de toekomst liggen.",
-      "tariff_card_date_in_future": "De maand van de tariefkaart kan niet in de toekomst liggen.",
+      "tariff_card_date_in_future": "De datum van de tariefkaart kan niet in de toekomst liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     }
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, vul die maand dan in onder Geavanceerd.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart van Elegant die binnen de maand opnieuw werd uitgegeven, vul dan de dag van je handtekening in onder Geavanceerd.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"
@@ -189,13 +189,13 @@
             "name": "Geavanceerd",
             "description": "De meeste gezinnen kunnen deze laten zoals ze zijn.",
             "data": {
-              "tariff_card_date": "Maand van de tariefkaart",
+              "tariff_card_date": "Datum van de tariefkaart",
               "contract_end_date": "Einddatum contract",
               "ytd_from_contract_start": "De kosten van dit jaar tellen vanaf de start van het contract",
               "signed_rate": "De cijfers van mijn contract invullen"
             },
             "data_description": {
-              "tariff_card_date": "Een dag van de maand van de kaart die je hebt getekend, als dat niet de maand is waarin de levering begon.",
+              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke.",
               "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
               "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
               "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
@@ -332,7 +332,7 @@
       "no_gas_network": "Voor deze postcode is geen distributienetbeheerder voor gas aangeduid. Maak de postcode leeg om zelf de netbeheerder te kiezen.",
       "end_before_start": "De einddatum van het contract moet na de startdatum liggen.",
       "start_date_in_future": "De startdatum van het contract kan niet in de toekomst liggen.",
-      "tariff_card_date_in_future": "De maand van de tariefkaart kan niet in de toekomst liggen.",
+      "tariff_card_date_in_future": "De datum van de tariefkaart kan niet in de toekomst liggen.",
       "start_date_before_switch": "De startdatum van het contract kan niet voor de laatst vastgelegde contractwissel van deze invoer liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
       "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag.",

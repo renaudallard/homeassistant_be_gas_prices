@@ -87,9 +87,14 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 - **Rolling year cost** and a **projected year-end cost**.
 - **Signing-cohort pricing**: set a contract start date and the card of the
   month supply started prices a fixed or indexed contract (or that of the
-  tariff card month, when you signed on another month's card), or type the
+  tariff card date, when you signed on another month's card), or type the
   figures of your contract. A variable price is the supplier's for each
-  month.
+  month. Elegant reissues its Zeker & Vast card within a month (three cards
+  in March 2026): there the tariff card date picks the card in force that
+  day; without one, the month's card is the last one the card archive
+  captured. An Elegant entry whose tariff card date is any day of its
+  month, as the form once asked, is now priced on that day's card, so set
+  the day you signed.
 - **Changed contract during the year?** Record the switch and each contract is
   billed on its own supplier's cards for its own days. A switch recorded on
   the wrong day can be removed and recorded again.
@@ -257,10 +262,11 @@ manifest.
    it prices a fixed or indexed contract on the card of the month supply
    started, and can be neither in the future nor before a change of
    contract recorded on the entry. The folded **Advanced** section holds
-   what most households leave alone: a **tariff card month** when you signed
-   on another month's card, not a month to come, the **end date** for a
-   renewal reminder, counting this year's cost from
-   the contract start, and a switch to type the figures of your contract
+   what most households leave alone: a **tariff card date**, the day you
+   signed, when you signed on another month's card or on an Elegant card
+   reissued within its month, not a day to come, the **end date** for a
+   renewal reminder, counting this year's cost from the contract start, and
+   a switch to type the figures of your contract
    when they differ from the card or the card cannot be reached.
 3. **Network operator**, only asked without a postcode and outside
    Brussels. The expert custom supplier then asks for the figures of your

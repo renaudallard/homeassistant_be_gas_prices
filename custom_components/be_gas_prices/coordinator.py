@@ -89,11 +89,12 @@ from .const import (
 )
 from .contract_periods import (
     PeriodBilling,
+    card_key_due,
     current_period_start,
     parse_date,
     periods_this_year,
     previous_contracts,
-    signing_month,
+    signing_keys,
 )
 from .coordinator_data import Conversion, CoordinatorData
 from .daily_ranking import DailyRanking, ranking_minute
@@ -780,9 +781,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         while f"{year}-{month:02d}" < current:
             months.append(f"{year}-{month:02d}")
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-        signing = signing_month(self._data)
-        if signing is not None and signing < current and signing not in months:
-            months.append(signing)
+        months += [
+            key
+            for key in signing_keys(self._data, self.extractor)
+            if card_key_due(key, today) and key not in months
+        ]
         return months
 
     async def async_fill_month_cards(self, months: list[str]) -> None:
@@ -819,11 +822,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """The energy leg a card bills this household on: the signing card's
         when the entry names a signing month the archive can serve and the
         contract holds its figures, with the figures the household typed
-        from its contract laid over it."""
-        signed: SupplierSnapshot | None = None
-        signing = signing_month(self._data)
-        if signing is not None:
+        from its contract laid over it. The signing card is the one of the
+        day signed where the supplier reissues within a month and serves it."""
+        keys = signing_keys(self._data, self.extractor)
+        signed = self._month_card(keys[0]) if len(keys) > 1 else None
+        if signed is None and keys:
             today_month = month_key(dt_util.now().date())
+            signing = keys[-1]
             signed = self._snapshot if signing == today_month else self._month_card(signing)
         return contract_leg(card.energy, None if signed is None else signed.energy, self._data)
 

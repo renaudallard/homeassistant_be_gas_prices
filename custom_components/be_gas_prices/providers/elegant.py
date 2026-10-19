@@ -52,11 +52,15 @@ Past cards come from the archive the site's tarief-archief page queries:
 the tRPC call ``tariefArchief.search`` returns the product offers in force on
 a date, each with a ``tariffChartUrl`` that ``/api/tarief-archief/tariff-chart``
 turns into the PDF. Zeker & Vast is reissued within a month when its price
-moves (March 2026 has offers dated the 1st, the 6th and the 21st), so the
-archive serves the card in force on the first day of the month. The current
-product keys start on 8 November 2025, so December 2025 is the first month
-read; before that the offers carry other product keys (BEGreenFlexGas and
-the like) and a combined electricity and gas card, which this does not read.
+moves (March 2026 has offers dated the 1st, the 6th and the 21st, 5,11, 5,61
+and 7,54 c EUR/kWh, titled "Zeker & Vast", "Zeker & Vast 06/03/2026" and
+"Zeker & Vast 21.03.26"). Elegant's archive gives a month's card as the one
+in force on its first day, and the card archive its last capture of the
+month; a household that names the day it signed is billed on the card in
+force that day (``fetch_on_day``). The current product keys start on
+8 November 2025, so December 2025 is the first month read; before that the
+offers carry other product keys (BEGreenFlexGas and the like) and a combined
+electricity and gas card, which this does not read.
 
 The index values come from the same site's ``energyExchanges`` tRPC calls
 behind elegant.be/indexatie, the page the card refers to: one row per
@@ -263,16 +267,27 @@ async def fetch_for_month(
     is a card that names another month. A transient failure raises so the
     month cache retries it.
     """
+    return await fetch_on_day(session, contract_id, region, year_month.replace(day=1))
+
+
+async def fetch_on_day(
+    session: aiohttp.ClientSession,
+    contract_id: str,
+    region: str,
+    day: date,
+) -> SupplierSnapshot | None:
+    """The card in force on ``day``, or None, as :func:`fetch_for_month`
+    gives the first day's."""
     contract = _CONTRACTS_BY_ID.get(contract_id)
     if contract is None or region != REGION_FLANDERS:
         return None
-    return await month_card(_read_month(session, contract, region, year_month), year_month)
+    return await month_card(_read_on(session, contract, region, day), day.replace(day=1))
 
 
-async def _read_month(
-    session: aiohttp.ClientSession, contract: _ContractDef, region: str, year_month: date
+async def _read_on(
+    session: aiohttp.ClientSession, contract: _ContractDef, region: str, day: date
 ) -> SupplierSnapshot | None:
-    query = {"date": f"{year_month:%Y-%m}-01", "energyType": "Gas", "customerType": "Residential"}
+    query = {"date": f"{day:%Y-%m-%d}", "energyType": "Gas", "customerType": "Residential"}
     body = await fetch_text(session, _ARCHIVE_SEARCH_URL, params=_trpc_params(query))
     path = _archived_chart_path(body, contract)
     if path is None:
@@ -357,9 +372,11 @@ def parse_snapshot(
 
 
 # "Tariefkaart Aardgas", the product ("Flex", or "Flex 09.26" on an archived
-# card), then "Variabel Onbepaalde duur Versie september 2026 Particulier".
+# card, "Zeker & Vast 06/03/2026" or "Zeker & Vast 21.03.26" on a reissue
+# within the month), then "Variabel Onbepaalde duur Versie september 2026
+# Particulier".
 _HEADING_RE = re.compile(
-    r"Tariefkaart Aardgas\s*\n(?P<name>[^\n]+?)(?:\s+\d{2}\.\d{2})?\s*\n"
+    r"Tariefkaart Aardgas\s*\n(?P<name>[^\n]+?)(?:\s+\d{2}[./]\d{2}(?:[./]\d{2}(?:\d{2})?)?)?\s*\n"
     r"[^\n]*?Versie\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d{4})\s+(?P<segment>\w+)"
 )
 
@@ -480,6 +497,7 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
+    fetch_on_day=fetch_on_day,
     fetch_index=fetch_index,
     sweep_cost_s=3.0,
 )

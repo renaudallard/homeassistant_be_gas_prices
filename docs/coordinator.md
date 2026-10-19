@@ -64,7 +64,8 @@ cards (`issues.sync_issues`).
    (`fluvius.ensure_tariff_sheet`) of this year, once for the process,
    with the same six hour wait after a failure.
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
-   the current contract supplied this year and the signing month, and
+   the current contract supplied this year and the signing month (and the
+   signing day, for a supplier with `fetch_on_day`), and
    (`PeriodBilling.fill`) the earlier contracts' own, each from the card
    archive, else the supplier's archive (`MonthCardCache.card`). The first
    tick does this in the background, because it is what setup waits on, and

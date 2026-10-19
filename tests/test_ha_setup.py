@@ -84,6 +84,7 @@ from custom_components.be_gas_prices.const import (
     CONF_REGION,
     CONF_STATION,
     CONF_SUPPLIER,
+    CONF_TARIFF_CARD_DATE,
     CONVERSION_MANUAL,
     CONVERSION_STATION,
     CUSTOM_CONTRACT,
@@ -102,7 +103,7 @@ from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
 from custom_components.be_gas_prices.month_cards import MonthCard
 from custom_components.be_gas_prices.providers import _pdf, engie, octaplus
-from custom_components.be_gas_prices.providers._rates import IndexedRates
+from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from custom_components.be_gas_prices.running_costs import Household
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
@@ -2765,6 +2766,38 @@ async def test_the_price_history_stamp_moves_with_a_lagging_value(
     before = coordinator.card_months_signature()
     coordinator._gcv["2026-07"] = 11.4
     assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_card_reissued_within_its_month_prices_the_day_signed(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A supplier that reissues its fixed card within a month is asked for
+    the card of the day the household signed, kept beside the month's, and
+    the contract is priced on it."""
+    asked: list[date] = []
+
+    async def on_day(_session: Any, _contract: str, _region: str, day: date) -> Any:
+        asked.append(day)
+        return replace(fetch.return_value, energy=FixedRates(price=0.0754))
+
+    async def for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        return replace(fetch.return_value, energy=FixedRates(price=0.0511))
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_for_month=for_month, fetch_on_day=on_day)
+    data = {
+        **DATA,
+        CONF_CONTRACT: "engie_easy_fixed",
+        CONF_CONTRACT_START_DATE: "2026-04-01",
+        CONF_TARIFF_CARD_DATE: "2026-03-21",
+    }
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass, data)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    coordinator = entry.runtime_data
+    assert asked == [date(2026, 3, 21)]
+    assert "2026-03-21" in coordinator._months_needed(date(2026, 9, 15))
+    assert coordinator._energy_for(fetch.return_value).price == pytest.approx(0.0754)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

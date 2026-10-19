@@ -80,17 +80,26 @@ Index name in the snapshot and the table: `TTFDAM`.
 
 The tarief-archief page's tRPC call:
 
-- `GET /api/trpc/tariefArchief.search?batch=1&input={"0":{"date":"YYYY-MM-01","energyType":"Gas","customerType":"Residential"}}`
+- `GET /api/trpc/tariefArchief.search?batch=1&input={"0":{"date":"YYYY-MM-DD","energyType":"Gas","customerType":"Residential"}}`
   returns `productOffers[]` with `productOfferKey` (`FlexGas_20260301`),
   `name` and `tariffChartUrl`.
 - `GET /api/tarief-archief/tariff-chart?tariffChartPath=<tariffChartUrl, URL-encoded>`
   returns the PDF.
 
-`fetch_for_month` asks for the first of the month: Zeker & Vast is
-reissued when its price moves (March 2026 has offers dated the 1st, the 6th
-and the 21st), and the card in force on the 1st is the one taken, where
-`fetch` reads whatever the listing links today. The current product keys
-start on 8 November 2025 (`FlexGas_20251108`, `ComfortFlexGas_20251108`,
+`fetch_for_month` asks for the first of the month, and `fetch_on_day` for
+any day: Zeker & Vast is reissued when its price moves. March 2026 has
+offers dated the 1st, the 6th and the 21st, at 5,11, 5,61 and 7,54 c€/kWh,
+so a one-year contract signed on the 21st costs about 410 EUR a year more at
+17 MWh than the 1st's card says. Elegant's archive gives a month's card as
+the one in force on the 1st, while `fetch` reads whatever the listing links
+today; the project's card archive, asked first, keeps one card a month, the
+last it captured. The signing card of an entry that names the day it signed
+(the tariff card date) is the one in force that day, asked of Elegant's
+archive once the day is past and kept in the month card cache under the
+day (`contract_periods.signing_keys`). Without that day, or where Elegant
+has no offer that day, the month's card stands: in a month with reissues,
+the card archive's last capture. The current product keys start on
+8 November 2025 (`FlexGas_20251108`, `ComfortFlexGas_20251108`,
 `ZekerVastGas_20251108`), so December 2025 is the first month read. Before
 that the offers are other products (`BEGreenFlexGas`, `BEComfortFlexGas`,
 `BESmartGas`), still the ones in force on 1 November 2025; the one checked,
@@ -103,7 +112,8 @@ month returns no offers.
 - Figures are rounded: transport 0,17 (Fluxys 0,16536), excise 1,093 and
   1,183 (1,09286 and 1,18296), DSO terms to two decimals. Read as printed.
 - The archived cards print the name with a month suffix ("Zeker & Vast
-  08.26") that the live cards do not.
+  08.26") that the live cards do not, and a card reissued within its month
+  a date ("Zeker & Vast 06/03/2026", "Zeker & Vast 21.03.26").
 - TTFDAM is Elegant's own assessment: 61,66 for August 2026 where OCTA+'s
   TTF RLP is 61,729 and Trevion's 61,72.
 
@@ -120,6 +130,7 @@ month returns no offers.
 - Listing links for all three products; `fetch`.
 - `fetch_for_month`: the query and the chart URL, another product's card
   behind the offer, another month, the legacy products, a transient
-  failure.
+  failure. `fetch_on_day`: the day asked for and the card of that day.
+- The three Zeker & Vast cards of March 2026, their dated titles read.
 - The index: id by name, rates by month, the one-day row ignored,
   `fetch_index` calling both endpoints in order.

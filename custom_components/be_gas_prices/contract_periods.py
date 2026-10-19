@@ -114,6 +114,27 @@ def signing_month(data: Mapping[str, Any]) -> str | None:
     return None if signed is None else month_key(signed)
 
 
+def signing_keys(data: Mapping[str, Any], extractor: SupplierExtractor) -> list[str]:
+    """Where the card a contract was signed on is kept in the month card
+    cache, the most precise first: the day the household signed, for a
+    supplier that reissues its card within a month, then the month."""
+    month = signing_month(data)
+    if month is None:
+        return []
+    day = parse_date(data.get(CONF_TARIFF_CARD_DATE))
+    if day is not None and extractor.fetch_on_day is not None:
+        return [day.isoformat(), month]
+    return [month]
+
+
+def card_key_due(key: str, today: date) -> bool:
+    """Whether the month card cache can hold a card under ``key`` by
+    ``today``: a month before this one, or a day before today. A card found
+    is kept for good, and a supplier's archive may not list today's
+    reissue yet."""
+    return key < today.isoformat() if len(key) > len("YYYY-MM") else key < month_key(today)
+
+
 def previous_contracts(data: Mapping[str, Any]) -> list[dict[str, Any]]:
     """The recorded earlier contracts, oldest first, each with a valid
     ``until`` date; anything malformed is left out rather than guessed."""
@@ -311,10 +332,10 @@ class PeriodBilling:
         use_archive: bool,
     ) -> None:
         """Fetch the closed months' cards each earlier contract is billed on,
-        its signing month's included, into the month cache."""
+        its signing month's and signing day's included, into the month
+        cache."""
         from .providers import get as get_extractor
 
-        current = month_key(today)
         # Read once for all the months, as the coordinator's own fill does.
         with memoise_text_fetches({}):
             for period, start, end in periods_this_year(data, today):
@@ -328,11 +349,9 @@ class PeriodBilling:
                 contract = str(period[CONF_CONTRACT])
                 region = str(period[CONF_REGION])
                 wanted = _months_between(start, end)
-                signing = signing_month(period)
-                if signing is not None and signing not in wanted:
-                    wanted.append(signing)
+                wanted += [key for key in signing_keys(period, extractor) if key not in wanted]
                 for month in wanted:
-                    if month < current:
+                    if card_key_due(month, today):
                         try:
                             await self._months.card(
                                 session, extractor, contract, region, month, use_archive=use_archive
@@ -381,7 +400,8 @@ class PeriodBilling:
                 # Recorded before a switch kept the typed card.
                 missing.append(Unpriced(extractor.label, end))
                 continue
-            signing = None if custom else signing_month(period)
+            keys = [] if custom else signing_keys(period, extractor)
+            signing = keys[-1] if keys else None
 
             # The typed card prices every month a custom contract supplied,
             # as each month's own card.
@@ -415,16 +435,19 @@ class PeriodBilling:
             if extractor.id not in tables:
                 tables[extractor.id] = await self._table(session, extractor, today)
             table = tables[extractor.id]
-            signed: SupplierSnapshot | None = None
-            if signing is not None and signing < current:
-                signed = month_card(signing)
-            elif signing is not None and month_key(end) == current:
-                # The running month's card, read above for the last month.
-                signed = end_card
-            elif signing is not None:
-                signed = await self._current_card(
-                    session, extractor, contract, region, today, use_archive
-                )
+            # The card of the day signed, where the supplier reissues within
+            # a month and it is held, else the signing month's.
+            signed = month_card(keys[0]) if len(keys) > 1 else None
+            if signed is None and signing is not None:
+                if signing < current:
+                    signed = month_card(signing)
+                elif month_key(end) == current:
+                    # The running month's card, read above for the last month.
+                    signed = end_card
+                else:
+                    signed = await self._current_card(
+                        session, extractor, contract, region, today, use_archive
+                    )
 
             def energy_for(
                 card: SupplierSnapshot,

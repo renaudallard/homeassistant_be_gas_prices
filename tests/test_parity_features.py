@@ -69,6 +69,7 @@ from custom_components.be_gas_prices.const import (
     CONF_PREVIOUS_CONTRACTS,
     CONF_REGION,
     CONF_SUPPLIER,
+    CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
     CUSTOM_CONTRACT,
     DSO_FLUVIUS_KEMPEN,
@@ -83,6 +84,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.contract_periods import (
     PeriodBilling,
     Unpriced,
+    card_key_due,
     current_period_start,
     periods_this_year,
     previous_contracts,
@@ -260,6 +262,59 @@ async def test_an_earlier_contract_is_billed_on_its_signing_card() -> None:
     typed = record_switch({**fixed, CONF_MANUAL_PRICE: 9.0}, date(2026, 7, 1))
     [earlier] = await _bill_earlier(typed, {"2025-10": 0.10})
     assert _energy_price(earlier) == pytest.approx(0.09 * 1.06)
+
+
+def test_a_signing_day_is_asked_for_once_it_is_past() -> None:
+    """A card found is kept for good, and the supplier's archive may not
+    list a card reissued today yet."""
+    today = date(2026, 10, 19)
+    assert card_key_due("2026-10-18", today)
+    assert not card_key_due("2026-10-19", today)
+    assert card_key_due("2026-09", today)
+    assert not card_key_due("2026-10", today)
+
+
+def _reissued(base: SupplierSnapshot, day: date) -> SupplierSnapshot:
+    """Elegant's Zeker & Vast of March 2026: 5,11 from the 1st, 5,61 from
+    the 6th, 7,54 from the 21st."""
+    price = 0.0754 if day.day >= 21 else 0.0561 if day.day >= 6 else 0.0511
+    return replace(base, energy=FixedRates(price=price))
+
+
+async def test_a_contract_signed_on_a_reissue_is_billed_on_that_day_s_card() -> None:
+    """A supplier reissuing its fixed card within a month bills a contract
+    on the card of the day it was signed, where the entry names that day;
+    with the start date alone, on the month's card, here the 1st's."""
+    base = _flow_card()
+
+    async def fetch_for_month(_s: object, _c: str, _r: str, first: date) -> SupplierSnapshot:
+        return _reissued(base, first)
+
+    async def fetch_on_day(_s: object, _c: str, _r: str, day: date) -> SupplierSnapshot:
+        return _reissued(base, day)
+
+    stub = replace(
+        engie.EXTRACTOR,
+        fetch=AsyncMock(return_value=base),
+        fetch_for_month=fetch_for_month,
+        fetch_on_day=fetch_on_day,
+        fetch_index=None,
+    )
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(273)}
+    fixed = {**ENTRY, CONF_CONTRACT: "engie_easy_fixed", CONF_CONTRACT_START_DATE: "2026-03-25"}
+    for signed, price in ((None, 0.0511), ("2026-03-21", 0.0754), ("2026-03-10", 0.0561)):
+        data = fixed if signed is None else {**fixed, CONF_TARIFF_CARD_DATE: signed}
+        with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+            [earlier], missing = await PeriodBilling(MonthCardCache()).bill(
+                AsyncMock(),
+                record_switch(data, date(2026, 7, 1)),
+                date(2026, 9, 30),
+                kwh_days,
+                5_000.0,
+                use_archive=False,
+            )
+        assert missing == []
+        assert _energy_price(earlier) == pytest.approx(price), signed
 
 
 async def test_an_earlier_contract_on_the_custom_supplier_is_billed_on_its_typed_card() -> None:

@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, set its month under Advanced.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
@@ -45,13 +45,13 @@
             "name": "Advanced",
             "description": "Most households can leave these as they are.",
             "data": {
-              "tariff_card_date": "Tariff card month",
+              "tariff_card_date": "Tariff card date",
               "contract_end_date": "Contract end date",
               "ytd_from_contract_start": "Count this year's cost from the contract start",
               "signed_rate": "Enter the figures of my contract"
             },
             "data_description": {
-              "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
+              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one.",
               "contract_end_date": "Only used for a renewal reminder.",
               "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
               "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."
@@ -139,7 +139,7 @@
       "no_gas_network": "No gas network operator is designated for this postcode. Clear the postcode to pick the operator yourself.",
       "end_before_start": "The contract end date must be after its start date.",
       "start_date_in_future": "The contract start date cannot be in the future.",
-      "tariff_card_date_in_future": "The tariff card month cannot be in the future.",
+      "tariff_card_date_in_future": "The tariff card date cannot be in the future.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
       "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
     }
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, set its month under Advanced.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
@@ -189,13 +189,13 @@
             "name": "Advanced",
             "description": "Most households can leave these as they are.",
             "data": {
-              "tariff_card_date": "Tariff card month",
+              "tariff_card_date": "Tariff card date",
               "contract_end_date": "Contract end date",
               "ytd_from_contract_start": "Count this year's cost from the contract start",
               "signed_rate": "Enter the figures of my contract"
             },
             "data_description": {
-              "tariff_card_date": "Any day of the month of the card you signed, when it is not the month supply started.",
+              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one.",
               "contract_end_date": "Only used for a renewal reminder.",
               "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
               "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."
@@ -332,7 +332,7 @@
       "no_gas_network": "No gas network operator is designated for this postcode. Clear the postcode to pick the operator yourself.",
       "end_before_start": "The contract end date must be after its start date.",
       "start_date_in_future": "The contract start date cannot be in the future.",
-      "tariff_card_date_in_future": "The tariff card month cannot be in the future.",
+      "tariff_card_date_in_future": "The tariff card date cannot be in the future.",
       "start_date_before_switch": "The contract start date cannot be before the last change of contract recorded on this entry.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
       "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today.",

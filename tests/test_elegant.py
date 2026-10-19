@@ -31,7 +31,7 @@ import json
 from datetime import date
 from typing import Any
 from unittest.mock import AsyncMock, patch
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import pytest
 
@@ -117,6 +117,22 @@ def test_levies() -> None:
     assert taxes.energy_contribution == 0.0
     assert taxes.connection_fee == 0.0
     assert taxes.osp_by_caliber is None
+
+
+@pytest.mark.parametrize(
+    ("name", "price"),
+    [
+        ("archive_ZekerVastGas_20260301.pdf", 0.0511),
+        ("archive_ZekerVastGas_20260306.pdf", 0.0561),
+        ("archive_ZekerVastGas_20260321.pdf", 0.0754),
+    ],
+)
+def test_zeker_vast_reissued_within_march(name: str, price: float) -> None:
+    """Titled "Zeker & Vast", "Zeker & Vast 06/03/2026" and "Zeker & Vast
+    21.03.26", each valid from its own day of March."""
+    snap = elegant.parse_snapshot("elegant_zeker_vast", REGION_FLANDERS, _card(name))
+    assert snap.energy == FixedRates(price=approx(price), yearly_fixed_fee=120.0)
+    assert snap.publication_label == "2026-03"
 
 
 def test_archived_march_card() -> None:
@@ -277,6 +293,25 @@ async def test_fetch_for_month_asks_the_archive_for_the_first_of_the_month() -> 
         "https://www.elegant.be/api/tarief-archief/tariff-chart?tariffChartPath="
         + quote(path, safe="")
     )
+
+
+async def test_fetch_on_day_asks_the_archive_for_the_day_signed() -> None:
+    """The archive answers the offers in force on the day: on the 25th
+    March's third Zeker & Vast card, not the 1st's."""
+    search = AsyncMock(return_value=fixture_page("elegant", "archive_search_2026-03-25_gas.json"))
+    chart = AsyncMock(return_value=_card("archive_ZekerVastGas_20260321.pdf"))
+    with (
+        patch.object(elegant, "fetch_text", search),
+        patch.object(elegant, "fetch_pdf_text_layout", chart),
+    ):
+        snap = await elegant.fetch_on_day(
+            AsyncMock(), "elegant_zeker_vast", REGION_FLANDERS, date(2026, 3, 25)
+        )
+    assert snap is not None
+    assert snap.energy == FixedRates(price=approx(0.0754), yearly_fixed_fee=120.0)
+    assert _query(search.call_args)["date"] == "2026-03-25"
+    assert "ZekerVastGas_20260321" in unquote(chart.call_args.args[1])
+    assert elegant.EXTRACTOR.fetch_on_day is elegant.fetch_on_day
 
 
 async def test_fetch_for_month_refuses_another_products_card() -> None:

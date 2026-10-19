@@ -1248,12 +1248,17 @@ async def test_a_contract_start_is_checked_against_today_and_the_last_switch(
 @pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
 @pytest.mark.parametrize(
     ("card", "error"),
-    [("2026-10-01", "tariff_card_date_in_future"), ("2026-09-30", None), ("2025-11-05", None)],
+    [
+        ("2026-10-01", "tariff_card_date_in_future"),
+        ("2026-09-16", "tariff_card_date_in_future"),
+        ("2026-09-15", None),
+        ("2025-11-05", None),
+    ],
 )
-async def test_a_tariff_card_month_to_come_is_refused(
+async def test_a_tariff_card_date_to_come_is_refused(
     hass: HomeAssistant, card: str, error: str | None
 ) -> None:
-    """Its card is no one's until its month, which would then reprice every
+    """Its card is no one's until its day, which would then reprice every
     month from the start at once."""
     result = await _contract_step(hass, _entry(hass))
     result = await hass.config_entries.options.async_configure(

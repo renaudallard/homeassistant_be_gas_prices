@@ -231,13 +231,18 @@ class MonthCardCache:
         *,
         use_archive: bool,
     ) -> MonthCard:
-        """The card of a closed ``month``, fetched once and then kept.
+        """The card of a closed ``month``, or of a past day, fetched once and
+        then kept.
 
         The card archive is asked first: one small file per month, against
         a PDF download and a parse per month from the supplier, which took
         up to 54 s for one of Bolt's months on a Raspberry Pi 4. It holds
         every card captured live and the supplier archives mirrored, so the
         supplier is asked only for a month it does not hold.
+
+        ``month`` may name a past day, "YYYY-MM-DD", for a supplier that
+        reissues a card within its month (``fetch_on_day``): the card in
+        force that day, which only the supplier's archive can tell.
 
         Raises ExtractorError or ArchiveUnavailable on a failure that may
         recover, so the caller prices the month on the current card for now
@@ -252,26 +257,26 @@ class MonthCardCache:
             and (held.snapshot is not None or now - held.fetched_at < _ABSENT_TTL)
         ):
             return held
-        year, number = (int(part) for part in month.split("-"))
+        parts = [int(part) for part in month.split("-")]
+        on_day = len(parts) == 3
+        fetcher = extractor.fetch_on_day if on_day else extractor.fetch_for_month
         snapshot: SupplierSnapshot | None = None
         source: CardSource | None = None
         # An archive that is down says nothing about the month: the other
         # may still hold it, and if it does not, the month is asked again
         # next tick rather than remembered as absent.
         unavailable: ExtractorError | ArchiveUnavailable | None = None
-        if use_archive:
+        if use_archive and not on_day:
             try:
                 snapshot = await fetch_archived_card(session, extractor.id, contract, region, month)
             except ArchiveUnavailable as err:
                 unavailable = err
             if snapshot is not None:
                 source = "archive"
-        if snapshot is None and extractor.fetch_for_month is not None:
+        if snapshot is None and fetcher is not None:
+            day = date(parts[0], parts[1], parts[2] if on_day else 1)
             try:
-                snapshot = await guarded(
-                    extractor.label,
-                    extractor.fetch_for_month(session, contract, region, date(year, number, 1)),
-                )
+                snapshot = await guarded(extractor.label, fetcher(session, contract, region, day))
             except ExtractorError as err:
                 unavailable = err
             if snapshot is not None:

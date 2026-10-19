@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Vertrag",
-        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag ergibt die Tarifkarte des Monats, in dem die Lieferung begann, den Preis, den Sie zahlen. Haben Sie auf der Karte eines früheren Monats unterschrieben, geben Sie diesen Monat unter Erweitert an.",
+        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag ergibt die Tarifkarte des Monats, in dem die Lieferung begann, den Preis, den Sie zahlen. Haben Sie auf der Karte eines früheren Monats oder auf einer innerhalb des Monats neu herausgegebenen Karte von Elegant unterschrieben, geben Sie den Tag Ihrer Unterschrift unter Erweitert an.",
         "data": {
           "contract": "Vertrag",
           "contract_start_date": "Vertragsbeginn"
@@ -45,13 +45,13 @@
             "name": "Erweitert",
             "description": "Die meisten Haushalte können diese unverändert lassen.",
             "data": {
-              "tariff_card_date": "Monat der Tarifkarte",
+              "tariff_card_date": "Datum der Tarifkarte",
               "contract_end_date": "Vertragsende",
               "ytd_from_contract_start": "Die Kosten dieses Jahres ab Vertragsbeginn zählen",
               "signed_rate": "Die Zahlen meines Vertrags eingeben"
             },
             "data_description": {
-              "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
+              "tariff_card_date": "Der Tag Ihrer Unterschrift, wenn Ihre Karte nicht die des Monats des Lieferbeginns ist. Elegant gibt seine feste Karte innerhalb des Monats neu heraus: der Tag bestimmt dann, welche.",
               "contract_end_date": "Dient nur einer Erinnerung an die Verlängerung.",
               "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt.",
               "signed_rate": "Für einen Vertrag, dessen Preis von der Karte des Lieferanten abweicht oder dessen Karte nicht zu finden ist. Der nächste Schritt fragt danach."
@@ -139,7 +139,7 @@
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "start_date_in_future": "Der Vertragsbeginn darf nicht in der Zukunft liegen.",
-      "tariff_card_date_in_future": "Der Monat der Tarifkarte darf nicht in der Zukunft liegen.",
+      "tariff_card_date_in_future": "Das Datum der Tarifkarte darf nicht in der Zukunft liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     }
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Vertrag",
-        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag ergibt die Tarifkarte des Monats, in dem die Lieferung begann, den Preis, den Sie zahlen. Haben Sie auf der Karte eines früheren Monats unterschrieben, geben Sie diesen Monat unter Erweitert an.",
+        "description": "Wählen Sie Ihr Produkt. Der Vertragsbeginn ist optional: Bei einem festen oder indexierten Vertrag ergibt die Tarifkarte des Monats, in dem die Lieferung begann, den Preis, den Sie zahlen. Haben Sie auf der Karte eines früheren Monats oder auf einer innerhalb des Monats neu herausgegebenen Karte von Elegant unterschrieben, geben Sie den Tag Ihrer Unterschrift unter Erweitert an.",
         "data": {
           "contract": "Vertrag",
           "contract_start_date": "Vertragsbeginn"
@@ -189,13 +189,13 @@
             "name": "Erweitert",
             "description": "Die meisten Haushalte können diese unverändert lassen.",
             "data": {
-              "tariff_card_date": "Monat der Tarifkarte",
+              "tariff_card_date": "Datum der Tarifkarte",
               "contract_end_date": "Vertragsende",
               "ytd_from_contract_start": "Die Kosten dieses Jahres ab Vertragsbeginn zählen",
               "signed_rate": "Die Zahlen meines Vertrags eingeben"
             },
             "data_description": {
-              "tariff_card_date": "Ein Tag des Monats der unterschriebenen Karte, wenn es nicht der Monat des Lieferbeginns ist.",
+              "tariff_card_date": "Der Tag Ihrer Unterschrift, wenn Ihre Karte nicht die des Monats des Lieferbeginns ist. Elegant gibt seine feste Karte innerhalb des Monats neu heraus: der Tag bestimmt dann, welche.",
               "contract_end_date": "Dient nur einer Erinnerung an die Verlängerung.",
               "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt.",
               "signed_rate": "Für einen Vertrag, dessen Preis von der Karte des Lieferanten abweicht oder dessen Karte nicht zu finden ist. Der nächste Schritt fragt danach."
@@ -332,7 +332,7 @@
       "no_gas_network": "Für diese Postleitzahl ist kein Gasverteilnetzbetreiber bestimmt. Leeren Sie die Postleitzahl, um den Netzbetreiber selbst zu wählen.",
       "end_before_start": "Das Vertragsende muss nach dem Vertragsbeginn liegen.",
       "start_date_in_future": "Der Vertragsbeginn darf nicht in der Zukunft liegen.",
-      "tariff_card_date_in_future": "Der Monat der Tarifkarte darf nicht in der Zukunft liegen.",
+      "tariff_card_date_in_future": "Das Datum der Tarifkarte darf nicht in der Zukunft liegen.",
       "start_date_before_switch": "Der Vertragsbeginn darf nicht vor dem zuletzt für diesen Eintrag erfassten Vertragswechsel liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
       "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute.",
