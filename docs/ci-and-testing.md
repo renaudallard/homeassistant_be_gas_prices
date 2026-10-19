@@ -137,9 +137,12 @@ integration uses and checks:
   contribution; the VAT rate a card states for its customers; the Walloon
   connection fee; the Brussels levy by caliber.
 
-A fetch is tried three times (10 and 30 second pauses, 300 seconds each). A
-failure that `is_transient_fetch_error` or a timeout explains on every
-attempt is TRANSIENT, reported and never filed. After three such fetches in
+Names are resolved through 1.1.1.1 and 8.8.8.8 rather than the runner's
+resolver: Fluvius serves its zone from its own two nameservers, which do not
+answer the Azure resolver GitHub's runners use, so `www.fluvius.be` never
+resolved there. A fetch is tried three times (10 and 30 second pauses, 300
+seconds each). A failure that `is_transient_fetch_error` or a timeout
+explains on every attempt is TRANSIENT, reported and never filed. After three such fetches in
 a row the supplier is given up on for the run: its remaining cards and its
 index publication are reported as transient without being fetched, so a host
 that never answers does not run the job into its timeout. Both scripts

@@ -914,7 +914,12 @@ async def _render(
 async def _run(texts: Path | None, fingerprint: Path) -> int:
     today = datetime.now(BRUSSELS).date()
     cache = StoredTexts(texts) if texts is not None else None
-    async with aiohttp.ClientSession() as session:
+    # Public resolvers rather than the runner's. Fluvius serves its own zone
+    # from two nameservers that do not answer GitHub's Azure resolver, so
+    # www.fluvius.be never resolved from a runner while 1.1.1.1 and 8.8.8.8
+    # resolve it. aiodns comes with homeassistant.
+    resolver = aiohttp.AsyncResolver(nameservers=["1.1.1.1", "8.8.8.8"])
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(resolver=resolver)) as session:
         with ExitStack() as hooks:
             # Every render goes through a hook that runs it in a daemon
             # thread, so one that never returns cannot hold the exit.
