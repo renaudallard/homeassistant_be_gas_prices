@@ -78,7 +78,7 @@ card within a month (Elegant's Zeker & Vast), the signing card is the one in
 force on the tariff card date, once that day is past. A variable price is
 the supplier's for each month, so the card of month M sets it whatever the
 signing date. A signing card no one serves any more (neither the supplier's
-archive nor the project's, which keeps twelve months) leaves each month on
+archive nor the project's, which keeps thirty-six months) leaves each month on
 its own card's leg. Figures the household typed from its contract
 (`manual_rate.py`) are laid over that leg. Where the supplier has published no
 index value up to month M (Ecofix publishes none, and Trevion's begin with

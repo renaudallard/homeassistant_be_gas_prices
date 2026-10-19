@@ -11,7 +11,8 @@ on:
       backfill_months:
         description: >-
           Also mirror this many closed months before the current one from the
-          supplier archives, for months the archive does not hold yet.
+          supplier archives, for months the archive does not hold yet. At
+          most 36, the months the archive keeps.
         default: "0"
         required: false
         type: string
@@ -260,14 +261,14 @@ jobs:
               mv "$manifest.tmp" "$manifest"
             fi
           done
-          # Same retention as the rows: a month more than twelve months back
+          # Same retention as the rows: a month more than thirty-six months back
           # goes. Only this integration's releases, and counted from the 1st
           # so no day of the month shifts the cutoff. Listed with an explicit
           # limit: gh stops at 30 by default, and the old ones would sit
           # beyond it, never listed and never deleted. Listed into a variable
           # first: piped into the loop, a failed listing would leave the loop
           # nothing to read and the step would pass.
-          cutoff="gas-$(date -u -d "$(date -u +%Y-%m-01) -12 months" +%Y-%m)"
+          cutoff="gas-$(date -u -d "$(date -u +%Y-%m-01) -36 months" +%Y-%m)"
           tags=$(gh release list --repo "$CARDS_REPO" --limit 1000 --json tagName --jq '.[].tagName')
           while read -r tag; do
             case "$tag" in gas-*) ;; *) continue ;; esac

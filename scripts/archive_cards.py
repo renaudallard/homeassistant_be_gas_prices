@@ -161,9 +161,11 @@ _INDICES = "indices"
 _MANIFEST = "pdfs.json"
 _COVERAGE = "coverage.md"
 _COVERAGE_DIR = "coverage"
-# The running month and the twelve before it, the same retention the other
-# two namespaces keep.
-_KEEP_MONTHS = 12
+# The running month and the thirty-six before it, the same retention the
+# other two namespaces keep: a fixed contract runs up to three years on the
+# card of the month it was signed, and a product withdrawn since has no other
+# copy of it.
+_KEEP_MONTHS = 36
 # What a parse depends on: the extractors, the shared readers and dataclasses
 # beside them, the constants they key on and the codec the rows are written
 # with.
