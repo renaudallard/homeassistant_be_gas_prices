@@ -968,10 +968,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             await excise_law.ensure_excise_law(self._session)
             if self.region == REGION_FLANDERS:
                 # The data management fee a Flemish card may leave out, for
-                # this year and the last, which the rolling year bills.
-                year = dt_util.now().year
-                for wanted in (year - 1, year):
-                    await fluvius.ensure_tariff_sheet(self._session, wanted)
+                # this year: the running costs bill no earlier month, and the
+                # price history of one is per kWh.
+                await fluvius.ensure_tariff_sheet(self._session, dt_util.now().year)
         today = dt_util.now().date()
         needed = self._months_needed(today)
         if self._first_tick:

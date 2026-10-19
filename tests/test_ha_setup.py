@@ -2805,17 +2805,17 @@ async def test_the_excise_law_is_read_by_the_tick_and_kept_in_the_store(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
-@pytest.mark.parametrize(("region", "asked"), [("flanders", [2025, 2026]), ("wallonia", [])])
-async def test_a_flemish_tick_reads_fluvius_s_sheets_of_this_year_and_the_last(
+@pytest.mark.parametrize(("region", "asked"), [("flanders", [2026]), ("wallonia", [])])
+async def test_a_flemish_tick_reads_fluvius_s_sheet_of_this_year(
     hass: HomeAssistant,
     fetch: AsyncMock,
     hass_storage: dict[str, Any],
     region: str,
     asked: list[int],
 ) -> None:
-    """The rolling year bills months of last year too. Only a Flemish entry
-    asks, and the store keeps what is held for a restart without the
-    network."""
+    """No month before this year is billed, so last year's sheet is not
+    asked for. Only a Flemish entry asks, and the store keeps what is held
+    for a restart without the network."""
     entry = await _setup(hass, {**DATA, CONF_REGION: region})
     ensure: Any = fluvius.ensure_tariff_sheet
     assert [call.args[1] for call in ensure.await_args_list] == asked

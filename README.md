@@ -310,9 +310,8 @@ Every hour, each entry runs one refresh:
   its reception station, and only the months not held yet.
 - **The excise law** on Justel (ejustice.just.fgov.be), once a day; a
   failure keeps what was read and waits six hours.
-- **Fluvius's gas tariff sheet** of this year and the last, for a Flemish
-  entry, once each: the data management fee a card may leave out. A failure
-  waits six hours.
+- **Fluvius's gas tariff sheet** of this year, for a Flemish entry, once:
+  the data management fee a card may leave out. A failure waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
 - **The gas meter**, from the recorder's statistics, on every refresh.
