@@ -120,7 +120,7 @@
       },
       "custom_network": {
         "title": "Le tarif de votre gestionnaire de réseau",
-        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise, la cotisation sur l'énergie et la redevance de raccordement wallonne suivent la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. Sur un réseau Fluvius, une mesure laissée à 0 est facturée en 2026 au tarif régulé de la gestion des données.",
+        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise suit la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. La cotisation sur l'énergie et la redevance de raccordement wallonne sont celles de la loi. Sur un réseau Fluvius, une mesure laissée à 0 est facturée au tarif régulé de la gestion des données de l'année de fourniture.",
         "data": {
           "custom_t1_fixed": "Terme fixe T1 (€ par an)",
           "custom_t1_prop": "Terme proportionnel T1 (c€/kWh)",
@@ -130,8 +130,6 @@
           "custom_metering": "Mesure ou gestion des données (€ par an)",
           "custom_excise_low": "Accise jusqu'à 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Accise au-delà de 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Cotisation sur l'énergie (c€/kWh)",
-          "custom_connection_fee": "Redevance de raccordement wallonne (c€/kWh, sans TVA)",
           "custom_levy": "Redevance bruxelloise pour votre compteur (€ par an)"
         }
       }
@@ -315,7 +313,7 @@
       },
       "custom_network": {
         "title": "Le tarif de votre gestionnaire de réseau",
-        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise, la cotisation sur l'énergie et la redevance de raccordement wallonne suivent la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. Sur un réseau Fluvius, une mesure laissée à 0 est facturée en 2026 au tarif régulé de la gestion des données.",
+        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise suit la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. La cotisation sur l'énergie et la redevance de raccordement wallonne sont celles de la loi. Sur un réseau Fluvius, une mesure laissée à 0 est facturée au tarif régulé de la gestion des données de l'année de fourniture.",
         "data": {
           "custom_t1_fixed": "Terme fixe T1 (€ par an)",
           "custom_t1_prop": "Terme proportionnel T1 (c€/kWh)",
@@ -325,8 +323,6 @@
           "custom_metering": "Mesure ou gestion des données (€ par an)",
           "custom_excise_low": "Accise jusqu'à 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Accise au-delà de 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Cotisation sur l'énergie (c€/kWh)",
-          "custom_connection_fee": "Redevance de raccordement wallonne (c€/kWh, sans TVA)",
           "custom_levy": "Redevance bruxelloise pour votre compteur (€ par an)"
         }
       }

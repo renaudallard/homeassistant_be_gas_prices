@@ -50,7 +50,6 @@ from custom_components.be_gas_prices.const import (
     CONF_CONTRACT,
     CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
-    CONF_CUSTOM_CONNECTION_FEE,
     CONF_CUSTOM_EXCISE_HIGH,
     CONF_CUSTOM_EXCISE_LOW,
     CONF_CUSTOM_FEE,
@@ -77,6 +76,7 @@ from custom_components.be_gas_prices.const import (
     DSO_SIBELGA,
     REGION_BRUSSELS,
     REGION_FLANDERS,
+    REGION_WALLONIA,
     SUPPLIER_CUSTOM,
     TIER_T2,
 )
@@ -96,7 +96,7 @@ from custom_components.be_gas_prices.month_cards import ArchiveUnavailable, Mont
 from custom_components.be_gas_prices.pricing import compute_breakdown, fixed_costs
 from custom_components.be_gas_prices.providers import _pdf, engie
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
-from custom_components.be_gas_prices.providers._resolve import resolve_network
+from custom_components.be_gas_prices.providers._resolve import resolve_for_delivery, resolve_network
 from custom_components.be_gas_prices.providers.base import (
     CardNotReadableError,
     ExtractorError,
@@ -528,10 +528,22 @@ def test_the_custom_card_prices_like_a_real_one() -> None:
     assert snap.dsos[DSO_SIBELGA].tiers[TIER_T2].fixed_per_year == pytest.approx(43.07)
 
 
+def test_a_walloon_custom_card_bills_the_law_s_levies() -> None:
+    """Neither the energy contribution nor the connection fee is typed: the
+    law's are billed in every month a bill can reach, which is why the form
+    no longer asks for them."""
+    data = {**_custom_data(), CONF_REGION: REGION_WALLONIA, CONF_DSO: DSO_ORES}
+    data.pop(CONF_CUSTOM_LEVY)
+    taxes = resolve_for_delivery(build_snapshot(data), date(2026, 7, 1)).taxes
+    assert taxes.connection_fee == pytest.approx(0.000075)
+    assert taxes.energy_contribution == pytest.approx(0.0009978 * 1.06)
+    later = resolve_for_delivery(build_snapshot(data), date(2026, 9, 1)).taxes
+    assert later.energy_contribution == 0.0
+
+
 def test_the_custom_card_without_a_second_excise_band_is_one_rate() -> None:
     data = _custom_data()
     data.pop(CONF_CUSTOM_EXCISE_HIGH)
-    data[CONF_CUSTOM_CONNECTION_FEE] = 0.0
     assert build_snapshot(data).taxes.excise_bands == ((None, pytest.approx(0.0109286)),)
 
 

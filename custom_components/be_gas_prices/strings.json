@@ -120,7 +120,7 @@
       },
       "custom_network": {
         "title": "Your network operator's tariff",
-        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise, the energy contribution and the Walloon connection fee follow the law for the months the integration knows it; what you type for them counts outside those months. On a Fluvius network, metering left at 0 is billed at the regulated data management fee in 2026.",
+        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise follows the law for the months the integration knows it; what you type for it counts outside those months. The energy contribution and the Walloon connection fee are the law's. On a Fluvius network, metering left at 0 is billed at the regulated data management fee of the delivery year.",
         "data": {
           "custom_t1_fixed": "T1 fixed term (€ a year)",
           "custom_t1_prop": "T1 proportional term (c€/kWh)",
@@ -130,8 +130,6 @@
           "custom_metering": "Metering or data management (€ a year)",
           "custom_excise_low": "Excise up to 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Excise above 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Energy contribution (c€/kWh)",
-          "custom_connection_fee": "Walloon connection fee (c€/kWh, no VAT)",
           "custom_levy": "Brussels per-meter levy for your meter (€ a year)"
         }
       }
@@ -315,7 +313,7 @@
       },
       "custom_network": {
         "title": "Your network operator's tariff",
-        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise, the energy contribution and the Walloon connection fee follow the law for the months the integration knows it; what you type for them counts outside those months. On a Fluvius network, metering left at 0 is billed at the regulated data management fee in 2026.",
+        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise follows the law for the months the integration knows it; what you type for it counts outside those months. The energy contribution and the Walloon connection fee are the law's. On a Fluvius network, metering left at 0 is billed at the regulated data management fee of the delivery year.",
         "data": {
           "custom_t1_fixed": "T1 fixed term (€ a year)",
           "custom_t1_prop": "T1 proportional term (c€/kWh)",
@@ -325,8 +323,6 @@
           "custom_metering": "Metering or data management (€ a year)",
           "custom_excise_low": "Excise up to 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Excise above 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Energy contribution (c€/kWh)",
-          "custom_connection_fee": "Walloon connection fee (c€/kWh, no VAT)",
           "custom_levy": "Brussels per-meter levy for your meter (€ a year)"
         }
       }

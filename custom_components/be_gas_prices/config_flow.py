@@ -54,8 +54,6 @@ from .const import (
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
-    CONF_CUSTOM_CONNECTION_FEE,
-    CONF_CUSTOM_CONTRIBUTION,
     CONF_CUSTOM_EXCISE_HIGH,
     CONF_CUSTOM_EXCISE_LOW,
     CONF_CUSTOM_FEE,
@@ -92,7 +90,6 @@ from .const import (
     DSO_CHOICES,
     MANUAL_RATE_KEYS,
     REGION_BRUSSELS,
-    REGION_WALLONIA,
     REGIONS,
     SUPPLIER_CUSTOM,
 )
@@ -471,10 +468,7 @@ class _FlowSteps:
             CONF_CUSTOM_METERING,
             CONF_CUSTOM_EXCISE_LOW,
             CONF_CUSTOM_EXCISE_HIGH,
-            CONF_CUSTOM_CONTRIBUTION,
         )
-        if region == REGION_WALLONIA:
-            keys += (CONF_CUSTOM_CONNECTION_FEE,)
         if region == REGION_BRUSSELS:
             keys += (CONF_CUSTOM_LEVY,)
         if user_input is not None:

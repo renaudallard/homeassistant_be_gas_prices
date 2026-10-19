@@ -53,6 +53,8 @@ from custom_components.be_gas_prices.const import (
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
+    CONF_CUSTOM_CONNECTION_FEE,
+    CONF_CUSTOM_CONTRIBUTION,
     CONF_CUSTOM_FEE,
     CONF_CUSTOM_PRICE,
     CONF_CUSTOM_T1_FIXED,
@@ -227,6 +229,38 @@ async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssis
     assert result["step_id"] == "dso"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
     assert result["step_id"] == "custom_energy"
+
+
+async def test_the_custom_network_form_leaves_the_law_s_levies_out(hass: HomeAssistant) -> None:
+    """The energy contribution and the Walloon connection fee are the law's
+    for every month billed: not asked, and an older entry's go when it is
+    saved."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    for user_input in (
+        {CONF_POSTCODE: ""},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: SUPPLIER_CUSTOM},
+        {CONF_CONTRACT: CUSTOM_CONTRACT},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    flow: Any = hass.config_entries.flow._progress[result["flow_id"]]
+    flow._data.update({CONF_CUSTOM_CONTRIBUTION: 0.10577, CONF_CUSTOM_CONNECTION_FEE: 0.0075})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_CUSTOM_PRICE: 8.0, CONF_CUSTOM_FEE: 60.0}
+    )
+    assert result["step_id"] == "custom_network"
+    schema = result["data_schema"]
+    assert schema is not None
+    assert CONF_CUSTOM_CONTRIBUTION not in schema.schema
+    assert CONF_CUSTOM_CONNECTION_FEE not in schema.schema
+    typed = {key: 1.0 for key in schema.schema}
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], typed)
+    assert result["step_id"] == "household"
+    assert CONF_CUSTOM_CONTRIBUTION not in flow._data
+    assert CONF_CUSTOM_CONNECTION_FEE not in flow._data
 
 
 async def test_the_contract_form_folds_the_rarely_needed_fields(hass: HomeAssistant) -> None:

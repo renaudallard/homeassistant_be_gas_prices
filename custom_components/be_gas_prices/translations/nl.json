@@ -120,7 +120,7 @@
       },
       "custom_network": {
         "title": "Het tarief van je netbeheerder",
-        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns, de bijdrage op de energie en de Waalse aansluitingsvergoeding volgen de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. Op een Fluvius-net wordt meting op 0 in 2026 aangerekend aan de gereguleerde vergoeding voor databeheer.",
+        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns volgt de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. De bijdrage op de energie en de Waalse aansluitingsvergoeding zijn die van de wet. Op een Fluvius-net wordt meting op 0 aangerekend aan de gereguleerde vergoeding voor databeheer van het leveringsjaar.",
         "data": {
           "custom_t1_fixed": "T1 vaste term (€ per jaar)",
           "custom_t1_prop": "T1 proportionele term (c€/kWh)",
@@ -130,8 +130,6 @@
           "custom_metering": "Meting of databeheer (€ per jaar)",
           "custom_excise_low": "Accijns tot 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Accijns boven 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Energiebijdrage (c€/kWh)",
-          "custom_connection_fee": "Waalse aansluitingsvergoeding (c€/kWh, geen btw)",
           "custom_levy": "Brusselse heffing voor je meter (€ per jaar)"
         }
       }
@@ -315,7 +313,7 @@
       },
       "custom_network": {
         "title": "Het tarief van je netbeheerder",
-        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns, de bijdrage op de energie en de Waalse aansluitingsvergoeding volgen de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. Op een Fluvius-net wordt meting op 0 in 2026 aangerekend aan de gereguleerde vergoeding voor databeheer.",
+        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns volgt de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. De bijdrage op de energie en de Waalse aansluitingsvergoeding zijn die van de wet. Op een Fluvius-net wordt meting op 0 aangerekend aan de gereguleerde vergoeding voor databeheer van het leveringsjaar.",
         "data": {
           "custom_t1_fixed": "T1 vaste term (€ per jaar)",
           "custom_t1_prop": "T1 proportionele term (c€/kWh)",
@@ -325,8 +323,6 @@
           "custom_metering": "Meting of databeheer (€ per jaar)",
           "custom_excise_low": "Accijns tot 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Accijns boven 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Energiebijdrage (c€/kWh)",
-          "custom_connection_fee": "Waalse aansluitingsvergoeding (c€/kWh, geen btw)",
           "custom_levy": "Brusselse heffing voor je meter (€ per jaar)"
         }
       }

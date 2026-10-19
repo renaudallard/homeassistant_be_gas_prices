@@ -41,8 +41,6 @@ import aiohttp
 from ..const import (
     CALIBERS,
     CONF_CALIBER,
-    CONF_CUSTOM_CONNECTION_FEE,
-    CONF_CUSTOM_CONTRIBUTION,
     CONF_CUSTOM_EXCISE_HIGH,
     CONF_CUSTOM_EXCISE_LOW,
     CONF_CUSTOM_FEE,
@@ -120,8 +118,8 @@ def build_snapshot(data: dict[str, Any]) -> SupplierSnapshot:
                 _number(data, CONF_CUSTOM_EXCISE_LOW) / 100.0,
                 None if high in (None, "") else float(high) / 100.0,
             ),
-            energy_contribution=_number(data, CONF_CUSTOM_CONTRIBUTION) / 100.0,
-            connection_fee=_number(data, CONF_CUSTOM_CONNECTION_FEE) / 100.0,
+            # The energy contribution and the Walloon connection fee are the
+            # law's for every month billed (_resolve.py), so none is asked.
             osp_by_caliber=osp,
         ),
         source_url="",

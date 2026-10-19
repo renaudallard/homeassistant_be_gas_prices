@@ -120,7 +120,7 @@
       },
       "custom_network": {
         "title": "Der Tarif Ihres Netzbetreibers",
-        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer, der Energiebeitrag und die wallonische Anschlussgebühr folgen dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. In einem Fluvius-Netz wird eine auf 0 belassene Messung 2026 zum regulierten Tarif der Datenverwaltung berechnet.",
+        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer folgt dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. Der Energiebeitrag und die wallonische Anschlussgebühr sind die des Gesetzes. In einem Fluvius-Netz wird eine auf 0 belassene Messung zum regulierten Tarif der Datenverwaltung des Lieferjahres berechnet.",
         "data": {
           "custom_t1_fixed": "T1 Festbetrag (€ pro Jahr)",
           "custom_t1_prop": "T1 Arbeitspreis (c€/kWh)",
@@ -130,8 +130,6 @@
           "custom_metering": "Messung oder Datenverwaltung (€ pro Jahr)",
           "custom_excise_low": "Verbrauchsteuer bis 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Verbrauchsteuer über 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Energiebeitrag (c€/kWh)",
-          "custom_connection_fee": "Wallonische Anschlussgebühr (c€/kWh, ohne MwSt.)",
           "custom_levy": "Brüsseler Zählerabgabe für Ihren Zähler (€ pro Jahr)"
         }
       }
@@ -315,7 +313,7 @@
       },
       "custom_network": {
         "title": "Der Tarif Ihres Netzbetreibers",
-        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer, der Energiebeitrag und die wallonische Anschlussgebühr folgen dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. In einem Fluvius-Netz wird eine auf 0 belassene Messung 2026 zum regulierten Tarif der Datenverwaltung berechnet.",
+        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer folgt dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. Der Energiebeitrag und die wallonische Anschlussgebühr sind die des Gesetzes. In einem Fluvius-Netz wird eine auf 0 belassene Messung zum regulierten Tarif der Datenverwaltung des Lieferjahres berechnet.",
         "data": {
           "custom_t1_fixed": "T1 Festbetrag (€ pro Jahr)",
           "custom_t1_prop": "T1 Arbeitspreis (c€/kWh)",
@@ -325,8 +323,6 @@
           "custom_metering": "Messung oder Datenverwaltung (€ pro Jahr)",
           "custom_excise_low": "Verbrauchsteuer bis 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Verbrauchsteuer über 12 000 kWh (c€/kWh)",
-          "custom_contribution": "Energiebeitrag (c€/kWh)",
-          "custom_connection_fee": "Wallonische Anschlussgebühr (c€/kWh, ohne MwSt.)",
           "custom_levy": "Brüsseler Zählerabgabe für Ihren Zähler (€ pro Jahr)"
         }
       }

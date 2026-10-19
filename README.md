@@ -263,8 +263,9 @@ manifest.
    when they differ from the card or the card cannot be reached.
 3. **Network operator**, only asked without a postcode and outside
    Brussels. The expert custom supplier then asks for the figures of your
-   card: the energy price and fee, then your network operator's terms and
-   the levies.
+   card: the energy price and fee, then your network operator's terms, the
+   excise and, in Brussels, the per-meter levy. The energy contribution and
+   the Walloon connection fee are the law's.
 4. **Household**: your yearly consumption in kWh (it picks the tier and the
    excise slices until your meter has measured a full year), your meter size
    in Brussels, your gas meter (leave blank to use the Energy dashboard's),

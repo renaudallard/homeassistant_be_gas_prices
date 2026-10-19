@@ -314,6 +314,8 @@ CONF_CUSTOM_TRANSPORT: Final = "custom_transport"
 CONF_CUSTOM_METERING: Final = "custom_metering"
 CONF_CUSTOM_EXCISE_LOW: Final = "custom_excise_low"
 CONF_CUSTOM_EXCISE_HIGH: Final = "custom_excise_high"
+# No longer asked, since the law sets both for every month billed: kept
+# among the custom keys so an older entry's figures go when it is saved.
 CONF_CUSTOM_CONTRIBUTION: Final = "custom_contribution"
 CONF_CUSTOM_CONNECTION_FEE: Final = "custom_connection_fee"
 CONF_CUSTOM_LEVY: Final = "custom_levy"
