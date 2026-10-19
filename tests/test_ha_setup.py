@@ -2767,6 +2767,24 @@ async def test_the_price_history_stamp_moves_with_a_lagging_value(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_price_history_stamp_moves_with_the_tier(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A measured year that crosses 5 000 kWh prices every hour on T2, so
+    the hours drawn on T1 are drawn again, with no setting changed."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    household = coordinator.household
+    assert household is not None
+    coordinator.household = replace(household, annual_kwh=4_990.0)
+    before = coordinator.card_months_signature()
+    coordinator.household = replace(household, annual_kwh=4_995.0)
+    assert coordinator.card_months_signature() == before
+    coordinator.household = replace(household, annual_kwh=5_010.0)
+    assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_stamp_moves_with_the_law(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

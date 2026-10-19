@@ -443,10 +443,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def card_months_signature(self) -> str:
         """What the year's past months are priced from: the entry's
         settings, each past month's own card and the card in hand as read,
-        the index values, the calorific values and the figures of the law. It
-        moves when any of them changes or lands, a card read again after an
-        update or the value of an index that lags the others included, which
-        is when the price history is worth drawing again."""
+        the index values, the calorific values, the figures of the law and
+        the tier the measured volume falls in. It moves when any of them
+        changes or lands, a card read again after an update or the value of
+        an index that lags the others included, which is when the price
+        history is worth drawing again. The excise blend within a tier,
+        which moves the price a few hundredths of a cent, does not move it."""
         today = dt_util.now().date()
         own = [
             f"{month}:{_card_digest(card)}"
@@ -457,7 +459,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
         law = _digest([LAW_FIGURES, excise_law.held_table(), fluvius.held_table()])
-        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}"
+        tier = "" if self.household is None else tier_for(self.household.annual_kwh)
+        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}|{tier}"
 
     # ---- the card ---------------------------------------------------------
 
