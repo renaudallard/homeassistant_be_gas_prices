@@ -156,9 +156,9 @@ def test_the_walloon_connection_fee_is_billed_at_the_law() -> None:
     snap = energyvision.parse_snapshot(_GS1JVG, REGION_WALLONIA, _card("EV-0926-GS1JVG-WAL-fr.pdf"))
     billed = resolve_for_delivery(snap, date(2026, 9, 1))
     assert billed.taxes.connection_fee == pytest.approx(0.000075)
-    # Past the months the law is known for, the card is read as printed.
+    # The order has no end: 2027 is billed the same.
     assert resolve_for_delivery(snap, date(2027, 1, 1)).taxes.connection_fee == pytest.approx(
-        0.00075
+        0.000075
     )
 
 

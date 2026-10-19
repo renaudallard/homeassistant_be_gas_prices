@@ -148,14 +148,16 @@ How the cross-check decides:
 - A supplier's vote is the module that parses it, so the six Energy Together
   brands count once.
 - A tie is a notice: two voters against two is not a verdict on either.
-- The excise is measured against the law too: the run reads article 419
-  from Justel first (`federal: gas excise law`, a failure when the page is
-  not the article), and a month whose fleet mostly prints another excise
-  than the one billed fails as `federal: excise ... against the law`.
+- The excise and the Walloon connection fee are measured against the law
+  too: the run reads article 419 from Justel first (`federal: gas excise
+  law`, a failure when the page is not the article), and a month whose
+  fleet mostly prints another figure than the one billed fails as
+  `federal: excise ... against the law` or `wallonia: connection fee ...
+  against the law`.
 - A departure the integration does not bill is a notice rather than a
   failure: the excise of a month the law read from Justel or `const.py`
-  sets, the energy contribution or the Walloon connection fee of a month
-  `const.py` knows the law for, and a
+  sets, the Walloon connection fee of any month since the order of 2003,
+  the energy contribution of a month `const.py` knows the law for, and a
   Fluvius data management fee a card leaves out in the tariff year
   `const.py` carries the regulated one for. Past those windows the same
   departure fails.

@@ -100,8 +100,8 @@ from custom_components.be_gas_prices.const import (  # noqa: E402
     TIER_T1,
     TIER_T2,
     VAT_RATE_REDUCED,
+    WALLOON_CONNECTION_FEE,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
-    WALLOON_CONNECTION_FEE_KNOWN_UNTIL,
 )
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
@@ -377,16 +377,15 @@ _EXCISE_LOW = "excise up to 12000 kWh"
 _EXCISE_HIGH = "excise above 12000 kWh"
 _CONTRIBUTION = "energy contribution"
 _CONNECTION_FEE = "connection fee"
-# The levies the integration bills from the law rather than from the card for
-# the months const.py knows the law for (providers/_resolve.py): the energy
-# contribution and the Walloon connection fee, and the excise of any month the
-# law read from Justel or const.py's table covers (law_excise). A card
-# printing another figure for such a month is still wrong and reported, but
-# nobody is billed on it, so it does not fail the check.
+# The levies the integration bills from the law rather than from the card
+# (providers/_resolve.py): the energy contribution for the months const.py
+# knows the law for, and the excise and the Walloon connection fee for the
+# months _law_figure gives. A card printing another figure for such a month is
+# still wrong and reported, but nobody is billed on it, so it does not fail
+# the check.
 _EXCISE_SLICES = {_EXCISE_LOW: 0, _EXCISE_HIGH: 1}
 _LAW_WINDOWS: dict[str, tuple[tuple[int, int], tuple[int, int] | None]] = {
     _CONTRIBUTION: (ENERGY_CONTRIBUTION_KNOWN_FROM, None),
-    _CONNECTION_FEE: (WALLOON_CONNECTION_FEE_KNOWN_FROM, WALLOON_CONNECTION_FEE_KNOWN_UNTIL),
 }
 
 
@@ -554,19 +553,24 @@ def agree(a: float, b: float, unit: str) -> bool:
     return abs(a - b) <= max(_step(a, unit), _step(b, unit)) + 1e-12
 
 
-def _law_excise(name: str, month: str) -> float | None:
-    """The excise including VAT the integration bills ``month`` on for the
-    slice ``name`` names, or None when it bills the card's."""
-    slice_ = _EXCISE_SLICES.get(name)
+def _law_figure(name: str, month: str) -> float | None:
+    """What the integration bills ``month`` on for the figure ``name``, as a
+    residential card prints it: the excise of a slice including VAT, the
+    VAT exempt Walloon connection fee. None when it bills the card's."""
     parsed = label_month(month)
-    if slice_ is None or parsed is None:
+    if parsed is None:
+        return None
+    if name == _CONNECTION_FEE:
+        return WALLOON_CONNECTION_FEE if parsed >= WALLOON_CONNECTION_FEE_KNOWN_FROM else None
+    slice_ = _EXCISE_SLICES.get(name)
+    if slice_ is None:
         return None
     rates = law_excise(date(parsed[0], parsed[1], 1))
     return None if rates is None else rates[slice_] * (1 + VAT_RATE_REDUCED)
 
 
 def _billed_from_law(name: str, month: str) -> bool:
-    if _law_excise(name, month) is not None:
+    if _law_figure(name, month) is not None:
         return True
     window = _LAW_WINDOWS.get(name)
     parsed = label_month(month)
@@ -613,17 +617,17 @@ def _departures(group: list[Figure], today: date) -> Iterator[Check]:
     values = sorted({f.value for f in group})
     support = {v: {f.voter for f in group if agree(f.value, v, unit)} for v in values}
     best = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
-    law = _law_excise(first.name, first.month)
+    law = _law_figure(first.name, first.month)
     if (
         law is not None
         and len(support[best]) >= 2
         and len(support[best]) > len({f.voter for f in group if agree(f.value, law, unit)})
     ):
-        # Most of the fleet prints another excise than the one billed: the
-        # law changed and was misread, or a rate the table holds is wrong.
-        # Every residential month is billed on it.
+        # Most of the fleet prints another figure than the one billed: the
+        # law changed and was misread or not followed, or a figure typed in
+        # const.py is wrong. Every residential month is billed on it.
         yield Check(
-            f"federal: {first.name} for {first.month} against the law",
+            f"{first.scope}: {first.name} for {first.month} against the law",
             "fail",
             f"{', '.join(sorted({f.supplier for f in group if agree(f.value, best, unit)}))} "
             f"print {shown(best, unit)} where the integration bills {shown(law, unit)}",

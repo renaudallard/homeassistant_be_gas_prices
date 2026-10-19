@@ -57,7 +57,6 @@ from ..const import (
     WALLONIA_DSO_KEYS,
     WALLOON_CONNECTION_FEE,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
-    WALLOON_CONNECTION_FEE_KNOWN_UNTIL,
 )
 from ._network import excise_bands
 from .base import DsoOverlay, SupplierSnapshot, TaxOverlay
@@ -76,7 +75,6 @@ LAW_FIGURES = (
     FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
     WALLOON_CONNECTION_FEE,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
-    WALLOON_CONNECTION_FEE_KNOWN_UNTIL,
 )
 
 
@@ -219,15 +217,13 @@ def resolve_connection_fee(
     ``delivery``, on a residential card of the Walloon DSOs.
 
     EnergyVision's September 2026 Walloon cards print the electricity rate,
-    ten times the gas one. Outside the months the law is known for, and on
-    any other card, the card is read as printed.
+    ten times the gas one. The order has no end, so neither does this; on
+    any other card, and before the order, the card is read as printed.
     """
     if (
         taxes.vat_rate != 0.0
         or not WALLONIA_DSO_KEYS & dsos.keys()
-        or not _in_window(
-            delivery, WALLOON_CONNECTION_FEE_KNOWN_FROM, WALLOON_CONNECTION_FEE_KNOWN_UNTIL
-        )
+        or not _in_window(delivery, WALLOON_CONNECTION_FEE_KNOWN_FROM, None)
     ):
         return taxes
     return replace(taxes, connection_fee=WALLOON_CONNECTION_FEE)

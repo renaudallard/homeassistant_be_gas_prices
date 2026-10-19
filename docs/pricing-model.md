@@ -118,10 +118,12 @@ the card was printed for:
   1 GWh a year, VAT exempt, set by the Walloon order of 19 June 2003 (art. 2)
   and in force since 15 July 2003, on a card of the Walloon DSOs.
   EnergyVision's September 2026 Walloon cards print the low-voltage
-  electricity rate, 0,00075, instead.
+  electricity rate, 0,00075, instead. The order has never been amended, so
+  no end is assumed; the live check fails when most Walloon cards print
+  another fee.
 
-Each other figure carries its known window in `const.py`; past it the card
-is read as printed. Only residential cards are touched. The figures excluding VAT are
+The energy contribution and the Fluvius fee carry their known window in
+`const.py`; past it the card is read as printed. Only residential cards are touched. The figures excluding VAT are
 put on the rate the card states for its customers (`card_vat_rate`) when it
 is one Belgium levies (6, 12 or 21 %), else on the residential 6 %: every
 card read so far states 6 % or nothing, and a stated rate outside those

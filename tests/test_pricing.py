@@ -195,7 +195,12 @@ def test_the_connection_fee_follows_the_law_on_a_walloon_card_only() -> None:
     assert resolve_connection_fee(printed, flemish, september) == printed
     pro = replace(printed, vat_rate=0.21)
     assert resolve_connection_fee(pro, card.dsos, september) == pro
-    assert resolve_connection_fee(printed, card.dsos, date(2027, 1, 1)) == printed
+    # The order of 2003 has no end, and neither does the fee; a month before
+    # it is read as printed.
+    assert resolve_connection_fee(printed, card.dsos, date(2031, 1, 1)).connection_fee == (
+        pytest.approx(0.000075)
+    )
+    assert resolve_connection_fee(printed, card.dsos, date(2003, 6, 1)) == printed
 
 
 def test_brussels_levy_by_caliber_and_volume() -> None:

@@ -388,8 +388,8 @@ def test_a_single_excise_rate_stands_for_both_slices() -> None:
 
 
 def test_regional_levies_are_compared_among_their_region_s_cards() -> None:
-    """The Walloon connection fee is billed from the law in the months
-    const.py knows it for, so a departure there is a notice until then."""
+    """The Walloon connection fee is billed from the law, so a departure
+    there is a notice in any month."""
 
     def fleet(label: str) -> list[Any]:
         osp = {"q10_le5000": 3.51, "q10_gt5000": 12.51}
@@ -409,7 +409,18 @@ def test_regional_levies_are_compared_among_their_region_s_cards() -> None:
     assert [c.label for c in inside if c.status == "notice"] == [
         "gamma: wallonia connection fee for 2026-09"
     ]
-    assert "gamma: wallonia connection fee for 2027-02" in _failing(lc.consensus(fleet("2027-02")))
+    assert "gamma: wallonia connection fee for 2027-02" not in _failing(
+        lc.consensus(fleet("2027-02"))
+    )
+
+
+def test_a_walloon_fleet_printing_another_connection_fee_fails() -> None:
+    """The fee is billed from the order of 2003 with no end: the cards
+    following an amendment the integration does not know of is a failure."""
+    cards = [_card(_snapshot(sid, connection_fee=0.00015), "wallonia") for sid in ("alpha", "beta")]
+    assert list(_failing(lc.consensus(cards))) == [
+        "wallonia: connection fee for 2026-09 against the law"
+    ]
 
 
 def test_cards_of_another_month_or_basis_do_not_vote() -> None:

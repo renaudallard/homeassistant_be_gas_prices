@@ -180,12 +180,11 @@ FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL: Final = (2027, 1)  # exclusive
 # first 100 kWh of a year and 0,000075 EUR/kWh after that below 1 GWh a year,
 # which is 0,000075 EUR/kWh throughout. The same article sets 0,00075 EUR/kWh
 # for low-voltage electricity, the figure EnergyVision's September 2026
-# Walloon gas cards print instead. In force since 15 July 2003, art. 2 never
-# amended. The window ends where the other regulated figures are next checked,
-# and past it the card is read as before.
+# Walloon gas cards print instead. In force since 15 July 2003 and art. 2
+# never amended, so it holds until it is: no end is assumed, and the live
+# check fails when most Walloon cards print another fee than this one.
 WALLOON_CONNECTION_FEE: Final = 0.000075
 WALLOON_CONNECTION_FEE_KNOWN_FROM: Final = (2003, 7)
-WALLOON_CONNECTION_FEE_KNOWN_UNTIL: Final = (2027, 1)  # exclusive
 
 # The federal energy contribution on residential gas, in EUR/kWh EXCLUDING
 # VAT (0,9978 EUR/MWh, art. 419 i) of the programme law of 27 December 2004,
