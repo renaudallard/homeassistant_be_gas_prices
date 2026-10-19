@@ -53,6 +53,7 @@ from custom_components.be_gas_prices import (
     calorific,
     diagnostics,
     excise_law,
+    fluvius,
     providers,
     snapshot_codec,
 )
@@ -2801,6 +2802,31 @@ async def test_the_excise_law_is_read_by_the_tick_and_kept_in_the_store(
     before = coordinator.card_months_signature()
     excise_law.hold(((date(2027, 4, 1), 0.012, 0.013),))
     assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(("region", "asked"), [("flanders", [2025, 2026]), ("wallonia", [])])
+async def test_a_flemish_tick_reads_fluvius_s_sheets_of_this_year_and_the_last(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    hass_storage: dict[str, Any],
+    region: str,
+    asked: list[int],
+) -> None:
+    """The rolling year bills months of last year too. Only a Flemish entry
+    asks, and the store keeps what is held for a restart without the
+    network."""
+    entry = await _setup(hass, {**DATA, CONF_REGION: region})
+    ensure: Any = fluvius.ensure_tariff_sheet
+    assert [call.args[1] for call in ensure.await_args_list] == asked
+    await entry.runtime_data.async_save()
+    assert hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]["fluvius"] == {
+        "2025": 17.51,
+        "2026": 17.85,
+    }
+    fluvius._cache.clear()
+    await entry.runtime_data.async_load_persistent()
+    assert fluvius.data_management_fee(2026) == 17.85
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

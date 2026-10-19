@@ -40,7 +40,6 @@ from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_KEMPEN,
     DSO_ORES,
     DSO_SIBELGA,
-    FLUVIUS_DATA_MANAGEMENT_HTVA,
     REGION_BRUSSELS,
     REGION_WALLONIA,
     TIER_T1,
@@ -129,7 +128,7 @@ def test_law_figures_carry_the_vat_the_card_states(stated: float | None, rate: f
     assert july.energy_contribution == pytest.approx(0.001057668 / 1.06 * (1 + rate))
     dsos = {"fluvius_imewo": DsoOverlay(tiers={}, transport=0.0, metering_per_year=0.0)}
     [fee] = (o.metering_per_year for o in resolve_network(dsos, taxes, date(2026, 7, 1)).values())
-    assert fee == pytest.approx(FLUVIUS_DATA_MANAGEMENT_HTVA * (1 + rate))
+    assert fee == pytest.approx(17.85 * (1 + rate))
 
 
 def test_law_bills_a_month_before_august_on_its_own_rates() -> None:

@@ -53,7 +53,10 @@ cards (`issues.sync_issues`).
    too, while nothing is held for the station and a retry may cure it.
    Then **the excise law** (`excise_law.ensure_excise_law`), daily for the
    whole process, from Justel: a failure keeps what is held (read before,
-   or restored from the Store) and is asked again six hours later.
+   or restored from the Store) and is asked again six hours later. A
+   Flemish entry then reads **Fluvius's gas tariff sheet**
+   (`fluvius.ensure_tariff_sheet`) of this year and the last, each once
+   for the process, with the same six hour wait after a failure.
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month, and
    (`PeriodBilling.fill`) the earlier contracts' own, each from the card

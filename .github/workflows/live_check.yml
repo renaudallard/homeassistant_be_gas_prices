@@ -51,10 +51,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # The script imports the integration, which imports Home Assistant,
-          # and the providers read their cards with the two PDF readers.
-          # Versions come from requirements-dev.txt so this runs against what
-          # the test suite proved, without a second copy of the numbers.
-          pip install -c requirements-dev.txt pypdf pdfplumber aiohttp homeassistant
+          # and the providers read their cards with the two PDF readers;
+          # defusedxml reads Fluvius's tariff sheet. Versions come from
+          # requirements-dev.txt so this runs against what the test suite
+          # proved, without a second copy of the numbers.
+          pip install -c requirements-dev.txt pypdf pdfplumber aiohttp homeassistant defusedxml
 
       - name: Check out the archive's texts
         # A card the archiver walked earlier and still holds is not rendered

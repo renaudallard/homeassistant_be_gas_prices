@@ -36,15 +36,12 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
-from .. import excise_law
+from .. import excise_law, fluvius
 from ..const import (
     CALIBER_Q10,
     ENERGY_CONTRIBUTION_KNOWN_FROM,
     ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA,
     ENERGY_CONTRIBUTION_ZEROED_FROM,
-    FLUVIUS_DATA_MANAGEMENT_HTVA,
-    FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
-    FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
     FLUVIUS_KEYS,
     GAS_EXCISE_KNOWN_FROM,
     GAS_EXCISE_KNOWN_UNTIL,
@@ -70,9 +67,6 @@ LAW_FIGURES = (
     ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA,
     ENERGY_CONTRIBUTION_KNOWN_FROM,
     ENERGY_CONTRIBUTION_ZEROED_FROM,
-    FLUVIUS_DATA_MANAGEMENT_HTVA,
-    FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
-    FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
     WALLOON_CONNECTION_FEE,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
 )
@@ -193,15 +187,14 @@ def resolve_network(
 ) -> dict[str, DsoOverlay]:
     """``dsos`` with the Fluvius data management fee where a card omits it.
 
-    Only within the tariff year the regulated figure is known for, and only
-    on a residential card, whose figures are VAT inclusive at the rate it
-    states.
+    Only for a delivery year whose Fluvius tariff sheet has been read
+    (fluvius.py), and only on a residential card, whose figures are VAT
+    inclusive at the rate it states.
     """
-    if taxes.vat_rate != 0.0 or not _in_window(
-        delivery, FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM, FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL
-    ):
+    htva = fluvius.data_management_fee(delivery.year)
+    if taxes.vat_rate != 0.0 or htva is None:
         return dsos
-    fee = FLUVIUS_DATA_MANAGEMENT_HTVA * _vat_factor(taxes)
+    fee = htva * _vat_factor(taxes)
     return {
         key: replace(overlay, metering_per_year=fee)
         if key in FLUVIUS_KEYS and overlay.metering_per_year == 0.0

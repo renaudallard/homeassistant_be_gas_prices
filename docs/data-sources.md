@@ -53,6 +53,25 @@ The months before 1 August 2026 are the quarterly figures typed in
 `const.py`. The live check reads the same page and fails when most of the
 fleet prints another excise than the one billed.
 
+## Fluvius's gas tariff sheet
+
+`fluvius.py` reads the data management fee of a yearly-read meter
+("Tarief databeheer", row "Jaaropname (o.a. digitale gasmeter G4 en G6 ...)")
+off Fluvius's yearly tariff list, which the VREG approves:
+
+- `GET https://www.fluvius.be/nl/factuur-en-tarieven/netkosten/netkosten-afname-aardgas`
+  lists a publication page per area and year,
+  `/nl/publicatie/<area>-distributienettarief-afname-aardgas-0101<year>-3112<year>`;
+- the first one of the year links its workbook,
+  `/sites/fluvius/files/.../*.xlsx`, read with the standard library's zip
+  reader and defusedxml, its unpacked size capped at 4 MiB.
+
+Every area prints the same fee (17,51 EUR/year excluding VAT in 2025,
+17,85 in 2026), so one sheet stands for all eight. A sheet that is not the
+year's gas tariff list, or whose fee row holds no single figure between 1
+and 100 EUR, gives nothing. A year once read is kept for the process and in
+each entry's Store; a failure waits six hours.
+
 ## The card archive
 
 The `archive_cards` workflow stores every card it parses daily in the

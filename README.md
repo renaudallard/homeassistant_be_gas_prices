@@ -71,6 +71,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   are what the law sets, whatever a stale or wrong card prints. The excise is
   read daily from the law itself on Justel, with the steps it has already
   voted for the coming years.
+- **The Fluvius fee a card leaves out**: a Flemish card that prints no data
+  management fee (Luminus's) is billed the one on Fluvius's tariff sheet of
+  the delivery year.
 - **Cubic metres to kWh**: the factor printed on your bill, or without one
   the monthly calorific value of your gas reception station, published by
   Atrias.
@@ -241,8 +244,9 @@ uses the held volume, or the typed one when none is held.
 Download the latest [release zip](https://github.com/renaudallard/homeassistant_be_gas_prices/releases),
 extract it under `<config>/custom_components/be_gas_prices/` and restart.
 
-`pypdf` and `pdfplumber` are the only extra runtime dependencies;
-Home Assistant installs them from the manifest.
+`pypdf`, `pdfplumber` and `defusedxml` (for Fluvius's tariff sheet) are the
+only extra runtime dependencies; Home Assistant installs them from the
+manifest.
 
 ## Configuration
 
@@ -306,6 +310,9 @@ Every hour, each entry runs one refresh:
   its reception station, and only the months not held yet.
 - **The excise law** on Justel (ejustice.just.fgov.be), once a day; a
   failure keeps what was read and waits six hours.
+- **Fluvius's gas tariff sheet** of this year and the last, for a Flemish
+  entry, once each: the data management fee a card may leave out. A failure
+  waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
 - **The gas meter**, from the recorder's statistics, on every refresh.

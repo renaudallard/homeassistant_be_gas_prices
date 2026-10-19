@@ -46,7 +46,7 @@ from typing import Any
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-from custom_components.be_gas_prices import excise_law
+from custom_components.be_gas_prices import excise_law, fluvius
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
@@ -68,6 +68,14 @@ from card_texts import in_daemon_thread  # type: ignore[import-not-found]
 
 TODAY = date(2026, 9, 29)
 Fetch = Callable[[Any, str, str], Awaitable[SupplierSnapshot]]
+
+
+@pytest.fixture(autouse=True)
+def _synthetic_fluvius_fee() -> None:
+    """The sheet's fee the synthetic cards print, so the fleet is measured
+    against it as against the real one."""
+    fluvius._cache.clear()
+    fluvius._cache[2026] = 18.5 / 1.06
 
 
 def _snapshot(
@@ -287,6 +295,41 @@ def test_a_fluvius_card_without_data_management_is_a_notice_in_its_year() -> Non
     assert list(_failing(lc.consensus(fleet("2027-02", 0.0)))) == [
         "gamma: fluvius_kempen metering for 2027-02"
     ]
+
+
+def test_a_fluvius_fleet_printing_another_fee_than_the_sheet_fails() -> None:
+    """The fee a card leaves out is billed from the sheet: most cards
+    printing another one means the sheet was misread or changed."""
+    cards = [_card(_snapshot(sid, metering=19.5)) for sid in ("alpha", "beta")]
+    assert list(_failing(lc.consensus(cards))) == [
+        "fluvius_kempen: metering for 2026-09 against the Fluvius sheet"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("fee", "status"),
+    [
+        (17.85, "ok"),
+        (None, "fail"),
+        (ExtractorError("HTTP 503 fetching https://www.fluvius.be"), "transient"),
+    ],
+)
+async def test_this_year_s_fluvius_sheet_is_read_before_the_fleet(
+    monkeypatch: pytest.MonkeyPatch, fee: float | Exception | None, status: str
+) -> None:
+    """Held for the fleet when it reads; no sheet or no fee fails, since a
+    Flemish card's missing fee then goes unbilled; the network is transient."""
+
+    async def fetch_fee(*_args: Any, **_kwargs: Any) -> float | None:
+        if isinstance(fee, Exception):
+            raise fee
+        return fee
+
+    monkeypatch.setattr(fluvius, "fetch_fee", fetch_fee)
+    fluvius._cache.clear()
+    check = await lc.check_fluvius_sheet(None, date(2026, 10, 19), sleep=_no_sleep)
+    assert (check.label, check.status) == ("fluvius: 2026 gas tariff sheet", status)
+    assert fluvius.data_management_fee(2026) == (17.85 if status == "ok" else None)
 
 
 def test_a_documented_card_error_is_a_notice_while_the_card_prints_it() -> None:
@@ -614,14 +657,18 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     async def check_excise_law(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: gas excise law", "ok")
 
+    async def check_fluvius_sheet(*_args: Any, **_kwargs: Any) -> Any:
+        return lc.Check("fluvius: 2026 gas tariff sheet", "ok")
+
     monkeypatch.setattr(lc, "check_excise_law", check_excise_law)
+    monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
     monkeypatch.setattr(lc, "check_fleet", check_fleet)
     fingerprint = tmp_path / "failures.txt"
     monkeypatch.setattr(sys, "argv", ["live_check.py", "--fingerprint", str(fingerprint)])
     assert lc.main() == 1
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     assert capsys.readouterr().out.startswith(
-        "# Live check: 1 pass, 1 fail, 0 transient, 0 notices"
+        "# Live check: 2 pass, 1 fail, 0 transient, 0 notices"
     )
 
     async def crash(*_args: Any, **_kwargs: Any) -> list[Any]:

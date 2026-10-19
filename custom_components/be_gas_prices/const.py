@@ -162,18 +162,6 @@ EXCISE_LAW_URL: Final = (
     "?language=fr&la=F&table_name=loi&cn=2004122730"
 )
 
-# The Fluvius data management fee for a yearly-read gas meter ("Jaaropname
-# (o.a. digitale gasmeter G4 en G6)"), in EUR/year EXCLUDING VAT: one figure
-# for all eight areas in the 2026 tariff lists (valid 1 January to 31 December
-# 2026), which every Flemish card prints as 18,92 including VAT but Luminus's,
-# which prints none. The DSO bills it for every connection whatever the
-# supplier, so a Flemish card without it is short of it rather than exempt,
-# and this stands in only there. Same discipline as the excise: the window is
-# the tariff year, and past it the card is read as before.
-FLUVIUS_DATA_MANAGEMENT_HTVA: Final = 17.85
-FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM: Final = (2026, 1)
-FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL: Final = (2027, 1)  # exclusive
-
 # The Walloon connection fee on gas ("redevance de raccordement", art. 40 of
 # the gas decree of 19 December 2002), in EUR/kWh and exempt from VAT. The
 # Walloon government's order of 19 June 2003 (art. 2) sets 0,0075 EUR for the

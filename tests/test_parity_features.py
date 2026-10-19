@@ -479,7 +479,10 @@ def test_the_fluvius_data_management_fee_stands_in_where_a_card_prints_none() ->
     assert resolved[DSO_FLUVIUS_KEMPEN].metering_per_year == pytest.approx(17.85 * 1.06)
     # A card that prints it keeps its own figure.
     assert resolve_network(snap.dsos, snap.taxes, date(2026, 9, 1)) == snap.dsos
-    # Outside the tariff year it is known for, the card is read as printed.
+    # Each year bills its own sheet's fee: 17,51 in 2025.
+    earlier = resolve_network(blank, snap.taxes, date(2025, 11, 1))
+    assert earlier[DSO_FLUVIUS_KEMPEN].metering_per_year == pytest.approx(17.51 * 1.06)
+    # A year whose sheet has not been read is read as printed.
     assert resolve_network(blank, snap.taxes, date(2027, 1, 1)) == blank
 
 

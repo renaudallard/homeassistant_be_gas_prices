@@ -109,3 +109,23 @@ def _excise_law_as_published(
     with patch.object(excise_law, "ensure_excise_law", AsyncMock()):
         yield
     excise_law._HELD.clear()
+
+
+# The data management fee each year's Fluvius gas tariff sheet prints, EUR/year
+# excluding VAT.
+FLUVIUS_FEES = {2025: 17.51, 2026: 17.85}
+
+
+@pytest.fixture(autouse=True)
+def _fluvius_sheets_as_published() -> Iterator[None]:
+    """A Flemish entry's tick reads Fluvius's tariff sheets. Tests see the
+    fees as published instead of the network."""
+    from custom_components.be_gas_prices import fluvius
+
+    fluvius._cache.clear()
+    fluvius._cache.update(FLUVIUS_FEES)
+    fluvius._failed_at.clear()
+    with patch.object(fluvius, "ensure_tariff_sheet", AsyncMock()):
+        yield
+    fluvius._cache.clear()
+    fluvius._failed_at.clear()

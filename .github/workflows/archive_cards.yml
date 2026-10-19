@@ -59,12 +59,14 @@ jobs:
           python -m pip install --upgrade pip
           # The script imports the integration, which imports Home Assistant,
           # for the extractors and the snapshot codec; the providers read
-          # their cards with the two PDF readers. freezegun pins the clock to
-          # a row's capture day while a stored month is replayed through the
-          # current parser. Versions come from requirements-dev.txt so this
-          # runs against what the test suite proved.
+          # their cards with the two PDF readers, and the integration's
+          # Fluvius sheet reader needs defusedxml to import. freezegun pins
+          # the clock to a row's capture day while a stored month is replayed
+          # through the current parser. Versions come from
+          # requirements-dev.txt so this runs against what the test suite
+          # proved.
           pip install -c requirements-dev.txt \
-            pypdf pdfplumber aiohttp homeassistant freezegun
+            pypdf pdfplumber aiohttp homeassistant defusedxml freezegun
           # The engine for cards published as page images (Ecofix's since
           # August 2026). Installed here and nowhere else: an installation
           # reads the rows this walk writes. From its main branch, so each

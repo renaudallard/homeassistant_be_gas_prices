@@ -41,7 +41,8 @@ A Belgian gas bill fuses three sources:
 
 The rule that shapes the codebase comes from the electricity integration: no
 supplier price is ever typed into Python source. Every figure comes from a
-live card. The excise is read from the law itself (`excise_law.py`). The few
+live card. The excise is read from the law itself (`excise_law.py`) and the
+Fluvius data management fee from Fluvius's tariff sheet (`fluvius.py`). The few
 regulated figures in `const.py` are set by law or by the regulator for
 everyone they apply to, carry the months they are known to cover and expire
 into "read the card" past them.
@@ -61,6 +62,7 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption out of recorder statistics, in m³ or kWh. |
 | `calorific.py` | Atrias's monthly gross calorific value per gas reception station: the kWh one cubic metre is worth. |
 | `excise_law.py` | The residential special excise and its voted steps, read daily from article 419 on Justel and kept in the Store. |
+| `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store. |
 | `month_cards.py` | The card of a past month: the card archive in be_price_cards, then the supplier's archive. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
 | `contract_periods.py` | Contracts the household held earlier in the year, recorded at a switch, billed on their own suppliers' cards. |
 | `manual_rate.py` | Figures the household typed from its own contract, laid over the signing card. |
@@ -100,8 +102,8 @@ config entry
 async_setup_entry                       __init__.py
     GasCoordinator(hass, entry, defer_meter_reads=True)
     async_load_persistent()             last card, index table, calorific values,
-                                        excise law, month cards, figures of the
-                                        last meter read
+                                        excise law, Fluvius fees, month cards,
+                                        figures of the last meter read
     async_config_entry_first_refresh()
         |
         v
@@ -111,6 +113,8 @@ async_setup_entry                       __init__.py
         index:     extractor.fetch_index() twice a day        (IndexedRates)
         calorific: Atrias GCV of the reception station daily  calorific.py
         excise:    article 419 from Justel daily              excise_law.py
+        fluvius:   this and last year's gas tariff sheet      fluvius.py
+                   (a Flemish entry), each once
         months:    past months' cards, supplier archive then card archive
                    (the first tick's in the background, then async_reprice)
         meter:     recorder daily changes, m³ or kWh           gas_meter.py

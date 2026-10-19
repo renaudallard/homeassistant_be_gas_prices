@@ -111,9 +111,12 @@ the card was printed for:
   TotalEnergies a pre-August energy contribution.
 - The energy contribution, 0,9978 EUR/MWh excluding VAT from January 2025 to
   July 2026, zero from 1 August 2026.
-- Fluvius's data management fee, 17,85 EUR/year excluding VAT for every area
-  in 2026, where a Flemish card prints none (Luminus's 2026 cards), the
-  custom supplier's typed card with metering left at 0 included.
+- Fluvius's data management fee for a yearly-read meter, read off Fluvius's
+  gas tariff sheet of the delivery year (`fluvius.py`; 17,51 EUR/year
+  excluding VAT in 2025, 17,85 in 2026, one figure for every area), where a
+  Flemish card prints none (Luminus's), the custom supplier's typed card
+  with metering left at 0 included. A year whose sheet has not been read
+  bills the card as printed.
 - The Walloon connection fee, 0,000075 EUR/kWh (0,0075 c EUR/kWh) below
   1 GWh a year, VAT exempt, set by the Walloon order of 19 June 2003 (art. 2)
   and in force since 15 July 2003, on a card of the Walloon DSOs.
@@ -122,8 +125,8 @@ the card was printed for:
   no end is assumed; the live check fails when most Walloon cards print
   another fee.
 
-The energy contribution and the Fluvius fee carry their known window in
-`const.py`; past it the card is read as printed. Only residential cards are touched. The figures excluding VAT are
+The energy contribution carries its known window in `const.py`; past it the
+card is read as printed. Only residential cards are touched. The figures excluding VAT are
 put on the rate the card states for its customers (`card_vat_rate`) when it
 is one Belgium levies (6, 12 or 21 %), else on the residential 6 %: every
 card read so far states 6 % or nothing, and a stated rate outside those

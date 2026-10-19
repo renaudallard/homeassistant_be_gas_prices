@@ -158,9 +158,12 @@ How the cross-check decides:
   failure: the excise of a month the law read from Justel or `const.py`
   sets, the Walloon connection fee of any month since the order of 2003,
   the energy contribution of a month `const.py` knows the law for, and a
-  Fluvius data management fee a card leaves out in the tariff year
-  `const.py` carries the regulated one for. Past those windows the same
-  departure fails.
+  Fluvius data management fee a card leaves out in a year whose Fluvius
+  tariff sheet was read. Past those the same departure fails.
+- The run reads this year's Fluvius gas tariff sheet first too (`fluvius:
+  <year> gas tariff sheet`, a failure when none is listed or it gives no
+  fee), and a Fluvius area whose fleet mostly prints another metering fee
+  than the sheet's fails as `... metering ... against the Fluvius sheet`.
 - A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
   and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
   T1) is a notice while the card prints that value: it is billed as

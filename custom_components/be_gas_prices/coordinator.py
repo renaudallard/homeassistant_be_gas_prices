@@ -57,7 +57,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import calorific, excise_law
+from . import calorific, excise_law, fluvius
 from .bill import IndexValue, bill_month, contract_leg, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -82,6 +82,7 @@ from .const import (
     DEFAULT_CONVERSION_MODE,
     DEFAULT_DAILY_COMPARE,
     DOMAIN,
+    REGION_FLANDERS,
     STORAGE_VERSION,
     SUPPLIER_CUSTOM,
     UPDATE_INTERVAL_MINUTES,
@@ -369,6 +370,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 if isinstance(values, dict)
             }
         excise_law.restore(blob.get("excise_law"))
+        fluvius.restore(blob.get("fluvius"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
@@ -404,6 +406,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
             "excise_law": excise_law.held_table(),
+            "fluvius": fluvius.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
             "backfill": self.backfill_stamp,
@@ -443,7 +446,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         index = _digest(self._index_table)
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
-        law = _digest([LAW_FIGURES, excise_law.held_table()])
+        law = _digest([LAW_FIGURES, excise_law.held_table(), fluvius.held_table()])
         return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}"
 
     # ---- the card ---------------------------------------------------------
@@ -959,6 +962,12 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # The excise the law sets, which every residential month is
             # resolved against when it is priced below.
             await excise_law.ensure_excise_law(self._session)
+            if self.region == REGION_FLANDERS:
+                # The data management fee a Flemish card may leave out, for
+                # this year and the last, which the rolling year bills.
+                year = dt_util.now().year
+                for wanted in (year - 1, year):
+                    await fluvius.ensure_tariff_sheet(self._session, wanted)
         today = dt_util.now().date()
         needed = self._months_needed(today)
         if self._first_tick:

@@ -40,10 +40,13 @@ says nothing about the card, and checks what came back:
     something the other suppliers' cards of the same month do not is stale or
     misread, and the integration bills what the card prints. Where it bills
     the law or the regulated figure instead (the federal levies and the Walloon
-    connection fee of a month const.py knows, a Fluvius data management fee
-    the card leaves out), or the card prints a figure its provider notes
+    connection fee of a month it knows the law for, a Fluvius data management
+    fee the card leaves out), or the card prints a figure its provider notes
     document as the card's error, the departure is a notice rather than a
-    failure.
+    failure;
+  - the excise law on Justel and this year's Fluvius gas tariff sheet read as
+    the integration reads them, and the fleet's excise, Walloon connection fee
+    and Fluvius metering fee measured against what the integration bills.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -87,12 +90,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
-from custom_components.be_gas_prices import excise_law  # noqa: E402
+from custom_components.be_gas_prices import excise_law, fluvius  # noqa: E402
 from custom_components.be_gas_prices.const import (  # noqa: E402
     ENERGY_CONTRIBUTION_KNOWN_FROM,
     EXCISE_LAW_URL,
-    FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM,
-    FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL,
     FLUVIUS_KEYS,
     REGION_BRUSSELS,
     REGION_WALLONIA,
@@ -580,18 +581,32 @@ def _billed_from_law(name: str, month: str) -> bool:
     return parsed >= start and (end is None or parsed < end)
 
 
-def _filled_from_regulation(figure: Figure) -> bool:
-    """A Fluvius row that prints no data management fee, in the tariff year
-    const.py knows the fee for: the integration bills the regulated one
-    (providers/_resolve.py), so the card is wrong but nobody is billed on it."""
+def _sheet_fee(figure: Figure) -> float | None:
+    """The data management fee including VAT a Fluvius row of a card is
+    billed when it prints none, from the year's tariff sheet, or None for
+    any other figure and a year whose sheet was not read."""
     parsed = label_month(figure.month)
-    return (
-        figure.name == "metering"
-        and figure.value == 0.0
-        and figure.scope in FLUVIUS_KEYS
-        and parsed is not None
-        and FLUVIUS_DATA_MANAGEMENT_KNOWN_FROM <= parsed < FLUVIUS_DATA_MANAGEMENT_KNOWN_UNTIL
-    )
+    if figure.name != "metering" or figure.scope not in FLUVIUS_KEYS or parsed is None:
+        return None
+    fee = fluvius.data_management_fee(parsed[0])
+    return None if fee is None else fee * (1 + VAT_RATE_REDUCED)
+
+
+def _filled_from_regulation(figure: Figure) -> bool:
+    """A Fluvius row that prints no data management fee, in a year whose
+    tariff sheet was read: the integration bills the sheet's fee
+    (providers/_resolve.py), so the card is wrong but nobody is billed on it."""
+    return figure.value == 0.0 and _sheet_fee(figure) is not None
+
+
+def _billed(first: Figure) -> tuple[float, str] | None:
+    """What the integration bills for ``first``'s figure and month whatever
+    the card prints, and where that comes from, or None."""
+    law = _law_figure(first.name, first.month)
+    if law is not None:
+        return law, "the law"
+    fee = _sheet_fee(first)
+    return None if fee is None else (fee, "the Fluvius sheet")
 
 
 def _known_error(figure: Figure, today: date) -> str | None:
@@ -617,20 +632,21 @@ def _departures(group: list[Figure], today: date) -> Iterator[Check]:
     values = sorted({f.value for f in group})
     support = {v: {f.voter for f in group if agree(f.value, v, unit)} for v in values}
     best = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
-    law = _law_figure(first.name, first.month)
+    billed = _billed(first)
     if (
-        law is not None
+        billed is not None
         and len(support[best]) >= 2
-        and len(support[best]) > len({f.voter for f in group if agree(f.value, law, unit)})
+        and len(support[best]) > len({f.voter for f in group if agree(f.value, billed[0], unit)})
     ):
         # Most of the fleet prints another figure than the one billed: the
-        # law changed and was misread or not followed, or a figure typed in
-        # const.py is wrong. Every residential month is billed on it.
+        # law or the sheet changed and was misread or not followed, or a
+        # figure typed in const.py is wrong. Every residential month is
+        # billed on it.
         yield Check(
-            f"{first.scope}: {first.name} for {first.month} against the law",
+            f"{first.scope}: {first.name} for {first.month} against {billed[1]}",
             "fail",
             f"{', '.join(sorted({f.supplier for f in group if agree(f.value, best, unit)}))} "
-            f"print {shown(best, unit)} where the integration bills {shown(law, unit)}",
+            f"print {shown(best, unit)} where the integration bills {shown(billed[0], unit)}",
         )
     rivals = [v for v in values if not agree(v, best, unit)]
     if not rivals:
@@ -732,6 +748,30 @@ async def check_excise_law(
     return Check(label, "ok")
 
 
+async def check_fluvius_sheet(
+    session: aiohttp.ClientSession,
+    today: date,
+    *,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> Check:
+    """This year's Fluvius gas tariff sheet read as the integration reads
+    it, and held for the fleet's Fluvius fees to be measured against: run
+    before the fleet. A year Fluvius lists no sheet for, or a sheet that no
+    longer gives the fee, fails: the fee a Flemish card leaves out is then
+    left out of the bill too."""
+    label = f"fluvius: {today.year} gas tariff sheet"
+    try:
+        fee = await fetch_with_retry(
+            functools.partial(fluvius.fetch_fee, session, today.year), sleep=sleep
+        )
+    except Exception as err:  # reported like a card
+        return _failure(label, err)
+    if fee is None:
+        return Check(label, "fail", "no sheet listed, or no yearly-read data management fee on it")
+    fluvius.hold(today.year, fee)
+    return Check(label, "ok")
+
+
 def exit_code(checks: Iterable[Check]) -> int:
     statuses = {check.status for check in checks}
     if "fail" in statuses:
@@ -805,7 +845,7 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             # Every render goes through a hook that runs it in a daemon
             # thread, so one that never returns cannot hold the exit.
             hooks.enter_context(render_through(_render if cache is None else cache.render))
-            checks = [await check_excise_law(session)]
+            checks = [await check_excise_law(session), await check_fluvius_sheet(session, today)]
             checks += await check_fleet(session, all_extractors(), today)
     print(render_report(checks))
     if cache is not None:
