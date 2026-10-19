@@ -79,10 +79,10 @@ signing date. A signing card no one serves any more (neither the supplier's
 archive nor the project's, which keeps twelve months) leaves each month on
 its own card's leg. Figures the household typed from its contract
 (`manual_rate.py`) are laid over that leg. Where the supplier has published no
-index value up to month M (Ecofix publishes none, Trevion's values begin in
-March 2026), the card of month M prints only its own price: the index that
-price was set at is read back off it, and the signed or typed formula is
-priced at that index.
+index value up to month M (Ecofix publishes none, and Trevion's begin with
+the value its January card names), the card of month M prints only its own
+price: the index that price was set at is read back off it, and the signed
+or typed formula is priced at that index.
 
 A comparison (`compare.quote_contract`) prices an indexed leg at the index
 value of the month quoted or, while the supplier has not published that,

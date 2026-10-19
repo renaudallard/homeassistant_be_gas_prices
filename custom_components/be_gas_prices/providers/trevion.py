@@ -33,13 +33,15 @@ listing page links every card it still serves, one per month:
 
 ``-N`` is a reissue. The unsuffixed name of a reissued month keeps answering
 (both ``-202608.pdf`` and ``-202608-1.pdf`` do), so the listing's href is
-what counts and a URL is never built. The listing is also the archive, a
-rolling window of recent months (April to October 2026 on 4 October 2026).
-It sends neither ETag nor Last-Modified, so there is no cheap probe.
+what counts and a URL is never built. The listing is also the archive,
+newest first over pages of seven months: page 1 held April to October 2026
+on 19 October 2026, ``page/2/`` September 2025 to March 2026, and so on back
+to August 2024 on page 4, the page after the last listing no card. It sends
+neither ETag nor Last-Modified, so there is no cheap probe.
 
 The cards are Word exports. pdfplumber reads their header and energy block
 one glyph per line, because stray whitespace glyphs sit at almost every
-height; pypdf reads every card from March to September 2026 cleanly, so it
+height; pypdf reads every card from January to October 2026 cleanly, so it
 is the reader here.
 
 The energy price is "(0,102 x TTF_RLP + 0,50) x 1,06" in c EUR/kWh against
@@ -66,6 +68,7 @@ from datetime import date
 from urllib.parse import urljoin
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from ..const import REGION_FLANDERS
 from ._network import (
@@ -135,6 +138,40 @@ def _listed_cards(html: str) -> dict[date, str]:
     return {key: url for key, (_rank, url) in best.items()}
 
 
+# Pages read at most, about three and a half years of cards: a site that
+# answered every page number with the same page cannot keep the walk going.
+_MAX_PAGES = 6
+
+
+def _page_url(page: int) -> str:
+    return _LISTING_URL if page == 1 else f"{_LISTING_URL}page/{page}/"
+
+
+async def _cards_back_to(session: aiohttp.ClientSession, oldest: date) -> dict[date, str]:
+    """The cards the listing gives from the newest back to ``oldest``'s
+    month, reading as many of its pages as that takes.
+
+    The walk ends at the page that lists ``oldest``'s month or an older one,
+    at a page that lists no card it has not seen, or at a later page the
+    site no longer serves; a transient failure raises."""
+    cards: dict[date, str] = {}
+    for page in range(1, _MAX_PAGES + 1):
+        try:
+            html = await fetch_text(session, _page_url(page))
+        except ExtractorError as err:
+            if page == 1 or is_transient_fetch_error(str(err)):
+                raise
+            break
+        listed = _listed_cards(html)
+        if not listed.keys() - cards.keys():
+            break
+        for key, url in listed.items():
+            cards.setdefault(key, url)
+        if min(listed) <= oldest:
+            break
+    return cards
+
+
 def _check(contract_id: str, region: str) -> None:
     require_contract(_CONTRACTS_BY_ID, contract_id, "Trevion")
     if region != REGION_FLANDERS:
@@ -159,8 +196,8 @@ async def _read(
 async def _read_month(
     session: aiohttp.ClientSession, contract_id: str, region: str, year_month: date
 ) -> SupplierSnapshot | None:
-    cards = _listed_cards(await fetch_text(session, _LISTING_URL))
-    url = cards.get(date(year_month.year, year_month.month, 1))
+    month = date(year_month.year, year_month.month, 1)
+    url = (await _cards_back_to(session, month)).get(month)
     if url is None:
         return None
     return await _read(session, contract_id, region, url)
@@ -182,10 +219,17 @@ async def fetch_for_month(
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     """TTF_RLP by month, off the cards that name it (see the module
-    docstring for which ones count)."""
-    cards = _listed_cards(await fetch_text(session, _LISTING_URL))
+    docstring for which ones count), from last year's December card on:
+    the January card names December's value, the first a bill of this year
+    can be priced at, and the December card stands in while January's is
+    not out. The older cards a listing page also holds price nothing."""
+    year = dt_util.now().year
+    cards = await _cards_back_to(session, date(year, 1, 1))
+    first = date(year - 1, 12, 1)
     values: dict[str, float] = {}
-    for url in cards.values():
+    for month, url in cards.items():
+        if month < first:
+            continue
         try:
             text = await fetch_pdf_text(session, url)
         except ExtractorError as err:

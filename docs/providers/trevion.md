@@ -7,7 +7,11 @@ Tests: `tests/test_trevion.py`, fixtures in `tests/fixtures/trevion/`.
 
 - Listing: https://trevion.be/tariefkaarten/ (WordPress). It links every
   card Trevion still serves, electricity and gas, residential and
-  professional.
+  professional, newest first over pages of seven gas months:
+  `https://trevion.be/tariefkaarten/page/<n>/` from page 2 on, and the page
+  after the last answers with no card. On 2026-10-19 page 1 held April to
+  October 2026, page 2 September 2025 to March 2026, page 4 August 2024 to
+  January 2025.
 - Gas card: `https://trevion.be/tariefkaarten/Tariefkaart-Gas-Flex-Particulier-<YYYYMM>[-N].pdf`.
   `-N` is a reissue. The unsuffixed name of a reissued month still answers
   (`-202608.pdf` and `-202608-1.pdf` are both 200), so the listing's href
@@ -29,7 +33,7 @@ year, open-ended, online only.
 
 Reader: pypdf (`fetch_pdf_text`). pdfplumber lays the header and energy
 block out one glyph per line on these Word exports (stray whitespace glyphs
-at almost every height); pypdf reads all eight cards from March to
+at almost every height); pypdf reads all ten cards from January to
 October 2026 cleanly.
 
 - Card month: "Geldig voor particuliere contracten afgesloten in
@@ -64,6 +68,8 @@ The value is always the TTF RLP of the month before the card, as OCTA+
 
 | Card | Month named | Value | OCTA+ for the month before |
 |---|---|---|---|
+| 202601 | december 2025 | 27,65 | 12/2025 27,652 (Bolt's TTF RLP) |
+| 202602-1 | januari 2026 | 34,06 | 01/2026 34,067 (Bolt's TTF RLP) |
 | 202603 | maart 2026 | 33,30 | 02/2026 33,296 |
 | 202604 | maart 2026 | 51,26 | 03/2026 51,264 |
 | 202605-1 | april 2026 | 46,00 | 04/2026 46,001 |
@@ -73,15 +79,21 @@ The value is always the TTF RLP of the month before the card, as OCTA+
 | 202609 | augustus 2026 | 61,72 | 08/2026 61,729 |
 
 The month named on the March card is wrong. `fetch_index` downloads every
-listed card and keeps a value only where the named month is the month
-before the card's own, so February 2026 is left out. `published_index` is
-the pure reader. One dead link is skipped; a transient failure raises.
+card from last year's December card on, reading the listing's later pages
+for those page 1 no longer holds, and keeps a value only where the named
+month is the month before the card's own, so February 2026 is left out.
+The January card names December's value, the first a month of this year
+can be priced at; the older cards a page also lists are not downloaded. `published_index` is the pure reader. One dead link is
+skipped, and so is a later page the site no longer serves; a transient
+failure raises.
 
 ## Archive
 
-The listing is the archive, a rolling window of recent months: on
-2026-10-04 it held April to October 2026. `fetch_for_month` takes the
+The listing is the archive. `fetch_for_month` reads its pages until one
+lists the month asked for or an older one, at most six, takes the
 listing's href for the month and refuses a card naming another month.
+Page 3 lists the August 2025 card as `...-250508.pdf`, which reads as
+August 2505, so August 2025 is not served.
 
 ## Known quirks and card errors
 
@@ -104,6 +116,10 @@ listing's href for the month and refuses a card naming another month.
 - March card: pre-August excise and contribution.
 - `published_index` on the September, August and March cards.
 - Listing: one href per month, the reissue, no Professioneel card.
-- `fetch`, `fetch_index` (the full table, a dead link, an outage) and
-  `fetch_for_month` (the URL taken from the listing, a card for another
-  month, a month not listed, a transient failure).
+- `fetch`, `fetch_index` (the full table, the cards of page 2 back to
+  January and none older than December, the walk reading page 1 alone
+  once it reaches the month, a dead link, a later page gone, an outage)
+  and `fetch_for_month` (the URL taken from the listing, a month on page 2,
+  page 1 alone for a month it lists, a card for another month, a month not
+  listed, a transient failure).
+- January and February 2026 cards: the values they name.

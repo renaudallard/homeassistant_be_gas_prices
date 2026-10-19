@@ -27,11 +27,12 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import PurePosixPath
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
@@ -61,6 +62,24 @@ def _card(name: str) -> str:
 def _by_url(url: str) -> str:
     """The fixture card a listing href names."""
     return _card(PurePosixPath(url).name)
+
+
+def _held_or_404(_session: object, url: str) -> str:
+    """The fixture card a listing href names, or the 404 of a dead link
+    for the cards of 2025 the fixtures do not hold."""
+    if "-2025" in url:
+        raise ExtractorError(f"HTTP 404 fetching {url}")
+    return _by_url(url)
+
+
+def _pages(_session: object, url: str) -> str:
+    """Page 1 as on 29 September, page 2 as on 19 October, and the empty
+    page that follows the last."""
+    if url == "https://trevion.be/tariefkaarten/":
+        return fixture_page("trevion", "tariefkaarten.html")
+    if url == "https://trevion.be/tariefkaarten/page/2/":
+        return fixture_page("trevion", "tariefkaarten-page-2.html")
+    return "<html></html>"
 
 
 def test_september_card_prices_at_the_last_known_value() -> None:
@@ -239,6 +258,101 @@ async def test_fetch_for_month_follows_the_listing_href() -> None:
     assert fetched.call_args.args[1] == (
         "https://trevion.be/tariefkaarten/Tariefkaart-Gas-Flex-Particulier-202605-1.pdf"
     )
+
+
+async def test_fetch_for_month_reads_the_older_pages() -> None:
+    """January 2026 is on page 2 of the listing, not page 1."""
+    listing = AsyncMock(side_effect=_pages)
+    fetched = AsyncMock(side_effect=lambda _s, url: _by_url(url))
+    with (
+        patch.object(trevion, "fetch_text", listing),
+        patch.object(trevion, "fetch_pdf_text", fetched),
+    ):
+        snap = await trevion.fetch_for_month(
+            AsyncMock(), _CONTRACT, REGION_FLANDERS, date(2026, 1, 1)
+        )
+    assert snap is not None
+    assert snap.valid_until == date(2026, 1, 31)
+    assert fetched.call_args.args[1].endswith("/Tariefkaart-Gas-Flex-Particulier-202601.pdf")
+    # Page 2 lists September 2025 and older: no page after it is asked for.
+    assert [call.args[1] for call in listing.call_args_list] == [
+        "https://trevion.be/tariefkaarten/",
+        "https://trevion.be/tariefkaarten/page/2/",
+    ]
+
+
+async def test_fetch_for_month_reads_page_1_alone_for_a_month_it_lists() -> None:
+    listing = AsyncMock(side_effect=_pages)
+    with (
+        patch.object(trevion, "fetch_text", listing),
+        patch.object(
+            trevion, "fetch_pdf_text", AsyncMock(side_effect=lambda _s, url: _by_url(url))
+        ),
+    ):
+        assert await trevion.fetch_for_month(
+            AsyncMock(), _CONTRACT, REGION_FLANDERS, date(2026, 5, 1)
+        )
+    assert listing.await_count == 1
+
+
+async def test_a_later_page_gone_keeps_page_1_but_an_outage_raises() -> None:
+    def page_2(message: str) -> AsyncMock:
+        def answer(_session: object, url: str) -> str:
+            if url.endswith("/page/2/"):
+                raise ExtractorError(f"{message} fetching {url}")
+            return _pages(_session, url)
+
+        return AsyncMock(side_effect=answer)
+
+    cards = AsyncMock(side_effect=_held_or_404)
+    with (
+        freeze_time(datetime(2026, 10, 19, 12)),
+        patch.object(trevion, "fetch_text", page_2("HTTP 404")),
+        patch.object(trevion, "fetch_pdf_text", cards),
+    ):
+        table = await trevion.fetch_index(AsyncMock())
+    assert sorted(table["TTF_RLP"]) == [f"2026-{month:02d}" for month in range(3, 9)]
+    with (
+        freeze_time(datetime(2026, 10, 19, 12)),
+        patch.object(trevion, "fetch_text", page_2("HTTP 503")),
+        patch.object(trevion, "fetch_pdf_text", cards),
+        pytest.raises(ExtractorError),
+    ):
+        await trevion.fetch_index(AsyncMock())
+
+
+async def test_fetch_index_reads_the_cards_back_to_january() -> None:
+    """From page 2 the January card gives December 2025 and the February
+    card January 2026; the March card names its own month and stays out."""
+    cards = AsyncMock(side_effect=_held_or_404)
+    with (
+        freeze_time(datetime(2026, 10, 19, 12)),
+        patch.object(trevion, "fetch_text", AsyncMock(side_effect=_pages)),
+        patch.object(trevion, "fetch_pdf_text", cards),
+    ):
+        table = await trevion.fetch_index(AsyncMock())
+    # September to November 2025, also on page 2, price nothing this year.
+    asked = {PurePosixPath(call.args[1]).name for call in cards.call_args_list}
+    assert "Tariefkaart-Gas-Flex-Particulier-202512.pdf" in asked
+    assert not asked & {f"Tariefkaart-Gas-Flex-Particulier-2025{m}.pdf" for m in ("09", "10", "11")}
+    assert table["TTF_RLP"]["2025-12"] == pytest.approx(27.65)
+    assert table["TTF_RLP"]["2026-01"] == pytest.approx(34.06)
+    assert "2026-02" not in table["TTF_RLP"]
+    assert table["TTF_RLP"]["2026-08"] == pytest.approx(61.72)
+
+
+async def test_the_walk_reads_page_1_alone_once_it_reaches_the_month() -> None:
+    """Page 1 lists March to September 2026: back to January 2027 it is
+    all the walk reads, back to January 2026 it reads page 2 as well."""
+    listing = AsyncMock(side_effect=_pages)
+    with patch.object(trevion, "fetch_text", listing):
+        cards = await trevion._cards_back_to(AsyncMock(), date(2027, 1, 1))
+    assert listing.await_count == 1
+    assert min(cards) == date(2026, 3, 1)
+    with patch.object(trevion, "fetch_text", listing):
+        cards = await trevion._cards_back_to(AsyncMock(), date(2026, 1, 1))
+    assert listing.await_count == 3
+    assert min(cards) == date(2025, 9, 1)
 
 
 async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:
