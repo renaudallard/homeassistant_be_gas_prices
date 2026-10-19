@@ -367,7 +367,9 @@ def test_a_day_before_the_billed_year_without_a_factor_is_left_out() -> None:
 
 def test_rolling_year_scales_a_few_missing_days_and_refuses_more() -> None:
     today = date(2026, 9, 29)
-    full = {today - timedelta(days=n): 10.0 for n in range(365)}
+    # The 365 days before today, and today's first hours, which are no day.
+    full = {today - timedelta(days=n): 10.0 for n in range(1, 366)}
+    full[today] = 2.0
     assert rolling_year_kwh(full, today) == pytest.approx(3650.0)
     gappy = {day: value for day, value in full.items() if day.day != 1}
     assert rolling_year_kwh(gappy, today) == pytest.approx(3650.0)
@@ -426,6 +428,19 @@ def test_year_end_projection_uses_last_years_remaining_days() -> None:
     assert costs.projected_year_kwh == pytest.approx(costs.ytd_kwh + 11 * 30.0)
     assert costs.projected_year_end_cost is not None
     assert costs.projected_year_end_cost > costs.current_year_cost
+
+
+def test_year_end_projection_counts_the_rest_of_today() -> None:
+    """At 01:00 today's row holds an hour: the other 23 are still to come,
+    on last year's same day."""
+    today = date(2026, 12, 20)
+    days = {
+        date(2025, 1, 1) + timedelta(days=n): 30.0 for n in range((today - date(2025, 1, 1)).days)
+    }
+    days[today] = 1.25
+    assert _remaining_days_last_year(days, today) == pytest.approx(28.75 + 11 * 30.0)
+    days[today] = 45.0
+    assert _remaining_days_last_year(days, today) == pytest.approx(11 * 30.0)
 
 
 @pytest.mark.parametrize(

@@ -200,7 +200,7 @@ All sensors share one device per entry, named after the contract.
 | `current_year_cost` | The year's running bill, each month on its own card, fixed costs accrued by the day from 1 January (or the contract start when the year counts from it), with a per-month breakdown attribute and the earlier contracts of the year that could not be priced. `TOTAL` and monetary, so the Energy dashboard can use it. |
 | `current_month_cost` | The running month's bill. |
 | `year_to_date_consumption` | kWh the meter recorded this year, from the contract start when the year counts from it. |
-| `projected_year_cost` | Shown as *Rolling year cost*. The last 365 days' volume at today's price plus a year of fixed costs: roughly what a year on this contract costs. |
+| `projected_year_cost` | Shown as *Rolling year cost*. The volume of the 365 days before today at today's price plus a year of fixed costs: roughly what a year on this contract costs. |
 | `projected_year_end_cost` | This year so far plus last year's remaining days at today's price. |
 | `projected_year_consumption`, `rolling_year_consumption` | The corresponding volumes. |
 | `contract_end_date` | With an end date set, for a renewal reminder. |
@@ -211,9 +211,9 @@ the index values and the calorific values again, even while the card cannot
 be read.
 
 The running costs report `unknown` until a gas meter is readable. The rolling
-year needs 350 of the last 365 days on record and the year-end projection
-every remaining day of last year, so all four stay `unknown` until the meter
-has about a year of history.
+year needs 350 of the 365 days before today on record and the year-end
+projection every remaining day of last year, so all four stay `unknown`
+until the meter has about a year of history.
 
 Startup reads no meter. Home Assistant waits on each integration's first
 refresh, with 300 s for all of them together, and a year of meter statistics

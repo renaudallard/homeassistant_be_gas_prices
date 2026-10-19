@@ -149,14 +149,16 @@ the custom supplier on the card typed for it). Their last month's card is
 their current card: a month without a card of its own is billed on it, or
 on today's card when it is not held or cannot price the household.
 
-- `rolling_year_kwh`: the last 365 days, up to 15 missing days scaled across;
-  more missing and it is unknown. Gas is too seasonal for a shorter window to
-  be scaled to a year.
+- `rolling_year_kwh`: the 365 days before today, whose own row holds only
+  the hours so far, up to 15 missing days scaled across; more missing and it
+  is unknown. Gas is too seasonal for a shorter window to be scaled to a
+  year.
 - A measured rolling year replaces the typed annual volume for the tier and
   the excise slices.
 - `projected_year_end_cost`: the year so far as billed, plus last year's
   same remaining days at today's price and the remaining days' fixed costs;
-  unknown unless every one of those days is on record.
+  unknown unless every one of those days is on record. Today counts among
+  them, for what last year's same day used beyond what today has so far.
 
 ## Cubic metres and kWh
 

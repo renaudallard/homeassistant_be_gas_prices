@@ -121,14 +121,16 @@ def meter_start(today: date) -> date:
 
 
 def rolling_year_kwh(days: Mapping[date, float], today: date) -> float | None:
-    """What the meter recorded over the last 365 days, today included.
+    """What the meter recorded over the 365 days before today.
 
+    Today's own row holds only the hours so far, so it is no day of a year.
     Up to MEASURED_YEAR_GAP_DAYS missing days are scaled across; with more
     missing the window is not a year and the answer is None. Gas is too
     seasonal for a shorter window to be scaled to a year at all.
     """
-    start = today - timedelta(days=MEASURED_FULL_YEAR_DAYS - 1)
-    window = [value for day, value in days.items() if start <= day <= today]
+    end = today - timedelta(days=1)
+    start = end - timedelta(days=MEASURED_FULL_YEAR_DAYS - 1)
+    window = [value for day, value in days.items() if start <= day <= end]
     if len(window) < MEASURED_FULL_YEAR_DAYS - MEASURED_YEAR_GAP_DAYS:
         return None
     return sum(window) * MEASURED_FULL_YEAR_DAYS / len(window)
@@ -236,12 +238,13 @@ def running_costs(
 
 
 def _remaining_days_last_year(kwh_days: Mapping[date, float], today: date) -> float | None:
-    """What the meter recorded last year from tomorrow's date to 31 December,
-    the stand-in for what the rest of this year will use. None unless every
-    one of those days is on record: a year-end figure built on a gap would
-    read as a forecast it is not."""
+    """What the meter recorded last year from today's date to 31 December,
+    less what it has recorded today so far: the stand-in for what the rest
+    of this year will use. None unless every one of those days is on
+    record: a year-end figure built on a gap would read as a forecast it is
+    not."""
     total = 0.0
-    day = today + timedelta(days=1)
+    day = today
     end = date(today.year, 12, 31)
     while day <= end:
         try:
@@ -252,6 +255,9 @@ def _remaining_days_last_year(kwh_days: Mapping[date, float], today: date) -> fl
         value = kwh_days.get(last_year)
         if value is None:
             return None
+        if day == today:
+            # The hours of today still to come, on today's twin.
+            value = max(0.0, value - kwh_days.get(today, 0.0))
         total += value
         day += timedelta(days=1)
     return total
