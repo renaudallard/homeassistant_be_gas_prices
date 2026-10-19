@@ -102,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Tarif bei Vertragsabschluss",
-        "description": "Die Zahlen auf Ihrem Vertrag. Ein leeres Feld behält den Wert der Karte. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
+        "description": "Die Zahlen auf Ihrem Vertrag. Ein leeres Feld behält den Wert der Karte. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160; eine mit dem Index in c€/kWh wie „ZTP x 1,08 + 1,15 c€/kWh“ ein Faktor von 0,108 und eine Basis von 1,15), die Gebühr in € pro Jahr inkl. MwSt.",
         "data": {
           "manual_price": "Energiepreis (c€/kWh, ohne MwSt.)",
           "manual_factor": "Indexfaktor",
@@ -295,7 +295,7 @@
       },
       "signed_rate": {
         "title": "Tarif bei Vertragsabschluss",
-        "description": "Die Zahlen auf Ihrem Vertrag. Ein leeres Feld behält den Wert der Karte. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160), die Gebühr in € pro Jahr inkl. MwSt.",
+        "description": "Die Zahlen auf Ihrem Vertrag. Ein leeres Feld behält den Wert der Karte. Preis und Basis in c€/kWh ohne MwSt., der Faktor in c€/kWh je €/MWh Index (eine Formel in €/MWh wie „ZTP x 1,010 + 2,160“ ist ein Faktor von 0,1010 und eine Basis von 0,2160; eine mit dem Index in c€/kWh wie „ZTP x 1,08 + 1,15 c€/kWh“ ein Faktor von 0,108 und eine Basis von 1,15), die Gebühr in € pro Jahr inkl. MwSt.",
         "data": {
           "manual_price": "Energiepreis (c€/kWh, ohne MwSt.)",
           "manual_factor": "Indexfaktor",

@@ -260,6 +260,9 @@ CONF_MANUAL_FACTOR: Final = "manual_factor"
 CONF_MANUAL_BASE: Final = "manual_base"
 CONF_MANUAL_FEE: Final = "manual_fee"
 MANUAL_RATE_KEYS: Final = (CONF_MANUAL_PRICE, CONF_MANUAL_FACTOR, CONF_MANUAL_BASE, CONF_MANUAL_FEE)
+# Cards print factors of 0,10 to 0,20: one past this is a formula's digits
+# with its index in c EUR/kWh, which would price the gas ten times over.
+MANUAL_FACTOR_MAX: Final = 1.0
 CONF_PREVIOUS_CONTRACTS: Final = "previous_contracts"
 CONF_SWITCH_DATE: Final = "switch_date"
 

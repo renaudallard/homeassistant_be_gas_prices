@@ -88,6 +88,7 @@ from .const import (
     DEFAULT_DAILY_COMPARE,
     DOMAIN,
     DSO_CHOICES,
+    MANUAL_FACTOR_MAX,
     MANUAL_RATE_KEYS,
     REGION_BRUSSELS,
     REGIONS,
@@ -408,13 +409,20 @@ class _FlowSteps:
         number = NumberSelector(
             NumberSelectorConfig(min=0, max=1000, step="any", mode=NumberSelectorMode.BOX)
         )
+        factor = NumberSelector(
+            NumberSelectorConfig(
+                min=0, max=MANUAL_FACTOR_MAX, step="any", mode=NumberSelectorMode.BOX
+            )
+        )
         keys: tuple[str, ...] = (CONF_MANUAL_FEE,)
         if contract is not None and contract.kind == "fixed":
             keys = (CONF_MANUAL_PRICE, CONF_MANUAL_FEE)
         elif contract is not None and contract.kind == "indexed":
             keys = (CONF_MANUAL_FACTOR, CONF_MANUAL_BASE, CONF_MANUAL_FEE)
         schema = self.add_suggested_values_to_schema(
-            vol.Schema({vol.Optional(key): number for key in keys}),
+            vol.Schema(
+                {vol.Optional(key): factor if key == CONF_MANUAL_FACTOR else number for key in keys}
+            ),
             {key: self._data.get(key) for key in keys},
         )
         return self.async_show_form(step_id="signed_rate", data_schema=schema)

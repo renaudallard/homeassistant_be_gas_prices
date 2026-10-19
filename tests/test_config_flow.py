@@ -35,6 +35,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
@@ -65,6 +66,8 @@ from custom_components.be_gas_prices.const import (
     CONF_DAILY_COMPARE,
     CONF_DSO,
     CONF_GAS_METER,
+    CONF_MANUAL_BASE,
+    CONF_MANUAL_FACTOR,
     CONF_MANUAL_FEE,
     CONF_POSTCODE,
     CONF_PREVIOUS_CONTRACTS,
@@ -229,6 +232,21 @@ async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssis
     assert result["step_id"] == "dso"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
     assert result["step_id"] == "custom_energy"
+
+
+async def test_an_index_factor_past_1_is_refused(hass: HomeAssistant) -> None:
+    """Mega's "ZTP x 1,08 + 1,15 c€/kWh" is a factor of 0,108: its printed
+    1,08 would price the gas ten times over."""
+    result = await _contract_step(hass, _entry(hass))
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONTRACT: "engie_flow", "advanced": {"signed_rate": True}}
+    )
+    assert result["step_id"] == "signed_rate"
+    schema = result["data_schema"]
+    assert schema is not None
+    with pytest.raises(vol.Invalid):
+        schema({CONF_MANUAL_FACTOR: 1.08, CONF_MANUAL_BASE: 1.15})
+    assert schema({CONF_MANUAL_FACTOR: 0.108, CONF_MANUAL_BASE: 1.15})[CONF_MANUAL_FACTOR] == 0.108
 
 
 async def test_the_custom_network_form_leaves_the_law_s_levies_out(hass: HomeAssistant) -> None:

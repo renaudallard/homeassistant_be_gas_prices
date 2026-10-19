@@ -102,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Signing rate",
-        "description": "The figures printed on your contract. A field left empty keeps the card's figure. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
+        "description": "The figures printed on your contract. A field left empty keeps the card's figure. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160; one with the index in c€/kWh, such as \"ZTP x 1,08 + 1,15 c€/kWh\", a factor of 0,108 and a base of 1,15), the fee in € a year including VAT.",
         "data": {
           "manual_price": "Energy price (c€/kWh, excl. VAT)",
           "manual_factor": "Index factor",
@@ -295,7 +295,7 @@
       },
       "signed_rate": {
         "title": "Signing rate",
-        "description": "The figures printed on your contract. A field left empty keeps the card's figure. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160), the fee in € a year including VAT.",
+        "description": "The figures printed on your contract. A field left empty keeps the card's figure. Price and base in c€/kWh excluding VAT, the factor in c€/kWh per €/MWh of index (a formula printed in €/MWh, such as \"ZTP x 1,010 + 2,160\", is a factor of 0,1010 and a base of 0,2160; one with the index in c€/kWh, such as \"ZTP x 1,08 + 1,15 c€/kWh\", a factor of 0,108 and a base of 1,15), the fee in € a year including VAT.",
         "data": {
           "manual_price": "Energy price (c€/kWh, excl. VAT)",
           "manual_factor": "Index factor",

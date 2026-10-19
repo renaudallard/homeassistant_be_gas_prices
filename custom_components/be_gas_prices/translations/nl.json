@@ -102,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Tarief bij ondertekening",
-        "description": "De cijfers op je contract. Een leeg veld behoudt het cijfer van de kaart. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
+        "description": "De cijfers op je contract. Een leeg veld behoudt het cijfer van de kaart. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160; een met de index in c€/kWh zoals \"ZTP x 1,08 + 1,15 c€/kWh\" een factor van 0,108 en een basis van 1,15), de vergoeding in € per jaar incl. btw.",
         "data": {
           "manual_price": "Energieprijs (c€/kWh, excl. btw)",
           "manual_factor": "Indexfactor",
@@ -295,7 +295,7 @@
       },
       "signed_rate": {
         "title": "Tarief bij ondertekening",
-        "description": "De cijfers op je contract. Een leeg veld behoudt het cijfer van de kaart. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160), de vergoeding in € per jaar incl. btw.",
+        "description": "De cijfers op je contract. Een leeg veld behoudt het cijfer van de kaart. Prijs en basis in c€/kWh excl. btw, de factor in c€/kWh per €/MWh index (een formule in €/MWh zoals \"ZTP x 1,010 + 2,160\" is een factor van 0,1010 en een basis van 0,2160; een met de index in c€/kWh zoals \"ZTP x 1,08 + 1,15 c€/kWh\" een factor van 0,108 en een basis van 1,15), de vergoeding in € per jaar incl. btw.",
         "data": {
           "manual_price": "Energieprijs (c€/kWh, excl. btw)",
           "manual_factor": "Indexfactor",

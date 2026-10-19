@@ -35,6 +35,7 @@ the card's VAT-inclusive basis here.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from typing import Any
 
@@ -43,9 +44,16 @@ from .const import (
     CONF_MANUAL_FACTOR,
     CONF_MANUAL_FEE,
     CONF_MANUAL_PRICE,
+    MANUAL_FACTOR_MAX,
     VAT_RATE_REDUCED,
 )
 from .providers._rates import EnergyRates, FixedRates, IndexedRates
+
+_LOGGER = logging.getLogger(__name__)
+
+# The factors past MANUAL_FACTOR_MAX said to be ignored, so that every month
+# billed on one does not say it again.
+_IGNORED: set[float] = set()
 
 
 def _number(data: dict[str, Any], key: str) -> float | None:
@@ -65,7 +73,18 @@ def manual_leg(leg: EnergyRates, data: dict[str, Any]) -> EnergyRates:
     elif isinstance(leg, IndexedRates):
         # Each figure on its own: a contract may differ from its card by its
         # base alone, and every field of the form is optional.
-        if factor is not None:
+        if factor is not None and factor > MANUAL_FACTOR_MAX:
+            # Typed before the form capped it: the card's factor stands.
+            if factor not in _IGNORED:
+                _IGNORED.add(factor)
+                _LOGGER.warning(
+                    "Typed index factor %s is past %s c EUR/kWh per EUR/MWh, a formula "
+                    "with its index in c EUR/kWh: the card's factor is billed. Type the "
+                    "factor again in the contract's settings",
+                    factor,
+                    MANUAL_FACTOR_MAX,
+                )
+        elif factor is not None:
             leg = replace(leg, factor=factor / 100.0 * vat)
         if base is not None:
             leg = replace(leg, base=base / 100.0 * vat)

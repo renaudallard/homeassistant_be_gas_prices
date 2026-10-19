@@ -102,7 +102,7 @@
       },
       "signed_rate": {
         "title": "Tarif à la signature",
-        "description": "Les chiffres imprimés sur votre contrat. Un champ laissé vide garde le chiffre de la carte. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
+        "description": "Les chiffres imprimés sur votre contrat. Un champ laissé vide garde le chiffre de la carte. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160 ; une formule dont l'index est en c€/kWh comme « ZTP x 1,08 + 1,15 c€/kWh », un facteur de 0,108 et une base de 1,15), la redevance en € par an TVA comprise.",
         "data": {
           "manual_price": "Prix de l'énergie (c€/kWh, hors TVA)",
           "manual_factor": "Facteur d'index",
@@ -295,7 +295,7 @@
       },
       "signed_rate": {
         "title": "Tarif à la signature",
-        "description": "Les chiffres imprimés sur votre contrat. Un champ laissé vide garde le chiffre de la carte. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160), la redevance en € par an TVA comprise.",
+        "description": "Les chiffres imprimés sur votre contrat. Un champ laissé vide garde le chiffre de la carte. Prix et base en c€/kWh hors TVA, le facteur en c€/kWh par €/MWh d'index (une formule en €/MWh comme « ZTP x 1,010 + 2,160 » est un facteur de 0,1010 et une base de 0,2160 ; une formule dont l'index est en c€/kWh comme « ZTP x 1,08 + 1,15 c€/kWh », un facteur de 0,108 et une base de 1,15), la redevance en € par an TVA comprise.",
         "data": {
           "manual_price": "Prix de l'énergie (c€/kWh, hors TVA)",
           "manual_factor": "Facteur d'index",
