@@ -57,7 +57,10 @@ card the parser refuses and the held card keeps pricing.
   prints one, else its printed estimate. `index` names the supplier's own
   series, the key of its `fetch_index` table.
 - Levies are read as printed, stale or not: the law's figures for the
-  delivery month are applied later (`_resolve.resolve_for_delivery`).
+  delivery month are applied later (`_resolve.resolve_for_delivery`). A
+  single excise rate too high for gas (EnergyVision's Walloon fixed card
+  prints the electricity one) is not read at all: the card holds no gas
+  excise, and its months are priced on the law's alone.
 - A card from the wrong product (Luminus serves another product's gas card
   for an electricity-only slug) is refused on the product name it prints.
 

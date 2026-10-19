@@ -68,7 +68,8 @@ the Dutch and the French cards.
   12.000 kWh" and the next line ("Verbruik boven 12.000 kWh", "Verbruik
   tussen 12.000 & 150.000 kWh", "Consommation au-dessus de 12 000 kWh" and
   other wordings over the months). Failing that, "Accise spéciale x,xxx
-  €cent/kWh" as a single open band.
+  €cent/kWh" as a single open band, or as no gas excise at all above
+  2 c€/kWh.
 - Energy contribution: "Energiebijdrage" or "Contribution énergétique",
   optional (dropped since August 2026).
 - Walloon connection fee: "Redevance de raccordement", mandatory.
@@ -123,9 +124,10 @@ refused below.
   the law for (`_resolve.resolve_connection_fee`).
 - Walloon GS1JVG from August 2026, still printed in October: **"Accise
   spéciale 4,876 €cent/kWh"**, the residential electricity excise since 1
-  August 2026, in place of the gas bands. The law override in `_resolve.py`
-  bills the gas rate for the months it covers. The August card also has no
-  connection fee row and is refused.
+  August 2026, in place of the gas bands. It is not read: the card holds no
+  gas excise, the law override in `_resolve.py` bills the gas rate, and a
+  month the law has not been read for cannot be priced. The August card
+  also has no connection fee row and is refused.
 - The August 2026 Walloon GSG re-upload (`_0`, the one the history page
   links) has no connection fee row and is refused; the plain name prints
   0,00750 with the old excise and contribution.
@@ -162,8 +164,8 @@ Not modelled: the one-off welcome credit the Flemish cards print
 - GS1JVG Flanders and Wallonia as fixed.
 - Flanders: Antwerpen row in full, excise, no levy or fee.
 - Wallonia: the reversed column order, ORES and RESA rows, the 0,00075
-  connection fee as printed and billed at the law's 0,000075, the single
-  4,876 excise on GS1JVG.
+  connection fee as printed and billed at the law's 0,000075, the 4,876
+  electricity excise on GS1JVG not read, priced on the law or refused.
 - Brussels: the Sibelga row with metering last, the nine levy amounts.
 - August 2026: Brusol's first upload with the old levies, the Walloon plain
   name with the regulated fee, the `_0` re-upload refused.

@@ -1020,7 +1020,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 data = await self._build(today, digest=digest)
         except PricingError as err:
             # The card cannot price this household: its DSO or its tier is
-            # missing, for this month or for one the running costs bill.
+            # missing, or it gives no gas excise and the law's is not held,
+            # for this month or for one the running costs bill.
             self.last_error = self._pricing_error = str(err)
             # Written as with no card: a setup retry counts on from the
             # count this tick's fetch left, not from an older one.

@@ -32,6 +32,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from custom_components.be_gas_prices import excise_law
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
     DSO_ORES,
@@ -45,6 +46,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
     TIER_T3,
 )
+from custom_components.be_gas_prices.pricing import PricingError, compute_breakdown
 from custom_components.be_gas_prices.providers import energyvision
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers._resolve import resolve_for_delivery
@@ -142,12 +144,21 @@ def test_wallonia_connection_fee_is_read_as_printed() -> None:
     )
 
 
-def test_wallonia_fixed_card_prints_a_single_excise() -> None:
-    """ "Accise spéciale 4,876 €cent/kWh" in place of the two gas bands."""
+def test_wallonia_fixed_card_prints_the_electricity_excise() -> None:
+    """ "Accise spéciale 4,876 €cent/kWh" in place of the two gas bands is
+    not read: the month is priced on the law's excise, or not at all."""
     snap = energyvision.parse_snapshot(_GS1JVG, REGION_WALLONIA, _card("EV-0926-GS1JVG-WAL-fr.pdf"))
     assert snap.energy == FixedRates(price=approx(0.0796), yearly_fixed_fee=75.0)
-    assert snap.taxes.excise_bands == ((None, pytest.approx(0.04876)),)
+    assert snap.taxes.excise_bands == ()
     assert snap.taxes.connection_fee == pytest.approx(0.00075)
+    billed = resolve_for_delivery(snap, date(2026, 9, 1))
+    assert billed.taxes.excise_bands == (
+        (12000.0, pytest.approx(0.0109286)),
+        (None, pytest.approx(0.0118296)),
+    )
+    excise_law._HELD.clear()
+    with pytest.raises(PricingError, match="no gas excise"):
+        compute_breakdown(resolve_for_delivery(snap, date(2026, 9, 1)), DSO_ORES, 17_000.0, 0.0796)
 
 
 def test_the_walloon_connection_fee_is_billed_at_the_law() -> None:

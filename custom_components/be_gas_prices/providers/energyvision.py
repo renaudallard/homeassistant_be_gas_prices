@@ -77,8 +77,9 @@ Card errors this reads as printed and does not correct:
     single "Accise speciale 4,876 c EUR/kWh" instead of the two gas bands:
     the residential electricity excise since 1 August 2026, not a gas rate.
     The August one also has no connection fee row, which makes that card
-    unreadable. The delivery months the gas excise law covers are billed
-    at the law's rate regardless.
+    unreadable. The rate is not read: the card gives no gas excise, so its
+    months are billed at the law's rate, and not at all while the law has
+    never been read.
   - The Walloon distribution terms are cut to two decimals rather than
     rounded (ORES 4,28 where the CWaPE grid says 4,28944), and TECTEO RESA
     prints 5,25 / 3,14 / 2,86 on the February, May and June 2026 cards
@@ -476,18 +477,24 @@ _EXCISE_RE = re.compile(
     re.MULTILINE,
 )
 _SINGLE_EXCISE_RE = re.compile(r"Accise spéciale (\d+,\d+)\s*€cent/kWh")
+# A single rate past this is no gas excise: the highest the law has voted
+# for gas is under 1,6 c EUR/kWh with VAT, the electricity one 4,876.
+_GAS_EXCISE_MAX = 0.02
 
 
 def _excise(text: str) -> tuple[tuple[float | None, float], ...]:
     bands = _EXCISE_RE.search(text)
     if bands is not None:
         return excise_bands(to_float(bands.group(1)) / 100.0, to_float(bands.group(2)) / 100.0)
-    # The Walloon fixed card's single rate, which is not a gas excise; see
-    # the module docstring.
     single = _SINGLE_EXCISE_RE.search(text)
     if single is None:
         raise ExtractorError("EnergyVision: federal excise rows not found")
-    return excise_bands(to_float(single.group(1)) / 100.0, None)
+    rate = to_float(single.group(1)) / 100.0
+    if rate > _GAS_EXCISE_MAX:
+        # The Walloon fixed card's electricity excise (see the module
+        # docstring): no gas excise is printed.
+        return ()
+    return excise_bands(rate, None)
 
 
 _CONTRIBUTION_RE = re.compile(r"(?:Energiebijdrage|Contribution énergétique) (\d+,\d+)")

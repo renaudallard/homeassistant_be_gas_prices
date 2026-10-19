@@ -503,9 +503,10 @@ def figures(card: Card) -> Iterator[Figure]:
         rows.append((dso, "metering", "EUR/year", overlay.metering_per_year))
     taxes = snapshot.taxes
     # A card printing one excise rate holds one open band, which then stands
-    # for both slices.
-    rows.append(("federal", _EXCISE_LOW, "EUR/kWh", taxes.excise_bands[0][1]))
-    rows.append(("federal", _EXCISE_HIGH, "EUR/kWh", taxes.excise_bands[-1][1]))
+    # for both slices; one printing no gas excise holds none.
+    if taxes.excise_bands:
+        rows.append(("federal", _EXCISE_LOW, "EUR/kWh", taxes.excise_bands[0][1]))
+        rows.append(("federal", _EXCISE_HIGH, "EUR/kWh", taxes.excise_bands[-1][1]))
     rows.append(("federal", _CONTRIBUTION, "EUR/kWh", taxes.energy_contribution))
     if taxes.card_vat_rate is not None:
         # The rate the card states for its customers: the law's figures and

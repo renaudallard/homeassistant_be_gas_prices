@@ -69,7 +69,8 @@ class FixedCosts:
 
 
 class PricingError(Exception):
-    """The snapshot cannot price this household: its DSO or tier is missing."""
+    """The snapshot cannot price this household: its DSO or tier is missing,
+    or it gives no gas excise for the month."""
 
 
 def energy_price(energy: EnergyRates, index_value: float | None) -> float:
@@ -123,6 +124,10 @@ def compute_breakdown(
     overlay = _overlay(snapshot, dso)
     tier = _tier(overlay, annual_kwh, dso)
     taxes = snapshot.taxes
+    if not taxes.excise_bands:
+        # A card printing another energy's excise in place of the gas one,
+        # for a month the law's has not been read for.
+        raise PricingError(f"{snapshot.supplier} card prints no gas excise for this month")
     vat = _vat(taxes)
     energy = energy_eur_per_kwh * vat
     network = (tier.proportional + overlay.transport) * vat

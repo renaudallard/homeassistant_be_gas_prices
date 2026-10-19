@@ -158,6 +158,16 @@ def _failing(checks: list[Any]) -> dict[str, str]:
     return {c.label: c.detail for c in checks if c.status == "fail"}
 
 
+def test_a_card_printing_no_gas_excise_gives_no_excise_figure() -> None:
+    """EnergyVision's Walloon fixed card prints the electricity excise in
+    place of the gas one, which is not read: nothing to measure."""
+    snapshot = _snapshot("gamma")
+    card = _card(replace(snapshot, taxes=replace(snapshot.taxes, excise_bands=())))
+    names = {figure.name for figure in lc.figures(card)}
+    assert "transport" in names
+    assert not any("excise" in name for name in names)
+
+
 def test_a_figure_rounded_to_fewer_digits_is_the_same_figure() -> None:
     kwh, year = "EUR/kWh", "EUR/year"
     assert lc.agree(0.0227, 0.0227489, kwh)

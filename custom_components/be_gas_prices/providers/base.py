@@ -82,7 +82,8 @@ class TaxOverlay:
     ``excise_bands`` is the special excise as ((upper kWh, EUR/kWh), ...)
     ascending, the last upper bound None. It is billed per slice on the
     annual volume, so :func:`_resolve.effective_excise` blends it. A card
-    printing a single rate holds one open band.
+    printing a single rate holds one open band, one printing no gas excise
+    none: its months are priced on the law's alone.
 
     ``connection_fee`` is the Walloon "redevance de raccordement" in EUR/kWh,
     which carries no VAT, and 0.0 elsewhere. ``osp_by_caliber`` is the
