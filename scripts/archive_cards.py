@@ -72,7 +72,8 @@ new glyph library reach them as well.
 ``--backfill N`` also asks every supplier that keeps an archive of its own for
 the N closed months before this one, through the ``fetch_for_month`` the
 integration uses, and stores each card not held yet, under the month it names
-like a live row: insurance against a supplier dropping its archive.
+like a live row: insurance against a supplier dropping its archive. A held
+month whose PDF no upload recorded is fetched again for its bytes alone.
 
 Exits 0 when at least one card was stored or found unchanged and 1 when none
 was. That is the runner's problem rather than a supplier's; the live check is
@@ -317,6 +318,14 @@ class _Cards(StoredTexts):
         that embeds it be folded down to a reference."""
         return digest in self.kept or digest in self.saved or digest in self.pending
 
+    def missing(self, row: dict[str, Any] | None) -> list[str]:
+        """The PDFs a held row names that no upload has recorded: an upload
+        that failed after the row was pushed. Nothing is missing where this
+        run keeps no PDFs at all."""
+        if row is None or self.pdf_dir is None:
+            return []
+        return [digest for digest in _pdfs_of(row.get("_sources", [])) if not self.knows(digest)]
+
     def file(self, month: str, digests: Iterable[str]) -> None:
         """Write the pending bytes a row read under that row's month."""
         for digest in digests:
@@ -335,6 +344,8 @@ class _Summary:
     stored: int = 0
     unchanged: int = 0
     backfilled: int = 0
+    # Held months fetched again for the PDFs their upload never recorded.
+    reoffered: int = 0
     absent: int = 0
     indices: int = 0
     replayed: int = 0
@@ -1028,7 +1039,12 @@ async def archive(
                 for back in range(1, min(backfill_months, keep_months) + 1):
                     month = _months_before(today, back)
                     path = out / ROWS / ex.id / contract / region / f"{month}.json"
-                    if ex.id in patience.given_up or path.exists():
+                    # A held month whose PDF upload failed is fetched again for
+                    # its bytes alone: the row went out with the run, so
+                    # nothing else would ever download that card again, and
+                    # the upload is only ever offered what a run downloaded.
+                    reoffer = cards.missing(_read_row(path)) if path.exists() else []
+                    if ex.id in patience.given_up or (path.exists() and not reoffer):
                         continue
                     first = date(int(month[:4]), int(month[5:]), 1)
                     past = await walk(
@@ -1036,6 +1052,12 @@ async def archive(
                         functools.partial(ex.fetch_for_month, session, contract, region, first),
                         f"{ex.id}/{contract}/{region}/{month}",
                     )
+                    if reoffer:
+                        # The row stays exactly as it was; only the bytes it
+                        # names, if the answer carried them, go to the upload.
+                        cards.file(month, reoffer)
+                        summary.reoffered += 1
+                        continue
                     if past is None:
                         # A month the supplier does not serve, or a failure
                         # already recorded: either way left for a later
@@ -1088,7 +1110,8 @@ async def archive(
     _write_coverage(out, pdf_base_url, archive_base_url)
     print(
         f"{summary.stored} stored, {summary.unchanged} unchanged, "
-        f"{summary.backfilled} backfilled, {summary.absent} absent, "
+        f"{summary.backfilled} backfilled, {summary.reoffered} offered again, "
+        f"{summary.absent} absent, "
         f"{len(summary.failed)} failed, {summary.indices} index tables changed, "
         f"{removed} pruned, {len(wanted)} cards asked; {cards.rendered} rendered, "
         f"{cards.served} served from stored text, {len(cards.saved)} new PDFs kept; "

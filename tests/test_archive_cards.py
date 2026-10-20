@@ -441,6 +441,73 @@ async def test_backfill_mirrors_the_supplier_archive_for_months_not_held(
     assert held.read_text() == "{}"
 
 
+async def test_backfill_offers_again_a_card_whose_upload_failed(
+    tmp_path: Path, web: _Session
+) -> None:
+    """On 2026-10-20 the uploads stopped at the API's rate limit after the
+    rows were pushed. Nothing would download those cards again, so a held
+    month whose PDF is not in the manifest is fetched once more for its
+    bytes, its row left as it was, until the upload records it."""
+    month_url = "https://acme.test/2026-08.pdf"
+    web.pages[month_url] = _card("2026-08", "0.07")
+    asked: list[date] = []
+
+    async def fetch_for_month(
+        session: Any, contract: str, _region: str, month: date
+    ) -> SupplierSnapshot | None:
+        asked.append(month)
+        text = await _pdf.fetch_pdf_rendered(
+            session, month_url, variant="plain", timeout=30, render=lambda b: b.decode("ascii")
+        )
+        return _parse(text, 1.0, contract)
+
+    out = tmp_path / "gas"
+    extractor = _Acme().extractor(fetch_for_month=fetch_for_month)
+    first = await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW,
+        sleep=_no_sleep,
+        backfill_months=1,
+        pdf_dir=tmp_path / "pdfs1",
+    )
+    assert first.backfilled == 1
+    digest = _digest(web.pages[month_url])
+    row = out / ROW / "2026-08.json"
+    held = row.read_text()
+    # The upload failed: the manifest records the live card only.
+    live = _digest(web.pages[CARD_URL])
+    (out / "pdfs.json").write_text(json.dumps({live: f"gas-2026-09/{live}.pdf"}))
+
+    second = await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW + timedelta(days=1),
+        sleep=_no_sleep,
+        backfill_months=1,
+        pdf_dir=tmp_path / "pdfs2",
+    )
+    assert (second.reoffered, second.backfilled) == (1, 0)
+    assert (tmp_path / "pdfs2" / "gas-2026-08" / f"{digest}.pdf").read_bytes() == web.pages[
+        month_url
+    ]
+    assert row.read_text() == held
+
+    (out / "pdfs.json").write_text(
+        json.dumps({live: f"gas-2026-09/{live}.pdf", digest: f"gas-2026-08/{digest}.pdf"})
+    )
+    third = await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW + timedelta(days=2),
+        sleep=_no_sleep,
+        backfill_months=1,
+        pdf_dir=tmp_path / "pdfs3",
+    )
+    assert third.reoffered == 0
+    assert asked == [date(2026, 8, 1), date(2026, 8, 1)]
+
+
 async def test_backfill_files_a_card_under_the_month_it_names(
     tmp_path: Path, web: _Session
 ) -> None:
