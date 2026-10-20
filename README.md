@@ -139,7 +139,7 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 | **Frank Energie** | Gas Variabel · HV · JN · Slim · Korting *(monthly M ZTP RLP0N EOD EEX)* | Flanders only · [`frank.py`](./custom_components/be_gas_prices/providers/frank.py) · [notes](./docs/providers/frank.md) |
 | **Luminus** | Comfy · Comfy+ · MaxxFix · BasicFix Online · ComfyFlex · ComfyFlex+ *(quarterly TTF DAHW)* · MaxxFlex *(monthly TTF DAH M)* · BasicFlex Online *(monthly TTF DAH RLP M)* | Flanders + Wallonia · [`luminus.py`](./custom_components/be_gas_prices/providers/luminus.py) · [notes](./docs/providers/luminus.md) |
 | **Mega** | Smart · Cosy · Online · Prepaid Flex *(monthly ZTP)* · Off-peak Flex · Off-peak Impact *(monthly TTF, Impact in Wallonia only)* · Smart · Cosy · Online · Prepaid · Off-peak · Zen Fixed | All three regions · [`mega.py`](./custom_components/be_gas_prices/providers/mega.py) · [notes](./docs/providers/mega.md) |
-| **OCTA+** | Basic Online · Boost Flex · Eco Boost Flex · Smart Variable *(monthly ZTP RLP M)* · Boost Fix · Eco Boost Fix | Flanders + Wallonia · [`octaplus.py`](./custom_components/be_gas_prices/providers/octaplus.py) · [notes](./docs/providers/octaplus.md) |
+| **OCTA+** | Basic Online · Boost Flex · Eco Boost Flex · Smart Variable *(monthly ZTP RLP M)* · Boost Fix · Eco Boost Fix · *withdrawn on 2026-10-01, marked † for households still on them:* Flux · Eco Flux · Fixed · Eco Fixed | Flanders + Wallonia · [`octaplus.py`](./custom_components/be_gas_prices/providers/octaplus.py) · [notes](./docs/providers/octaplus.md) |
 | **Sparki** | Self Service · At Your Service *(a monthly price set on TTF; Sparki publishes no index values, so each month is priced at the price its card prints)* | Flanders + Wallonia · [`sparki.py`](./custom_components/be_gas_prices/providers/sparki.py) · [notes](./docs/providers/sparki.md) |
 | **TotalEnergies** | Gaz Fixe · Gaz Variable · Impact Variable *(Wallonia)* · myComfort Variable · myComfort Fixe · myEssential Variable · myEssential Fixe *(variable ones monthly TTF_M_RLP)* | All three regions · [`totalenergies.py`](./custom_components/be_gas_prices/providers/totalenergies.py) · [notes](./docs/providers/totalenergies.md) |
 | **Trevion** | Gas Flex *(monthly TTF_RLP)* | Flanders only · [`trevion.py`](./custom_components/be_gas_prices/providers/trevion.py) · [notes](./docs/providers/trevion.md) |
@@ -302,7 +302,9 @@ page served instead), which is a card not published yet or moved rather than
 a layout change. A contract its supplier withdrew keeps pricing on the last
 card held for it, from storage or the card archive, and the
 `contract_withdrawn` Repairs card suggests recording the change of contract
-once the supplier moves you.
+once the supplier moves you. The setup still lists it, marked †, for a
+household whose contract runs on it, and with a contract start date it is
+priced on the card of the month signed.
 
 ## How often the integration polls
 

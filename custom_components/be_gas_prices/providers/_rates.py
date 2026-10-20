@@ -35,6 +35,7 @@ pricing engine.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Literal
 
 from ..const import REGIONS
@@ -70,6 +71,11 @@ class Contract:
     # printed excluding VAT, so the comparisons leave it out. No contract
     # offered here is one.
     professional: bool = False
+    # The first day the supplier no longer sold it. The setup still offers
+    # it, marked, to a household whose contract runs on it, an entry on it
+    # fetches nothing and keeps pricing on the last card held, and the
+    # comparisons leave it out.
+    withdrawn: date | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -1338,6 +1338,50 @@ async def test_settings_retitle_an_entry_whose_contract_was_withdrawn(
     assert entry.title == after
 
 
+async def test_settings_keep_a_withdrawn_contract_marked_with_a_dagger(
+    hass: HomeAssistant,
+) -> None:
+    """OCTA+ withdrew Flux in October 2026 while households stay on it: the
+    contract step offers it, marked, and keeps it selected, so the entry can
+    change its other settings without leaving its contract."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="OCTA+ Flux",
+        data={
+            CONF_REGION: REGION_WALLONIA,
+            CONF_DSO: DSO_ORES,
+            CONF_SUPPLIER: "octaplus",
+            CONF_CONTRACT: "octaplus_flux",
+            CONF_ANNUAL_CONSUMPTION_KWH: 17000.0,
+            CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+            CONF_CONVERSION_FACTOR: 11.5,
+            CONF_CARD_ARCHIVE: False,
+        },
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "octaplus"},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "contract"
+    schema = result["data_schema"]
+    assert schema is not None
+    marker = next(k for k in schema.schema if str(k) == CONF_CONTRACT)
+    labels = {o["value"]: o["label"] for o in schema.schema[marker].config["options"]}
+    assert labels["octaplus_flux"] == "OCTA+ Flux †"
+    assert labels["octaplus_boostflex"] == "OCTA+ Boost Flex"
+    assert marker.default() == "octaplus_flux"
+    for user_input in ({CONF_CONTRACT: "octaplus_flux"}, {CONF_DSO: DSO_ORES}):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await _household_options(hass, result["flow_id"])
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options.get(CONF_CONTRACT, entry.data[CONF_CONTRACT]) == "octaplus_flux"
+
+
 async def _household_options(hass: HomeAssistant, flow_id: str) -> ConfigFlowResult:
     return await hass.config_entries.options.async_configure(
         flow_id,

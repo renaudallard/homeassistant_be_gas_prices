@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced. A product marked † is no longer sold: pick it only if your contract still runs on it. It is then priced on its last card, or, with a start date, on the card of the month you signed.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced. A product marked † is no longer sold: pick it only if your contract still runs on it. It is then priced on its last card, or, with a start date, on the card of the month you signed.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"

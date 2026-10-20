@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contrat",
-        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, la carte tarifaire du mois où la fourniture a commencé donne le prix que vous payez. Si vous avez signé sur la carte d'un mois antérieur, ou sur une carte Elegant rééditée en cours de mois, indiquez le jour de votre signature sous Avancé.",
+        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, la carte tarifaire du mois où la fourniture a commencé donne le prix que vous payez. Si vous avez signé sur la carte d'un mois antérieur, ou sur une carte Elegant rééditée en cours de mois, indiquez le jour de votre signature sous Avancé. Un produit marqué † n'est plus vendu : choisissez-le seulement si votre contrat court encore sur ce produit. Il est alors calculé sur sa dernière carte tarifaire, ou, avec une date de début, sur la carte du mois de votre signature.",
         "data": {
           "contract": "Contrat",
           "contract_start_date": "Date de début du contrat"
@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contrat",
-        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, la carte tarifaire du mois où la fourniture a commencé donne le prix que vous payez. Si vous avez signé sur la carte d'un mois antérieur, ou sur une carte Elegant rééditée en cours de mois, indiquez le jour de votre signature sous Avancé.",
+        "description": "Choisissez votre produit. La date de début est facultative : pour un contrat fixe ou indexé, la carte tarifaire du mois où la fourniture a commencé donne le prix que vous payez. Si vous avez signé sur la carte d'un mois antérieur, ou sur une carte Elegant rééditée en cours de mois, indiquez le jour de votre signature sous Avancé. Un produit marqué † n'est plus vendu : choisissez-le seulement si votre contrat court encore sur ce produit. Il est alors calculé sur sa dernière carte tarifaire, ou, avec une date de début, sur la carte du mois de votre signature.",
         "data": {
           "contract": "Contrat",
           "contract_start_date": "Date de début du contrat"

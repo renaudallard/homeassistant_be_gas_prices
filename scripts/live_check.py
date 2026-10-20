@@ -237,12 +237,17 @@ def targets(
     extractors: Iterable[SupplierExtractor],
     today: date,
     only: frozenset[str] = frozenset(),
+    *,
+    withdrawn: bool = False,
 ) -> list[tuple[SupplierExtractor, str, str]]:
-    """Every (extractor, contract, region) with a card to fetch today.
+    """Every (extractor, contract, region) with a card to fetch today, and
+    with ``withdrawn`` the contracts the supplier no longer sells too.
 
     The custom supplier is typed in by the household and has no card, and a
     supplier past its withdrawal date has left the market: its last card
-    stays up and stays stale, which is not worth a daily failure.
+    stays up and stays stale, which is not worth a daily failure. So does a
+    withdrawn contract's, whose past months only the archive's backfill asks
+    for.
     """
     out: list[tuple[SupplierExtractor, str, str]] = []
     for ex in extractors:
@@ -251,6 +256,8 @@ def targets(
         if ex.deprecated_until is not None and today > ex.deprecated_until:
             continue
         for contract in ex.contracts:
+            if contract.withdrawn is not None and not withdrawn:
+                continue
             out.extend((ex, contract.id, region) for region in sorted(contract.regions))
     return out
 

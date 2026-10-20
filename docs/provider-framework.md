@@ -11,14 +11,13 @@ A supplier module exposes `EXTRACTOR: SupplierExtractor` (`providers/base.py`):
 | Field | What it is |
 | --- | --- |
 | `id`, `label` | The registry id and the name the setup flow shows. |
-| `contracts` | `Contract(id, label, kind, regions, professional)` for each product sold. `regions` is where the product is actually published. |
+| `contracts` | `Contract(id, label, kind, regions, professional, withdrawn)` for each product sold, and each one withdrawn while households may still be on it. `regions` is where the product is actually published. `withdrawn` is the first day it was no longer sold: the setup offers it marked †, the comparisons and the daily card walk leave it out, the archive's backfill still mirrors its months, and an entry naming one fetches nothing and keeps pricing on the last card it holds, from its store or the card archive, under a `contract_withdrawn` Repairs card. |
 | `fetch(session, contract, region)` | The current card as a `SupplierSnapshot`. Raises `ExtractorError` on anything mandatory it cannot read; never defaults a missing figure to zero. |
 | `probe(session, contract, region)` | Optional. A cheap freshness key; the same key means the card is unchanged. |
 | `fetch_for_month(session, contract, region, month)` | Optional. The card published for a past month, None where the supplier serves none, `ExtractorError` only on a failure that may recover (`is_transient_fetch_error`). Refuses a card that names another month, except a card in force until the next one (Bolt's variable cards, `valid_until` None), which names the month it was first published for. Uses Home Assistant's clock. `_validity.month_card` does all but the lookup. |
 | `fetch_index(session)` | Optional. The supplier's own index publication as `{index name: {"YYYY-MM": EUR/MWh}}`. |
 | `deprecated_until`, `deprecated_successor` | A supplier leaving the market. |
 | `sweep_cost_s` | Roughly what one card costs to fetch and parse, for the comparison's scheduling. |
-| `withdrawn` | The labels of the contracts the supplier withdrew, by id: an entry naming one fetches nothing and keeps pricing on the last card it holds, from its store or the card archive, under a `contract_withdrawn` Repairs card, and its wizard title and its row in a comparison keep the label (`contract_label`). |
 | `images_only` | The supplier publishes its cards as page images, which only the card archive's reading prices: the flow requires the archive, and an entry without it stops at setup. |
 
 Each module also has a pure `parse_snapshot(contract, region, text, ...)`

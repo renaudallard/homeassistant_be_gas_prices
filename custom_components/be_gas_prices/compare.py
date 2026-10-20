@@ -207,7 +207,7 @@ def candidates(region: str) -> list[tuple[SupplierExtractor, str]]:
         for extractor in all_extractors()
         if extractor.deprecated_until is None and extractor.id != SUPPLIER_CUSTOM
         for contract in extractor.contracts
-        if region in contract.regions and not contract.professional
+        if region in contract.regions and not contract.professional and contract.withdrawn is None
     ]
     return sorted(pairs, key=lambda pair: pair[0].sweep_cost_s)
 

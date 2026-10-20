@@ -40,7 +40,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun import freeze_time
 
-from custom_components.be_gas_prices.compare import IndexCache, quote_contract
+from custom_components.be_gas_prices.compare import IndexCache, candidates, quote_contract
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_KEMPEN,
     DSO_FLUVIUS_WEST,
@@ -280,9 +280,10 @@ def test_card_that_lost_its_formula_fails_loud() -> None:
 
 def test_regions_and_kinds() -> None:
     """The range sold from October 2026; Flux, Eco Flux, Fixed and Eco Fixed
-    were withdrawn."""
+    were withdrawn that month, and are still offered to a household under
+    contract on one."""
     by_id = {c.id: c for c in octaplus.EXTRACTOR.contracts}
-    assert set(by_id) == {
+    assert {cid for cid, c in by_id.items() if c.withdrawn is None} == {
         "octaplus_basiconline",
         "octaplus_boostflex",
         "octaplus_ecoboostflex",
@@ -293,6 +294,26 @@ def test_regions_and_kinds() -> None:
     assert {c.regions for c in by_id.values()} == {frozenset({REGION_FLANDERS, REGION_WALLONIA})}
     assert by_id["octaplus_smartvariable"].kind == "indexed"
     assert by_id["octaplus_boostfix"].kind == "fixed"
+    for cid, kind in (
+        ("octaplus_flux", "indexed"),
+        ("octaplus_ecoflux", "indexed"),
+        ("octaplus_fixed", "fixed"),
+        ("octaplus_ecofixed", "fixed"),
+    ):
+        assert by_id[cid].withdrawn == date(2026, 10, 1)
+        assert by_id[cid].kind == kind
+
+
+def test_a_withdrawn_contract_is_never_a_comparison_candidate() -> None:
+    """Nobody can be quoted into a product no longer sold."""
+    for region in (REGION_FLANDERS, REGION_WALLONIA):
+        offered = {
+            contract for extractor, contract in candidates(region) if extractor.id == "octaplus"
+        }
+        assert "octaplus_boostflex" in offered
+        assert offered.isdisjoint(
+            {"octaplus_flux", "octaplus_ecoflux", "octaplus_fixed", "octaplus_ecofixed"}
+        )
 
 
 async def test_a_withdrawn_contract_is_quoted_under_its_label() -> None:
@@ -308,7 +329,7 @@ async def test_a_withdrawn_contract_is_quoted_under_its_label() -> None:
         IndexCache(),
         use_archive=False,
     )
-    assert quote.label == octaplus.EXTRACTOR.withdrawn["octaplus_flux"]
+    assert quote.label == "OCTA+ Flux"
     assert quote.error
 
 
@@ -533,8 +554,6 @@ async def test_a_withdrawn_product_s_past_card_is_read_from_the_archive() -> Non
     assert snap.publication_label == "2026-07"
     assert snap.energy.price == pytest.approx(0.0567)
     assert snap.energy.yearly_fixed_fee == pytest.approx(65.0)
-    assert "octaplus_fixed" not in {c.id for c in octaplus.EXTRACTOR.contracts}
-    assert octaplus.EXTRACTOR.withdrawn["octaplus_fixed"] == "OCTA+ Fixed"
 
 
 async def test_fetch_for_month_reads_a_sheet_the_archive_does_not_hold_as_none() -> None:

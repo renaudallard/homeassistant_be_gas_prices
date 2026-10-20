@@ -768,6 +768,25 @@ async def test_a_card_published_as_images_without_a_reading_is_a_notice() -> Non
     assert lc.render_fingerprint(checks) == ""
 
 
+def test_a_withdrawn_contract_is_a_target_of_the_archive_s_backfill_only() -> None:
+    """Its last card stays up and stays stale, so the daily walk and the
+    check leave it out; its past months are still mirrored."""
+    from custom_components.be_gas_prices.providers import octaplus
+
+    daily = {contract for _, contract, _ in lc.targets([octaplus.EXTRACTOR], TODAY)}
+    mirrored = {
+        contract for _, contract, _ in lc.targets([octaplus.EXTRACTOR], TODAY, withdrawn=True)
+    }
+    assert "octaplus_flux" not in daily
+    assert "octaplus_boostflex" in daily
+    assert mirrored - daily == {
+        "octaplus_flux",
+        "octaplus_ecoflux",
+        "octaplus_fixed",
+        "octaplus_ecofixed",
+    }
+
+
 async def test_the_custom_and_withdrawn_suppliers_are_not_checked() -> None:
     withdrawn = _extractor("old", deprecated_until=date(2026, 8, 31))
     custom = _extractor("custom")

@@ -42,8 +42,8 @@ which live in ``const.py`` with the months they are known to cover.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import date
 
 import aiohttp
@@ -167,10 +167,6 @@ class SupplierExtractor:
     # slowest hardware this runs on, so the comparison sweep can spend its
     # time budget on many cheap rows before a few expensive ones.
     sweep_cost_s: float = 5.0
-    # Contracts the supplier withdrew, by id, with the label they had: an
-    # entry still naming one is told so, and its title is known for what
-    # the wizard gave it.
-    withdrawn: Mapping[str, str] = field(default_factory=dict)
     # The supplier publishes its cards as page images, which only the card
     # archive's reading prices: an entry on it needs the archive.
     images_only: bool = False
@@ -184,8 +180,7 @@ class SupplierExtractor:
 
     def contract_label(self, contract: str) -> str | None:
         """The label of ``contract``, a withdrawn one's included."""
-        label = next((c.label for c in self.contracts if c.id == contract), None)
-        return label or self.withdrawn.get(contract)
+        return next((c.label for c in self.contracts if c.id == contract), None)
 
 
 class ExtractorError(Exception):

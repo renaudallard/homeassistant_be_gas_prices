@@ -828,7 +828,10 @@ async def _replay_row(
     if row is None or extractor is None:
         summary.unreplayable.append(f"{label}: no readable row or no extractor registered")
         return
-    if not any(c.id == contract and region in c.regions for c in extractor.contracts):
+    if not any(
+        c.id == contract and region in c.regions and c.withdrawn is None
+        for c in extractor.contracts
+    ):
         # A contract the supplier withdrew, or no longer sells in the region:
         # its rows still price the months an earlier contract on it supplied,
         # so they stay as they are.
@@ -973,6 +976,9 @@ async def archive(
     summary = _Summary()
     registry = tuple(all_extractors() if extractors is None else extractors)
     wanted = targets(registry, today, only)
+    # A withdrawn contract's past months are mirrored too: its households
+    # are billed on them for as long as their contract runs.
+    mirrored = targets(registry, today, only, withdrawn=True)
     parser = _parser_digest()
     stamp = read_stamp(out)
     cards = _Cards(out, pdf_dir)
@@ -1015,7 +1021,7 @@ async def archive(
                 else:
                     summary.unchanged += 1
                 cards.file(month, _pdfs_of(sources))
-            for ex, contract, region in wanted:
+            for ex, contract, region in mirrored:
                 if ex.fetch_for_month is None:
                     continue
                 # Past the retention a month would be stored only to be pruned.

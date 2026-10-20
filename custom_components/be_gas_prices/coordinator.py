@@ -295,7 +295,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def withdrawn(self) -> bool:
         """Whether the supplier withdrew the contract: no card of it is
         published any more, so the last one held prices it."""
-        return self.contract in self.extractor.withdrawn
+        return any(
+            c.id == self.contract and c.withdrawn is not None for c in self.extractor.contracts
+        )
 
     def window_start(self, today: date) -> date:
         """The first day the running costs cover: 1 January, or the contract

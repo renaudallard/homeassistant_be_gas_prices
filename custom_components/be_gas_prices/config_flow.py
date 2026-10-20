@@ -137,8 +137,15 @@ def _suppliers_for(region: str) -> list[SelectOptionDict]:
     )
 
 
-def _contracts_for(supplier: str, region: str) -> list[Contract]:
-    return [c for c in get_extractor(supplier).contracts if region in c.regions]
+def _contracts_for(supplier: str, region: str, *, withdrawn: bool = False) -> list[Contract]:
+    """The contracts sold in ``region``, and with ``withdrawn`` those the
+    supplier no longer sells too: a household still under contract on one
+    sets it up, while nobody can be quoted into one."""
+    return [
+        c
+        for c in get_extractor(supplier).contracts
+        if region in c.regions and (withdrawn or c.withdrawn is None)
+    ]
 
 
 def _needs_archive(data: dict[str, Any]) -> bool:
@@ -305,7 +312,9 @@ class _FlowSteps:
     async def async_step_contract(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        contracts = _contracts_for(self._data[CONF_SUPPLIER], self._data[CONF_REGION])
+        contracts = _contracts_for(
+            self._data[CONF_SUPPLIER], self._data[CONF_REGION], withdrawn=True
+        )
         # The custom card is the household's own figures already.
         custom = self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM
         errors: dict[str, str] = {}
@@ -369,7 +378,14 @@ class _FlowSteps:
         fields: dict[Any, Any] = {
             vol.Required(CONF_CONTRACT, default=default): SelectSelector(
                 SelectSelectorConfig(
-                    options=[SelectOptionDict(value=c.id, label=c.label) for c in contracts],
+                    # A product no longer sold carries a dagger, which the
+                    # step's description explains in the user's language.
+                    options=[
+                        SelectOptionDict(
+                            value=c.id, label=c.label if c.withdrawn is None else f"{c.label} †"
+                        )
+                        for c in contracts
+                    ],
                     mode=SelectSelectorMode.LIST,
                 )
             ),
@@ -394,7 +410,9 @@ class _FlowSteps:
         contract = next(
             (
                 c
-                for c in _contracts_for(self._data[CONF_SUPPLIER], self._data[CONF_REGION])
+                for c in _contracts_for(
+                    self._data[CONF_SUPPLIER], self._data[CONF_REGION], withdrawn=True
+                )
                 if c.id == self._data.get(CONF_CONTRACT)
             ),
             None,

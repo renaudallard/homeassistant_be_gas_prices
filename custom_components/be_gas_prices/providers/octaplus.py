@@ -495,14 +495,13 @@ EXTRACTOR = SupplierExtractor(
             label=c.label,
             kind=c.kind,
             regions=frozenset(_REGION_TO_CODE),
+            withdrawn=c.withdrawn,
         )
         for c in _CONTRACTS
-        if c.withdrawn is None
     ),
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
-    withdrawn={c.contract_id: c.label for c in _CONTRACTS if c.withdrawn is not None},
     fetch_index=fetch_index,
     sweep_cost_s=4.5,
 )
