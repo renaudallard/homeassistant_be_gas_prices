@@ -516,6 +516,27 @@ async def test_fetch_for_month_reads_the_archived_card_through_the_render_hook()
     assert snap.source_url == sheet
 
 
+async def test_a_withdrawn_product_s_past_card_is_read_from_the_archive() -> None:
+    """Fixed was withdrawn in October 2026, but a household that signed in
+    July is billed on July's card, which the archive still serves."""
+    pages = {
+        "AnneeMois=202607": "getTarifArchive_WL_202607_G_RE.json",
+        "RequestedPDF=2026-07+G+OCTA%2BFIXED+RE+WL+FR.pdf": (
+            "getTariffSheet_2026-07 G OCTA+FIXED RE WL FR.json"
+        ),
+    }
+    with patch.object(octaplus, "fetch_text", AsyncMock(side_effect=_archive(pages))):
+        snap = await octaplus.fetch_for_month(
+            AsyncMock(), "octaplus_fixed", REGION_WALLONIA, date(2026, 7, 1)
+        )
+    assert snap is not None
+    assert snap.publication_label == "2026-07"
+    assert snap.energy.price == pytest.approx(0.0567)
+    assert snap.energy.yearly_fixed_fee == pytest.approx(65.0)
+    assert "octaplus_fixed" not in {c.id for c in octaplus.EXTRACTOR.contracts}
+    assert octaplus.EXTRACTOR.withdrawn["octaplus_fixed"] == "OCTA+ Fixed"
+
+
 async def test_fetch_for_month_reads_a_sheet_the_archive_does_not_hold_as_none() -> None:
     """A name the sheet endpoint does not hold is answered 200 with "Ok":
     "False", which is no card rather than a failed fetch."""
@@ -601,3 +622,14 @@ async def test_fetch_for_month_asks_nothing_for_brussels() -> None:
             is None
         )
     fetched.assert_not_called()
+
+
+async def test_a_withdrawn_product_has_no_current_card() -> None:
+    """Its file went on serving September's card after October 2026, which
+    must not be read as the current one."""
+    session = AsyncMock()
+    with pytest.raises(ExtractorError, match="OCTA\\+ withdrew OCTA\\+ Fixed on 2026-10-01"):
+        await octaplus.fetch(session, "octaplus_fixed", REGION_FLANDERS)
+    assert await octaplus.probe(session, "octaplus_fixed", REGION_FLANDERS) is None
+    session.get.assert_not_called()
+    session.head.assert_not_called()

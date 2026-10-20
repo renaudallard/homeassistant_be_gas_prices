@@ -39,9 +39,13 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 | `octaplus_ecoboostfix` | OCTA+ Eco Boost Fix | ECOBOOSTFIX | fixed | | 10,02, 150,00 |
 
 - OCTA+ withdrew Flux, Eco Flux, Fixed and Eco Fixed with the October 2026
-  range, and they were removed; their card URLs went on serving the
-  September cards. An entry on one of them stops at setup with that reason
-  (`contract_withdrawn`) until its settings name another contract.
+  range; their card URLs went on serving the September cards. An entry on
+  one of them fetches nothing and keeps pricing on the last card it holds
+  (`contract_withdrawn`). Their definitions stay, marked `withdrawn`, so
+  `fetch_for_month` still reads their past cards from the archive: a
+  household signed on Fixed in July 2026 is billed on July's card (5,67
+  c€/kWh), not September's (8,25). June's Eco Flux card indexes on TTF RLP M
+  rather than ZTP RLP M and is not read.
 
 - Regions: flanders and wallonia for every product.
 - The VL and WL cards print the same energy figures. Both print the DSO tables

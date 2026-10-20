@@ -33,7 +33,9 @@ URL, overwritten in place every month:
 Residential gas is sold in Flanders and Wallonia only: the Brussels cards the
 tariff page links are professional ones. Since October 2026 the slugs are
 BASICONLINE, BOOSTFLEX, ECOBOOSTFLEX, SMARTVARIABLE, BOOSTFIX and
-ECOBOOSTFIX. Flux, Eco Flux, Fixed and Eco Fixed were withdrawn that month.
+ECOBOOSTFIX. Flux, Eco Flux, Fixed and Eco Fixed were withdrawn that month,
+and their past cards are still read from the archive for the households
+still under contract on them.
 
 Both regional cards print the same energy figures and both regions' DSO
 tables; the Walloon one adds the connection fee column. Every figure is VAT
@@ -127,7 +129,14 @@ class _ContractDef:
     label: str
     kind: TariffKind
     slug: str  # as the live file name spells it
+    # The first day OCTA+ no longer sold it. Only its past cards are read,
+    # from the archive, so its slug is spelled as the archive names it.
+    withdrawn: date | None = None
 
+
+# The day OCTA+'s October 2026 cards replaced Flux, Eco Flux, Fixed and Eco
+# Fixed with the Boost range: the archive names them up to September.
+_RANGE_REPLACED = date(2026, 10, 1)
 
 _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef("octaplus_basiconline", "OCTA+ Basic Online", "indexed", "BASICONLINE"),
@@ -136,6 +145,10 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef("octaplus_smartvariable", "OCTA+ Smart Variable", "indexed", "SMARTVARIABLE"),
     _ContractDef("octaplus_boostfix", "OCTA+ Boost Fix", "fixed", "BOOSTFIX"),
     _ContractDef("octaplus_ecoboostfix", "OCTA+ Eco Boost Fix", "fixed", "ECOBOOSTFIX"),
+    _ContractDef("octaplus_flux", "OCTA+ Flux", "indexed", "FLUX", _RANGE_REPLACED),
+    _ContractDef("octaplus_ecoflux", "OCTA+ Eco Flux", "indexed", "ECOFLUX", _RANGE_REPLACED),
+    _ContractDef("octaplus_fixed", "OCTA+ Fixed", "fixed", "FIXED", _RANGE_REPLACED),
+    _ContractDef("octaplus_ecofixed", "OCTA+ Eco Fixed", "fixed", "ECOFIXED", _RANGE_REPLACED),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 
@@ -161,7 +174,7 @@ async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     code = _REGION_TO_CODE.get(region)
-    if contract is None or code is None:
+    if contract is None or code is None or contract.withdrawn is not None:
         return None
     key = await head_freshness_key(session, _card_url(contract, code))
     return None if key is None else f"{key} {dt_util.now().date():%Y-%m}"
@@ -175,6 +188,12 @@ async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -
     the archive (``month_cards.current_card``).
     """
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "OCTA+")
+    if contract.withdrawn is not None:
+        # Its file went on serving September's card: no current card exists.
+        raise ExtractorError(
+            f"OCTA+ withdrew {contract.label} on {contract.withdrawn:%Y-%m-%d}: "
+            "only its past cards are read"
+        )
     url = _card_url(contract, _region_code(contract, region))
     text = await fetch_pdf_text_layout(session, url)
     return parse_snapshot(contract_id, region, text, source_url=url)
@@ -478,16 +497,12 @@ EXTRACTOR = SupplierExtractor(
             regions=frozenset(_REGION_TO_CODE),
         )
         for c in _CONTRACTS
+        if c.withdrawn is None
     ),
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
-    withdrawn={
-        "octaplus_flux": "OCTA+ Flux",
-        "octaplus_ecoflux": "OCTA+ Eco Flux",
-        "octaplus_fixed": "OCTA+ Fixed",
-        "octaplus_ecofixed": "OCTA+ Eco Fixed",
-    },
+    withdrawn={c.contract_id: c.label for c in _CONTRACTS if c.withdrawn is not None},
     fetch_index=fetch_index,
     sweep_cost_s=4.5,
 )
