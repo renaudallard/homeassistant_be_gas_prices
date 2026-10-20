@@ -321,10 +321,17 @@ class _Cards(StoredTexts):
     def missing(self, row: dict[str, Any] | None) -> list[str]:
         """The PDFs a held row names that no upload has recorded: an upload
         that failed after the row was pushed. Nothing is missing where this
-        run keeps no PDFs at all."""
+        run keeps no PDFs at all. Bytes only pending count as missing: no row
+        of this run may name them, and unnamed they are dropped with it. Bolt's
+        were: asked for a later month, its archive answers the card of a month
+        held already, which leaves that card's bytes pending and unfiled."""
         if row is None or self.pdf_dir is None:
             return []
-        return [digest for digest in _pdfs_of(row.get("_sources", [])) if not self.knows(digest)]
+        return [
+            digest
+            for digest in _pdfs_of(row.get("_sources", []))
+            if digest not in self.kept and digest not in self.saved
+        ]
 
     def file(self, month: str, digests: Iterable[str]) -> None:
         """Write the pending bytes a row read under that row's month."""

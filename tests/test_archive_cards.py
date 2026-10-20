@@ -508,6 +508,50 @@ async def test_backfill_offers_again_a_card_whose_upload_failed(
     assert asked == [date(2026, 8, 1), date(2026, 8, 1)]
 
 
+async def test_backfill_offers_again_a_card_an_earlier_ask_already_read(
+    tmp_path: Path, web: _Session
+) -> None:
+    """Bolt's variable card stays in force for months: asked for August, its
+    archive answers July's card, filed under July. That ask leaves the card's
+    bytes pending, and counted as kept they had July skipped when the
+    backfill reached it, then were dropped with the run, no row naming them."""
+    july_url = "https://acme.test/card_v1.pdf"
+    web.pages[july_url] = _card("2026-07", "0.07")
+
+    async def fetch_for_month(
+        session: Any, contract: str, _region: str, month: date
+    ) -> SupplierSnapshot | None:
+        text = await _pdf.fetch_pdf_rendered(
+            session, july_url, variant="plain", timeout=30, render=lambda b: b.decode("ascii")
+        )
+        return _parse(text, 1.0, contract)
+
+    out = tmp_path / "gas"
+    extractor = _Acme().extractor(fetch_for_month=fetch_for_month)
+    first = await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW,
+        sleep=_no_sleep,
+        backfill_months=2,
+        pdf_dir=tmp_path / "pdfs1",
+    )
+    assert first.backfilled == 1
+    july, live = _digest(web.pages[july_url]), _digest(web.pages[CARD_URL])
+    # The upload failed after the live card's.
+    (out / "pdfs.json").write_text(json.dumps({live: f"gas-2026-09/{live}.pdf"}))
+    second = await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW + timedelta(days=1),
+        sleep=_no_sleep,
+        backfill_months=2,
+        pdf_dir=tmp_path / "pdfs2",
+    )
+    assert second.reoffered == 1
+    assert (tmp_path / "pdfs2" / "gas-2026-07" / f"{july}.pdf").read_bytes() == web.pages[july_url]
+
+
 async def test_backfill_files_a_card_under_the_month_it_names(
     tmp_path: Path, web: _Session
 ) -> None:
