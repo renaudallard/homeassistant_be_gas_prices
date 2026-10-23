@@ -93,6 +93,9 @@ def test_an_index_footnote_that_is_no_month_states_no_value() -> None:
         "De laatst gekende waarde is deze van september 0000 (61,72 €/MWh)",
         "Geldig voor particuliere contracten afgesloten in januari 0001. "
         "De laatst gekende waarde is deze van december 2025 (61,72 €/MWh)",
+        # Its own month, as the March 2026 card names, with no month before.
+        "Geldig voor particuliere contracten afgesloten in januari 0001. "
+        "De laatst gekende waarde is deze van januari 0001 (61,72 €/MWh)",
     ],
 )
 def test_a_trevion_card_naming_no_month_names_no_index_value(known: str) -> None:

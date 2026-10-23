@@ -160,10 +160,13 @@ def test_published_index_is_the_month_before_the_card() -> None:
     )
 
 
-def test_published_index_skips_the_card_that_names_its_own_month() -> None:
+def test_published_index_files_the_value_under_the_month_before_the_card() -> None:
     """The March card says "maart 2026 (33,30 €/MWh)", but 33,30 is
-    February's value: neither month can be trusted to it."""
-    assert trevion.published_index(_card(_MARCH)) is None
+    February's value, as Belvus and Bolt publish it. A card naming another
+    month is not trusted to its value."""
+    assert trevion.published_index(_card(_MARCH)) == (date(2026, 2, 1), 33.30)
+    text = _card(_SEPTEMBER).replace("augustus 2026 (61,72", "juni 2026 (61,72")
+    assert trevion.published_index(text) is None
 
 
 def test_listing_gives_one_card_per_month_and_its_reissue() -> None:
@@ -203,9 +206,10 @@ async def test_fetch_index_takes_each_value_from_the_following_card() -> None:
     ):
         table = await trevion.fetch_index(AsyncMock())
     # OCTA+ publishes the same months as 51,264 / 46,001 / 46,941 / 45,076 /
-    # 53,075 / 61,729; February is only on the mislabelled March card.
+    # 53,075 / 61,729; February's 33,30 is on the mislabelled March card.
     assert table == {
         "TTF_RLP": {
+            "2026-02": 33.30,
             "2026-03": 51.26,
             "2026-04": 46.0,
             "2026-05": 46.94,
@@ -311,7 +315,7 @@ async def test_a_later_page_gone_keeps_page_1_but_an_outage_raises() -> None:
         patch.object(trevion, "fetch_pdf_text", cards),
     ):
         table = await trevion.fetch_index(AsyncMock())
-    assert sorted(table["TTF_RLP"]) == [f"2026-{month:02d}" for month in range(3, 9)]
+    assert sorted(table["TTF_RLP"]) == [f"2026-{month:02d}" for month in range(2, 9)]
     with (
         freeze_time(datetime(2026, 10, 19, 12)),
         patch.object(trevion, "fetch_text", page_2("HTTP 503")),
@@ -324,8 +328,8 @@ async def test_a_later_page_gone_keeps_page_1_but_an_outage_raises() -> None:
 async def test_fetch_index_reads_the_cards_back_to_january_of_last_year() -> None:
     """The price history can be backfilled from January 2025, so the 2025
     cards page 2 lists are read too, here dead links. From page 2 the
-    January card gives December 2025 and the February card January 2026;
-    the March card names its own month and stays out."""
+    January card gives December 2025, the February card January 2026 and
+    the March card, naming its own month, February 2026."""
     cards = AsyncMock(side_effect=_held_or_404)
     with (
         freeze_time(datetime(2026, 10, 19, 12)),
@@ -339,7 +343,7 @@ async def test_fetch_index_reads_the_cards_back_to_january_of_last_year() -> Non
     } <= asked
     assert table["TTF_RLP"]["2025-12"] == pytest.approx(27.65)
     assert table["TTF_RLP"]["2026-01"] == pytest.approx(34.06)
-    assert "2026-02" not in table["TTF_RLP"]
+    assert table["TTF_RLP"]["2026-02"] == pytest.approx(33.30)
     assert table["TTF_RLP"]["2026-08"] == pytest.approx(61.72)
 
 

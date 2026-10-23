@@ -81,11 +81,13 @@ The value is always the TTF RLP of the month before the card, as OCTA+
 The month named on the March card is wrong. `fetch_index` downloads every
 card from last year's January card on, January of last year being the
 first month the price history can be backfilled from, reading the
-listing's later pages for those page 1 no longer holds, and keeps a value
-only where the named month is the month before the card's own, so February
-2026 is left out. The older cards a page also lists are not downloaded.
-`published_index` is the pure reader. One dead link is skipped, and so is a
-later page the site no longer serves; a transient failure raises.
+listing's later pages for those page 1 no longer holds, and files each
+value under the month before the card's own where the card names that
+month or its own, as the March card does for February's 33,30; a card
+naming any other month is left out. The older cards a page also lists are
+not downloaded. `published_index` is the pure reader. One dead link is
+skipped, and so is a later page the site no longer serves; a transient
+failure raises.
 
 ## Archive
 

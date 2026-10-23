@@ -50,21 +50,21 @@ TTF_RLP in EUR/MWh, with the VAT already inside, and the card prints it at
 always the TTF RLP of the month before the card, as OCTA+ and HOA publish
 it (the September card's 61,72 is OCTA+'s 61,729 for August), but the month
 it names is not: the March 2026 card says "maart 2026 (33,30 €/MWh)" for
-February's 33,296, and the April card names March again with March's
-51,264. The value can also carry a dot ("53.07" in August).
+February's 33,296 (Belvus's and Bolt's 33,30), and the April card names
+March again with March's 51,264. The value can also carry a dot ("53.07" in
+August).
 
 Trevion publishes no index table of its own (its market page is
 electricity only), so a realised value appears nowhere but on the next
-month's card. :func:`fetch_index` reads it there, and only where the named
-month is the month before the card's own. On every card but the March one
-both readings agree; that card is left out rather than filed under either
-month.
+month's card. :func:`fetch_index` reads it there and files it under the
+month before the card's own, where the card names that month or, as the
+March one does, its own; a card naming any other month is left out.
 """
 
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from urllib.parse import urljoin
 
 import aiohttp
@@ -302,9 +302,10 @@ _KNOWN_VALUE_RE = re.compile(
 
 
 def published_index(text: str) -> tuple[date, float] | None:
-    """The TTF_RLP month and value in EUR/MWh a card names, or None where
-    the card names none or names a month other than the one before its own.
-    """
+    """The TTF_RLP value in EUR/MWh a card names, under the month before the
+    card's own, or None where the card names none. The value is always that
+    month's, but the March 2026 card names its own month beside it; a card
+    naming any other month is not trusted to it."""
     match = _KNOWN_VALUE_RE.search(text)
     try:
         card_month = _card_month(text)
@@ -314,9 +315,13 @@ def published_index(text: str) -> tuple[date, float] | None:
         return None
     if match is None or card_month is None or named is None:
         return None
-    if named.year * 12 + named.month + 1 != card_month.year * 12 + card_month.month:
+    if named.year * 12 + named.month + 1 == card_month.year * 12 + card_month.month:
+        before = named
+    elif named == card_month and card_month > date.min:
+        before = (card_month - timedelta(days=1)).replace(day=1)
+    else:
         return None
-    return named, to_float(match.group(3))
+    return before, to_float(match.group(3))
 
 
 _VAT_RE = re.compile(r"Incl\.\s*(\d+)\s*%\s*BTW")
