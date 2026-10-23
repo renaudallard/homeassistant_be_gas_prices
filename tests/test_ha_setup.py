@@ -935,22 +935,42 @@ async def test_a_withdrawn_contract_keeps_pricing_on_its_last_card(
         assert issues.async_get_issue(DOMAIN, f"{name}_{entry.entry_id}") is None
 
 
-@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
-async def test_a_withdrawn_contract_with_no_card_held_takes_the_archive_s_last(
-    hass: HomeAssistant,
+@pytest.mark.freeze_time("2027-10-15 10:00:00+02:00")
+@pytest.mark.parametrize("use_archive", [True, False])
+async def test_a_withdrawn_contract_with_no_card_held_takes_its_last_month_s(
+    hass: HomeAssistant, use_archive: bool
 ) -> None:
-    row = AsyncMock(side_effect=[None, (_flux_card(), False)])
+    """No card stored: the card of September 2026, the last month Flux was
+    sold, from the card archive where the entry reads it, else from OCTA+'s
+    own archive, however long ago that was."""
+    archived = AsyncMock(return_value=_flux_card())
+    fetch_for_month = AsyncMock(return_value=_flux_card())
+    stub = replace(_octaplus_stub(), fetch_for_month=fetch_for_month)
     with (
-        patch.dict(providers.EXTRACTORS, {"octaplus": _octaplus_stub()}),
-        patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", row),
+        patch.dict(providers.EXTRACTORS, {"octaplus": stub}),
+        patch("custom_components.be_gas_prices.month_cards.fetch_archived_card", archived),
     ):
         entry = MockConfigEntry(
-            domain=DOMAIN, title="OCTA+ Flux", data={**_FLUX, CONF_CARD_ARCHIVE: True}
+            domain=DOMAIN, title="OCTA+ Flux", data={**_FLUX, CONF_CARD_ARCHIVE: use_archive}
         )
         entry.add_to_hass(hass)
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
-    assert entry.runtime_data.data.card_source == "archive"
+    assert entry.runtime_data.data.card_source == ("archive" if use_archive else "live")
+    if use_archive:
+        assert archived.await_args_list[0].args[1:] == (
+            "octaplus",
+            "octaplus_flux",
+            REGION_WALLONIA,
+            "2026-09",
+        )
+    else:
+        archived.assert_not_awaited()
+        assert fetch_for_month.await_args_list[0].args[1:] == (
+            "octaplus_flux",
+            REGION_WALLONIA,
+            date(2026, 9, 1),
+        )
 
 
 @pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")

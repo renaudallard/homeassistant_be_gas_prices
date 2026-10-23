@@ -40,8 +40,10 @@ cards (`issues.sync_issues`).
    so the next setup retry counts the failures on, and raises
    `UpdateFailed`, which is what makes a first setup retry. The expert
    custom supplier builds its card from the entry instead, and a contract
-   the supplier withdrew fetches nothing: the card held, or the card
-   archive's latest row when none is, prices it and never goes stale.
+   the supplier withdrew fetches nothing: the card held, or when none is
+   the card of the last month it was sold (`last_month_sold`), from the
+   card archive where the entry reads it, else from the supplier's own
+   archive, prices it and never goes stale.
 2. **Index values** (`_refresh_index`), twice a day, from the supplier's own
    publication. A failure keeps the table held, or with none held and a
    failure a retry may cure (network, storage, HTTP 5xx, 403, 408, 429) is

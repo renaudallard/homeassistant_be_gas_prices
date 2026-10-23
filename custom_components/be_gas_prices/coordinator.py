@@ -91,6 +91,7 @@ from .contract_periods import (
     PeriodBilling,
     card_key_due,
     current_period_start,
+    last_month_sold,
     parse_date,
     periods_this_year,
     previous_contracts,
@@ -206,7 +207,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._probe_key: str | None = None
         self._card_source = "live"
         # The card in hand stands in for the one of the month: restored from
-        # the Store, or the card archive's latest row taken after a failure.
+        # the Store, the card archive's latest row taken after a failure, or
+        # a withdrawn contract's last card.
         # Due at once, unlike a card read for the month, here or by the
         # card archive, which is due when it changes or ages.
         self._stand_in = False
@@ -537,13 +539,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._force_made = self._force_asked
             return
         if self.withdrawn:
-            # Nothing to fetch: the last card held, from the store or the
-            # card archive, keeps pricing the contract.
+            # Nothing to fetch: the last card held, from the store, else the
+            # card of the last month it was sold, keeps pricing the contract.
             self._force_made = self._force_asked
             self._failures = 0
             self.card_unreadable = self.card_missing = False
             if self._snapshot is None:
-                await self._adopt_archived_card()
+                await self._adopt_last_card()
             self.last_error = (
                 ""
                 if self._snapshot is not None
@@ -620,6 +622,34 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if not transient:
             self._failures += 1
         _LOGGER.warning("%s: tariff card not refreshed: %s", self.extractor.label, message)
+
+    async def _adopt_last_card(self) -> None:
+        """Stand a withdrawn contract's last card in when none is held: the
+        card of the last month it was sold, from the card archive where the
+        entry reads it, else from the supplier's own archive."""
+        month = last_month_sold(self.extractor, self.contract)
+        if month is None:
+            return
+        try:
+            row = await self._months.card(
+                self._session,
+                self.extractor,
+                self.contract,
+                self.region,
+                month,
+                use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
+            )
+        except (ExtractorError, ArchiveUnavailable) as err:
+            _LOGGER.debug("%s card for %s not read: %s", self.extractor.label, month, err)
+            return
+        if row.snapshot is None:
+            return
+        year, number = (int(part) for part in month.split("-"))
+        self._snapshot = row.snapshot
+        self._card_source = "archive" if row.source == "archive" else "live"
+        self._stand_in = True
+        self.card_read_by_ocr = False
+        self._fetched_at = dt_util.as_utc(dt_util.start_of_local_day(date(year, number, 1)))
 
     async def _adopt_archived_card(self) -> None:
         """Stand the card archive's latest row in for a card we cannot read.
