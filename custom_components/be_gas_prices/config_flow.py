@@ -93,6 +93,9 @@ from .const import (
     REGION_BRUSSELS,
     REGIONS,
     SUPPLIER_CUSTOM,
+    TIER_BOUNDS_KWH,
+    TIER_T2,
+    TIER_T3,
 )
 from .contract_periods import (
     parse_date,
@@ -535,6 +538,9 @@ class _FlowSteps:
             return await self.async_step_factor(
                 {CONF_CONVERSION_FACTOR: self._data.get(CONF_CONVERSION_FACTOR)}
             )
+        # The custom card types the two lower tiers only, and a volume above
+        # them falls in the third.
+        top = TIER_T2 if self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM else TIER_T3
         fields: dict[Any, Any] = {
             vol.Required(
                 CONF_ANNUAL_CONSUMPTION_KWH,
@@ -544,7 +550,7 @@ class _FlowSteps:
             ): NumberSelector(
                 NumberSelectorConfig(
                     min=0,
-                    max=1_000_000,
+                    max=dict(TIER_BOUNDS_KWH)[top],
                     step="any",
                     mode=NumberSelectorMode.BOX,
                     unit_of_measurement="kWh",

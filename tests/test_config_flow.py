@@ -285,6 +285,40 @@ async def test_the_custom_network_form_leaves_the_law_s_levies_out(hass: HomeAss
     assert CONF_CUSTOM_CONNECTION_FEE not in flow._data
 
 
+async def test_a_custom_entry_s_volume_stays_within_the_tiers_it_types(
+    hass: HomeAssistant,
+) -> None:
+    """The custom card types T1 and T2 only, so a volume past 150 000 kWh,
+    which falls in T3, could never be priced; a supplier's card prints T3."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    for user_input in (
+        {CONF_POSTCODE: ""},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: SUPPLIER_CUSTOM},
+        {CONF_CONTRACT: CUSTOM_CONTRACT},
+        {CONF_DSO: DSO_ORES},
+        {CONF_CUSTOM_PRICE: 8.0, CONF_CUSTOM_FEE: 60.0},
+    ):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    schema = result["data_schema"]
+    assert schema is not None
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {key: 1.0 for key in schema.schema}
+    )
+    assert result["step_id"] == "household"
+    schema = result["data_schema"]
+    assert schema is not None
+    assert schema({CONF_ANNUAL_CONSUMPTION_KWH: 150_000.0})
+    with pytest.raises(vol.Invalid):
+        schema({CONF_ANNUAL_CONSUMPTION_KWH: 150_001.0})
+    flow: Any = hass.config_entries.flow._progress[result["flow_id"]]
+    flow._data[CONF_SUPPLIER] = "engie"
+    result = await flow.async_step_household()
+    assert result["data_schema"]({CONF_ANNUAL_CONSUMPTION_KWH: 200_000.0})
+
+
 async def test_the_contract_form_folds_the_rarely_needed_fields(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
