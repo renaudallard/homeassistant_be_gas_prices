@@ -60,7 +60,7 @@ from typing import Any, Final
 import aiohttp
 from homeassistant.util import dt as dt_util
 
-from .const import EXCISE_BAND_KWH, EXCISE_LAW_URL
+from .const import EXCISE_BAND_KWH, EXCISE_LAW_URL, GAS_EXCISE_KNOWN_UNTIL
 from .providers._pdf import MONTH_NAMES, fetch_text
 from .providers.base import ExtractorError
 
@@ -282,8 +282,10 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
         # on billing the law.
         log = _LOGGER.debug if _HELD else _LOGGER.warning
         log(
-            "The gas excise law could not be fetched from Justel, so a month FPS "
-            "Finance's tariff does not list is billed its card's own excise: %s",
+            "The gas excise law could not be fetched from Justel, so a month from "
+            "%d-%02d on that FPS Finance's tariff does not list is billed its card's "
+            "own excise: %s",
+            *GAS_EXCISE_KNOWN_UNTIL,
             err,
         )
         _failed_at = now

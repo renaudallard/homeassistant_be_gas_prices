@@ -153,3 +153,18 @@ async def test_a_failure_never_raises_and_waits_before_asking_again(
     await ensure_excise_law(None)  # type: ignore[arg-type]
     assert len(asked) == 1
     assert excise_law._HELD == []
+
+
+async def test_a_failure_with_nothing_held_names_the_months_left_on_the_card(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """const.py's quarters bill up to July 2026 whatever Justel answers, so
+    only the months from August 2026 a tariff read does not list fall to
+    the card's own excise."""
+
+    async def fetch_text(_session: Any, url: str, **_kwargs: Any) -> str:
+        raise ExtractorError(f"network error fetching {url}: timeout")
+
+    monkeypatch.setattr(excise_law, "fetch_text", fetch_text)
+    await ensure_excise_law(None)  # type: ignore[arg-type]
+    assert "a month from 2026-08 on" in caplog.text
