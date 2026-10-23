@@ -59,9 +59,11 @@ every other card and the Flemish regulator use: the row labelled Limburg
 carries Halle-Vilvoorde's 17,59 / 2,50 / 93,38 / 0,98, the one labelled
 Midden-Vlaanderen carries Limburg's 14,59 / 2,24 / 77,46 / 0,98, and so on
 down the table; only Antwerpen is right. So the rows are mapped by position,
-and a card whose labels come in any other order is refused: were either the
-labels or the figures moved, the position would no longer say whose figures
-a row carries. The 2025 table is another matter: its rows carry their own
+and a card whose labels come in any other order is refused, the position no
+longer saying whose figures a row carries. Figures moved under their own
+labels in that order would not be noticed here, only by the live check,
+where the six brands' rows then depart from every other supplier's. The
+2025 table is another matter: its rows carry their own
 labels' figures, which by position would give seven areas out of eight
 another area's tariff, and it breaks one row ("FLUVIUS LIMBURG 2,09 13,32
 70,72 70,72"), whose mid tier :func:`._network.dso_overlay` drops as not

@@ -95,6 +95,21 @@ Assistant's zone (on a UTC host the OS clock is still on the previous month
 for the first hours of the 1st in Brussels), refuses a month ahead of
 today, and refuses a card naming another month than the one asked for.
 
+## Card errors
+
+Billed as printed:
+
+- The Walloon cards of January and February 2025 add the trucked-gas
+  supplement CWaPE sets for RESA ("supplément pour gaz porté", 0,0058066
+  EUR/kWh excluding VAT, 0,6155 c€/kWh with it) to RESA's proportional
+  terms: 4,862 / 2,927 / 2,668 where Eneco's February cards print 4,25 /
+  2,31 for T1 and T2, as Engie's own do from March (4,247 / 2,312).
+  CWaPE's decision 1009 applies it only on an isolated network fed by
+  trucked gas.
+- The Walloon cards of January 2026 print RESA's T2 term as 2,259, the
+  digits of 2,529 swapped; Engie's February cards print 2,529, and Eneco's
+  and TotalEnergies' January cards 2,53.
+
 ## What the tests pin
 
 - EASY Variable: ZTP101, settled, price, fee, factor, base, the formula at

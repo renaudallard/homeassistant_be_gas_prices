@@ -138,7 +138,10 @@ refused below.
   the CWaPE 4,28944 / 2,20574 / 1,63882, RESA 4,63 / 2,52 against 4,63912 /
   2,52946.
 - TECTEO RESA prints 5,25 / 3,14 / 2,86 on the February, May and June 2026
-  Walloon cards against 4,63 / 2,52 / 2,24 on the others.
+  Walloon cards against 4,63 / 2,52 / 2,24 on the others: the terms plus
+  the trucked-gas supplement CWaPE sets for RESA ("supplément pour gaz
+  porté", 0,0058066 EUR/kWh excluding VAT, 0,6155 c€/kWh with it), which
+  its decision 1009 applies only on an isolated network fed by trucked gas.
 - Sibelga metering 24,96 where the regulator and Engie give 24,95.
 - The high excise band on the April to July 2026 cards is 0,96229, the
   first-quarter rate (all but the April GS1JVG Flemish card below). The

@@ -187,6 +187,14 @@ September 2026 online cards, both regions:
   0,0075", which is the same 0,0075 EUR the per-kWh rate gives on 100 kWh.
 - pypdf prints the footnotes of page 1 before the title; the title regex is
   anchored on a line start and the "(" after "Gaz" so they cannot match.
+- The Walloon cards of January to July 2025 and of January 2026 add
+  the trucked-gas supplement CWaPE sets for RESA ("supplément pour gaz
+  porté", 0,0058066 EUR/kWh excluding VAT, 0,6155 c€/kWh with it) to RESA's
+  proportional terms: 4,86 / 2,93 / 2,67 in 2025 and 5,25 / 3,14 / 2,86 in
+  2026, where Eneco's cards print 4,25 / 2,31 from February 2025 (Engie's
+  from March) and Eneco's and TotalEnergies' 4,64 / 2,53 in January 2026
+  for T1 and T2. CWaPE's decision 1009 applies it only on an isolated
+  network fed by trucked gas. Billed as printed.
 
 ## Tests
 

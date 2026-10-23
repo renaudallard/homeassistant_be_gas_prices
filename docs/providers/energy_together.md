@@ -116,9 +116,12 @@ regulator use. Checked row by row against the regulator's 2026 figures
 
 `_dsos` therefore maps the rows by position (`_ROW_OWNERS`) and refuses the
 card unless the labels read exactly `_PRINTED_LABELS`, in that order. If the
-supplier corrects the labels, or moves the figures to follow them, the card
-fails with "not the order this reader maps by position"; check the rows
-against the regulator's figures again and map by label if they now agree.
+supplier corrects the labels, the card fails with "not the order this reader
+maps by position"; check the rows against the regulator's figures again and
+map by label if they now agree. If it moves the figures under their own
+labels instead, the reader does not notice and seven areas read another's
+tariff: the live check's fleet comparison fails those rows, since the six
+brands vote as one against the other suppliers.
 The fixed terms alone tell the eight areas apart.
 
 The 2025 table of the template (on every 2025 card, and on Belvus's January

@@ -83,7 +83,8 @@ Card errors this reads as printed and does not correct:
   - The Walloon distribution terms are cut to two decimals rather than
     rounded (ORES 4,28 where the CWaPE grid says 4,28944), and TECTEO RESA
     prints 5,25 / 3,14 / 2,86 on the February, May and June 2026 cards
-    against 4,63 / 2,52 / 2,24 in the months between.
+    against 4,63 / 2,52 / 2,24 in the months between: the terms plus the
+    supplement CWaPE sets for networks fed by trucked gas.
   - The Flemish GS1JVG card of April 2026 prints the excise the law set
     from August (1,09286 / 1,18296) and no energy contribution.
   - EnergyVision's cards before February 2026 print no transport term at

@@ -129,6 +129,12 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   November and December 2025, and TTFDAW-RLP 45,95 for all of Q4 2025; 45,65
   and 45,95 are also its Q2 2026 values. No residential gas product uses
   these two columns.
+- The Walloon cards of January 2025 add the trucked-gas supplement CWaPE
+  sets for RESA ("supplément pour gaz porté", 0,0058066 EUR/kWh excluding
+  VAT, 0,6155 c€/kWh with it) to RESA's T1 and T2: 4,86 / 2,93, as every
+  RESA row of that month in the archive does, where February's print 4,25 /
+  2,31. CWaPE's decision 1009 applies it only on an isolated network fed by
+  trucked gas. Billed as printed.
 
 ## Tests
 

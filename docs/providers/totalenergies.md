@@ -217,6 +217,12 @@ These were seen on the September 2026 cards and compared with
 - The Walloon heading reads "Gaz en Région de Région wallonne".
 - Every card carries an ETS2 clause from 1 January 2027 (a cost per MWh at
   an emission factor and quota price not yet set). It is not priced.
+- The Walloon cards of October to December 2025 add the trucked-gas
+  supplement CWaPE sets for RESA ("supplément pour gaz porté", 0,0058066
+  EUR/kWh excluding VAT, 0,6155 c€/kWh with it) to RESA's proportional
+  terms: 4,86 / 2,93 / 2,67 where the other cards print 4,25 / 2,31 for T1
+  and T2. CWaPE's decision 1009 applies it only on an isolated network fed
+  by trucked gas. Billed as printed.
 
 ## Tests
 

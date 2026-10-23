@@ -466,10 +466,16 @@ attached to an issue as it is.
   (140,93 for 122,05). The daily live check reports each of these as a
   notice while the card prints that figure, and as a failure if it prints
   another; the transport at two decimals it cannot tell from Fluxys's, and
-  it does not compare T3 terms. A distribution tier that is not cheaper per
-  kWh than the one below it is a figure in the wrong cell and is dropped
-  with those above it instead, so a household on them gets a pricing error
-  rather than a wrong bill.
+  it does not compare T3 terms. Past cards bill their months the same way,
+  and their errors are in the provider notes: Trevion's January 2026 card
+  prints the 2025 Fluvius table, Engie's prints RESA's mid tier as 2,259,
+  and RESA rows of Luminus, Engie, Eneco and TotalEnergies in 2025 and
+  January 2026, and of EnergyVision in February, May and June 2026, add
+  the supplement CWaPE sets only for networks fed by trucked gas, 0,6155
+  c EUR/kWh. A distribution tier that is not cheaper per kWh than the one
+  below it is a figure in the wrong cell and is dropped with those above it
+  instead, so a household on them gets a pricing error rather than a wrong
+  bill.
 
 ## Development
 

@@ -109,6 +109,12 @@ August 2505, so August 2025 is not served.
 - The May 2026 card prints 5,51 where its formula at the value it names
   (46,00) gives 5,5035; the June card prints 5,60 where 46,94 gives 5,6052.
 - The value named is cut rather than rounded at times (61,72 for 61,729).
+- The January 2026 card prints the 2025 Fluvius table: Antwerpen 14,24 /
+  2,10 / 75,60 / 0,87 and a data management fee of 18,56, where the
+  February card prints 15,68 / 2,26 / 83,22 / 0,91 and 18,92. It is the only
+  January 2026 Flemish card in the archive to do so. It is billed as
+  printed, a few euros on January, unlike the Belvus and Energy Together
+  cards of that table, which are refused.
 
 ## What the tests pin
 
