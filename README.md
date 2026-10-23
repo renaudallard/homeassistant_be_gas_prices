@@ -280,8 +280,10 @@ manifest.
    contract recorded on the entry. The folded **Advanced** section holds
    what most households leave alone: a **tariff card date**, the day you
    signed, when you signed on another month's card or on an Elegant card
-   reissued within its month, not a day to come, the **end date** for a
-   renewal reminder, counting this year's cost from the contract start, and
+   reissued within its month, not a day to come (a TotalEnergies renewal is
+   priced on the card of three months before it, so give a day of that
+   month), the **end date** for a renewal reminder, counting this year's
+   cost from the contract start, and
    a switch to type the figures of your contract
    when they differ from the card or the card cannot be reached.
 3. **Network operator**, only asked without a postcode and outside

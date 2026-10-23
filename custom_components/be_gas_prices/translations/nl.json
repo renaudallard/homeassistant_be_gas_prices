@@ -51,7 +51,7 @@
               "signed_rate": "De cijfers van mijn contract invullen"
             },
             "data_description": {
-              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke.",
+              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke. Een verlenging bij TotalEnergies volgt de kaart van drie maanden ervoor: geef een dag van die maand.",
               "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
               "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
               "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
@@ -195,7 +195,7 @@
               "signed_rate": "De cijfers van mijn contract invullen"
             },
             "data_description": {
-              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke.",
+              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke. Een verlenging bij TotalEnergies volgt de kaart van drie maanden ervoor: geef een dag van die maand.",
               "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
               "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
               "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."

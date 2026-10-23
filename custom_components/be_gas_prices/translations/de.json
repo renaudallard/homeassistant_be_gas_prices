@@ -51,7 +51,7 @@
               "signed_rate": "Die Zahlen meines Vertrags eingeben"
             },
             "data_description": {
-              "tariff_card_date": "Der Tag Ihrer Unterschrift, wenn Ihre Karte nicht die des Monats des Lieferbeginns ist. Elegant gibt seine feste Karte innerhalb des Monats neu heraus: der Tag bestimmt dann, welche.",
+              "tariff_card_date": "Der Tag Ihrer Unterschrift, wenn Ihre Karte nicht die des Monats des Lieferbeginns ist. Elegant gibt seine feste Karte innerhalb des Monats neu heraus: der Tag bestimmt dann, welche. Eine Verlängerung bei TotalEnergies folgt der Karte von drei Monaten zuvor: geben Sie einen Tag dieses Monats an.",
               "contract_end_date": "Dient nur einer Erinnerung an die Verlängerung.",
               "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt.",
               "signed_rate": "Für einen Vertrag, dessen Preis von der Karte des Lieferanten abweicht oder dessen Karte nicht zu finden ist. Der nächste Schritt fragt danach."
@@ -195,7 +195,7 @@
               "signed_rate": "Die Zahlen meines Vertrags eingeben"
             },
             "data_description": {
-              "tariff_card_date": "Der Tag Ihrer Unterschrift, wenn Ihre Karte nicht die des Monats des Lieferbeginns ist. Elegant gibt seine feste Karte innerhalb des Monats neu heraus: der Tag bestimmt dann, welche.",
+              "tariff_card_date": "Der Tag Ihrer Unterschrift, wenn Ihre Karte nicht die des Monats des Lieferbeginns ist. Elegant gibt seine feste Karte innerhalb des Monats neu heraus: der Tag bestimmt dann, welche. Eine Verlängerung bei TotalEnergies folgt der Karte von drei Monaten zuvor: geben Sie einen Tag dieses Monats an.",
               "contract_end_date": "Dient nur einer Erinnerung an die Verlängerung.",
               "ytd_from_contract_start": "Aus: die laufenden Kosten und der Verbrauch dieses Jahres beginnen am 1. Januar. Ein: sie beginnen mit dem Vertragsbeginn, wenn dieser später liegt.",
               "signed_rate": "Für einen Vertrag, dessen Preis von der Karte des Lieferanten abweicht oder dessen Karte nicht zu finden ist. Der nächste Schritt fragt danach."

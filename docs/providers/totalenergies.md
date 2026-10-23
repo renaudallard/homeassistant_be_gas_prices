@@ -40,6 +40,17 @@ The label is the product name as the card heading prints it, after
 Variable in September 2026) and the fixed price (8,45 / 8,35 / 9,21 on
 myComfort Fixe). The region's own card is therefore read.
 
+Each card of a one-year product (Gaz Fixe, Gaz Variable, Impact, myComfort
+and myComfort Fixe) applies to the contracts signed in its month and to
+those renewed three months later: "Ces conditions sont applicables aux
+nouveaux contrats pour une durée d'un an établis en octobre 2026 et aux
+contrats renouvelés en janvier 2027". The myEssential contracts are open
+ended and never renew. A renewal is therefore priced on its card only when
+the entry sets a tariff card date in that earlier month; the form and the
+README say so. Nothing in the entry tells a renewal from a new contract: a
+July 2026 renewal of myComfort Fixe in Flanders left on its start month
+bills July's 5,93 c€/kWh instead of April's 8,00.
+
 ## How each figure is read
 
 The cards are read with pdfplumber (`fetch_pdf_text_layout`), which keeps

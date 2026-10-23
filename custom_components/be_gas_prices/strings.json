@@ -51,7 +51,7 @@
               "signed_rate": "Enter the figures of my contract"
             },
             "data_description": {
-              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one.",
+              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one. A TotalEnergies renewal is priced on the card of three months before it: give a day of that month.",
               "contract_end_date": "Only used for a renewal reminder.",
               "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
               "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."
@@ -195,7 +195,7 @@
               "signed_rate": "Enter the figures of my contract"
             },
             "data_description": {
-              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one.",
+              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one. A TotalEnergies renewal is priced on the card of three months before it: give a day of that month.",
               "contract_end_date": "Only used for a renewal reminder.",
               "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
               "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."

@@ -51,7 +51,7 @@
               "signed_rate": "Saisir les chiffres de mon contrat"
             },
             "data_description": {
-              "tariff_card_date": "Le jour de votre signature, quand votre carte n'est pas celle du mois où la fourniture a commencé. Elegant réédite sa carte fixe en cours de mois : le jour choisit alors laquelle.",
+              "tariff_card_date": "Le jour de votre signature, quand votre carte n'est pas celle du mois où la fourniture a commencé. Elegant réédite sa carte fixe en cours de mois : le jour choisit alors laquelle. Un renouvellement chez TotalEnergies suit la carte de trois mois plus tôt : indiquez un jour de ce mois.",
               "contract_end_date": "Sert seulement à un rappel de renouvellement.",
               "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive.",
               "signed_rate": "Pour un contrat dont le prix diffère de la carte du fournisseur, ou dont la carte est introuvable. L'étape suivante les demande."
@@ -195,7 +195,7 @@
               "signed_rate": "Saisir les chiffres de mon contrat"
             },
             "data_description": {
-              "tariff_card_date": "Le jour de votre signature, quand votre carte n'est pas celle du mois où la fourniture a commencé. Elegant réédite sa carte fixe en cours de mois : le jour choisit alors laquelle.",
+              "tariff_card_date": "Le jour de votre signature, quand votre carte n'est pas celle du mois où la fourniture a commencé. Elegant réédite sa carte fixe en cours de mois : le jour choisit alors laquelle. Un renouvellement chez TotalEnergies suit la carte de trois mois plus tôt : indiquez un jour de ce mois.",
               "contract_end_date": "Sert seulement à un rappel de renouvellement.",
               "ytd_from_contract_start": "Désactivé : le coût courant et la consommation de l'année commencent au 1er janvier. Activé : ils commencent à la date de début du contrat quand elle est plus tardive.",
               "signed_rate": "Pour un contrat dont le prix diffère de la carte du fournisseur, ou dont la carte est introuvable. L'étape suivante les demande."
