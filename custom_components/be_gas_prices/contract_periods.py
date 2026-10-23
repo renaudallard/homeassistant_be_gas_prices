@@ -127,6 +127,13 @@ def signing_keys(data: Mapping[str, Any], extractor: SupplierExtractor) -> list[
     return [month]
 
 
+def last_month_sold(extractor: SupplierExtractor, contract: str) -> str | None:
+    """The month of a withdrawn contract's last card, that of the last day
+    the supplier sold it, or None for a contract still sold."""
+    withdrawn = next((c.withdrawn for c in extractor.contracts if c.id == contract), None)
+    return None if withdrawn is None else month_key(withdrawn - timedelta(days=1))
+
+
 def card_key_due(key: str, today: date) -> bool:
     """Whether the month card cache can hold a card under ``key`` by
     ``today``: a month before this one, or a day before today. A card found
@@ -349,6 +356,12 @@ class PeriodBilling:
                 contract = str(period[CONF_CONTRACT])
                 region = str(period[CONF_REGION])
                 wanted = _months_between(start, end)
+                last = last_month_sold(extractor, contract)
+                if last is not None:
+                    # No card was published after it: its last one prices
+                    # the months it was no longer sold, and stands in for a
+                    # month whose own card cannot price the household.
+                    wanted = [month for month in wanted if month < last] + [last]
                 wanted += [key for key in signing_keys(period, extractor) if key not in wanted]
                 for month in wanted:
                     if card_key_due(month, today):
@@ -376,7 +389,8 @@ class PeriodBilling:
         could not be priced (their supplier is gone or its card unreadable).
         ``fill`` fetches their months' cards first. A month without a card of
         its own is priced on the contract's last month's card, or on today's
-        while that one is not held or cannot price the household."""
+        while that one is not held or cannot price the household; a contract
+        the supplier withdrew, on the last card it sold it on."""
         from .providers import get as get_extractor
 
         if fill:
@@ -425,7 +439,13 @@ class PeriodBilling:
             # A closed last month without its own card is billed on today's,
             # and named with the other months billed that way.
             end_on_current = end_card is None and month_key(end) < current
-            if end_card is None:
+            last = last_month_sold(extractor, contract)
+            if end_card is None and last is not None:
+                # A contract no longer sold has no card of today's: its last
+                # one stands in, as it does for an entry on it.
+                end_card = month_card(last)
+                end_on_current = True
+            elif end_card is None:
                 end_card = await self._current_card(
                     session, extractor, contract, region, today, use_archive
                 )
@@ -487,13 +507,17 @@ class PeriodBilling:
                 cost = cost_on(end_card)
             except PricingError as err:
                 # The last month's own card cannot price the household (an
-                # archived card missing its DSO row or tier): today's card
-                # stands in for it and for every month it stood in for.
+                # archived card missing its DSO row or tier): today's card,
+                # or the last one a withdrawn contract was sold on, stands
+                # in for it and for every month it stood in for.
                 fallback = None
-                if not custom and not end_on_current and month_key(end) < current:
-                    fallback = await self._current_card(
-                        session, extractor, contract, region, today, use_archive
-                    )
+                if not custom and not end_on_current:
+                    if last is not None:
+                        fallback = None if last == month_key(end) else month_card(last)
+                    elif month_key(end) < current:
+                        fallback = await self._current_card(
+                            session, extractor, contract, region, today, use_archive
+                        )
                 if fallback is not None:
                     with contextlib.suppress(PricingError):
                         cost = cost_on(fallback)

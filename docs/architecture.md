@@ -145,7 +145,8 @@ async_setup_entry                       __init__.py
   the Store.
 - A month whose own card cannot be read is billed on the current card (for
   an earlier contract, its last month's card while it is held and can price
-  the household) and named in the year cost's `months_on_current_card`
+  the household, and for a contract its supplier withdrew, the last card it
+  was sold on) and named in the year cost's `months_on_current_card`
   attribute.
 
 ## Adding a supplier

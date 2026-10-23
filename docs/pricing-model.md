@@ -160,7 +160,10 @@ after the one before it, or from its own contract start when the entry
 billed from it, on its own signing card and typed figures (a contract on
 the custom supplier on the card typed for it). Their last month's card is
 their current card: a month without a card of its own is billed on it, or
-on today's card when it is not held or cannot price the household.
+on today's card when it is not held or cannot price the household. A
+contract its supplier withdrew has no card of today's: the months after it
+was last sold, and a month whose own card cannot price the household, are
+billed on the last card it was sold on.
 
 - `rolling_year_kwh`: the 365 days before today, whose own row holds only
   the hours so far, up to 15 missing days scaled across; more missing and it

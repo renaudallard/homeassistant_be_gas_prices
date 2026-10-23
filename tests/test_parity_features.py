@@ -317,6 +317,96 @@ async def test_a_contract_signed_on_a_reissue_is_billed_on_that_day_s_card() -> 
         assert _energy_price(earlier) == pytest.approx(price), signed
 
 
+async def test_an_earlier_withdrawn_contract_is_billed_on_its_last_card() -> None:
+    """Flow withdrawn on 1 August and left on 10 September: no card exists
+    for August or September, and none of today's, so July's card prices
+    the months after it, as it does for an entry on the contract. Neither
+    the supplier's current card nor the months it no longer sold are asked
+    for."""
+    base = _flow_card()
+    asked: list[str] = []
+
+    async def fetch_for_month(_s: object, _c: str, _r: str, first: date) -> SupplierSnapshot | None:
+        asked.append(f"{first:%Y-%m}")
+        if first >= date(2026, 8, 1):
+            return None
+        return replace(base, energy=FixedRates(price=0.09 if first.month == 7 else 0.07))
+
+    fetch = AsyncMock(side_effect=ExtractorError("Engie withdrew Flow"))
+    contracts = tuple(
+        replace(c, withdrawn=date(2026, 8, 1)) if c.id == "engie_flow" else c
+        for c in engie.EXTRACTOR.contracts
+    )
+    stub = replace(
+        engie.EXTRACTOR,
+        contracts=contracts,
+        fetch=fetch,
+        fetch_for_month=fetch_for_month,
+        fetch_index=None,
+    )
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(273)}
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        [earlier], missing = await PeriodBilling(MonthCardCache()).bill(
+            AsyncMock(),
+            record_switch(dict(ENTRY), date(2026, 9, 10)),
+            date(2026, 9, 30),
+            kwh_days,
+            5_000.0,
+            use_archive=False,
+        )
+    assert missing == []
+    assert [bill.month for bill in earlier.months][-3:] == ["2026-07", "2026-08", "2026-09"]
+    assert earlier.months_on_current_card == ("2026-08", "2026-09")
+    for bill in earlier.months[-3:]:
+        assert bill.energy_cost / bill.kwh == pytest.approx(0.09)
+    assert "2026-08" not in asked and "2026-09" not in asked
+    assert fetch.await_count == 0
+
+
+async def test_an_earlier_withdrawn_contract_falls_back_on_its_last_card() -> None:
+    """Flow withdrawn on 1 October and left on 20 August, August's card
+    lacking the household's network: September's, the last card it was sold
+    on, stands in for August, as today's would for a contract still sold;
+    today's is not asked for, since none exists."""
+    base = _flow_card()
+
+    async def fetch_for_month(_s: object, _c: str, _r: str, first: date) -> SupplierSnapshot | None:
+        if first >= date(2026, 10, 1):
+            return None
+        card = replace(base, energy=FixedRates(price=0.09 if first.month == 9 else 0.07))
+        if first.month == 8:
+            card = replace(card, dsos={})
+        return card
+
+    fetch = AsyncMock(side_effect=ExtractorError("Engie withdrew Flow"))
+    contracts = tuple(
+        replace(c, withdrawn=date(2026, 10, 1)) if c.id == "engie_flow" else c
+        for c in engie.EXTRACTOR.contracts
+    )
+    stub = replace(
+        engie.EXTRACTOR,
+        contracts=contracts,
+        fetch=fetch,
+        fetch_for_month=fetch_for_month,
+        fetch_index=None,
+    )
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(296)}
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        [earlier], missing = await PeriodBilling(MonthCardCache()).bill(
+            AsyncMock(),
+            record_switch(dict(ENTRY), date(2026, 8, 21)),
+            date(2026, 10, 23),
+            kwh_days,
+            5_000.0,
+            use_archive=False,
+        )
+    assert missing == []
+    assert earlier.months[-1].month == "2026-08"
+    assert earlier.months_on_current_card == ("2026-08",)
+    assert earlier.months[-1].energy_cost / earlier.months[-1].kwh == pytest.approx(0.09)
+    assert fetch.await_count == 0
+
+
 async def test_an_earlier_contract_on_the_custom_supplier_is_billed_on_its_typed_card() -> None:
     custom = {
         **_custom_data(),
