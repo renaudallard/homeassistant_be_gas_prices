@@ -76,6 +76,7 @@ from ._network import (
     T3_PROP,
     TRANSPORT,
     excise_bands,
+    printed_contribution,
     read_dsos,
     require_region,
 )
@@ -159,15 +160,19 @@ def _energy(text: str) -> VariableRates:
     )
 
 
-def _taxes(text: str, vat_rate: float) -> TaxOverlay:
+def _taxes(text: str, vat_rate: float, card_month: date) -> TaxOverlay:
     contribution = _CONTRIBUTION_RE.search(text)
     low = _EXCISE_LOW_RE.search(text)
     high = _EXCISE_HIGH_RE.search(text)
-    if contribution is None or low is None or high is None:
-        raise ExtractorError("Dots Energy: excise or energy contribution not found")
+    if low is None or high is None:
+        raise ExtractorError("Dots Energy: excise rows not found")
     return TaxOverlay(
         excise_bands=excise_bands(to_float(low.group(1)) / 100.0, to_float(high.group(1)) / 100.0),
-        energy_contribution=to_float(contribution.group(1)) / 100.0,
+        energy_contribution=printed_contribution(
+            None if contribution is None else contribution.group(1),
+            card_month,
+            supplier="Dots Energy",
+        ),
         card_vat_rate=vat_rate,
     )
 
@@ -188,7 +193,7 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
         contract=contract_id,
         energy=_energy(text),
         dsos=dsos,
-        taxes=_taxes(text, vat_rate),
+        taxes=_taxes(text, vat_rate, card_month),
         source_url=source_url,
         publication_label=f"{card_month:%Y-%m}",
         valid_until=end_of_month(card_month.year, card_month.month),

@@ -183,10 +183,14 @@ def test_card_for_another_product_or_region_is_refused() -> None:
         sparki.parse_snapshot("sparki_self_service", REGION_BRUSSELS, _card(SS_NL), "url")
 
 
-def test_walloon_card_without_its_connection_fee_fails_loud() -> None:
+def test_walloon_card_without_its_levies_rows_is_read() -> None:
+    """The law sets the connection fee and, from August 2026, a contribution
+    of zero, whatever a card prints."""
     text = _card(SS_FR).replace("Redevance raccordement", "Redevance")
-    with pytest.raises(ExtractorError, match="connection fee"):
-        sparki.parse_snapshot("sparki_self_service", REGION_WALLONIA, text, "url")
+    text = text.replace("Cotisation sur l", "x")
+    snap = sparki.parse_snapshot("sparki_self_service", REGION_WALLONIA, text, "url")
+    assert snap.taxes.connection_fee == 0.0
+    assert snap.taxes.energy_contribution == 0.0
 
 
 def test_listing_newest_first_per_product_and_language() -> None:

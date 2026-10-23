@@ -47,7 +47,9 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
 - Excise: "0-12 MWh 1,09286 c€/kWh" and "12-20.000 MWh 1,18296 c€/kWh", each
   on its own line between the lines of a paragraph.
 - Energy contribution: "Huishoudelijk: 0,00000 c€/kWh" (0,105764 before
-  August 2026), mandatory. "Zakelijk (excl BTW): 0,09978" is not read.
+  August 2026), required on a card from before August 2026; from August,
+  the month the law zeroed the levy, a missing row reads as zero.
+  "Zakelijk (excl BTW): 0,09978" is not read.
 - No Flemish levies on the card.
 
 ## Index

@@ -96,7 +96,8 @@ a Raspberry Pi against 1,5 s for pypdf.
   state `La contribution énergétique est fixée à 0 à partir du 1er août
   2026`. One of the two is required.
 - Walloon connection fee: `Redevance de raccordement` then `0.0075` (c
-  EUR/kWh). Mandatory on the Walloon card.
+  EUR/kWh). A Walloon card without it reads as zero, since the law's fee is
+  billed whatever a card prints.
 - Brussels levy: after `Obligations de Service Public`, each amount is the
   line after `/heure`, `/heure*` or `/heure**` (the caliber prints as `6 ou 10
   m`, `3`, `/heure*`). Nine amounts, in order, go to `osp_table`.
@@ -202,7 +203,8 @@ January 2025, January, March and June 2026 were checked.
 - `test_july_card_prints_the_old_excise_and_the_energy_contribution`.
 - Refusals: another product, another region, unknown contract, and a card
   missing the formula, the index definition, the contribution statement,
-  the connection fee, transport or the month.
+  transport or the month. A Walloon card without the connection fee reads:
+  `test_walloon_card_without_the_connection_fee_is_read`.
 - Listing: `test_listing_links_the_gas_card`,
   `test_every_contract_is_on_the_listing_where_it_is_sold`.
 - Archive: `test_archive_url_moves_both_months` and the `fetch_for_month`

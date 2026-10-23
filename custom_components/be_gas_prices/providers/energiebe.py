@@ -83,6 +83,7 @@ from ._network import (
     T2_PROP,
     TRANSPORT,
     excise_bands,
+    printed_contribution,
     read_dsos,
     require_region,
 )
@@ -238,7 +239,7 @@ def parse_snapshot(
         dsos=_dsos(text),
         taxes=TaxOverlay(
             excise_bands=_excise(text),
-            energy_contribution=_energy_contribution(text),
+            energy_contribution=_energy_contribution(text, card_month),
             card_vat_rate=None,
         ),
         source_url=source_url,
@@ -356,11 +357,11 @@ def _excise(text: str) -> tuple[tuple[float | None, float], ...]:
     return excise_bands(rates["kleiner"], rates["groter"])
 
 
-def _energy_contribution(text: str) -> float:
+def _energy_contribution(text: str, card_month: date) -> float:
     match = _CONTRIBUTION_RE.search(text)
-    if match is None:
-        raise ExtractorError("energie.be: energy contribution row not found")
-    return to_float(match.group(1)) / 100.0
+    return printed_contribution(
+        None if match is None else match.group(1), card_month, supplier="energie.be"
+    )
 
 
 # ---- index values ------------------------------------------------------------

@@ -302,7 +302,6 @@ def test_unknown_contract_is_refused() -> None:
         "La formule tarifaire pour le gaz",
         "Weekend ZTP (EGSI)",
         "La contribution énergétique est fixée à 0",
-        "Redevance de raccordement",
         "Coût du transport\n",
         "Prix du \nmois",
     ],
@@ -312,6 +311,13 @@ def test_card_that_lost_a_mandatory_figure_fails_loud(missing: str) -> None:
     assert missing in text
     with pytest.raises(ExtractorError):
         mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, text.replace(missing, "x"))
+
+
+def test_walloon_card_without_the_connection_fee_is_read() -> None:
+    """The law's fee is billed whatever a card prints."""
+    text = _card("WL-092026-Smart0109").replace("Redevance de raccordement", "x")
+    snap = mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, text)
+    assert snap.taxes.connection_fee == 0.0
 
 
 def _listing() -> str:

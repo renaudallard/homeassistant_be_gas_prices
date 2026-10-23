@@ -218,13 +218,12 @@ def test_pre_august_levies_are_read_as_printed() -> None:
     assert taxes.energy_contribution == pytest.approx(0.001058)
 
 
-def test_card_without_the_walloon_connection_fee_fails_loud() -> None:
+def test_card_without_the_walloon_connection_fee_is_read() -> None:
+    """The law's fee is billed whatever a card prints."""
     text = _card(_FLEX_2609).replace("Aansluitingsvergoeding", "Aansluiting")
-    with pytest.raises(ExtractorError, match="connection fee"):
-        eneco.parse_snapshot("eneco_aardgas_flex", REGION_WALLONIA, text, "")
-    # A Flemish household pays no such fee, so its card still reads.
-    snap = eneco.parse_snapshot("eneco_aardgas_flex", REGION_FLANDERS, text, "")
-    assert snap.taxes.connection_fee == 0.0
+    for region in (REGION_WALLONIA, REGION_FLANDERS):
+        snap = eneco.parse_snapshot("eneco_aardgas_flex", region, text, "")
+        assert snap.taxes.connection_fee == 0.0
 
 
 def test_card_without_the_transport_note_fails_loud() -> None:

@@ -68,8 +68,9 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   "Energiebijdrage": "Verbruik tussen 0 en 12.000 kWh 1,0929 0,0000" and
   "Verbruik > 12.000 kWh 1,1830 0,0000". Read as printed; the two
   contribution cells must agree.
-- Walloon connection fee: "Aansluitingsvergoeding < 1 GWh 0,0075 €cent/kWh",
-  mandatory for Wallonia. The row above it ("0 - 100 kWh/jaar 0,0075 €") is
+- Walloon connection fee: "Aansluitingsvergoeding < 1 GWh 0,0075 €cent/kWh";
+  a Walloon card without it reads as zero, since the law's fee is billed
+  whatever a card prints. The row above it ("0 - 100 kWh/jaar 0,0075 €") is
   the same rate on the first 100 kWh and is not read.
 
 ## Index
@@ -141,8 +142,9 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Walloon DSO rows and levies: `test_wallonia_table_collapses_the_ores_sub_areas`,
   `test_wallonia_levies`; stale levies as printed:
   `test_pre_august_levies_are_read_as_printed`.
-- Fail loud: connection fee, transport note, formula, Brussels, unknown
-  contract.
+- Fail loud: transport note, formula, Brussels, unknown contract. A
+  Walloon card without its connection fee reads:
+  `test_card_without_the_walloon_connection_fee_is_read`.
 - Pre-2025 layout: `test_pre_2025_card_reads_for_wallonia_only`.
 - Discovery: `test_listing_links_each_product_once`,
   `test_fetch_reads_the_card_the_listing_links`.

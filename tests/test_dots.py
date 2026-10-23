@@ -58,6 +58,13 @@ def _parse() -> SupplierSnapshot:
     )
 
 
+def test_a_card_from_august_2026_without_the_contribution_is_read() -> None:
+    """The law zeroed the levy in August 2026, so a card may drop the row."""
+    text = fixture_text("dots", CARD).replace("Energiebijdrage", "x")
+    snap = dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, text, "url")
+    assert snap.taxes.energy_contribution == 0.0
+
+
 def test_price_is_kept_as_printed() -> None:
     """ "Gas 1,05 * M ZTP rek. gem. EGSI EEX + 0,9 7,873" and
     "€5,3/maand/EAN": the card defines its index two ways, so the M-1 price

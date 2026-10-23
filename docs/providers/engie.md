@@ -61,7 +61,8 @@ configured region's card is read.
   July 2026; a card from before August 2026 without it is refused. The
   August cards dropped the row, the month the law set the levy to zero.
 - Walloon connection fee: "Redevance raccordement(3) 0,00750"; a Walloon
-  card without it is refused rather than read as zero.
+  card without it reads as zero, since the law's fee is billed whatever a
+  card prints.
 - Brussels levy: the amounts under "Obligations de Service Public", one per
   meter caliber.
 

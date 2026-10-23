@@ -153,6 +153,20 @@ def test_levies_as_printed() -> None:
     assert snap.taxes.osp_by_caliber is None
 
 
+def test_the_contribution_row_is_needed_only_before_august_2026() -> None:
+    """The law zeroed the levy in August 2026, so a card may drop the row; an
+    earlier card without it is a layout change."""
+    text = _card(VARIABLE).replace("Bijdrage op de Energie", "x")
+    snap = energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, text)
+    assert snap.taxes.energy_contribution == 0.0
+    with pytest.raises(ExtractorError, match="energy contribution"):
+        energiebe.parse_snapshot(
+            "energiebe_variable",
+            REGION_FLANDERS,
+            _card(DECEMBER_2025).replace("Bijdrage op de Energie", "x"),
+        )
+
+
 def test_december_2025_card() -> None:
     """The title has no "online" yet and the contribution prints "0, 1058"."""
     snap = energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, _card(DECEMBER_2025))

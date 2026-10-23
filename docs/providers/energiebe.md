@@ -56,9 +56,10 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
   best row below 0,73).
 - Excise: "Bijzondere accijns op Energie (c€/kWh) kleiner dan 12.000kWh
   1,0929" and "groter dan 12.000kWh 1,1830", read as printed.
-- Energy contribution: "Bijdrage op de Energie (c€/kWh) 0", mandatory. The
-  cards before August 2026 print "0, 1058" with a stray space, which reads as
-  0,1058.
+- Energy contribution: "Bijdrage op de Energie (c€/kWh) 0". The cards
+  before August 2026 print "0, 1058" with a stray space, which reads as
+  0,1058, and one of them without the row is refused; from August 2026, the
+  month the law zeroed the levy, a missing row reads as zero.
 
 ## Index
 

@@ -74,7 +74,10 @@ The text is the engine's pdfplumber-shaped reading (the fixtures
   agree and collapse, and "TECTO - RESA", without data management.
 - Levies: "Bijdrage op energie 0,10577", "Verbruik tussen 0 & 12.000 kWh
   0,87238", "Verbruik groter dan 12.000 kWh 0,96229", and in Wallonia
-  "Aansluitingsvergoeding 0,00750".
+  "Aansluitingsvergoeding 0,00750". The law sets the connection fee and,
+  from August 2026, a contribution of zero, so a card without their lines
+  reads them as zero rather than failing; an earlier card without the
+  contribution still fails.
 
 ## The index
 

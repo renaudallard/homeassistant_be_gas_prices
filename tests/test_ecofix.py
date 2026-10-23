@@ -159,6 +159,17 @@ def test_levies_as_printed() -> None:
     assert taxes.connection_fee == pytest.approx(0.000075)
 
 
+def test_a_card_without_the_levies_the_law_sets_is_read() -> None:
+    """The law sets the Walloon connection fee and, from August 2026, an
+    energy contribution of zero, whatever a card prints, so a card without
+    their lines still prices its month."""
+    text = fixture_page("ecofix", FLEXY)
+    text = text.replace("Aansluitingsvergoeding", "x").replace("Bijdrage op energie", "x")
+    taxes = ecofix.parse_snapshot("ecofix_flexy", REGION_WALLONIA, text, "url").taxes
+    assert taxes.connection_fee == 0.0
+    assert taxes.energy_contribution == 0.0
+
+
 def test_a_line_the_engine_was_not_sure_of_fails_the_parse() -> None:
     """Trusted text leaves out a line with a refused mark; the parse must
     fail on it rather than price without it."""

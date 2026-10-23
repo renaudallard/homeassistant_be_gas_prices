@@ -75,6 +75,7 @@ from ._network import (
     T3_PROP,
     TRANSPORT,
     excise_bands,
+    printed_contribution,
     read_dsos,
     require_region,
 )
@@ -247,23 +248,25 @@ _EXCISE_HIGH_RE = re.compile(r"(?:Verbruik|Consommation) > 12\.000 kWh" + _FIGUR
 _CONNECTION_FEE_RE = re.compile(r"Redevance raccordement" + _FIGURE)
 
 
-def _taxes(text: str, region: str, vat_rate: float) -> TaxOverlay:
+def _taxes(text: str, region: str, vat_rate: float, card_month: date) -> TaxOverlay:
     """The levies, in c EUR/kWh on the card. The high excise band is printed
-    with a decimal point ("0.9864")."""
+    with a decimal point ("0.9864"). The law's Walloon connection fee is
+    billed whatever a card prints, so a Walloon card without the row reads as
+    zero."""
     contribution = _CONTRIBUTION_RE.search(text)
     low = _EXCISE_LOW_RE.search(text)
     high = _EXCISE_HIGH_RE.search(text)
-    if contribution is None or low is None or high is None:
-        raise ExtractorError("Sparki: excise or energy contribution not found")
+    if low is None or high is None:
+        raise ExtractorError("Sparki: excise rows not found")
     connection_fee = 0.0
-    if region == REGION_WALLONIA:
-        fee = _CONNECTION_FEE_RE.search(text)
-        if fee is None:
-            raise ExtractorError("Sparki: Walloon connection fee row not found")
+    fee = _CONNECTION_FEE_RE.search(text) if region == REGION_WALLONIA else None
+    if fee is not None:
         connection_fee = to_float(fee.group(1)) / 100.0
     return TaxOverlay(
         excise_bands=excise_bands(to_float(low.group(1)) / 100.0, to_float(high.group(1)) / 100.0),
-        energy_contribution=to_float(contribution.group(1)) / 100.0,
+        energy_contribution=printed_contribution(
+            None if contribution is None else contribution.group(1), card_month, supplier="Sparki"
+        ),
         connection_fee=connection_fee,
         card_vat_rate=vat_rate,
     )
@@ -310,7 +313,7 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
         contract=contract_id,
         energy=_energy(text),
         dsos=_dsos(text, region),
-        taxes=_taxes(text, region, vat_rate),
+        taxes=_taxes(text, region, vat_rate, card_month),
         source_url=source_url,
         publication_label=f"{card_month:%Y-%m}",
         valid_until=end_of_month(card_month.year, card_month.month),

@@ -72,7 +72,9 @@ the Dutch and the French cards.
   2 c€/kWh.
 - Energy contribution: "Energiebijdrage" or "Contribution énergétique",
   optional (dropped since August 2026).
-- Walloon connection fee: "Redevance de raccordement", mandatory.
+- Walloon connection fee: "Redevance de raccordement"; a Walloon card
+  without it reads as zero, since the law's fee is billed whatever a card
+  prints.
 - Brussels levy: the rows after "openbaredienstverplichtingen" that start
   with "<=", "Tussen" or ">" and name m3/h; the amount is the last figure,
   since the two smallest rows carry their footnote digit inline
@@ -127,10 +129,11 @@ refused below.
   August 2026, in place of the gas bands. It is not read: the card holds no
   gas excise, the law override in `_resolve.py` bills the gas rate, and a
   month the law has not been read for cannot be priced. The August card
-  also has no connection fee row and is refused.
+  also has no connection fee row, which reads as zero, so it still prices
+  an August signing (7,00 c€/kWh, 75 € a year).
 - The August 2026 Walloon GSG re-upload (`_0`, the one the history page
-  links) has no connection fee row and is refused; the plain name prints
-  0,00750 with the old excise and contribution.
+  links) has no connection fee row; the plain name, the only one read,
+  prints 0,00750 with the old excise and contribution.
 - Walloon DSO terms are cut to two decimals: ORES 4,28 / 2,20 / 1,63 against
   the CWaPE 4,28944 / 2,20574 / 1,63882, RESA 4,63 / 2,52 against 4,63912 /
   2,52946.
@@ -168,7 +171,8 @@ Not modelled: the one-off welcome credit the Flemish cards print
   electricity excise on GS1JVG not read, priced on the law or refused.
 - Brussels: the Sibelga row with metering last, the nine levy amounts.
 - August 2026: Brusol's first upload with the old levies, the Walloon plain
-  name with the regulated fee, the `_0` re-upload refused.
+  name with the regulated fee, the `_0` re-upload and the GS1JVG card read
+  without a fee row.
 - The other product's card and another region refused.
 - `fetch` for four product and region pairs off the two pages.
 - `fetch_for_month`: the plain name, both Brusol folders in order, another

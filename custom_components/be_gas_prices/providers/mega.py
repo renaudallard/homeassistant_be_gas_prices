@@ -495,12 +495,11 @@ _CONNECTION_FEE_RE = re.compile(rf"Redevance de raccordement\s*\n\s*({_FIG})\s*\
 
 
 def _connection_fee(text: str) -> float:
-    """The Walloon connection fee: a Walloon card without the row is a
-    layout change, not a fee of zero."""
+    """The Walloon connection fee as printed. The law's fee is billed
+    whatever a card prints, so a card without the row reads as zero rather
+    than being refused."""
     match = _CONNECTION_FEE_RE.search(text)
-    if match is None:
-        raise ExtractorError("Mega: Walloon connection fee row not found")
-    return to_float(match.group(1)) / 100.0
+    return 0.0 if match is None else to_float(match.group(1)) / 100.0
 
 
 # "6 ou 10 m / 3 / /heure* / 3.56": the caliber, its unit split around the

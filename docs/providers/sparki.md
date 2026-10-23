@@ -71,9 +71,11 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 - Taxes, c€/kWh: "Bijdrage op de Energie (c€/kWh) 0,10577" / "Cotisation sur
   l’énergie (c€/kWh) 0,10577", "Verbruik tussen 0 & 12.000 kWh 0,87338" /
   "Consommation entre 0 & 12.000 kWh", "Verbruik > 12.000 kWh 0.9864" (a
-  decimal point). Read as printed.
-- Walloon connection fee: "Redevance raccordement 0,00750", mandatory on the
-  FR card.
+  decimal point). Read as printed; from August 2026, the month the law
+  zeroed the levy, a card without the contribution row reads it as zero.
+- Walloon connection fee: "Redevance raccordement 0,00750"; a Walloon card
+  without it reads as zero, since the law's fee is billed whatever a card
+  prints.
 - DSO table: per tier "Vaste vergoeding €/jaar" then "Afname c€/kWh" for
   <= 5 000, 5 001 - 150 000 and >= 150 001 kWh, then "Tarief databeheer" and
   "Transport c€/kWh" (NL); the FR card has no databeheer column. Labels
@@ -106,7 +108,7 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 `tests/test_sparki.py`: the price kept as printed, the VNR arithmetic from
 the card's own figures, At Your Service's fee, the Flanders table and levies
 (Antwerpen and Zenne-Dijle rows), the Walloon card (ORES, RESA, connection
-fee), product and region refusals, a Walloon card without its connection fee,
-the listing order, `fetch`, and `fetch_for_month` (August by name, past
-another year's unreadable card, another month, before the listing,
-transient, future).
+fee), product and region refusals, a Walloon card without its connection fee
+or contribution row, the listing order, `fetch`, and `fetch_for_month`
+(August by name, past another year's unreadable card, another month,
+before the listing, transient, future).

@@ -170,6 +170,13 @@ def test_wallonia_levies() -> None:
     assert snap.taxes.osp_by_caliber is None
 
 
+def test_a_walloon_card_without_the_connection_fee_is_read() -> None:
+    """The law's fee is billed whatever a card prints."""
+    text = _card("G_EASY_R_GREY_C_I_12_W_F_202609.pdf").replace("Redevance raccordement", "x")
+    snap = engie.parse_snapshot("engie_easy_variable", REGION_WALLONIA, text)
+    assert snap.taxes.connection_fee == 0.0
+
+
 def test_a_july_card_prints_the_energy_contribution() -> None:
     """Up to July 2026 the cards print "Cotisation sur l'énergie 0,10577",
     the law's 0,9978 EUR/MWh rounded, which a July delivery is billed on;

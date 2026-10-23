@@ -69,7 +69,9 @@ zijn inclusief 6% BTW (indien van toepassing)".
 - VAT: "inclusief 6% BTW" into `card_vat_rate`.
 - Taxes: "Energiebijdrage 0,10577", "Verbruik tussen 0 & 12.000 kWh 1,093",
   "Verbruik > 12.000 kWh 1,183". pypdf breaks some of these around the comma
-  ("0, 10577", "1 ,093"); the regexes allow it.
+  ("0, 10577", "1 ,093"); the regexes allow it. From August 2026, the month
+  the law zeroed the levy, a card without the contribution row reads it as
+  zero.
 - DSO table: per tier "Vaste vergoeding €/jaar" then "Afname c€/kWh" for
   0 - 5000, 5001 - 150000 and 150001 - 1000000 kWh/jaar, then "Tarief
   databeheer Jaarlijks €/jaar" and "Transport c€/kWh". Labels are

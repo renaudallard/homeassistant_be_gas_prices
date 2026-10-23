@@ -144,6 +144,20 @@ def test_levies_as_printed() -> None:
     assert snap.taxes.osp_by_caliber is None
 
 
+def test_the_contribution_row_is_needed_only_before_august_2026() -> None:
+    """The law zeroed the levy in August 2026, so a card may drop the row; an
+    earlier card without it is a layout change."""
+    text = _card(SEPTEMBER).replace("Huishoudelijk:", "x")
+    snap = ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, text)
+    assert snap.taxes.energy_contribution == 0.0
+    with pytest.raises(ExtractorError, match="energy contribution"):
+        ebem.parse_snapshot(
+            "ebem_variable",
+            REGION_FLANDERS,
+            _card(DECEMBER_2025).replace("Huishoudelijk:", "x"),
+        )
+
+
 def test_december_2025_card_and_its_split_figure() -> None:
     """ "Fluvius Antwerpen 14,24 2,10 75 ,60 ..." still reads as 75,60."""
     snap = ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, _card(DECEMBER_2025))

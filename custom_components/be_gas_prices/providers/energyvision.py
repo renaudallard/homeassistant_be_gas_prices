@@ -76,10 +76,10 @@ Card errors this reads as printed and does not correct:
   - The Walloon GS1JVG cards from August 2026, October included, print a
     single "Accise speciale 4,876 c EUR/kWh" instead of the two gas bands:
     the residential electricity excise since 1 August 2026, not a gas rate.
-    The August one also has no connection fee row, which makes that card
-    unreadable. The rate is not read: the card gives no gas excise, so its
-    months are billed at the law's rate, and not at all while the law has
-    never been read.
+    The August one also has no connection fee row, which reads as zero, the
+    law's fee being billed whatever a card prints. The rate is not read: the
+    card gives no gas excise, so its months are billed at the law's rate,
+    and not at all while the law has never been read.
   - The Walloon distribution terms are cut to two decimals rather than
     rounded (ORES 4,28 where the CWaPE grid says 4,28944), and TECTEO RESA
     prints 5,25 / 3,14 / 2,86 on the February, May and June 2026 cards
@@ -513,11 +513,11 @@ _CONNECTION_FEE_RE = re.compile(r"Redevance de raccordement (\d+,\d+)")
 
 def _connection_fee(text: str) -> float:
     """The Walloon connection fee as printed, which from September 2026 is
-    ten times the regulated one; see the module docstring."""
+    ten times the regulated one; see the module docstring. The August 2026
+    fixed card prints none: the law's fee is billed whatever a card prints,
+    so a missing row reads as zero."""
     match = _CONNECTION_FEE_RE.search(text)
-    if match is None:
-        raise ExtractorError("EnergyVision: Walloon connection fee row not found")
-    return to_float(match.group(1)) / 100.0
+    return 0.0 if match is None else to_float(match.group(1)) / 100.0
 
 
 # "<= 10 m3/h 2 3,56": the smallest caliber carries its footnote digit

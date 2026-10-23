@@ -72,6 +72,7 @@ from ._network import (
     T3_PROP,
     TRANSPORT,
     excise_bands,
+    printed_contribution,
     read_dsos,
     require_region,
 )
@@ -140,12 +141,10 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
         dsos=_dsos(text, region),
         taxes=TaxOverlay(
             excise_bands=_excise(text),
-            energy_contribution=_cents(_CONTRIBUTION_RE, text, "energy contribution"),
-            connection_fee=(
-                _cents(_CONNECTION_FEE_RE, text, "Walloon connection fee")
-                if region == REGION_WALLONIA
-                else 0.0
+            energy_contribution=printed_contribution(
+                _printed(_CONTRIBUTION_RE, text), month, supplier="Ecofix"
             ),
+            connection_fee=_connection_fee(text) if region == REGION_WALLONIA else 0.0,
             card_vat_rate=vat,
         ),
         source_url=source_url,
@@ -229,12 +228,24 @@ _CONTRIBUTION_RE = re.compile(r"Bijdrage op energie (\d+,\d+)")
 _CONNECTION_FEE_RE = re.compile(r"Aansluitingsvergoeding (\d+,\d+)")
 
 
+def _printed(pattern: re.Pattern[str], text: str) -> str | None:
+    match = pattern.search(text)
+    return None if match is None else match.group(1)
+
+
 def _cents(pattern: re.Pattern[str], text: str, what: str) -> float:
     """A figure the card prints in c EUR/kWh, in EUR/kWh."""
-    match = pattern.search(text)
-    if match is None:
+    figure = _printed(pattern, text)
+    if figure is None:
         raise ExtractorError(f"Ecofix: {what} not found")
-    return to_float(match.group(1)) / 100.0
+    return to_float(figure) / 100.0
+
+
+def _connection_fee(text: str) -> float:
+    """The Walloon connection fee as printed. The law's fee is billed
+    whatever a card prints, so a card without the row reads as zero."""
+    figure = _printed(_CONNECTION_FEE_RE, text)
+    return 0.0 if figure is None else to_float(figure) / 100.0
 
 
 def _excise(text: str) -> tuple[tuple[float | None, float], ...]:

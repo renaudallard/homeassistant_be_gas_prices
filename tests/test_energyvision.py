@@ -231,10 +231,22 @@ def test_first_walloon_upload_of_august_prints_the_regulated_fee() -> None:
     )
 
 
-def test_walloon_card_without_its_connection_fee_is_refused() -> None:
-    """The re-upload of August the history page links has no fee row."""
-    with pytest.raises(ExtractorError):
-        energyvision.parse_snapshot(_GSG, REGION_WALLONIA, _card("EV-0826-GSG-WAL-fr_0.pdf"))
+@pytest.mark.parametrize(
+    ("contract", "name"),
+    [(_GSG, "EV-0826-GSG-WAL-fr_0.pdf"), (_GS1JVG, "EV-0826-GS1JVG-WAL-fr.pdf")],
+)
+def test_walloon_card_without_its_connection_fee_is_read(contract: str, name: str) -> None:
+    """The August GSG re-upload the history page links and the August fixed
+    card print no fee row. The law's fee is billed whatever a card prints,
+    so the card still prices its month: an August signing on the fixed
+    contract is billed 7,00 c EUR/kWh, not a later month's price."""
+    snap = energyvision.parse_snapshot(contract, REGION_WALLONIA, _card(name))
+    assert snap.publication_label == "2026-08"
+    assert snap.taxes.connection_fee == 0.0
+    billed = resolve_for_delivery(snap, date(2026, 8, 1))
+    assert billed.taxes.connection_fee == pytest.approx(0.000075)
+    if contract == _GS1JVG:
+        assert snap.energy == FixedRates(price=approx(0.07), yearly_fixed_fee=75.0)
 
 
 def test_card_of_the_other_product_is_refused() -> None:
