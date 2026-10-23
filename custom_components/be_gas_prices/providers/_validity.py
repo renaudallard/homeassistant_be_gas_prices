@@ -46,6 +46,12 @@ def end_of_month(year: int, month: int) -> date:
     return date(year, month, calendar.monthrange(year, month)[1])
 
 
+def earliest_priced_month(today: date) -> date:
+    """The first month the price history can be backfilled from, January of
+    last year, and so the oldest month an index read off cards reaches."""
+    return date(today.year - 1, 1, 1)
+
+
 def future_month(year_month: date) -> bool:
     """Whether ``year_month`` is ahead of today in Home Assistant's zone.
 

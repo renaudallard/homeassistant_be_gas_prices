@@ -509,7 +509,7 @@
       "message": "Clearing statistics needs an entry: it deletes them in full."
     },
     "start_date_too_early": {
-      "message": "The start date can be no earlier than {earliest}: the card archive keeps no older cards."
+      "message": "The start date can be no earlier than {earliest}: the index values some suppliers print only on their cards reach no further back."
     },
     "start_date_in_future": {
       "message": "The start date cannot be in the future."

@@ -321,9 +321,11 @@ async def test_a_later_page_gone_keeps_page_1_but_an_outage_raises() -> None:
         await trevion.fetch_index(AsyncMock())
 
 
-async def test_fetch_index_reads_the_cards_back_to_january() -> None:
-    """From page 2 the January card gives December 2025 and the February
-    card January 2026; the March card names its own month and stays out."""
+async def test_fetch_index_reads_the_cards_back_to_january_of_last_year() -> None:
+    """The price history can be backfilled from January 2025, so the 2025
+    cards page 2 lists are read too, here dead links. From page 2 the
+    January card gives December 2025 and the February card January 2026;
+    the March card names its own month and stays out."""
     cards = AsyncMock(side_effect=_held_or_404)
     with (
         freeze_time(datetime(2026, 10, 19, 12)),
@@ -331,10 +333,10 @@ async def test_fetch_index_reads_the_cards_back_to_january() -> None:
         patch.object(trevion, "fetch_pdf_text", cards),
     ):
         table = await trevion.fetch_index(AsyncMock())
-    # September to November 2025, also on page 2, price nothing this year.
     asked = {PurePosixPath(call.args[1]).name for call in cards.call_args_list}
-    assert "Tariefkaart-Gas-Flex-Particulier-202512.pdf" in asked
-    assert not asked & {f"Tariefkaart-Gas-Flex-Particulier-2025{m}.pdf" for m in ("09", "10", "11")}
+    assert {
+        f"Tariefkaart-Gas-Flex-Particulier-2025{m}.pdf" for m in ("09", "10", "11", "12")
+    } <= asked
     assert table["TTF_RLP"]["2025-12"] == pytest.approx(27.65)
     assert table["TTF_RLP"]["2026-01"] == pytest.approx(34.06)
     assert "2026-02" not in table["TTF_RLP"]

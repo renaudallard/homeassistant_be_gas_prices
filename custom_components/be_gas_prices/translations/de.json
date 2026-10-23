@@ -509,7 +509,7 @@
       "message": "Das Löschen der Statistiken erfordert einen Eintrag: sie werden vollständig gelöscht."
     },
     "start_date_too_early": {
-      "message": "Das Startdatum darf nicht vor dem {earliest} liegen: das Kartenarchiv bewahrt keine älteren Karten auf."
+      "message": "Das Startdatum darf nicht vor dem {earliest} liegen: die Indexwerte, die manche Lieferanten nur auf ihre Karten drucken, reichen nicht weiter zurück."
     },
     "start_date_in_future": {
       "message": "Das Startdatum darf nicht in der Zukunft liegen."

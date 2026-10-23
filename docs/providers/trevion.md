@@ -79,13 +79,13 @@ The value is always the TTF RLP of the month before the card, as OCTA+
 | 202609 | augustus 2026 | 61,72 | 08/2026 61,729 |
 
 The month named on the March card is wrong. `fetch_index` downloads every
-card from last year's December card on, reading the listing's later pages
-for those page 1 no longer holds, and keeps a value only where the named
-month is the month before the card's own, so February 2026 is left out.
-The January card names December's value, the first a month of this year
-can be priced at; the older cards a page also lists are not downloaded. `published_index` is the pure reader. One dead link is
-skipped, and so is a later page the site no longer serves; a transient
-failure raises.
+card from last year's January card on, January of last year being the
+first month the price history can be backfilled from, reading the
+listing's later pages for those page 1 no longer holds, and keeps a value
+only where the named month is the month before the card's own, so February
+2026 is left out. The older cards a page also lists are not downloaded.
+`published_index` is the pure reader. One dead link is skipped, and so is a
+later page the site no longer serves; a transient failure raises.
 
 ## Archive
 
@@ -117,7 +117,7 @@ August 2505, so August 2025 is not served.
 - `published_index` on the September, August and March cards.
 - Listing: one href per month, the reissue, no Professioneel card.
 - `fetch`, `fetch_index` (the full table, the cards of page 2 back to
-  January and none older than December, the walk reading page 1 alone
+  January of last year, the walk reading page 1 alone
   once it reaches the month, a dead link, a later page gone, an outage)
   and `fetch_for_month` (the URL taken from the listing, a month on page 2,
   page 1 alone for a month it lists, a card for another month, a month not

@@ -28,7 +28,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import datetime
 
 import voluptuous as vol
 from homeassistant.config_entries import (
@@ -58,6 +58,7 @@ from .const import CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE, DOMAIN, PLATFORMS, S
 from .coordinator import GasCoordinator
 from .daily_ranking import ranking_minute
 from .issues import clear_issues
+from .providers._validity import earliest_priced_month
 from .providers.base import ExtractorError
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -122,11 +123,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 translation_domain=DOMAIN, translation_key="clear_needs_entry"
             )
         today = dt_util.now().date()
-        earliest = date(today.year - 1, 1, 1)
+        earliest = earliest_priced_month(today)
         asked = call.data.get("start_date")
         if asked is not None and asked < earliest:
-            # The card archive keeps a year of cards: an older month has no
-            # card to be priced on, and an absurd date would only stall.
+            # The index values read off cards reach no further back, and an
+            # absurd date would only stall.
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="start_date_too_early",

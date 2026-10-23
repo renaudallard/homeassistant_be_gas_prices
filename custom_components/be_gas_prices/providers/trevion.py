@@ -92,7 +92,7 @@ from ._pdf import (
     printed_vat_rate,
 )
 from ._rates import Contract, IndexedRates
-from ._validity import end_of_month, month_card
+from ._validity import earliest_priced_month, end_of_month, month_card
 from .base import (
     DsoOverlay,
     ExtractorError,
@@ -219,13 +219,12 @@ async def fetch_for_month(
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     """TTF_RLP by month, off the cards that name it (see the module
-    docstring for which ones count), from last year's December card on:
-    the January card names December's value, the first a bill of this year
-    can be priced at, and the December card stands in while January's is
-    not out. The older cards a listing page also holds price nothing."""
-    year = dt_util.now().year
-    cards = await _cards_back_to(session, date(year, 1, 1))
-    first = date(year - 1, 12, 1)
+    docstring for which ones count), from last year's January card on, the
+    first month the price history can be backfilled from: each card names
+    the month before's value, which also stands in while the next card is
+    not out. The older cards a listing page also holds are not read."""
+    first = earliest_priced_month(dt_util.now().date())
+    cards = await _cards_back_to(session, first)
     values: dict[str, float] = {}
     for month, url in cards.items():
         if month < first:

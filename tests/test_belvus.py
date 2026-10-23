@@ -288,21 +288,26 @@ async def test_fetch_for_month_counts_months_in_brussels_time() -> None:
     )
 
 
-async def test_fetch_index_reads_the_newest_cards() -> None:
-    cards = {
-        "https://www.belvus.be/public/tariefkaarten/2026-09/Tariefkaart_FlexOnline_GAS.pdf": _card(
-            SEPTEMBER
-        ),
-        "https://www.belvus.be/public/tariefkaarten/2026-08/Tariefkaart_FlexOnline_GAS.pdf": _card(
-            AUGUST
-        ),
-    }
+@pytest.mark.parametrize(
+    ("today", "read"), [(datetime(2027, 3, 10, 12), 9), (datetime(2028, 1, 5, 12), 0)]
+)
+async def test_fetch_index_reads_the_cards_from_january_of_last_year(
+    today: datetime, read: int
+) -> None:
+    """The price history can be backfilled from January of last year, so
+    every card listed from then on is read, and none before."""
+    urls: list[str] = []
 
     async def pdf(_session: object, url: str) -> str:
-        return cards[url]
+        urls.append(url)
+        if "/2026-09/" in url:
+            return _card(SEPTEMBER)
+        if "/2026-08/" in url:
+            return _card(AUGUST)
+        raise ExtractorError("HTTP 404 fetching x")
 
     with (
-        patch.object(belvus, "_INDEX_MONTHS", 2),
+        freeze_time(today),
         patch.object(
             belvus,
             "fetch_text",
@@ -310,7 +315,13 @@ async def test_fetch_index_reads_the_newest_cards() -> None:
         ),
         patch.object(belvus, "fetch_pdf_text", AsyncMock(side_effect=pdf)),
     ):
+        if not read:
+            with pytest.raises(ExtractorError, match="no card"):
+                await belvus.fetch_index(AsyncMock())
+            assert urls == []
+            return
         table = await belvus.fetch_index(AsyncMock())
+    assert len(urls) == read
     assert table == {
         "TTF_RLP": {"2026-08": pytest.approx(61.729), "2026-07": pytest.approx(53.075)}
     }
@@ -321,8 +332,9 @@ async def test_fetch_index_reads_the_newest_cards() -> None:
     [("HTTP 404 fetching the July card", True), ("network error fetching x: timeout", False)],
 )
 async def test_fetch_index_passes_over_a_dead_card_link(error: str, kept: bool) -> None:
-    """A July card the listing links but the site no longer serves: August
-    and September still give their values. A site that is down fails."""
+    """A July card the listing links but the site no longer serves, and the
+    older ones: August and September still give their values. A site that
+    is down fails."""
 
     async def pdf(_session: object, url: str) -> str:
         if "/2026-09/" in url:
@@ -332,7 +344,7 @@ async def test_fetch_index_passes_over_a_dead_card_link(error: str, kept: bool) 
         raise ExtractorError(error)
 
     with (
-        patch.object(belvus, "_INDEX_MONTHS", 3),
+        freeze_time(datetime(2026, 10, 15, 12)),
         patch.object(
             belvus,
             "fetch_text",

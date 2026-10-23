@@ -509,7 +509,7 @@
       "message": "Effacer les statistiques nécessite une entrée : elles sont effacées entièrement."
     },
     "start_date_too_early": {
-      "message": "La date de début ne peut pas précéder le {earliest} : l'archive des cartes ne garde pas de cartes plus anciennes."
+      "message": "La date de début ne peut pas précéder le {earliest} : les valeurs d'index que certains fournisseurs n'impriment que sur leurs cartes ne remontent pas plus loin."
     },
     "start_date_in_future": {
       "message": "La date de début ne peut pas être dans le futur."

@@ -59,13 +59,14 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from ..const import REGION_FLANDERS
 from ._energy_together import INDEX, card_month, last_known_index, parse_card
 from ._parse import require_contract
 from ._pdf import fetch_pdf_text, fetch_text, is_transient_fetch_error
 from ._rates import Contract
-from ._validity import future_month, month_card
+from ._validity import earliest_priced_month, future_month, month_card
 from .base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
 
 _HOST = "https://www.belvus.be"
@@ -163,10 +164,6 @@ async def fetch_for_month(
     return await month_card(_read(session, contract, year_month), year_month)
 
 
-# How many archived cards one index refresh reads: a year of delivery months.
-_INDEX_MONTHS = 12
-
-
 def index_value(text: str) -> tuple[str, float] | None:
     """The month and the TTF_RLP value a card states for the month before its
     own, or None when it states none or names another month."""
@@ -178,11 +175,14 @@ def index_value(text: str) -> tuple[str, float] | None:
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
-    """TTF_RLP by month, from the last year of Flex Online cards."""
+    """TTF_RLP by month, off the Flex Online cards from last year's January
+    on, the first month the price history can be backfilled from: each card
+    names the month before's value."""
     contract = _CONTRACTS[0]
     months = listed_months(await fetch_text(session, _LISTING_URL), contract)
+    first = earliest_priced_month(dt_util.now().date())
     values: dict[str, float] = {}
-    for month in months[:_INDEX_MONTHS]:
+    for month in (month for month in months if month >= first):
         try:
             stated = index_value(
                 await fetch_pdf_text(session, _card_url(contract, month.year, month.month))

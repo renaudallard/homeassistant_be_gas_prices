@@ -509,7 +509,7 @@
       "message": "Statistieken wissen vereist een item: ze worden volledig gewist."
     },
     "start_date_too_early": {
-      "message": "De startdatum mag niet vroeger zijn dan {earliest}: het kaartarchief bewaart geen oudere kaarten."
+      "message": "De startdatum mag niet vroeger zijn dan {earliest}: de indexwaarden die sommige leveranciers alleen op hun kaarten drukken, gaan niet verder terug."
     },
     "start_date_in_future": {
       "message": "De startdatum mag niet in de toekomst liggen."

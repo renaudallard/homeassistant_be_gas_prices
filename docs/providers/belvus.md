@@ -57,7 +57,8 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
   "Belpex TTF-\nDAM 3/2026 €51,264/MWh" with no colon. From October 2026 it
   reads "TTF RLP-M 9/2026: €75,35/MWh". The "**" price is the formula at that
   value, so it is the formula's TTF_RLP.
-- `fetch_index` reads the twelve newest Flex Online cards and keeps each
+- `fetch_index` reads the Flex Online cards from last year's January on,
+  the first month the price history can be backfilled from, and keeps each
   card's value for the month before its own (`index_value`); a card naming
   another month or none is skipped, and so is a dead link or an unreadable
   card, while a site that is down fails the fetch. Read on 29 September 2026: December 2025
@@ -94,5 +95,6 @@ check, the card month, both layouts mapping the labels alike (and giving the
 same table), the levies as printed, the January card refused, product and
 region refusals, `index_value` (September, August, January, a wrong month),
 the listing, `fetch`, `fetch_for_month` (folder URL, other month, 404,
-transient, future, Brussels time) and `fetch_index` (a dead card link
-skipped, a site down failing).
+transient, future, Brussels time) and `fetch_index` (the cards from
+January of last year on and none older, a dead card link skipped, a site
+down failing).
