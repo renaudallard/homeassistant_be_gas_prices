@@ -207,6 +207,28 @@ def test_index_document() -> None:
     assert len(values) == 32
 
 
+def test_the_october_2026_index_document() -> None:
+    """The document served since October 2026: another heading, one row per
+    line, and January's values before its label ("3,00 4,81 3,41Januari")."""
+    values = energiebe.parse_index_document(
+        fixture_text("energiebe", "Indexation_Parameters_5aad2d327b.pdf", "plain")
+    )["TTF_RLP"]
+    assert values["2024-01"] == pytest.approx(30.0)
+    assert values["2025-01"] == pytest.approx(48.1)
+    assert values["2026-01"] == pytest.approx(34.1)
+    assert values["2026-02"] == pytest.approx(33.3)
+    # "September 3,63 3,20 7,53".
+    assert values["2026-09"] == pytest.approx(75.3)
+    assert "2026-10" not in values
+    assert len(values) == 33
+
+
+def test_an_index_row_with_more_values_than_years_is_refused() -> None:
+    text = "TTF_RLP in c€/kWh (Per maand) - gas\n2025 2026\n4,81 3,41Januari\nFebruari 5,13 3,33 2,60\n"
+    with pytest.raises(ExtractorError, match="more values than years"):
+        energiebe.parse_index_document(text)
+
+
 def test_the_realised_index_reprices_the_august_card() -> None:
     table = energiebe.parse_index_document(
         fixture_text("energiebe", "document_key_Indexation.pdf", "plain")
@@ -312,8 +334,10 @@ async def test_fetch_index_reads_the_indexation_document() -> None:
     with patch.object(
         energiebe,
         "fetch_pdf_text",
-        AsyncMock(return_value=fixture_text("energiebe", "document_key_Indexation.pdf", "plain")),
+        AsyncMock(
+            return_value=fixture_text("energiebe", "Indexation_Parameters_5aad2d327b.pdf", "plain")
+        ),
     ) as fetched:
         table = await energiebe.fetch_index(AsyncMock())
     assert fetched.call_args.args[1].endswith("?key=Indexation")
-    assert table["TTF_RLP"]["2026-08"] == pytest.approx(61.7)
+    assert table["TTF_RLP"]["2026-09"] == pytest.approx(75.3)

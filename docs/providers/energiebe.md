@@ -72,14 +72,21 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
   2026, 1,014 in September 2026. March 2026 printed a base of 0,10 instead
   of 0,16.
 - `fetch_index` reads https://www.energie.be/api/v1/data/document?key=Indexation,
-  a 302 to `Indexation_Parameters_<hash>.pdf`. Its TTF_RLP table ("TTF_RLP
-  (c€/kWh)", years 2024 2025 2026 across, months down) is read with pypdf,
-  which yields one cell per line and keeps every figure whole; pdfplumber
-  splits some of the Belpex ones ("11,2 1"). Values are c EUR/kWh with two
-  decimals, times 10 into EUR/MWh (August 2026: 6,17, so 61,7).
+  a 302 to `Indexation_Parameters_<hash>.pdf`. Its TTF_RLP table (years
+  2024 2025 2026 across, months down) is read with pypdf, which keeps every
+  figure whole; pdfplumber splits some of the Belpex ones ("11,2 1"). Values
+  are c EUR/kWh with two decimals, times 10 into EUR/MWh (August 2026: 6,17,
+  so 61,7).
+- Up to September 2026 the table was headed "TTF_RLP (c€/kWh)" and pypdf
+  gave one cell per line. The October 2026 document heads it "TTF_RLP in
+  c€/kWh (Per maand) - gas" and gives one row per line, the first with its
+  values before its label and glued to it ("3,00 4,81 3,41Januari"): values
+  read before any month name are the first one's. The table ends at the
+  next "Belpex_SPP" or "De parameter". Both documents give the same values
+  for the months they share.
 - A month the latest year has not reached is a shorter row, so values fill
-  the years from the left. A figure that does not look like "d,dd" fails the
-  parse rather than shift a column.
+  the years from the left. A figure that does not look like "d,dd", or a row
+  with more values than years, fails the parse rather than shift a column.
 
 ## Archive
 
@@ -118,8 +125,12 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 - `test_dso_table`: the Antwerpen row in full, Kempen and West cells.
 - `test_levies_as_printed`, `test_december_2025_card` (no "online", "0,
   1058"), `test_pre_2025_layout_is_refused`, `test_only_flanders`.
-- `test_index_document`, `test_the_realised_index_reprices_the_august_card`
-  (6,87 at the realised 6,17 against 6,20 printed on the estimate).
+- `test_index_document` (the document up to September 2026),
+  `test_the_october_2026_index_document` (the new heading, one row per line,
+  January's values before its label, September 2026 at 7,53),
+  `test_an_index_row_with_more_values_than_years_is_refused`,
+  `test_the_realised_index_reprices_the_august_card` (6,87 at the realised
+  6,17 against 6,20 printed on the estimate).
 - `fetch`, `fetch_for_month` (row URL and query, month refusal, missing row,
-  page-image card, transient raise) and `fetch_index`, with the fetch helpers
-  mocked.
+  page-image card, transient raise) and `fetch_index` on the October 2026
+  document, with the fetch helpers mocked.

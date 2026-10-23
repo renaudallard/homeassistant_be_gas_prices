@@ -366,6 +366,9 @@ def _energy_contribution(text: str, card_month: date) -> float:
 
 # ---- index values ------------------------------------------------------------
 
+# "TTF_RLP (c€/kWh)" up to September 2026, "TTF_RLP in c€/kWh (Per maand) -
+# gas" since October; the table starts on the next line.
+_INDEX_HEADING_RE = re.compile(r"TTF_RLP (?:in )?\(?c€/kWh\)?[^\n]*")
 _YEAR_RE = re.compile(r"20\d{2}")
 _VALUE_RE = re.compile(r"\d+,\d+")
 
@@ -374,32 +377,44 @@ def parse_index_document(text: str) -> IndexTable:
     """The TTF_RLP table of the indexation document, in EUR/MWh.
 
     Read as pypdf extracts it, which keeps every figure whole where
-    pdfplumber splits some ("11,2 1"). The table comes out one cell per line:
-    the year headings, then each month name followed by its values, one per
-    year from the oldest. A month the latest year has not reached yet is
-    simply shorter, so the values fill the years from the left.
+    pdfplumber splits some ("11,2 1"). The table comes out as the year
+    headings, then each month name followed by its values, one per year
+    from the oldest: one cell per line up to September 2026, one row per
+    line since. A month the latest year has not reached yet is simply
+    shorter, so the values fill the years from the left. The October 2026
+    document prints the first row's values before its label, glued to it
+    ("3,00 4,81 3,41Januari"), so values read before any label are the
+    first label's.
     """
-    start = text.find("TTF_RLP (c€/kWh)")
-    if start < 0:
+    heading = _INDEX_HEADING_RE.search(text)
+    if heading is None:
         raise ExtractorError("energie.be: TTF_RLP table not found")
-    end = text.find("Belpex_SPP", start)
-    tokens = text[start + len("TTF_RLP (c€/kWh)") : end if end >= 0 else None].split()
+    ends = [
+        i for i in (text.find(s, heading.end()) for s in ("Belpex_SPP", "De parameter")) if i >= 0
+    ]
+    table = text[heading.end() : min(ends, default=len(text))]
+    tokens = re.sub(r"(?<=\d)(?=[A-Za-z])", " ", table).split()
     years: list[str] = []
     while tokens and _YEAR_RE.fullmatch(tokens[0]):
         years.append(tokens.pop(0))
-    values: dict[str, float] = {}
-    month: int | None = None
-    column = 0
+    rows: list[tuple[int, list[str]]] = []
+    lead: list[str] = []
     for token in tokens:
         name = MONTH_NAMES.get(token.lower())
         if name is not None:
-            month, column = name, 0
-            continue
-        if month is None or not _VALUE_RE.fullmatch(token) or column >= len(years):
+            rows.append((name, lead))
+            lead = []
+        elif _VALUE_RE.fullmatch(token):
+            (rows[-1][1] if rows else lead).append(token)
+        else:
             raise ExtractorError(f"energie.be: unexpected {token!r} in the TTF_RLP table")
-        # c EUR/kWh to EUR/MWh.
-        values[f"{years[column]}-{month:02d}"] = to_float(token) * 10.0
-        column += 1
+    values: dict[str, float] = {}
+    for month, cells in rows:
+        if len(cells) > len(years):
+            raise ExtractorError(f"energie.be: more values than years for month {month}")
+        for year, cell in zip(years, cells, strict=False):
+            # c EUR/kWh to EUR/MWh.
+            values[f"{year}-{month:02d}"] = to_float(cell) * 10.0
     if not values:
         raise ExtractorError("energie.be: TTF_RLP table is empty")
     return {_INDEX: values}
