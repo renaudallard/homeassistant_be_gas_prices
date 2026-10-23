@@ -254,6 +254,77 @@ def test_two_against_two_is_no_verdict() -> None:
     }
 
 
+def test_a_coarse_figure_neither_hides_a_stale_one_nor_fails_the_law() -> None:
+    """July 2026's excise above 12 000 kWh is the law's 0,989139 c EUR/kWh.
+    Two cards print 0,9891, two round it to 0,99 and one still prints the
+    second quarter's 0,9864: the 0,99 agrees with both, and taken for the
+    consensus it passed the stale card and failed the law. Nor does one
+    card's own digits make the consensus: EBEM's 0,105764 for the 0,1057668
+    the others round failed the law's energy contribution."""
+
+    def card(sid: str, high: float, contribution: float) -> Any:
+        return _card(
+            _snapshot(sid, label="2026-07", excise=(0.0087238, high), contribution=contribution)
+        )
+
+    checks = lc.consensus(
+        [
+            card("alpha", 0.009891, 0.0010577),
+            card("beta", 0.009891, 0.0010577),
+            card("gamma", 0.0099, 0.001058),
+            card("delta", 0.0099, 0.001058),
+            card("epsilon", 0.009864, 0.00105764),
+        ]
+    )
+    assert _failing(checks) == {}
+    assert [c.label for c in checks if c.status == "notice"] == [
+        "epsilon: federal excise above 12000 kWh for 2026-07"
+    ]
+
+
+def test_a_coarse_consensus_over_finer_figures_that_disagree_is_no_verdict() -> None:
+    """Three cards print Sibelga's T2 as 1,45, one as 1,447 and one misprints
+    1,457: the 1,45 agrees with both and cannot tell which is right, so the
+    misprint is reported rather than passed."""
+    cards = [
+        _card(_snapshot(sid, t1_prop=t1_prop))
+        for sid, t1_prop in (
+            ("alpha", 0.0145),
+            ("beta", 0.0145),
+            ("gamma", 0.0145),
+            ("delta", 0.01447),
+            ("epsilon", 0.01457),
+        )
+    ]
+    checks = lc.consensus(cards)
+    assert _failing(checks) == {}
+    assert {c.label: c.detail for c in checks if c.status == "notice"} == {
+        "fleet: fluvius_kempen T1 proportional for 2026-09": (
+            "no majority: 1.447 c EUR/kWh on delta; 1.45 c EUR/kWh on alpha, beta, gamma; "
+            "1.457 c EUR/kWh on epsilon"
+        )
+    }
+
+
+def test_two_cards_alike_do_not_outvote_three_printing_another_figure_differently() -> None:
+    """Three cards print Kempen's T1 to five, four and two decimals, two
+    still print 2025's alike: the three agree, and the two depart."""
+    cards = [
+        _card(_snapshot(sid, t1_prop=t1_prop))
+        for sid, t1_prop in (
+            ("alpha", 0.0227489),
+            ("beta", 0.022749),
+            ("gamma", 0.0227),
+            ("delta", 0.0212),
+            ("epsilon", 0.0212),
+        )
+    ]
+    assert sorted(_failing(lc.consensus(cards))) == [
+        "delta: fluvius_kempen T1 proportional for 2026-09",
+        "epsilon: fluvius_kempen T1 proportional for 2026-09",
+    ]
+
+
 def test_brands_on_one_template_count_once() -> None:
     """Three brands read by one module print one wrong figure; the two
     suppliers reading their own cards are the majority."""

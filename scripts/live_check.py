@@ -70,6 +70,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import functools
+import itertools
 import re
 import sys
 import traceback
@@ -675,23 +676,44 @@ def _known_error(figure: Figure, today: date) -> str | None:
 def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterator[Check]:
     """The cards of one figure, month and scope that depart from the rest.
 
-    The figure most voters agree with is the consensus, the most precise one
-    among equals so the report shows the regulator's digits. A disagreement
-    with no majority is reported as a notice: two voters against two is not a
-    verdict on either. While the Fluvius sheet did not answer (``sheet_unread``),
-    a Fluvius row printing no fee is transient: the source did not answer,
-    which says nothing about the card.
+    The consensus comes in two steps. First the figures most voters agree
+    with. Then, among them, the one the fleet prints: the figure most voters
+    print as it is or to fewer digits, taken among those two voters print as
+    they are where there are any, the most precise one among equals so the
+    report shows the regulator's digits. A figure printed to fewer digits
+    agrees with finer ones on both sides of it ("0,99" with 0,9891 and with
+    a stale 0,9864 alike), so it is the consensus only where no finer one is
+    shared, and one voter's own digits (EBEM's 0,105764 for the law's
+    0,1057668 the others round) are not the consensus over the others'. A
+    consensus printed to fewer digits than figures it agrees with that
+    disagree with each other cannot tell which is right. That, and a
+    disagreement with no majority, is reported as a notice: two voters
+    against two is not a verdict on either. While the Fluvius sheet did not
+    answer (``sheet_unread``), a Fluvius row printing no fee is transient:
+    the source did not answer, which says nothing about the card.
     """
     first = group[0]
     unit = first.unit
     what = f"{first.scope} {first.name} for {first.month}"
     values = sorted({f.value for f in group})
     support = {v: {f.voter for f in group if agree(f.value, v, unit)} for v in values}
-    best = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
+    top = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
+    cluster = [v for v in values if agree(v, top, unit)]
+    printed_as = {
+        v: {
+            f.voter
+            for f in group
+            if f.value == v or (_step(f.value, unit) > _step(v, unit) and agree(f.value, v, unit))
+        }
+        for v in cluster
+    }
+    shared = [v for v in cluster if len({f.voter for f in group if f.value == v}) >= 2]
+    best = max(shared or cluster, key=lambda v: (len(printed_as[v]), -_step(v, unit), v))
     billed = _billed(first)
     if (
         billed is not None
         and len(support[best]) >= 2
+        and not agree(best, billed[0], unit)
         and len(support[best]) > len({f.voter for f in group if agree(f.value, billed[0], unit)})
     ):
         # Most of the fleet prints another figure than the one billed: the
@@ -705,10 +727,18 @@ def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterato
             f"print {shown(best, unit)} where the integration bills {shown(billed[0], unit)}",
         )
     rivals = [v for v in values if not agree(v, best, unit)]
-    if not rivals:
+    # Finer figures the consensus agrees with but that disagree with each
+    # other: printed to fewer digits, it cannot tell which one is right.
+    finer = [v for v in values if _step(v, unit) < _step(best, unit) and agree(v, best, unit)]
+    split = any(not agree(a, b, unit) for a, b in itertools.combinations(finer, 2))
+    if not rivals and not split:
         return
     agreeing = sorted({f.supplier for f in group if agree(f.value, best, unit)})
-    if len(support[best]) < 2 or any(len(support[v]) >= len(support[best]) for v in rivals):
+    if (
+        split
+        or len(support[best]) < 2
+        or any(len(support[v]) >= len(support[best]) for v in rivals)
+    ):
         printed = "; ".join(
             f"{shown(v, unit)} on {', '.join(sorted({f.supplier for f in group if f.value == v}))}"
             for v in values

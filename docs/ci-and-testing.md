@@ -161,6 +161,16 @@ How the cross-check decides:
   the less precise one prints, never coarser than the second decimal of a
   c€ or a euro. "2,20" read back as 0.022 still counts as printed to the
   hundredth.
+- The fleet's figure comes in two steps: the figures most voters agree
+  with, then among them the one most voters print as it is or to fewer
+  digits, taken among those two voters print as they are where there are
+  any. A figure printed to fewer digits agrees with finer ones on both
+  sides of it ("0,99" with 0,9891 and with a stale 0,9864 alike), so it is
+  the fleet's figure only where no finer one is shared, and one voter's own
+  digits (EBEM's 0,105764 for the 0,1057668 the others round) are not the
+  fleet's figure over the others'. Where the fleet's figure is printed to
+  fewer digits than figures it agrees with that disagree with each other,
+  it cannot tell which is right, and that is a notice.
 - A supplier's vote is the module that parses it, so the six Energy Together
   brands count once.
 - A tie is a notice: two voters against two is not a verdict on either.
