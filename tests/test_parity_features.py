@@ -626,16 +626,19 @@ def test_manual_rate_replaces_an_indexed_formula() -> None:
     assert (factor_only.factor, factor_only.base) == (pytest.approx(0.001020 * 1.06), 0.01)
 
 
-def test_a_typed_factor_past_the_cap_leaves_the_card_s(caplog: pytest.LogCaptureFixture) -> None:
-    """Mega's printed 1,08 typed before the form capped the factor: the
-    card's factor is billed, the typed base still counts, and the log says
-    so once, not on every month billed."""
+@pytest.mark.parametrize("printed", [1.08, 1.0])
+def test_a_typed_factor_past_the_cap_leaves_the_card_s(
+    caplog: pytest.LogCaptureFixture, printed: float
+) -> None:
+    """Mega's printed 1,08, or Energy Together's 1, typed before the form
+    capped the factor: the card's factor is billed, the typed base still
+    counts, and the log says so once, not on every month billed."""
     leg = IndexedRates(factor=0.001, base=0.01, index="ZTP", price=0.07)
     for _ in range(3):
-        typed = manual_leg(leg, {CONF_MANUAL_FACTOR: 1.08, CONF_MANUAL_BASE: 1.15})
+        typed = manual_leg(leg, {CONF_MANUAL_FACTOR: printed, CONF_MANUAL_BASE: 1.15})
     assert isinstance(typed, IndexedRates)
     assert (typed.factor, typed.base) == (0.001, pytest.approx(0.0115 * 1.06))
-    assert sum("Typed index factor 1.08" in r.getMessage() for r in caplog.records) == 1
+    assert sum(f"Typed index factor {printed}" in r.getMessage() for r in caplog.records) == 1
 
 
 def test_the_fluvius_data_management_fee_stands_in_where_a_card_prints_none() -> None:

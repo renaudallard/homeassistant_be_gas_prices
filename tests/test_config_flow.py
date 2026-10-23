@@ -234,9 +234,13 @@ async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssis
     assert result["step_id"] == "custom_energy"
 
 
-async def test_an_index_factor_past_1_is_refused(hass: HomeAssistant) -> None:
-    """Mega's "ZTP x 1,08 + 1,15 c€/kWh" is a factor of 0,108: its printed
-    1,08 would price the gas ten times over."""
+@pytest.mark.parametrize("printed", [1.08, 1.0])
+async def test_a_formula_s_printed_multiplier_is_refused_as_the_factor(
+    hass: HomeAssistant, printed: float
+) -> None:
+    """Mega's "ZTP x 1,08 + 1,15 c€/kWh" is a factor of 0,108 and Energy
+    Together's "(TTF_RLP x 1) + €7/MWh" one of 0,1: the printed 1,08 or 1
+    would price the gas ten times over."""
     result = await _contract_step(hass, _entry(hass))
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_CONTRACT: "engie_flow", "advanced": {"signed_rate": True}}
@@ -245,7 +249,7 @@ async def test_an_index_factor_past_1_is_refused(hass: HomeAssistant) -> None:
     schema = result["data_schema"]
     assert schema is not None
     with pytest.raises(vol.Invalid):
-        schema({CONF_MANUAL_FACTOR: 1.08, CONF_MANUAL_BASE: 1.15})
+        schema({CONF_MANUAL_FACTOR: printed, CONF_MANUAL_BASE: 1.15})
     assert schema({CONF_MANUAL_FACTOR: 0.108, CONF_MANUAL_BASE: 1.15})[CONF_MANUAL_FACTOR] == 0.108
 
 

@@ -78,8 +78,8 @@ def manual_leg(leg: EnergyRates, data: dict[str, Any]) -> EnergyRates:
             if factor not in _IGNORED:
                 _IGNORED.add(factor)
                 _LOGGER.warning(
-                    "Typed index factor %s is past %s c EUR/kWh per EUR/MWh, a formula "
-                    "with its index in c EUR/kWh: the card's factor is billed. Type the "
+                    "Typed index factor %s is past %s c EUR/kWh per EUR/MWh, the "
+                    "multiplier a formula prints: the card's factor is billed. Type the "
                     "factor again in the contract's settings",
                     factor,
                     MANUAL_FACTOR_MAX,
