@@ -120,6 +120,57 @@ def test_the_published_tariff_gives_each_quarter_s_two_slices(
     assert all(0.004 < low < 0.011 and 0.008 < high < 0.012 for *_d, low, high in periods)
 
 
+def test_the_published_tariff_gives_the_protected_customer_s_periods(
+    protected_tariff_periods: tuple[tarbel.ProtectedPeriod, ...],
+) -> None:
+    """Exempt from April to June 2023, 2,77 EUR/MWh from July 2023 and 3,09
+    from August 2026, the rows Q554, Q555 and Q586 of annex 7."""
+    assert protected_tariff_periods == (
+        (date(2023, 4, 1), date(2023, 6, 30), 0.0),
+        (date(2023, 7, 1), date(2026, 7, 31), pytest.approx(0.00277)),
+        (date(2026, 8, 1), None, pytest.approx(0.00309)),
+    )
+    assert tarbel.protected_excise_for(date(2026, 7, 15)) == pytest.approx(0.00277)
+    assert tarbel.protected_excise_for(date(2026, 8, 1)) == pytest.approx(0.00309)
+    assert tarbel.protected_excise_for(date(2023, 3, 1)) is None
+
+
+def _protected_row(start: str, end: str | None, rate: str) -> list[str]:
+    text = (
+        "Aardgas gebruikt als verwarmingsbrandstof voor niet-zakelijk gebruik, "
+        f"beschermde residentiële afnemer\nvan toepassing vanaf {start}"
+    )
+    if end is not None:
+        text += f" tot en met {end}"
+    return [text, "100\n200\n300", f"0\n{rate}\n0", "EUR per MWh"]
+
+
+def test_a_synthetic_protected_period_reads() -> None:
+    payload = _workbook([*_QUARTER, _protected_row("01/01/2027", None, "3,42")])
+    assert tarbel.parse_protected(payload) == ((date(2027, 1, 1), None, pytest.approx(0.00342)),)
+    # The household slices are read past it.
+    assert tarbel.parse(payload)[0][:2] == (date(2027, 1, 1), date(2027, 3, 31))
+    overlapping = _workbook(
+        [_protected_row("01/01/2027", None, "3,42"), _protected_row("01/04/2027", None, "3,5")]
+    )
+    with pytest.raises(tarbel.TarbelError, match="overlap"):
+        tarbel.parse_protected(overlapping)
+
+
+async def test_a_workbook_without_protected_rows_still_bills_the_household() -> None:
+    """Only the social tariff bills the protected rate: its rows missing
+    from the workbook keep the held ones and leave the household slices
+    read."""
+    held = tarbel.protected_held_table()
+    tarbel._failed_at = tarbel._fetched_at = None
+    with patch.object(tarbel, "fetch_bytes", AsyncMock(return_value=_workbook(_QUARTER))):
+        await ensure_tariff(AsyncMock())
+    assert tarbel._failed_at is None
+    assert tarbel.excise_for(date(2027, 2, 1)) is not None
+    assert tarbel.protected_held_table() == held
+    tarbel._fetched_at = None
+
+
 def test_the_quarters_typed_in_const_are_the_tariff_s() -> None:
     for (year, month), low, high in GAS_EXCISE_RESIDENTIAL_HTVA:
         assert tarbel.excise_for(date(year, month, 1)) == (pytest.approx(low), pytest.approx(high))
@@ -231,3 +282,10 @@ def test_the_store_round_trips_and_never_replaces_a_read() -> None:
     tarbel._HELD.clear()
     tarbel.restore([["2027-01-01", "bad", 0.01, 0.01]])
     assert tarbel.held_table() == []
+    protected: Any = tarbel.protected_held_table()
+    assert protected
+    tarbel._PROTECTED_HELD.clear()
+    tarbel.restore_protected(protected)
+    assert tarbel.protected_held_table() == protected
+    tarbel.restore_protected([["2027-01-01", None, 0.5]])
+    assert tarbel.protected_held_table() == protected

@@ -836,6 +836,7 @@ async def check_excise_law(
             functools.partial(fetch_text, session, EXCISE_LAW_URL, timeout=30), sleep=sleep
         )
         excise_law.hold(excise_law.parse(page))
+        excise_law.hold_protected(excise_law.parse_protected(page))
     except Exception as err:  # reported like a card
         return _failure(label, err)
     return Check(label, "ok")
@@ -851,9 +852,13 @@ async def check_excise_tariff(
     gives the quarters the notices of art. 420 set, which Justel does not."""
     label = "federal: gas excise tariff"
     try:
-        tarbel.hold(
-            await fetch_with_retry(functools.partial(tarbel.fetch_tariff, session), sleep=sleep)
+        periods, protected = await fetch_with_retry(
+            functools.partial(tarbel.fetch_tariff, session), sleep=sleep
         )
+        tarbel.hold(periods)
+        if not protected:
+            raise tarbel.TarbelError("no protected customer rate read")
+        tarbel.hold_protected(protected)
     except Exception as err:  # reported like a card
         return _failure(label, err)
     return Check(label, "ok")

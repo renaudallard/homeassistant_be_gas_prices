@@ -96,9 +96,18 @@ def excise_law_steps() -> tuple[tuple[date, float, float], ...]:
     return excise_law.parse(_JUSTEL_PAGE.read_bytes().decode("iso-8859-1"))
 
 
+@pytest.fixture(scope="session")
+def protected_law_steps() -> tuple[tuple[date, float], ...]:
+    """The protected customer's rate of that same article, parsed once."""
+    from custom_components.be_gas_prices import excise_law
+
+    return excise_law.parse_protected(_JUSTEL_PAGE.read_bytes().decode("iso-8859-1"))
+
+
 @pytest.fixture(autouse=True)
 def _excise_law_as_published(
     excise_law_steps: tuple[tuple[date, float, float], ...],
+    protected_law_steps: tuple[tuple[date, float], ...],
 ) -> Iterator[None]:
     """The tick reads the excise law from Justel. Tests see the article as it
     was published instead of the network, and whatever a test holds is put
@@ -106,9 +115,11 @@ def _excise_law_as_published(
     from custom_components.be_gas_prices import excise_law
 
     excise_law._HELD[:] = excise_law_steps
+    excise_law._PROTECTED_HELD[:] = protected_law_steps
     with patch.object(excise_law, "ensure_excise_law", AsyncMock()):
         yield
     excise_law._HELD.clear()
+    excise_law._PROTECTED_HELD.clear()
 
 
 _TARBEL_WORKBOOK = Path(__file__).resolve().parent / "fixtures" / "tarbel" / "accijnzen.xlsx"
@@ -123,9 +134,18 @@ def excise_tariff_periods() -> tuple[tuple[date, date | None, float, float], ...
     return tarbel.parse(_TARBEL_WORKBOOK.read_bytes())
 
 
+@pytest.fixture(scope="session")
+def protected_tariff_periods() -> tuple[tuple[date, date | None, float], ...]:
+    """The protected customer's periods of that same workbook, parsed once."""
+    from custom_components.be_gas_prices import tarbel
+
+    return tarbel.parse_protected(_TARBEL_WORKBOOK.read_bytes())
+
+
 @pytest.fixture(autouse=True)
 def _excise_tariff_as_published(
     excise_tariff_periods: tuple[tuple[date, date | None, float, float], ...],
+    protected_tariff_periods: tuple[tuple[date, date | None, float], ...],
 ) -> Iterator[None]:
     """The tick reads FPS Finance's excise tariff. Tests see it as it was
     published instead of the network, and whatever a test holds is put back
@@ -133,10 +153,13 @@ def _excise_tariff_as_published(
     from custom_components.be_gas_prices import tarbel
 
     tarbel._HELD.clear()
+    tarbel._PROTECTED_HELD.clear()
     tarbel.hold(excise_tariff_periods)
+    tarbel.hold_protected(protected_tariff_periods)
     with patch.object(tarbel, "ensure_tariff", AsyncMock()):
         yield
     tarbel._HELD.clear()
+    tarbel._PROTECTED_HELD.clear()
 
 
 # The data management fee each year's Fluvius gas tariff sheet prints, EUR/year

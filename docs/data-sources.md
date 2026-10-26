@@ -43,6 +43,11 @@ text of article 419 of the programme law of 27 December 2004:
 - under natural gas, "consommation non professionnelle", "b) autres", the
   two slices (up to and above 12 MWh), each a rate followed by the steps
   already voted ("A partir du 1er janvier 2027: ...");
+- under "a) client protégé résidentiel", the one rate a protected household
+  pays on every kWh, with its own steps (3,09 EUR/MWh from 1 August 2026,
+  then 3,42, 3,74 and 4,08 each 1 January), which only the social tariff
+  bills; a page whose protected paragraph cannot be read still gives the
+  household rates, and the live check fails on it;
 - the day the rate in force took effect is the entry into force of the
   amendment bracket around it (1 August 2026).
 
@@ -66,8 +71,14 @@ Finance publishes for excise declarations (annex 7):
   niet-zakelijk gebruik, m.u.v. de beschermde residentiële afnemer", "van 0
   tot 12 MWh" or "vanaf 12 MWh", "van toepassing vanaf ... tot en met ...",
   in EUR per MWh, the ordinary and the special excise (codes 100 and 200)
-  added; the energy contribution's own codes and the protected customer's
-  are left out, and the columns are found by their headers.
+  added; the energy contribution's own codes are left out, and the columns
+  are found by their headers;
+- the protected customer's rows, "beschermde residentiële afnemer", one per
+  period and without slices: exempt from April to June 2023, 2,77 EUR/MWh
+  from July 2023 to July 2026, 3,09 from August 2026. Article 420 §3/1 does
+  not move that rate, so the law's wording bills it from the day it dates,
+  and this tariff the months before. Rows that cannot be read leave the
+  household slices read, and the live check fails on them.
 
 The version of 1 August 2026 lists April 2023 to December 2026, the quarters
 `const.py` types among them, figure for figure. A workbook that is not as

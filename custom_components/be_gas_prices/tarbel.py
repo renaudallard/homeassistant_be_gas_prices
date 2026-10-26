@@ -41,7 +41,9 @@ verbruik van 0 tot 12 MWh" or "vanaf 12 MWh", "van toepassing vanaf
 01/10/2026 tot en met 31/12/2026", in EUR per MWh: the ordinary excise
 (code 100) and the special one (200) on one line each. The energy
 contribution has codes of its own, which are left out. The columns are found by their headers,
-since each year's GN codes add a column before them.
+since each year's GN codes add a column before them. The protected
+residential customer ("beschermde residentiële afnemer") has one row per
+period and no slices, a rate the quarterly notices do not move.
 
 What is read is held for the process, read again daily, and kept in every
 entry's store. A period the workbook drops stays held: FPS Finance deletes
@@ -82,7 +84,8 @@ _CODES: Final = "Vak 47 (1)"
 _RATES: Final = "Vak 47 (3)"
 _UNIT: Final = "Maatstaf van Heffing"
 _GAS: Final = "Aardgas gebruikt als verwarmingsbrandstof voor niet-zakelijk gebruik"
-_NOT_PROTECTED: Final = "m.u.v. de beschermde residentiële afnemer"
+_PROTECTED: Final = "beschermde residentiële afnemer"
+_NOT_PROTECTED: Final = f"m.u.v. de {_PROTECTED}"
 # A code of the energy contribution alone, which const.py bills.
 _CONTRIBUTION_ONLY: Final = "enkel de bijdrage op de energie"
 _BAND: Final = f"{EXCISE_BAND_KWH / 1000:g} MWh"
@@ -98,8 +101,11 @@ _EXCISE_CODES: Final = ("100", "200")
 
 # (first day, last day or None, EUR/kWh excluding VAT up to the band, above it).
 type Period = tuple[date, date | None, float, float]
+# (first day, last day or None, EUR/kWh excluding VAT): the protected rate.
+type ProtectedPeriod = tuple[date, date | None, float]
 
 _HELD: dict[date, Period] = {}
+_PROTECTED_HELD: dict[date, ProtectedPeriod] = {}
 _fetched_at: datetime | None = None
 _failed_at: datetime | None = None
 # Entries set up together read the workbook once.
@@ -143,6 +149,30 @@ def _excise(codes: str, rates: str) -> float:
     return rate
 
 
+def _period(text: str) -> tuple[date, date | None] | None:
+    """The first and last day a row's description says it applies, the last
+    None for a period still open."""
+    period = _PERIOD_RE.search(text)
+    if period is None:
+        return None
+    day, month, year, *last = period.groups()
+    start = date(int(year), int(month), int(day))
+    end = None if last[0] is None else date(int(last[2]), int(last[1]), int(last[0]))
+    return start, end
+
+
+def _gas_rows(payload: bytes) -> list[tuple[str, str, str, str]]:
+    """Each gas row's description, codes, rates and unit."""
+    rows = xlsx.rows(payload, max_unpacked=_MAX_UNPACKED_BYTES, sheet=_SHEET)
+    description, codes, rates, unit = _columns(rows)
+    out = []
+    for row in rows:
+        text = " ".join(row.get(description, "").split())
+        if text.startswith(_GAS) and _CONTRIBUTION_ONLY not in text:
+            out.append((text, row.get(codes, ""), row.get(rates, ""), row.get(unit, "")))
+    return out
+
+
 def parse(payload: bytes) -> tuple[Period, ...]:
     """The household excise by period the workbook lists, oldest first.
 
@@ -151,21 +181,26 @@ def parse(payload: bytes) -> tuple[Period, ...]:
     of it: a gas row without its slice, period or unit, a period with one
     slice only, or periods that overlap.
     """
-    rows = xlsx.rows(payload, max_unpacked=_MAX_UNPACKED_BYTES, sheet=_SHEET)
-    description, codes, rates, unit = _columns(rows)
+    return _household(_gas_rows(payload))
+
+
+def parse_protected(payload: bytes) -> tuple[ProtectedPeriod, ...]:
+    """The protected residential customer's excise by period, oldest first.
+    Raises like :func:`parse`."""
+    return _protected(_gas_rows(payload))
+
+
+def _household(gas: list[tuple[str, str, str, str]]) -> tuple[Period, ...]:
     slices: dict[tuple[date, date | None], dict[str, float]] = {}
-    for row in rows:
-        text = " ".join(row.get(description, "").split())
-        if not text.startswith(_GAS) or _NOT_PROTECTED not in text or _CONTRIBUTION_ONLY in text:
+    for text, codes, rates, unit in gas:
+        if _NOT_PROTECTED not in text:
             continue
         name = "low" if _LOW in text else "high" if _HIGH in text else None
-        period = _PERIOD_RE.search(text)
-        if name is None or period is None or row.get(unit) != _PER_MWH:
+        period = _period(text)
+        if name is None or period is None or unit != _PER_MWH:
             raise TarbelError(f"a gas row without its slice, period or unit: {text!r}")
-        day, month, year, *last = period.groups()
-        start = date(int(year), int(month), int(day))
-        end = None if last[0] is None else date(int(last[2]), int(last[1]), int(last[0]))
-        rate = _excise(row.get(codes, ""), row.get(rates, ""))
+        start, end = period
+        rate = _excise(codes, rates)
         held = slices.setdefault((start, end), {})
         if held.get(name, rate) != rate:
             raise TarbelError(f"two {name} rates from {start}")
@@ -186,6 +221,23 @@ def parse(payload: bytes) -> tuple[Period, ...]:
     return tuple(out)
 
 
+def _protected(gas: list[tuple[str, str, str, str]]) -> tuple[ProtectedPeriod, ...]:
+    out: list[ProtectedPeriod] = []
+    for text, codes, rates, unit in gas:
+        if _PROTECTED not in text or _NOT_PROTECTED in text:
+            continue
+        period = _period(text)
+        if period is None or unit != _PER_MWH:
+            raise TarbelError(f"a protected gas row without its period or unit: {text!r}")
+        out.append((*period, _excise(codes, rates)))
+    out.sort(key=lambda row: (row[0], row[1] or date.max))
+    if not out:
+        raise TarbelError("no protected residential gas row")
+    if any(a[1] is None or a[1] >= b[0] for a, b in pairwise(out)):
+        raise TarbelError("protected periods overlap")
+    return tuple(out)
+
+
 def excise_for(month: date) -> tuple[float, float] | None:
     """The two slices' excise in force on ``month``'s first day, EUR/kWh
     excluding VAT, or ``None`` where no period held covers it."""
@@ -197,11 +249,29 @@ def excise_for(month: date) -> tuple[float, float] | None:
     return rates
 
 
+def protected_excise_for(month: date) -> float | None:
+    """The protected residential customer's excise in force on ``month``'s
+    first day, EUR/kWh excluding VAT, or ``None`` where no period held
+    covers it."""
+    first = month.replace(day=1)
+    rate = None
+    for start, end, value in sorted(_PROTECTED_HELD.values()):
+        if start <= first and (end is None or first <= end):
+            rate = value
+    return rate
+
+
 def hold(periods: tuple[Period, ...]) -> None:
     """Hold ``periods``, replacing a held period that starts on the same day
     and keeping the others."""
     for period in periods:
         _HELD[period[0]] = period
+
+
+def hold_protected(periods: tuple[ProtectedPeriod, ...]) -> None:
+    """:func:`hold` for the protected rate."""
+    for period in periods:
+        _PROTECTED_HELD[period[0]] = period
 
 
 def _stored(rows: Any) -> tuple[Period, ...]:
@@ -221,6 +291,23 @@ def _stored(rows: Any) -> tuple[Period, ...]:
     return tuple(out)
 
 
+def _stored_protected(rows: Any) -> tuple[ProtectedPeriod, ...]:
+    if not isinstance(rows, list):
+        return ()
+    out: list[ProtectedPeriod] = []
+    for row in rows:
+        try:
+            start = date.fromisoformat(row[0])
+            end = None if row[1] is None else date.fromisoformat(row[1])
+            period = (start, end, float(row[2]))
+        except (TypeError, ValueError, IndexError, KeyError):
+            return ()
+        if not 0.0 <= period[2] < _MAX_EUR_PER_KWH:
+            return ()
+        out.append(period)
+    return tuple(out)
+
+
 def restore(rows: Any) -> None:
     """Hold the periods an entry's store kept, when nothing is held yet.
 
@@ -232,6 +319,13 @@ def restore(rows: Any) -> None:
         hold(periods)
 
 
+def restore_protected(rows: Any) -> None:
+    """:func:`restore` for the protected rate."""
+    periods = _stored_protected(rows)
+    if periods and not _PROTECTED_HELD:
+        hold_protected(periods)
+
+
 def held_table() -> list[list[Any]]:
     """What is held, in the shape :func:`restore` reads, for an entry's store."""
     return [
@@ -240,11 +334,36 @@ def held_table() -> list[list[Any]]:
     ]
 
 
-async def fetch_tariff(session: aiohttp.ClientSession) -> tuple[Period, ...]:
-    """The periods the workbook lists today, parsed off the event loop: a
-    few tenths of a second on a Raspberry Pi."""
+def protected_held_table() -> list[list[Any]]:
+    """What is held of the protected rate, in the shape
+    :func:`restore_protected` reads."""
+    return [
+        [start.isoformat(), None if end is None else end.isoformat(), rate]
+        for start, end, rate in sorted(_PROTECTED_HELD.values())
+    ]
+
+
+def _parse_both(payload: bytes) -> tuple[tuple[Period, ...], tuple[ProtectedPeriod, ...]]:
+    gas = _gas_rows(payload)
+    household = _household(gas)
+    try:
+        protected = _protected(gas)
+    except TarbelError as err:
+        # Only the social tariff bills it, and the law gives it from the
+        # wording in force: the household rates stay read.
+        _LOGGER.warning("The protected customer's gas excise tariff could not be read: %s", err)
+        protected = ()
+    return household, protected
+
+
+async def fetch_tariff(
+    session: aiohttp.ClientSession,
+) -> tuple[tuple[Period, ...], tuple[ProtectedPeriod, ...]]:
+    """The household and the protected customer's periods the workbook
+    lists today, parsed off the event loop: a few tenths of a second on a
+    Raspberry Pi. No protected period when those rows cannot be read."""
     payload = await fetch_bytes(session, TARBEL_URL, timeout=_TIMEOUT)
-    return await asyncio.to_thread(parse, payload)
+    return await asyncio.to_thread(_parse_both, payload)
 
 
 async def ensure_tariff(session: aiohttp.ClientSession) -> None:
@@ -261,7 +380,7 @@ async def ensure_tariff(session: aiohttp.ClientSession) -> None:
         if _failed_at is not None and (now - _failed_at).total_seconds() < _FAILURE_RETRY_S:
             return
         try:
-            periods = await fetch_tariff(session)
+            periods, protected = await fetch_tariff(session)
         except (TarbelError, *xlsx.UNREADABLE) as err:
             # The workbook came back and is not annex 7 as expected.
             _LOGGER.warning("The gas excise tariff could not be read: %s", err)
@@ -275,5 +394,6 @@ async def ensure_tariff(session: aiohttp.ClientSession) -> None:
             _failed_at = now
             return
         hold(periods)
+        hold_protected(protected)
         _fetched_at = now
         _failed_at = None

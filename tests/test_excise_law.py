@@ -49,6 +49,7 @@ _PAGE = (
 def _nothing_held() -> None:
     """conftest holds the published article; these tests read it."""
     excise_law._HELD.clear()
+    excise_law._PROTECTED_HELD.clear()
     excise_law._fetched_at = None
     excise_law._failed_at = None
 
@@ -62,6 +63,36 @@ def test_the_two_slices_are_read_with_their_steps() -> None:
         (date(2028, 1, 1), 0.01247, 0.01332),
         (date(2029, 1, 1), 0.0136, 0.01445),
     )
+
+
+def test_the_protected_customer_s_rate_is_read_with_its_steps() -> None:
+    """3,09 EUR/MWh from 1 August 2026, the same law's wording, and its own
+    steps after it."""
+    assert excise_law.parse_protected(_PAGE) == (
+        (date(2026, 8, 1), 0.00309),
+        (date(2027, 1, 1), 0.00342),
+        (date(2028, 1, 1), pytest.approx(0.00374)),
+        (date(2029, 1, 1), 0.00408),
+    )
+    excise_law.hold_protected(excise_law.parse_protected(_PAGE))
+    assert excise_law.protected_excise_for(date(2026, 7, 1)) is None
+    assert excise_law.protected_excise_for(date(2026, 12, 31)) == 0.00309
+    assert excise_law.protected_excise_for(date(2027, 1, 1)) == 0.00342
+
+
+async def test_a_protected_rate_that_cannot_be_read_leaves_the_household_s(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = _PAGE.replace("client protégé résidentiel", "client résidentiel visé")
+
+    async def fetch_text(_session: Any, _url: str, **_kwargs: Any) -> str:
+        return page
+
+    monkeypatch.setattr(excise_law, "fetch_text", fetch_text)
+    await ensure_excise_law(None)  # type: ignore[arg-type]
+    assert excise_law.excise_for(date(2026, 8, 1)) == (0.01031, 0.01116)
+    assert excise_law.protected_excise_for(date(2026, 8, 1)) is None
+    assert excise_law._failed_at is None
 
 
 @pytest.mark.parametrize(
@@ -108,6 +139,13 @@ def test_the_store_round_trips_and_never_replaces_a_read() -> None:
     for broken in (None, [["2026-08-01", 0.5, 0.5]], [["not a day", 0.01, 0.01]], [[1]]):
         excise_law.restore(broken)
         assert excise_law._HELD == [], broken
+    excise_law.hold_protected(excise_law.parse_protected(_PAGE))
+    protected = excise_law.protected_held_table()
+    excise_law._PROTECTED_HELD.clear()
+    excise_law.restore_protected(protected)
+    assert excise_law.protected_held_table() == protected
+    excise_law.restore_protected([["2026-08-01", 0.5]])
+    assert excise_law.protected_held_table() == protected
 
 
 async def test_the_law_is_read_once_a_day(monkeypatch: pytest.MonkeyPatch) -> None:

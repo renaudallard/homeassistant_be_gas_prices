@@ -31,6 +31,8 @@ household pays per MWh of gas, and Justel serves its consolidated text. Under
 slice of the annual volume, up to 12 MWh and above it, each a rate followed
 by the steps the law has already voted ("A partir du 1er janvier 2027: ..."),
 so a step is billed in its own month without anyone editing a constant.
+"a) client protégé résidentiel" prints the one rate a protected household
+pays on every kWh, with its own steps.
 
 The day the rate in force took effect is read off the amendment that wrote
 it: Justel brackets every passage an amendment wrote and titles the bracket
@@ -39,7 +41,9 @@ innermost bracket around the rate. Article 420 §3/1 moves both slices every
 quarter by a notice Justel does not consolidate: FPS Finance's excise tariff
 lists those (tarbel.py) and is billed first, so what is read here bills a
 quarter the tariff does not list yet, a year's voted step until its first
-notice.
+notice. The protected rate is not among the slices that article moves, so
+the law's wording bills it from the day it dates, and FPS Finance's tariff
+the months before.
 
 What is read is held for the process, the law read again daily, and kept in
 every entry's store so a restart without the network still knows it. A later
@@ -91,6 +95,7 @@ _GAS = "gaz naturel relevant des codes NC 2711 11 00 et 2711 21 00"
 # The paragraph after the gas one.
 _COAL = "houille, coke et lignite"
 _HOUSEHOLD_RE = re.compile(r"consommation non[- ]professionnelle\s*:")
+_PROTECTED_RE = re.compile(r"a[.)]\s*client protégé résidentiel[^:]*:")
 _OTHERS_RE = re.compile(r"b[.)]\s*autres\s*:")
 _LOW_RE = re.compile(r"pour la tranche de 0 à ([\d.]+) MWh\s*:")
 _HIGH_RE = re.compile(r"pour la tranche à partir de ([\d.]+) MWh\s*:")
@@ -99,6 +104,8 @@ _EXCISE_RE = re.compile(r"droit d['’]accise\s*:\s*([\d.,]+)\s*euros?\s+par\s+M
 _SPECIAL_RE = re.compile(r"droit d['’]accise spécial\s*:\s*([\d.,]+)\s*euros?\s+par\s+MWh")
 
 _HELD: list[Step] = []
+# (first day, EUR/kWh excluding VAT), ascending: the protected rate.
+_PROTECTED_HELD: list[tuple[date, float]] = []
 _fetched_at: datetime | None = None
 _failed_at: datetime | None = None
 
@@ -173,7 +180,24 @@ def parse(page: str) -> tuple[Step, ...]:
         raise ExciseLawError(f"unreadable article: {err}") from err
 
 
-def _parse(page: str) -> tuple[Step, ...]:
+def parse_protected(page: str) -> tuple[tuple[date, float], ...]:
+    """The protected residential customer's excise article 419 sets, with
+    its steps, as (first day, EUR/kWh excluding VAT). Raises like
+    :func:`parse`."""
+    try:
+        text, household, others, _rates, _end = _household(page)
+        label = _PROTECTED_RE.search(text, household, others)
+        if label is None:
+            raise ExciseLawError("no protected customer rate")
+        return tuple(_steps(text, label.end(), others))
+    except (ValueError, OverflowError) as err:
+        raise ExciseLawError(f"unreadable article: {err}") from err
+
+
+def _household(page: str) -> tuple[str, int, int, int, int]:
+    """The article as plain text with its amendments marked, where its
+    household rates begin, where "b) autres" begins and where its rates do,
+    and where the gas paragraph ends."""
     match = _ARTICLE_RE.search(page)
     if match is None:
         raise ExciseLawError("article 419 not found")
@@ -190,8 +214,13 @@ def _parse(page: str) -> tuple[Step, ...]:
     others = _OTHERS_RE.search(text, household.end(), end)
     if others is None:
         raise ExciseLawError("no household rate")
-    low = _LOW_RE.search(text, others.end(), end)
-    high = _HIGH_RE.search(text, others.end(), end)
+    return text, household.end(), others.start(), others.end(), end
+
+
+def _parse(page: str) -> tuple[Step, ...]:
+    text, _household_at, _others_at, others, end = _household(page)
+    low = _LOW_RE.search(text, others, end)
+    high = _HIGH_RE.search(text, others, end)
     if low is None or high is None or high.start() < low.end():
         raise ExciseLawError("no two slices")
     band = EXCISE_BAND_KWH / 1000.0
@@ -216,12 +245,33 @@ def excise_for(month: date) -> tuple[float, float] | None:
     return rates
 
 
+def protected_excise_for(month: date) -> float | None:
+    """The protected residential customer's excise in force on ``month``'s
+    first day, EUR/kWh excluding VAT, or ``None`` before the first step
+    held: the months before the wording in force, which FPS Finance's tariff
+    gives (tarbel.py)."""
+    first = month.replace(day=1)
+    rate = None
+    for when, value in _PROTECTED_HELD:
+        if when > first:
+            break
+        rate = value
+    return rate
+
+
 def hold(steps: tuple[Step, ...]) -> None:
     """Hold ``steps`` from the first day they date on, keeping the steps
     held from before that day."""
     if not steps:
         return
     _HELD[:] = [step for step in _HELD if step[0] < steps[0][0]] + list(steps)
+
+
+def hold_protected(steps: tuple[tuple[date, float], ...]) -> None:
+    """:func:`hold` for the protected rate."""
+    if not steps:
+        return
+    _PROTECTED_HELD[:] = [step for step in _PROTECTED_HELD if step[0] < steps[0][0]] + list(steps)
 
 
 def _stored(rows: Any) -> tuple[Step, ...]:
@@ -239,6 +289,21 @@ def _stored(rows: Any) -> tuple[Step, ...]:
     return tuple(out) if all(a[0] < b[0] for a, b in pairwise(out)) else ()
 
 
+def _stored_protected(rows: Any) -> tuple[tuple[date, float], ...]:
+    out: list[tuple[date, float]] = []
+    if not isinstance(rows, list):
+        return ()
+    for row in rows:
+        try:
+            step = (date.fromisoformat(row[0]), float(row[1]))
+        except (TypeError, ValueError, IndexError, KeyError):
+            return ()
+        if not 0.0 <= step[1] < _MAX_EUR_PER_KWH:
+            return ()
+        out.append(step)
+    return tuple(out) if all(a[0] < b[0] for a, b in pairwise(out)) else ()
+
+
 def restore(rows: Any) -> None:
     """Hold the steps an entry's store kept, when nothing is held yet.
 
@@ -250,9 +315,22 @@ def restore(rows: Any) -> None:
         _HELD[:] = steps
 
 
+def restore_protected(rows: Any) -> None:
+    """:func:`restore` for the protected rate."""
+    steps = _stored_protected(rows)
+    if steps and not _PROTECTED_HELD:
+        _PROTECTED_HELD[:] = steps
+
+
 def held_table() -> list[list[Any]]:
     """What is held, in the shape :func:`restore` reads, for an entry's store."""
     return [[when.isoformat(), low, high] for when, low, high in _HELD]
+
+
+def protected_held_table() -> list[list[Any]]:
+    """What is held of the protected rate, in the shape
+    :func:`restore_protected` reads."""
+    return [[when.isoformat(), rate] for when, rate in _PROTECTED_HELD]
 
 
 async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
@@ -268,7 +346,8 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
     if _failed_at is not None and (now - _failed_at).total_seconds() < _FAILURE_RETRY_S:
         return
     try:
-        steps = parse(await fetch_text(session, EXCISE_LAW_URL, timeout=15))
+        page = await fetch_text(session, EXCISE_LAW_URL, timeout=15)
+        steps = parse(page)
     except ExciseLawError as err:
         # The page came back and is not the article: a layout change, or a
         # bot check served instead of the law.
@@ -291,5 +370,11 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
         _failed_at = now
         return
     hold(steps)
+    try:
+        hold_protected(parse_protected(page))
+    except ExciseLawError as err:
+        # Only the social tariff bills it, and FPS Finance's tariff still
+        # gives the months it lists: the household rates stay read.
+        _LOGGER.warning("The protected customer's gas excise could not be read: %s", err)
     _fetched_at = now
     _failed_at = None

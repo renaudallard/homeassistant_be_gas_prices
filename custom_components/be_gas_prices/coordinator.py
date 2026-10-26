@@ -385,7 +385,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 if isinstance(values, dict)
             }
         excise_law.restore(blob.get("excise_law"))
+        excise_law.restore_protected(blob.get("excise_law_protected"))
         tarbel.restore(blob.get("tarbel"))
+        tarbel.restore_protected(blob.get("tarbel_protected"))
         fluvius.restore(blob.get("fluvius"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
@@ -422,7 +424,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "index_supplier": self.extractor.id,
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
             "excise_law": excise_law.held_table(),
+            "excise_law_protected": excise_law.protected_held_table(),
             "tarbel": tarbel.held_table(),
+            "tarbel_protected": tarbel.protected_held_table(),
             "fluvius": fluvius.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
@@ -466,7 +470,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
         law = _digest(
-            [LAW_FIGURES, excise_law.held_table(), tarbel.held_table(), fluvius.held_table()]
+            [
+                LAW_FIGURES,
+                excise_law.held_table(),
+                excise_law.protected_held_table(),
+                tarbel.held_table(),
+                tarbel.protected_held_table(),
+                fluvius.held_table(),
+            ]
         )
         tier = "" if self.household is None else tier_for(self.household.annual_kwh)
         return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}|{tier}"
