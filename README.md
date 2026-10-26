@@ -96,8 +96,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   month, as the form once asked, is now priced on that day's card, so set
   the day you signed.
 - **Changed contract during the year?** Record the switch and each contract is
-  billed on its own supplier's cards for its own days. A switch recorded on
-  the wrong day can be removed and recorded again.
+  billed on its own supplier's cards for its own days. A contract that
+  counted the year from its start still opens the year there. A switch
+  recorded on the wrong day can be removed and recorded again.
 - **Price history backfill**: the price sensors' statistics are filled back to
   1 January the first time an entry runs in a year, or to the contract start
   when the year counts from it, or to a change of contract recorded this

@@ -188,13 +188,15 @@ read the meter (never while setup's own tick, which reads none, is all there
 is; one still waiting for the energy manager draws on the held volume, or the
 typed one when none is held), from the start of the year's window
 (`window_start`: 1 January, or the contract start when the entry counts from
-it), and does nothing unless what the year is drawn from has moved: the
-calendar year, the entry's settings, each past month's own card and the
-current card as read (so a card read again after an update redraws it), and
-the index values and calorific values (so the value of an index that lags the
-supplier's others redraws it when it lands or is revised), the figures of the
-law (so a release, a Justel or FPS Finance read or a Fluvius sheet that
-gives another month's redraws it), and the tier the measured volume falls in (so a year
-that crosses into another tier redraws its hours on it; the excise blend
-within a tier, a few hundredths of a cent, does not). It is stamped in
-the Store, and skipped where Home Assistant runs no recorder.
+it, or that of an earlier contract of the year that counted from it, so a
+switch recorded or removed leaves the year's `last_reset` where it was), and
+does nothing unless what the year is drawn from has moved: the calendar year,
+the entry's settings, each past month's own card and the current card as read
+(so a card read again after an update redraws it), and the index values and
+calorific values (so the value of an index that lags the supplier's others
+redraws it when it lands or is revised), the figures of the law (so a release,
+a Justel or FPS Finance read or a Fluvius sheet that gives another month's
+redraws it), and the tier the measured volume falls in (so a year that crosses
+into another tier redraws its hours on it; the excise blend within a tier, a
+few hundredths of a cent, does not). It is stamped in the Store, and skipped
+where Home Assistant runs no recorder.

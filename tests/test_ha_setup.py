@@ -85,6 +85,7 @@ from custom_components.be_gas_prices.const import (
     CONF_STATION,
     CONF_SUPPLIER,
     CONF_TARIFF_CARD_DATE,
+    CONF_YTD_FROM_CONTRACT_START,
     CONVERSION_MANUAL,
     CONVERSION_STATION,
     CUSTOM_CONTRACT,
@@ -99,6 +100,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T1,
     TIER_T2,
 )
+from custom_components.be_gas_prices.contract_periods import record_switch, remove_last_switch
 from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
 from custom_components.be_gas_prices.month_cards import MonthCard
@@ -662,6 +664,30 @@ async def test_the_month_cost_resets_with_the_tick_not_the_clock(
     month = hass.states.get("sensor.engie_flow_current_month_cost")
     assert month is not None
     assert month.attributes["last_reset"].startswith("2026-10-01T00:00:00")
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("step", ["started", "switched", "undone"])
+async def test_a_switch_leaves_the_year_s_reset_on_the_contract_start(
+    hass: HomeAssistant, fetch: AsyncMock, step: str
+) -> None:
+    """The year counts from 1 March. A switch on 1 July still bills the
+    contract left from 1 March, so its last_reset must not move back to
+    1 January: the recorder would add the whole year to its sum again, and
+    once more when the switch is removed."""
+    data: dict[str, Any] = {
+        **DATA,
+        CONF_CONTRACT_START_DATE: "2026-03-01",
+        CONF_YTD_FROM_CONTRACT_START: True,
+    }
+    if step != "started":
+        data = record_switch(data, date(2026, 7, 1))
+    if step == "undone":
+        data = remove_last_switch(data)
+    await _setup(hass, data)
+    year = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert year is not None
+    assert year.attributes["last_reset"].startswith("2026-03-01T00:00:00")
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

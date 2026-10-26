@@ -303,11 +303,14 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     def window_start(self, today: date) -> date:
         """The first day the running costs cover: 1 January, or the contract
-        start when the entry bills from it and records no earlier contract
-        this year (which would then go unbilled)."""
+        start when the entry bills from it. With an earlier contract this
+        year, the first day it bills, which is its own start where it billed
+        from there: recording or removing a switch then leaves the year's
+        last_reset where it was, as it leaves the bill."""
         start = date(today.year, 1, 1)
-        if periods_this_year(self._data, today):
-            return start
+        periods = periods_this_year(self._data, today)
+        if periods:
+            return periods[0][1]
         contract_start = parse_date(self._data.get(CONF_CONTRACT_START_DATE))
         if self._data.get(CONF_YTD_FROM_CONTRACT_START) and contract_start is not None:
             return max(start, min(contract_start, today))
