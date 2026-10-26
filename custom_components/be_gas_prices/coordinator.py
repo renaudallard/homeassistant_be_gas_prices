@@ -1358,15 +1358,22 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             year_end_cost = held.get("projected_year_end_cost")
             year_end_kwh = held.get("projected_year_kwh")
         else:
+            # Short by a whole contract, a cost would read on the recorder as
+            # a large drop and then a rise once that contract is priced: it is
+            # unknown instead, the month's only while one that supplied in it
+            # is not priced.
+            short = bool(self.unpriced_periods)
             rolling = None if costs is None else costs.rolling_year_kwh
-            year_cost = None if costs is None else costs.current_year_cost + earlier_cost
+            year_cost = None if costs is None or short else costs.current_year_cost + earlier_cost
             month_cost = (
-                None if costs is None else sum(b.total for b in all_bills if b.month == month)
+                None
+                if costs is None or self.unpriced_this_month
+                else sum(b.total for b in all_bills if b.month == month)
             )
             ytd_kwh = None if costs is None else costs.ytd_kwh + earlier_kwh
             year_end_cost = (
                 None
-                if costs is None or costs.projected_year_end_cost is None
+                if costs is None or short or costs.projected_year_end_cost is None
                 else costs.projected_year_end_cost + earlier_cost
             )
             year_end_kwh = (

@@ -204,11 +204,11 @@ All sensors share one device per entry, named after the contract.
 | `fixed_costs_eur_per_year` | Supplier fee, distribution fixed term, metering and Brussels levy for a year. |
 | `supplier_fixed_fee_eur_per_year` | The supplier's part alone. |
 | `conversion_factor` | The kWh a cubic metre is worth this month, and where it comes from. |
-| `current_year_cost` | The year's running bill, each month on its own card, fixed costs accrued by the day from 1 January (or the contract start when the year counts from it), with a per-month breakdown attribute and the earlier contracts of the year that could not be priced. `TOTAL` and monetary, so the Energy dashboard can use it. |
-| `current_month_cost` | The running month's bill, naming an earlier contract that supplied part of the month and could not be priced. |
+| `current_year_cost` | The year's running bill, each month on its own card, fixed costs accrued by the day from 1 January (or the contract start when the year counts from it), with a per-month breakdown attribute and the earlier contracts of the year that could not be priced, which leave it unknown until they are. `TOTAL` and monetary, so the Energy dashboard can use it. |
+| `current_month_cost` | The running month's bill, unknown while an earlier contract that supplied part of the month cannot be priced, which it names. |
 | `year_to_date_consumption` | kWh the meter recorded this year, from the contract start when the year counts from it, an earlier contract that could not be priced included. |
 | `projected_year_cost` | Shown as *Rolling year cost*. The volume of the 365 days before today at today's price plus a year of fixed costs: roughly what a year on this contract costs. |
-| `projected_year_end_cost` | This year so far plus last year's remaining days at today's price, naming the earlier contracts of the year that could not be priced. |
+| `projected_year_end_cost` | This year so far plus last year's remaining days at today's price, unknown while an earlier contract of the year cannot be priced, which it names. |
 | `projected_year_consumption`, `rolling_year_consumption` | The corresponding volumes. |
 | `contract_end_date` | With an end date set, for a renewal reminder. |
 | `potential_saving` | With the daily comparison on: what the cheapest contract would save a year. |

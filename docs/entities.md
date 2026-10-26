@@ -14,11 +14,11 @@ the contract end date keep their device class's icon.
 | `fixed_costs_eur_per_year` | EUR | Supplier fee, distribution fixed term, metering and Brussels levy for a year, each an attribute. |
 | `supplier_fixed_fee_eur_per_year` | EUR | The supplier's part alone. |
 | `conversion_factor` | kWh/m³ | The factor in use and where it comes from. |
-| `current_year_cost` | EUR, `TOTAL`, monetary | The year's running bill, each month on its own card; `months` attribute with each month's parts, `unpriced_contracts` naming any earlier contract of the year that could not be priced (its days are left out). |
-| `current_month_cost` | EUR, `TOTAL`, monetary | The running month, with `unpriced_contracts` naming an earlier contract that supplied part of it and could not be priced. |
+| `current_year_cost` | EUR, `TOTAL`, monetary | The year's running bill, each month on its own card; `months` attribute with each month's parts, `unpriced_contracts` naming any earlier contract of the year that could not be priced. The state is unknown until it is: short by a whole contract, it would read on the recorder as a drop and then a rise. |
+| `current_month_cost` | EUR, `TOTAL`, monetary | The running month, with `unpriced_contracts` naming an earlier contract that supplied part of it and could not be priced, which leaves the state unknown. |
 | `year_to_date_consumption` | kWh | What the meter recorded this year, from the contract start when the entry counts the year from it, the days of an earlier contract that could not be priced included. |
 | `projected_year_cost` | EUR | Shown as *Rolling year cost*. The rolling year: the volume of the 365 days before today at today's price plus a year of fixed costs. |
-| `projected_year_end_cost` | EUR | The year so far (from the contract start when the entry counts from it) plus last year's remaining days at today's price, with `unpriced_contracts` as the year's cost has it. |
+| `projected_year_end_cost` | EUR | The year so far (from the contract start when the entry counts from it) plus last year's remaining days at today's price, with `unpriced_contracts` as the year's cost has it, and unknown when the year's cost is. |
 | `projected_year_consumption` | kWh | The year so far (from the contract start when the entry counts from it) plus last year's remaining days. |
 | `rolling_year_consumption` | kWh | The 365 days before today. |
 | `contract_end_date` | timestamp | Only with an end date set; removed when it is cleared. |
