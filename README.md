@@ -72,6 +72,10 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   read daily from FPS Finance's excise tariff, which lists each quarter the
   law's notices set, and from the law itself on Justel, with the steps it has
   already voted for the coming years.
+- **The social tariff** for protected customers, whoever supplies them: the
+  CREG's quarterly price, the protected customer's excise from the law and,
+  in Wallonia, the connection fee, with no fixed cost and no energy
+  contribution.
 - **The Fluvius fee a card leaves out**: a Flemish card that prints no data
   management fee (Luminus's) is billed the one on Fluvius's tariff sheet of
   the delivery year.
@@ -144,6 +148,7 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 | **Sparki** | Self Service · At Your Service *(a monthly price set on TTF; Sparki publishes no index values, so each month is priced at the price its card prints)* | Flanders + Wallonia · [`sparki.py`](./custom_components/be_gas_prices/providers/sparki.py) · [notes](./docs/providers/sparki.md) |
 | **TotalEnergies** | Gaz Fixe · Gaz Variable · Impact Variable *(Wallonia)* · myComfort Variable · myComfort Fixe · myEssential Variable · myEssential Fixe *(variable ones monthly TTF_M_RLP)* | All three regions · [`totalenergies.py`](./custom_components/be_gas_prices/providers/totalenergies.py) · [notes](./docs/providers/totalenergies.md) |
 | **Trevion** | Gas Flex *(monthly TTF_RLP)* | Flanders only · [`trevion.py`](./custom_components/be_gas_prices/providers/trevion.py) · [notes](./docs/providers/trevion.md) |
+| **Social tariff (CREG, protected customers only)** | Social tariff *(one price per quarter, set by the CREG, whoever supplies you; never ranked)* | All three regions · [`social.py`](./custom_components/be_gas_prices/providers/social.py) · [notes](./docs/providers/social.md) |
 | **Expert: custom figures** *(no public card)* | A fixed price and fee you type, with your DSO's figures | All three regions · [`custom.py`](./custom_components/be_gas_prices/providers/custom.py) |
 
 > [!WARNING]
@@ -188,7 +193,9 @@ Per year: the supplier's fixed fee, the tier's fixed term, the metering fee
 (Flanders and Brussels) and in Brussels the per-meter levy, accrued by the
 day. VAT is 6% on everything but the Walloon connection fee; the levies the
 law sets are put on the rate the card states, should a card state another
-one Belgium levies. The details,
+one Belgium levies. On the social tariff, the CREG's network part stands in
+for the tier, transport and metering, and the excise is the protected
+customer's rate. The details,
 with the sources of every regulated figure, are in
 [docs/pricing-model.md](docs/pricing-model.md).
 
@@ -346,8 +353,9 @@ Every hour, each entry runs one refresh:
 - **Atrias's calorific values**, once a day, only for an entry converting on
   its reception station, and only the months not held yet.
 - **The excise law** on Justel (ejustice.just.fgov.be) and **FPS Finance's
-  excise tariff** (eservices.minfin.fgov.be), once a day each; a failure
-  keeps what was read and waits six hours.
+  excise tariff** (eservices.minfin.fgov.be), once a day each, the protected
+  customer's rate with the household's; a failure keeps what was read and
+  waits six hours.
 - **Fluvius's gas tariff sheet** of this year, once, for an entry billing a
   Flemish contract this year (an earlier one included): the data management
   fee a card may leave out. A failure waits six hours.

@@ -96,7 +96,9 @@ from custom_components.be_gas_prices.const import (
     DSO_SIBELGA,
     REGION_FLANDERS,
     REGION_WALLONIA,
+    SOCIAL_CONTRACT,
     SUPPLIER_CUSTOM,
+    SUPPLIER_SOCIAL,
     TIER_T1,
     TIER_T2,
 )
@@ -104,7 +106,7 @@ from custom_components.be_gas_prices.contract_periods import record_switch, remo
 from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
 from custom_components.be_gas_prices.month_cards import MonthCard
-from custom_components.be_gas_prices.providers import _pdf, engie, octaplus
+from custom_components.be_gas_prices.providers import _pdf, engie, octaplus, social
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from custom_components.be_gas_prices.running_costs import Household
@@ -189,6 +191,31 @@ async def test_sensors_price_the_household(hass: HomeAssistant, fetch: AsyncMock
     # No meter: the running costs are unknown rather than zero.
     cost = hass.states.get("sensor.engie_flow_current_year_cost")
     assert cost is not None and cost.state == "unknown"
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_protected_household_is_priced_on_the_social_tariff(hass: HomeAssistant) -> None:
+    """October 2026 in Flanders: the CREG's 6,082 c/kWh and the protected
+    excise, 3,09 EUR/MWh with VAT, and no fixed cost at all, the Fluvius
+    data management fee included."""
+    text = fixture_text("social", "G-TSS-FR-2026-Q4.pdf")
+    data = {
+        **DATA,
+        CONF_REGION: REGION_FLANDERS,
+        CONF_DSO: DSO_FLUVIUS_IMEWO,
+        CONF_SUPPLIER: SUPPLIER_SOCIAL,
+        CONF_CONTRACT: SOCIAL_CONTRACT,
+    }
+    with patch.object(social, "fetch_pdf_text", AsyncMock(return_value=text)):
+        entry = MockConfigEntry(domain=DOMAIN, title="Social tariff", data=data)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    price = hass.states.get("sensor.social_tariff_current_price")
+    assert price is not None
+    assert float(price.state) == pytest.approx(0.06082 + 0.0032754, abs=5e-6)
+    fixed = hass.states.get("sensor.social_tariff_fixed_costs_per_year")
+    assert fixed is not None and float(fixed.state) == 0.0
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

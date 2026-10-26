@@ -49,6 +49,7 @@ from ..const import (
     OSP_Q10_HIGH,
     OSP_Q10_LOW,
     OSP_Q10_SPLIT_KWH,
+    SUPPLIER_SOCIAL,
     TIER_BOUNDS_KWH,
     VAT_RATE_REDUCED,
     WALLONIA_DSO_KEYS,
@@ -134,6 +135,16 @@ def law_excise(delivery: date) -> tuple[float, float] | None:
     return excise_law.excise_for(delivery)
 
 
+def law_protected_excise(delivery: date) -> float | None:
+    """The protected residential customer's excise, EUR/kWh excluding VAT,
+    in force for ``delivery``: article 419 as read from Justel, from the day
+    its wording dates, the steps voted after it included, since the
+    quarterly notices of art. 420 do not move it; else the period FPS
+    Finance's excise tariff lists (tarbel.py); None outside both."""
+    rate = excise_law.protected_excise_for(delivery)
+    return rate if rate is not None else tarbel.protected_excise_for(delivery)
+
+
 def law_contribution(delivery: date) -> float | None:
     """The residential energy contribution, EUR/kWh excluding VAT, the law
     sets for ``delivery``: zero from August 2026, 0,9978 EUR/MWh from January
@@ -160,7 +171,9 @@ def _vat_factor(taxes: TaxOverlay) -> float:
     return 1 + rate
 
 
-def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
+def resolve_federal_levies(
+    taxes: TaxOverlay, delivery: date, *, protected: bool = False
+) -> TaxOverlay:
     """``taxes`` with the federal levies the law sets for ``delivery``.
 
     The special excise and the energy contribution are set by federal law
@@ -175,11 +188,23 @@ def resolve_federal_levies(taxes: TaxOverlay, delivery: date) -> TaxOverlay:
     (``vat_rate`` 0.0), and the law's rate is put on the VAT the card states
     (:func:`_vat_factor`). A professional card prints excluding VAT and is
     taxed on other rates.
+
+    A ``protected`` customer's card, the social tariff's, prints no excise:
+    it is billed the protected rate (:func:`law_protected_excise`) on every
+    kWh, and no energy contribution, which the law exempts it from. A month
+    neither source gives is left without an excise and cannot be priced.
     """
     if taxes.vat_rate != 0.0:
         return taxes
-    resolved = taxes
     factor = _vat_factor(taxes)
+    if protected:
+        rate = law_protected_excise(delivery)
+        return replace(
+            taxes,
+            excise_bands=() if rate is None else excise_bands(rate * factor, None),
+            energy_contribution=0.0,
+        )
+    resolved = taxes
     excise = law_excise(delivery)
     if excise is not None:
         low, high = excise
@@ -236,11 +261,14 @@ def resolve_connection_fee(
 def resolve_for_delivery(snapshot: SupplierSnapshot, delivery: date) -> SupplierSnapshot:
     """``snapshot`` as it bills a month delivered on ``delivery``: the levies
     the law sets for that month and the regulated network figures a card
-    leaves out."""
-    taxes = resolve_federal_levies(snapshot.taxes, delivery)
+    leaves out. The social tariff's network part is the CREG's and stands
+    in for the operator's tariffs, the Fluvius data management fee
+    included."""
+    social = snapshot.supplier == SUPPLIER_SOCIAL
+    taxes = resolve_federal_levies(snapshot.taxes, delivery, protected=social)
     return replace(
         snapshot,
-        dsos=resolve_network(snapshot.dsos, snapshot.taxes, delivery),
+        dsos=snapshot.dsos if social else resolve_network(snapshot.dsos, snapshot.taxes, delivery),
         taxes=resolve_connection_fee(taxes, snapshot.dsos, delivery),
     )
 

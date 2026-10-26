@@ -188,6 +188,13 @@ def test_a_card_printing_no_gas_excise_gives_no_excise_figure() -> None:
     assert not any("excise" in name for name in names)
 
 
+def test_the_social_tariff_gives_the_fleet_no_figure() -> None:
+    """Its network part is the CREG's flat one and its excise the protected
+    customer's: counted with the operators' terms, every one would be a
+    departure."""
+    assert list(lc.figures(_card(_snapshot("social")))) == []
+
+
 def test_a_figure_rounded_to_fewer_digits_is_the_same_figure() -> None:
     kwh, year = "EUR/kWh", "EUR/year"
     assert lc.agree(0.0227, 0.0227489, kwh)

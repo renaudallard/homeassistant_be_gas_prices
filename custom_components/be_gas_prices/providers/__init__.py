@@ -48,6 +48,7 @@ from .frank import EXTRACTOR as _FRANK
 from .luminus import EXTRACTOR as _LUMINUS
 from .mega import EXTRACTOR as _MEGA
 from .octaplus import EXTRACTOR as _OCTAPLUS
+from .social import EXTRACTOR as _SOCIAL
 from .sparki import EXTRACTOR as _SPARKI
 from .totalenergies import EXTRACTOR as _TOTALENERGIES
 from .trevion import EXTRACTOR as _TREVION
@@ -74,6 +75,8 @@ EXTRACTORS: dict[str, SupplierExtractor] = {
     # Its cards are page images: an entry prices on the card archive's OCR
     # reading of them.
     _ECOFIX.id: _ECOFIX,
+    # Whoever supplies a protected household; never ranked.
+    _SOCIAL.id: _SOCIAL,
     # The expert escape hatch, last so it sorts to the end of the list.
     _CUSTOM.id: _CUSTOM,
 }

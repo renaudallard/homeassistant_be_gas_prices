@@ -87,6 +87,7 @@ from custom_components.be_gas_prices.const import (
     REGION_FLANDERS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
+    SUPPLIER_SOCIAL,
 )
 from custom_components.be_gas_prices.contract_periods import record_switch
 from custom_components.be_gas_prices.daily_ranking import DailyRanking
@@ -431,6 +432,25 @@ async def test_another_supplier_or_region_is_offered_none_of_the_old_terms(
     assert _suggested(result) == {}
     figures = next(key for key in _advanced(result["data_schema"]) if key == "signed_rate")
     assert figures.default() is False
+
+
+async def test_the_social_tariff_asks_for_no_figures_and_is_not_quoted(
+    hass: HomeAssistant,
+) -> None:
+    """The CREG sets one price for every protected household: there are no
+    signing figures to type, and no household can switch to it."""
+    entry = _entry(hass)
+    result = await _settings_to_contract(hass, entry, REGION_WALLONIA, SUPPLIER_SOCIAL)
+    assert "signed_rate" not in _advanced(result["data_schema"])
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "compare"}
+    )
+    schema = result["data_schema"]
+    assert schema is not None
+    supplier = next(key for key in schema.schema if key == CONF_SUPPLIER)
+    offered = [o["value"] for o in schema.schema[supplier].config["options"]]
+    assert SUPPLIER_SOCIAL not in offered and "engie" in offered
 
 
 @pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")

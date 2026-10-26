@@ -349,3 +349,10 @@ CUSTOM_KEYS: Final = (
     CONF_CUSTOM_CONNECTION_FEE,
     CONF_CUSTOM_LEVY,
 )
+
+# --- Social tariff -----------------------------------------------------------
+# The social tariff the CREG sets each quarter for protected customers,
+# whoever supplies them (providers/social.py). Never ranked: only a
+# protected household can be on it.
+SUPPLIER_SOCIAL: Final = "social"
+SOCIAL_CONTRACT: Final = "social"

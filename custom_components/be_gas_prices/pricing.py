@@ -126,8 +126,12 @@ def compute_breakdown(
     taxes = snapshot.taxes
     if not taxes.excise_bands:
         # A card printing another energy's excise in place of the gas one,
-        # for a month the law's has not been read for.
-        raise PricingError(f"{snapshot.supplier} card prints no gas excise for this month")
+        # or the social tariff's, which prints none, for a month no excise
+        # of the law is held for.
+        raise PricingError(
+            f"{snapshot.supplier} card prints no gas excise for this month, "
+            "and none of the law's is held for it"
+        )
     vat = _vat(taxes)
     energy = energy_eur_per_kwh * vat
     network = (tier.proportional + overlay.transport) * vat

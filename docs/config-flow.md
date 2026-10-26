@@ -12,7 +12,7 @@ once in `_FlowSteps` over `self._data`.
 | `unpriced_network` | Nothing | A warning: part of the postcode is on a network no Belgian card prices (Baarle-Hertog's Enexis), so continue only on the postcode's Belgian DSO. |
 | `region` | Region | Only when no postcode resolved. |
 | `supplier` | Supplier | Suppliers with a contract in the region, withdrawn ones hidden, the custom supplier last. |
-| `contract` | Contract (a withdrawn one marked †, for a household still on it), start date; folded in an `advanced` section: tariff card date, end date, count from start, type the contract's figures | The section's fields are stored flat with the others; the last one is not stored. The section opens unfolded when the entry uses one of its settings. A start in the future, a start before the last change of contract recorded (the contract set up supplies from it on), a tariff card date after today and an end before the start are refused. Blanked dates are removed. Count from start is not offered while a change of contract is recorded this year, since the year then starts with the earlier contract. Typing the figures is not offered for the custom supplier, whose card is already the typed figures, and turning it off removes them. |
+| `contract` | Contract (a withdrawn one marked †, for a household still on it), start date; folded in an `advanced` section: tariff card date, end date, count from start, type the contract's figures | The section's fields are stored flat with the others; the last one is not stored. The section opens unfolded when the entry uses one of its settings. A start in the future, a start before the last change of contract recorded (the contract set up supplies from it on), a tariff card date after today and an end before the start are refused. Blanked dates are removed. Count from start is not offered while a change of contract is recorded this year, since the year then starts with the earlier contract. Typing the figures is not offered for the custom supplier, whose card is already the typed figures, nor for the social tariff, the CREG's for every protected household, and turning it off removes them. |
 | `signed_rate` | Price or factor and base, yearly fee | Only when the contract form asks to type the figures; all optional. The factor is at most 0,5 c€/kWh per €/MWh (`MANUAL_FACTOR_MAX`), where cards print 0,10 to 0,20: the multiplier a formula prints ("ZTP x 1,08" on an index in c€/kWh, "TTF_RLP x 1" on one in €/MWh) is ten times the factor, and a factor past the cap stored before it is not billed, the card's standing in. See `manual_rate.py`. |
 | `dso` | DSO | Narrowed to the postcode's DSOs when it resolved, and skipped when one is left: every postcode with gas names a single DSO, and Brussels has only Sibelga. |
 | `custom_energy`, `custom_network` | The typed card | Only for the custom supplier. The Brussels levy only in Brussels. The energy contribution and the Walloon connection fee are not asked, since the law sets them for every month billed; an older entry's typed figures for them go when it is saved. |
@@ -32,13 +32,14 @@ reloads the entry.
   a start date on the day of a change of contract recorded this year stays,
   so correcting that change's supplier keeps it.
 - **Compare another contract**: pick a supplier (the custom supplier, with
-  no card of its own, is not offered) and a contract; both it and
+  no card of its own, is not offered, nor the social tariff, which only a
+  protected household can be on) and a contract; both it and
   the household's own contract are quoted (`compare.quote_contract`) and
   shown side by side, the own one on the card the entry holds, with its
   signing card's and typed figures, or a custom entry's typed card. Nothing
   is saved.
 - **Compare every contract**: a progress step ranks every contract sold in
-  the region (`compare.rank`, 120 s budget, three cards at a time, one
+  the region, the social tariff left out (`compare.rank`, 120 s budget, three cards at a time, one
   supplier's in turn so a page or card they share is read once, and the
   household's own contract quoted the same way as above), then the ranked
   table with the household's own row in bold. Nothing is saved. When the

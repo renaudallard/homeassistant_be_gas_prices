@@ -120,6 +120,7 @@ body:
         - EBEM
         - Frank Energie
         - Ecofix
+        - "Social tariff (CREG)"
         - "Expert: custom figures"
     validations:
       required: true

@@ -93,6 +93,7 @@ from .const import (
     REGION_BRUSSELS,
     REGIONS,
     SUPPLIER_CUSTOM,
+    SUPPLIER_SOCIAL,
     TIER_BOUNDS_KWH,
     TIER_T2,
     TIER_T3,
@@ -325,8 +326,9 @@ class _FlowSteps:
         contracts = _contracts_for(
             self._data[CONF_SUPPLIER], self._data[CONF_REGION], withdrawn=True
         )
-        # The custom card is the household's own figures already.
-        custom = self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM
+        # The custom card is the household's own figures already, and the
+        # social tariff has none to type: it is the CREG's for everyone.
+        no_figures = self._data[CONF_SUPPLIER] in (SUPPLIER_CUSTOM, SUPPLIER_SOCIAL)
         errors: dict[str, str] = {}
         # With a change of contract recorded this year, the year's cost starts
         # with the earlier contract: counting from this one's start would
@@ -362,7 +364,7 @@ class _FlowSteps:
                 self._data.update({k: v for k, v in given.items() if v not in (None, "")})
                 if not self._data.get(CONF_CONTRACT_START_DATE) or switched:
                     self._data.pop(CONF_YTD_FROM_CONTRACT_START, None)
-                if signed and not custom:
+                if signed and not no_figures:
                     return await self.async_step_signed_rate()
                 for key in MANUAL_RATE_KEYS:
                     self._data.pop(key, None)
@@ -380,8 +382,8 @@ class _FlowSteps:
                     default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
                 )
             ] = BooleanSelector()
-        has_figures = not custom and any(key in self._data for key in MANUAL_RATE_KEYS)
-        if not custom:
+        has_figures = not no_figures and any(key in self._data for key in MANUAL_RATE_KEYS)
+        if not no_figures:
             advanced[vol.Optional(_SIGNED_RATE, default=has_figures)] = BooleanSelector()
         # Folded unless the entry already uses one of them.
         folded = not has_figures and not any(self._data.get(key) for key in _ADVANCED_KEYS)
@@ -765,8 +767,13 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         if user_input is not None:
             self._compare_supplier = user_input[CONF_SUPPLIER]
             return await self.async_step_compare_contract()
-        # The custom supplier has no card of its own to quote.
-        options = [o for o in _suppliers_for(region) if o["value"] != SUPPLIER_CUSTOM]
+        # The custom supplier has no card of its own to quote, and the social
+        # tariff is for protected households only.
+        options = [
+            o
+            for o in _suppliers_for(region)
+            if o["value"] not in (SUPPLIER_CUSTOM, SUPPLIER_SOCIAL)
+        ]
         schema = vol.Schema({vol.Required(CONF_SUPPLIER): _select(options)})
         return self.async_show_form(step_id="compare", data_schema=schema)
 

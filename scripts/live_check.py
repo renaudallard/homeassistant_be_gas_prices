@@ -100,6 +100,7 @@ from custom_components.be_gas_prices.const import (  # noqa: E402
     REGION_BRUSSELS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
+    SUPPLIER_SOCIAL,
     TIER_T1,
     TIER_T2,
     VAT_RATE_REDUCED,
@@ -524,10 +525,16 @@ def figures(card: Card) -> Iterator[Figure]:
     """Every regulated figure the card prints.
 
     A card priced excluding VAT (a professional one) is on another basis, and
-    on another excise scale, so it is left out rather than converted.
+    on another excise scale, so it is left out rather than converted. So is
+    the social tariff's: its network part is the CREG's, not any operator's,
+    and its levies are the protected customer's.
     """
     snapshot = card.snapshot
-    if snapshot.taxes.vat_rate != 0.0 or label_month(snapshot.publication_label) is None:
+    if (
+        snapshot.taxes.vat_rate != 0.0
+        or snapshot.supplier == SUPPLIER_SOCIAL
+        or label_month(snapshot.publication_label) is None
+    ):
         return
     rows: list[tuple[str, str, str, float]] = []
     for dso, overlay in snapshot.dsos.items():

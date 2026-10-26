@@ -52,7 +52,7 @@ from datetime import date, timedelta
 import aiohttp
 
 from .bill import bill_month, month_key
-from .const import SUPPLIER_CUSTOM
+from .const import SUPPLIER_CUSTOM, SUPPLIER_SOCIAL
 from .month_cards import current_card
 from .pricing import PricingError
 from .providers import all_extractors
@@ -201,11 +201,13 @@ async def quote_contract(
 
 
 def candidates(region: str) -> list[tuple[SupplierExtractor, str]]:
-    """Every (supplier, contract) sold in ``region``, cheapest to fetch first."""
+    """Every (supplier, contract) sold in ``region``, cheapest to fetch first.
+    The social tariff is not sold: only a protected household is on it."""
     pairs = [
         (extractor, contract.id)
         for extractor in all_extractors()
-        if extractor.deprecated_until is None and extractor.id != SUPPLIER_CUSTOM
+        if extractor.deprecated_until is None
+        and extractor.id not in (SUPPLIER_CUSTOM, SUPPLIER_SOCIAL)
         for contract in extractor.contracts
         if region in contract.regions and not contract.professional and contract.withdrawn is None
     ]
