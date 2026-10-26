@@ -335,7 +335,7 @@
       "tariff_card_date_in_future": "Das Datum der Tarifkarte darf nicht in der Zukunft liegen.",
       "start_date_before_switch": "Der Vertragsbeginn darf nicht vor dem zuletzt für diesen Eintrag erfassten Vertragswechsel liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
-      "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute.",
+      "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute. Ein Vertrag, der am 1. Januar begann, wird unter „Einstellungen bearbeiten“ eingetragen.",
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     },
     "abort": {
@@ -468,7 +468,7 @@
     },
     "contract_withdrawn": {
       "title": "{supplier} verkauft {contract} nicht mehr",
-      "description": "{supplier} hat {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. {entry} rechnet weiter mit der letzten dafür gespeicherten Karte. Sie bleibt richtig, solange Ihr Vertrag zu diesen Bedingungen läuft, ändert sich aber nicht mehr. Stellt {supplier} Sie auf ein anderes Produkt um, wählen Sie in den Optionen des Eintrags „Einen Vertragswechsel in diesem Jahr erfassen“, geben den ersten Tag des neuen Produkts ein und wählen es aus. „Einstellungen bearbeiten“ würde das ganze Jahr auf den Karten des neuen Produkts berechnen."
+      "description": "{supplier} hat {contract} eingestellt, dessen Tarifkarte nicht mehr veröffentlicht wird. {entry} rechnet weiter mit der letzten dafür gespeicherten Karte. Sie bleibt richtig, solange Ihr Vertrag zu diesen Bedingungen läuft, ändert sich aber nicht mehr. Stellt {supplier} Sie auf ein anderes Produkt um, wählen Sie in den Optionen des Eintrags „Einen Vertragswechsel in diesem Jahr erfassen“, geben den ersten Tag des neuen Produkts ein und wählen es aus. „Einstellungen bearbeiten“ würde das ganze Jahr auf den Karten des neuen Produkts berechnen. Begann das neue Produkt am 1. Januar, nutzen Sie „Einstellungen bearbeiten“: Das eingestellte Produkt hat in diesem Jahr nichts geliefert."
     }
   },
   "services": {

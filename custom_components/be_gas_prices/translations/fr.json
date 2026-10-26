@@ -335,7 +335,7 @@
       "tariff_card_date_in_future": "La date de la carte tarifaire ne peut pas être dans le futur.",
       "start_date_before_switch": "La date de début du contrat ne peut pas précéder le dernier changement de contrat enregistré sur cette entrée.",
       "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
-      "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui.",
+      "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui. Un contrat commencé le 1er janvier se règle dans « Modifier les paramètres ».",
       "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     },
     "abort": {
@@ -468,7 +468,7 @@
     },
     "contract_withdrawn": {
       "title": "{supplier} ne vend plus {contract}",
-      "description": "{supplier} a retiré {contract}, dont la carte tarifaire n'est plus publiée. {entry} continue de calculer sur la dernière carte conservée pour ce contrat, qui reste juste tant que votre contrat court à ces conditions, mais qui ne changera plus. Si {supplier} vous fait passer à un autre produit, choisissez « Enregistrer un changement de contrat cette année » dans les options de l'entrée, saisissez le premier jour du nouveau produit et choisissez-le. « Modifier les paramètres » calculerait toute l'année sur les cartes du nouveau produit."
+      "description": "{supplier} a retiré {contract}, dont la carte tarifaire n'est plus publiée. {entry} continue de calculer sur la dernière carte conservée pour ce contrat, qui reste juste tant que votre contrat court à ces conditions, mais qui ne changera plus. Si {supplier} vous fait passer à un autre produit, choisissez « Enregistrer un changement de contrat cette année » dans les options de l'entrée, saisissez le premier jour du nouveau produit et choisissez-le. « Modifier les paramètres » calculerait toute l'année sur les cartes du nouveau produit. Si le nouveau produit a commencé le 1er janvier, passez par « Modifier les paramètres » : le produit retiré n'a rien fourni cette année."
     }
   },
   "services": {

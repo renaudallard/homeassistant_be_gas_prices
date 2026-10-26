@@ -286,7 +286,12 @@ manifest.
    month), the **end date** for a renewal reminder, counting this year's
    cost from the contract start, and
    a switch to type the figures of your contract
-   when they differ from the card or the card cannot be reached.
+   when they differ from the card or the card cannot be reached. Picking
+   another supplier or region in the settings empties these dates and
+   figures, since the new contract was signed on none of them, except a
+   start date on the day of a change of contract recorded this year. That
+   is also how a contract that started on 1 January is set, since a change
+   of contract cannot be recorded on that day.
 3. **Network operator**, only asked without a postcode and outside
    Brussels. The expert custom supplier then asks for the figures of your
    card: the energy price and fee, then your network operator's terms, the

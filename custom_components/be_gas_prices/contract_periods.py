@@ -94,6 +94,10 @@ PERIOD_KEYS = (
     *CUSTOM_KEYS,
 )
 
+# What a contract was signed on or typed from, which the next one does not
+# share: its card month, end date and typed figures.
+SIGNED_TERMS = (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE, *MANUAL_RATE_KEYS)
+
 
 def parse_date(value: Any) -> date | None:
     """An ISO date from the entry, or None for a missing or malformed one."""
@@ -169,12 +173,35 @@ def record_switch(data: dict[str, Any], switched: date) -> dict[str, Any]:
     new[CONF_CONTRACT_START_DATE] = switched.isoformat()
     # The old contract's card month, end date and typed figures are not the
     # new one's: left in, the next steps would offer them for it.
-    for key in (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE, *MANUAL_RATE_KEYS):
+    for key in SIGNED_TERMS:
         new.pop(key, None)
     # The year now starts with the earlier contract, so counting it from the
     # new contract's start would drop the days the earlier one supplied.
     new.pop(CONF_YTD_FROM_CONTRACT_START, None)
     return new
+
+
+def switch_day(data: Mapping[str, Any]) -> date | None:
+    """The day the current contract took over from the last one recorded
+    at a switch, whatever its year, None when none is recorded."""
+    periods = previous_contracts(data)
+    if not periods:
+        return None
+    return date.fromisoformat(str(periods[-1]["until"])) + timedelta(days=1)
+
+
+def drop_contract_terms(data: dict[str, Any], today: date) -> None:
+    """Leave out of ``data`` what its contract was signed on or typed
+    from, for another supplier's or region's contract, which shares none of
+    it. A start date on the day of a switch recorded this year stays: the
+    switch step set it to the first day of whichever contract follows, and
+    that is what correcting the switch's supplier keeps."""
+    switched = switch_day(data)
+    start = parse_date(data.get(CONF_CONTRACT_START_DATE))
+    if switched is None or start != switched or switched.year != today.year:
+        data.pop(CONF_CONTRACT_START_DATE, None)
+    for key in (*SIGNED_TERMS, CONF_YTD_FROM_CONTRACT_START):
+        data.pop(key, None)
 
 
 def removable_switch(data: Mapping[str, Any], today: date) -> dict[str, Any] | None:

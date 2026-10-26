@@ -94,8 +94,8 @@ from .contract_periods import (
     last_month_sold,
     parse_date,
     periods_this_year,
-    previous_contracts,
     signing_keys,
+    switch_day,
 )
 from .coordinator_data import Conversion, CoordinatorData
 from .daily_ranking import DailyRanking, ranking_minute
@@ -331,10 +331,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def switch_day(self) -> date | None:
         """The day the current contract took over from the last one recorded
         at a switch, whatever its year, None when none is recorded."""
-        periods = previous_contracts(self._data)
-        if not periods:
-            return None
-        return max(date.fromisoformat(str(p["until"])) for p in periods) + timedelta(days=1)
+        return switch_day(self._data)
 
     # ---- persistence ------------------------------------------------------
 

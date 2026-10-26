@@ -335,7 +335,7 @@
       "tariff_card_date_in_future": "De datum van de tariefkaart kan niet in de toekomst liggen.",
       "start_date_before_switch": "De startdatum van het contract kan niet voor de laatst vastgelegde contractwissel van deze invoer liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
-      "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag.",
+      "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag. Een contract dat op 1 januari begon, stel je in via \"Instellingen wijzigen\".",
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     },
     "abort": {
@@ -468,7 +468,7 @@
     },
     "contract_withdrawn": {
       "title": "{supplier} verkoopt {contract} niet meer",
-      "description": "{supplier} heeft {contract} stopgezet en publiceert de tariefkaart ervan niet meer. {entry} blijft rekenen met de laatste kaart die ervoor bewaard is. Die blijft juist zolang je contract tegen die voorwaarden loopt, maar verandert niet meer. Zet {supplier} je over naar een ander product, kies dan in de opties van het item \"Een contractwissel van dit jaar vastleggen\", vul de eerste dag van het nieuwe product in en kies het. \"Instellingen wijzigen\" zou het hele jaar op de kaarten van het nieuwe product berekenen."
+      "description": "{supplier} heeft {contract} stopgezet en publiceert de tariefkaart ervan niet meer. {entry} blijft rekenen met de laatste kaart die ervoor bewaard is. Die blijft juist zolang je contract tegen die voorwaarden loopt, maar verandert niet meer. Zet {supplier} je over naar een ander product, kies dan in de opties van het item \"Een contractwissel van dit jaar vastleggen\", vul de eerste dag van het nieuwe product in en kies het. \"Instellingen wijzigen\" zou het hele jaar op de kaarten van het nieuwe product berekenen. Begon het nieuwe product op 1 januari, gebruik dan \"Instellingen wijzigen\": het stopgezette product leverde dit jaar niets."
     }
   },
   "services": {

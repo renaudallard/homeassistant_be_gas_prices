@@ -26,7 +26,11 @@ reloads the entry.
 
 ## The options menu
 
-- **Edit settings**: the setup steps, pre-filled.
+- **Edit settings**: the setup steps, pre-filled. Another supplier or region
+  leaves out the contract's start date, tariff card date, end date, count from
+  start and typed figures, since the new contract was signed on none of them;
+  a start date on the day of a change of contract recorded this year stays,
+  so correcting that change's supplier keeps it.
 - **Compare another contract**: pick a supplier (the custom supplier, with
   no card of its own, is not offered) and a contract; both it and
   the household's own contract are quoted (`compare.quote_contract`) and

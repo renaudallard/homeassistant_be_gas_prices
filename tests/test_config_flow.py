@@ -84,6 +84,7 @@ from custom_components.be_gas_prices.const import (
     DSO_ORES,
     DSO_SIBELGA,
     REGION_BRUSSELS,
+    REGION_FLANDERS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
 )
@@ -371,6 +372,92 @@ async def test_the_contract_form_folds_the_rarely_needed_fields(hass: HomeAssist
     assert data[CONF_YTD_FROM_CONTRACT_START] is False
     assert "advanced" not in data
     assert "signed_rate" not in data
+
+
+_SIGNED = {
+    CONF_CONTRACT_START_DATE: "2024-05-01",
+    CONF_TARIFF_CARD_DATE: "2024-05-01",
+    CONF_CONTRACT_END_DATE: "2027-04-30",
+    CONF_YTD_FROM_CONTRACT_START: True,
+    CONF_MANUAL_FEE: 50.0,
+}
+
+
+async def _settings_to_contract(
+    hass: HomeAssistant, entry: MockConfigEntry, region: str, supplier: str
+) -> ConfigFlowResult:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "settings"}
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_REGION: region}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: supplier}
+    )
+    assert result["step_id"] == "contract"
+    return result
+
+
+def _suggested(result: ConfigFlowResult) -> dict[str, Any]:
+    """The contract form's suggested start date and folded fields."""
+    schema = result["data_schema"]
+    assert schema is not None
+    fields = [*schema.schema, *_advanced(schema)]
+    return {
+        str(key): key.description["suggested_value"]
+        for key in fields
+        if isinstance(key, vol.Marker)
+        and isinstance(key.description, dict)
+        and key.description.get("suggested_value") is not None
+    }
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(
+    ("region", "supplier"), [(REGION_WALLONIA, "luminus"), (REGION_FLANDERS, "engie")]
+)
+async def test_another_supplier_or_region_is_offered_none_of_the_old_terms(
+    hass: HomeAssistant, region: str, supplier: str
+) -> None:
+    """Left as shown, the old start date and card month would price the new
+    contract on the card of the month the old one was signed: Luminus
+    BasicFix at 0,0611 (May 2024) instead of 0,0893 EUR/kWh (October 2026)."""
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, **_SIGNED})
+    result = await _settings_to_contract(hass, entry, region, supplier)
+    assert _suggested(result) == {}
+    figures = next(key for key in _advanced(result["data_schema"]) if key == "signed_rate")
+    assert figures.default() is False
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+async def test_the_same_contract_keeps_its_terms(hass: HomeAssistant) -> None:
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, **_SIGNED})
+    result = await _settings_to_contract(hass, entry, REGION_WALLONIA, "engie")
+    assert _suggested(result) == {
+        CONF_CONTRACT_START_DATE: "2024-05-01",
+        CONF_TARIFF_CARD_DATE: "2024-05-01",
+        CONF_CONTRACT_END_DATE: "2027-04-30",
+    }
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(("switched", "kept"), [("2026-06-01", True), ("2025-06-01", False)])
+async def test_correcting_a_switch_s_supplier_keeps_its_day(
+    hass: HomeAssistant, switched: str, kept: bool
+) -> None:
+    """The switch step set the start date to the switch day for whichever
+    contract follows; one from an earlier year is a settled change, and a
+    move away from the contract after it is a new contract."""
+    entry = _entry(hass)
+    data = record_switch(dict(entry.data), date.fromisoformat(switched))
+    hass.config_entries.async_update_entry(entry, data=data)
+    result = await _settings_to_contract(hass, entry, REGION_WALLONIA, "luminus")
+    assert _suggested(result) == ({CONF_CONTRACT_START_DATE: switched} if kept else {})
 
 
 async def test_settings_unfold_the_figures_the_entry_holds(hass: HomeAssistant) -> None:

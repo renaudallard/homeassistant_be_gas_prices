@@ -98,6 +98,7 @@ from .const import (
     TIER_T3,
 )
 from .contract_periods import (
+    drop_contract_terms,
     parse_date,
     periods_this_year,
     previous_contracts,
@@ -247,6 +248,8 @@ class _FlowSteps:
                 errors[CONF_POSTCODE] = "no_gas_network"
             else:
                 self._data[CONF_POSTCODE] = code
+                if match.region != self._data.get(CONF_REGION):
+                    drop_contract_terms(self._data, dt_util.now().date())
                 self._data[CONF_REGION] = match.region
                 self._candidates = match.dsos
                 if match.unpriced:
@@ -286,6 +289,7 @@ class _FlowSteps:
         if user_input is not None:
             if user_input[CONF_REGION] != self._data.get(CONF_REGION):
                 self._data.pop(CONF_DSO, None)
+                drop_contract_terms(self._data, dt_util.now().date())
             self._data[CONF_REGION] = user_input[CONF_REGION]
             return await self.async_step_supplier()
         schema = vol.Schema(
@@ -305,6 +309,9 @@ class _FlowSteps:
         if user_input is not None:
             if user_input[CONF_SUPPLIER] != self._data.get(CONF_SUPPLIER):
                 self._data.pop(CONF_CONTRACT, None)
+                # Another supplier's contract was not signed on this one's
+                # card or figures: left in, they would price it on them.
+                drop_contract_terms(self._data, dt_util.now().date())
             self._data[CONF_SUPPLIER] = user_input[CONF_SUPPLIER]
             return await self.async_step_contract()
         current = self._data.get(CONF_SUPPLIER)
