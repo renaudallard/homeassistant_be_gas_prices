@@ -47,7 +47,10 @@ period and no slices, a rate the quarterly notices do not move.
 
 What is read is held for the process, read again daily, and kept in every
 entry's store. A period the workbook drops stays held: FPS Finance deletes
-codes once their period is long past.
+codes once their period is long past. A period listed with no end covers
+the rest of its first year only: article 419 sets a new rate each 1 January,
+which Justel gives, and an open period would otherwise bill the old one
+over it.
 """
 
 from __future__ import annotations
@@ -238,13 +241,19 @@ def _protected(gas: list[tuple[str, str, str, str]]) -> tuple[ProtectedPeriod, .
     return tuple(out)
 
 
+def _covers(start: date, end: date | None, day: date) -> bool:
+    """Whether a period from ``start`` to ``end`` covers ``day``, an open
+    one up to the end of its first year."""
+    return start <= day and (day <= end if end is not None else day.year == start.year)
+
+
 def excise_for(month: date) -> tuple[float, float] | None:
     """The two slices' excise in force on ``month``'s first day, EUR/kWh
     excluding VAT, or ``None`` where no period held covers it."""
     first = month.replace(day=1)
     rates = None
     for start, end, low, high in sorted(_HELD.values()):
-        if start <= first and (end is None or first <= end):
+        if _covers(start, end, first):
             rates = (low, high)
     return rates
 
@@ -256,7 +265,7 @@ def protected_excise_for(month: date) -> float | None:
     first = month.replace(day=1)
     rate = None
     for start, end, value in sorted(_PROTECTED_HELD.values()):
-        if start <= first and (end is None or first <= end):
+        if _covers(start, end, first):
             rate = value
     return rate
 

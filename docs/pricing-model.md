@@ -130,8 +130,8 @@ the card was printed for:
   article 419 as Justel serves it from the day its wording dates (3,09
   EUR/MWh excluding VAT from 1 August 2026, 3,42 from 2027, and on through
   2029), else on the period FPS Finance's excise tariff lists (exempt from
-  April to June 2023, 2,77 EUR/MWh from July 2023 to July 2026). A month
-  neither gives cannot be priced. That card bills no energy contribution,
+  April to June 2023, 2,77 EUR/MWh from July 2023 to July 2026, 3,09 to
+  December 2026). A month neither gives cannot be priced. That card bills no energy contribution,
   which protected customers are exempt from, and no Fluvius data management
   fee: its network part is the CREG's and stands in for the operator's
   tariffs.

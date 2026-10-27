@@ -57,7 +57,8 @@ else is refused. Every quarter from Q4 2022 to Q4 2026 reads (checked on
   customer's rate on every kWh (`_resolve.law_protected_excise`): article
   419 on Justel from the day its wording dates (3,09 EUR/MWh from 1 August
   2026, 3,42 from 2027), else FPS Finance's tariff (2,77 EUR/MWh from July
-  2023 to July 2026). A month neither gives cannot be priced.
+  2023 to July 2026, 3,09 to December 2026). A month neither gives cannot be
+  priced.
 - **Energy contribution**: none, the law exempts protected customers ("Les
   clients protégés sont exonérés de la cotisation énergie").
 - **Walloon connection fee**: the law's, as on any Walloon card.

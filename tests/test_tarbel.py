@@ -135,6 +135,19 @@ def test_the_published_tariff_gives_the_protected_customer_s_periods(
     assert tarbel.protected_excise_for(date(2023, 3, 1)) is None
 
 
+def test_an_open_period_ends_with_its_year(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Q586 lists 3,09 "vanaf 01/08/2026" with no end, but article 419 sets
+    3,42 from 2027: past December the open period leaves the month to
+    Justel, or to no rate at all."""
+    assert tarbel.protected_excise_for(date(2026, 12, 1)) == pytest.approx(0.00309)
+    assert tarbel.protected_excise_for(date(2027, 1, 1)) is None
+    monkeypatch.setattr(tarbel, "_HELD", {})
+    slices = ("van 0 tot 12 MWh", "vanaf 12 MWh")
+    tarbel.hold(tarbel.parse(_workbook([_row(s, "01/10/2026", None, "11,16") for s in slices])))
+    assert tarbel.excise_for(date(2026, 12, 1)) == (pytest.approx(0.01116),) * 2
+    assert tarbel.excise_for(date(2027, 1, 1)) is None
+
+
 def _protected_row(start: str, end: str | None, rate: str) -> list[str]:
     text = (
         "Aardgas gebruikt als verwarmingsbrandstof voor niet-zakelijk gebruik, "

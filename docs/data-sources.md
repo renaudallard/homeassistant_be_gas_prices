@@ -85,8 +85,10 @@ The version of 1 August 2026 lists April 2023 to December 2026, the quarters
 expected (a slice or a period missing, another unit, overlapping periods) is
 refused whole. It is read once a day, a failure waits six hours, what was
 read is kept in each entry's Store, and a period the workbook later drops
-stays held. A month it lists is billed on it before anything else; the live
-check reads it too.
+stays held. A period listed with no end, as the protected rate's from August
+2026 is, covers the rest of its first year only: article 419 sets a new rate
+each 1 January, which only Justel gives. A month it lists is billed on it
+before anything else; the live check reads it too.
 
 ## Fluvius's gas tariff sheet
 
