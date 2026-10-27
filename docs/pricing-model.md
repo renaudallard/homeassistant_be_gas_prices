@@ -57,7 +57,7 @@ the household's caliber cannot price it, like a card missing its DSO.
 | Leg | Price of month M |
 | --- | --- |
 | `FixedRates` | its price |
-| `VariableRates` | the card's printed price |
+| `VariableRates` | the card's printed price; provisional where the card sets it by a formula on an index the supplier publishes no value of (Dots, Sparki), since the bill follows the formula |
 | `IndexedRates` | `factor x index(M) + base` once the supplier has published the index for M; before that, at the latest value it has published (the month is then *provisional*); with no value published up to M, the card's printed figure, or a signed or typed formula at the index that figure was set at |
 
 An index is always the supplier's own: Engie's ZTPDAM (ICIS Heren), OCTA+'s

@@ -52,7 +52,8 @@ says "Weergegeven prijs gebaseerd op de VNR methodologie 6,24 c€/kWh":
 the value the Energy Together cards' "*" twelve-month VNR estimate implies
 for September (HOA Nova: 7,74 = (62,4 + 15) / 10). TTF only reproduces the
 price in EUR/MWh. So the energy leg is `VariableRates(price, fee, formula)`,
-the price as printed.
+the price as printed. It is an estimate the bill's formula replaces, so every
+month priced on it is provisional, and its comparison rows carry the dagger.
 
 ## How each figure is read (pdfplumber layout text)
 
@@ -66,7 +67,8 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 - Energy: "21,20 7,79 Geschatte maandprijs" / "21,20 7,79 Prix mensuel
   estimé": the yearly fee, then the price in c€/kWh.
 - Formula: "berekend volgens de formule ((0,105*TTF)+0,8)*1,06.", from
-  October 2026 "((0,105* TTF EGSI EEX DA)+0,8)*1,06." (kept for diagnostics).
+  October 2026 "((0,105* TTF EGSI EEX DA)+0,8)*1,06." (kept for diagnostics,
+  and the mark of an estimate).
 - VAT: "inclusief 6% BTW" / "TVA 6% comprise" into `card_vat_rate`.
 - Taxes, c€/kWh: "Bijdrage op de Energie (c€/kWh) 0,10577" / "Cotisation sur
   l’énergie (c€/kWh) 0,10577", "Verbruik tussen 0 & 12.000 kWh 0,87338" /

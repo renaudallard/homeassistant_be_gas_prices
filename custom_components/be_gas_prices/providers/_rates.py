@@ -89,11 +89,18 @@ class FixedRates:
 @dataclass(frozen=True, kw_only=True)
 class VariableRates:
     """The price the card states for its own month, with no formula to
-    re-price it on. ``formula`` is the card's own wording, for diagnostics."""
+    re-price it on. ``formula`` is the card's own wording where the price
+    comes from one: the price is then the supplier's estimate, and the bill
+    follows the formula on an index the supplier publishes no value of."""
 
     price: float
     yearly_fixed_fee: float = 0.0
     formula: str | None = None
+
+    @property
+    def estimate(self) -> bool:
+        """Whether the month may still be billed at another price."""
+        return self.formula is not None
 
 
 @dataclass(frozen=True, kw_only=True)

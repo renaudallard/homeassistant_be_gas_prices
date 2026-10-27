@@ -46,6 +46,7 @@ from custom_components.be_gas_prices.const import (
     CONF_MANUAL_FACTOR,
     CONF_MANUAL_PRICE,
     CONF_SUPPLIER,
+    DSO_FLUVIUS_ANTWERPEN,
     DSO_ORES,
     REGION_FLANDERS,
     REGION_WALLONIA,
@@ -53,7 +54,11 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.providers import engie, sparki
 from custom_components.be_gas_prices.providers._network import excise_bands
-from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
+from custom_components.be_gas_prices.providers._rates import (
+    FixedRates,
+    IndexedRates,
+    VariableRates,
+)
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
 from custom_components.be_gas_prices.running_costs import (
     Household,
@@ -125,6 +130,27 @@ def _sparki(name: str) -> SupplierSnapshot:
         ),
         "u",
     )
+
+
+def test_a_variable_price_set_by_a_formula_is_provisional() -> None:
+    """Sparki prints an estimate of "((0,105*TTF)+0,8)*1,06" and bills the
+    formula, on an index it publishes no value of; the social tariff's CREG
+    price is the month's own."""
+    card = _sparki("september")
+    bill = bill_month(
+        month="2026-09",
+        card=card,
+        energy=card.energy,
+        table=None,
+        dso=DSO_FLUVIUS_ANTWERPEN,
+        annual_kwh=10_000.0,
+        caliber=CALIBER_Q10,
+        kwh=1000.0,
+        days=30,
+        days_in_year=365,
+    )
+    assert bill.provisional
+    assert not VariableRates(price=0.06).estimate
 
 
 def test_a_variable_contract_is_billed_on_the_card_of_the_month() -> None:

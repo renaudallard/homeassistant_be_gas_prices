@@ -58,7 +58,9 @@ September (61,768 EUR/MWh) the formula gives 7,829 with VAT or 7,386
 without; 7,873 needs 62,17 EUR/MWh if it includes VAT, 66,41 if not. So the
 energy leg is `VariableRates(price=0,07873, yearly_fixed_fee=63,60,
 formula)`, the price as printed and VAT inclusive by the card's "Alle prijzen
-zijn inclusief 6% BTW (indien van toepassing)".
+zijn inclusief 6% BTW (indien van toepassing)". The card calls it
+"indicatieve" and the bill follows the formula, so every month priced on it
+is provisional, and its comparison rows carry the dagger.
 
 ## How each figure is read (pypdf text)
 

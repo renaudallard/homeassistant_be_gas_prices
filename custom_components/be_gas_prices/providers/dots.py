@@ -44,8 +44,9 @@ and the next paragraph defines "ZTP rekendig gemiddelde" as the mean of
 day-ahead ZTP prices weighted by metered consumption, while the same
 footnote says the prices are "exclusief volumeweging". Dots publishes no
 index values either. The printed price is kept as the card gives it,
-VAT inclusive by the card's own statement, and the formula only for
-diagnostics.
+VAT inclusive by the card's own statement, and the formula with it, which
+marks every month priced on it provisional: the card calls its prices
+"indicatieve", and the bill follows the formula.
 
 Some cells of the September 2026 distribution table are wrong: Limburg's
 mid tier prints its small tier's 2,240 c EUR/kWh where Engie and Sparki

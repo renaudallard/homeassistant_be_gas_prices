@@ -47,7 +47,7 @@ month's settled value either. The NL card says it is based on the VNR
 methodology and prints the value used, "6,24 c€/kWh": 62,4 EUR/MWh gives the
 printed 7,79, and is the figure the Energy Together cards' twelve-month VNR
 estimate implies for the same month. So the card's price is kept as printed
-and the formula only for diagnostics.
+and the formula with it, which marks every month priced on it provisional.
 
 The NL card also says "Onbalanskosten en transportkosten voor gas zijn in de
 prijs inbegrepen" while its network table prints the Fluxys transport rate;
