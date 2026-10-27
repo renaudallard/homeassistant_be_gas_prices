@@ -400,12 +400,13 @@ as a fixed contract runs on its signing card. A signing month older than
 that is read from the supplier's own archive where it still holds it;
 otherwise each month is priced on its own card rather than the one
 signed for, unless you type the figures of your contract. An older card
-whose network table can no longer be read (a Flemish card from before the
-2025 Fluvius merger, an EnergyVision card from before February 2026) still
-gives the price and fee signed on it. A card an
-installation has read is kept in its store; an update reads it again where
-it is still served and keeps the stored one where it is not, so this matters
-when the entry is new or its signing date changes.
+whose network table can no longer be read still gives the price and fee
+signed on it: a Flemish card from before the 2025 Fluvius merger, an Eneco
+or Luminus Walloon card of 2023 (Eneco's of January 2024 too), an
+EnergyVision card from before February 2026, and an OCTA+ card from before
+June 2026. A card an installation has read is kept in its store; an update
+reads it again where it is still served and keeps the stored one where it is
+not, so this matters when the entry is new or its signing date changes.
 
 ## Services
 
