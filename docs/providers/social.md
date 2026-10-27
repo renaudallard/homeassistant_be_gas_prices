@@ -76,4 +76,7 @@ fee of 0,0075 c€/kWh. They print no Brussels levy and no data management fee.
 The archive files one row per region and month, labelled with the month it
 bills. The live check fetches each region's card and checks its month, but
 leaves its figures out of the fleet's consensus: its network part is the
-CREG's, not an operator's.
+CREG's, not an operator's. No card prints the protected excise, so
+`federal: protected excise for YYYY-MM` holds Justel's rate for the month
+against FPS Finance's tariff instead: it fails when both list the month and
+disagree, or when neither gives one.

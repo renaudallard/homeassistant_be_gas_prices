@@ -884,6 +884,31 @@ async def check_excise_tariff(
     return Check(label, "ok")
 
 
+def check_protected_excise(today: date, *, law_read: bool, tariff_read: bool) -> Check | None:
+    """The protected customer's excise the social tariff bills this month,
+    Justel's against FPS Finance's tariff: no card prints it, so no fleet
+    can measure it. Both read and listing the month, they must agree; both
+    read and neither listing it, the social tariff prices nothing. None
+    while a source that failed leaves nothing to compare, its own check
+    being the failure."""
+    label = f"federal: protected excise for {today:%Y-%m}"
+    law = excise_law.protected_excise_for(today) if law_read else None
+    listed = tarbel.protected_excise_for(today) if tariff_read else None
+    rate = law if law is not None else listed
+    if rate is None:
+        if not (law_read and tariff_read):
+            return None
+        return Check(label, "fail", "neither the law nor FPS Finance's tariff gives one")
+    if law is not None and listed is not None and abs(law - listed) > 1e-9:
+        return Check(
+            label,
+            "fail",
+            f"the law gives {shown(law, 'EUR/kWh')} where FPS Finance's tariff gives "
+            f"{shown(listed, 'EUR/kWh')}, excluding VAT",
+        )
+    return Check(label, "ok", f"{shown(rate, 'EUR/kWh')} excluding VAT")
+
+
 async def check_fluvius_sheet(
     session: aiohttp.ClientSession,
     today: date,
@@ -982,6 +1007,11 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             # thread, so one that never returns cannot hold the exit.
             hooks.enter_context(render_through(_render if cache is None else cache.render))
             checks = [await check_excise_law(session), await check_excise_tariff(session)]
+            protected = check_protected_excise(
+                today, law_read=checks[0].status == "ok", tariff_read=checks[1].status == "ok"
+            )
+            if protected is not None:
+                checks.append(protected)
             sheet = await check_fluvius_sheet(session, today)
             checks.append(sheet)
             checks += await check_fleet(

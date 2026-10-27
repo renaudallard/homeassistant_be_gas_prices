@@ -627,6 +627,29 @@ async def test_the_excise_law_is_read_before_the_fleet(
     assert bool(excise_law._HELD) == (status == "ok")
 
 
+def test_the_protected_excise_is_the_law_s_and_the_tariff_s() -> None:
+    """No card prints the social tariff's excise: Justel's 3,09 EUR/MWh from
+    August 2026 is held against FPS Finance's, which a misread of either
+    would leave apart."""
+    october = date(2026, 10, 27)
+    check = lc.check_protected_excise(october, law_read=True, tariff_read=True)
+    assert check == lc.Check(
+        "federal: protected excise for 2026-10", "ok", "0.309 c EUR/kWh excluding VAT"
+    )
+    tarbel.hold_protected(((date(2026, 10, 1), date(2026, 12, 31), 0.00342),))
+    check = lc.check_protected_excise(october, law_read=True, tariff_read=True)
+    assert check is not None and check.status == "fail"
+    assert check.detail == (
+        "the law gives 0.309 c EUR/kWh where FPS Finance's tariff gives 0.342 c EUR/kWh, "
+        "excluding VAT"
+    )
+    # A source that failed has its own check; the other alone is no comparison.
+    assert lc.check_protected_excise(october, law_read=False, tariff_read=True) is not None
+    assert lc.check_protected_excise(date(2023, 1, 1), law_read=False, tariff_read=True) is None
+    nothing = lc.check_protected_excise(date(2023, 1, 1), law_read=True, tariff_read=True)
+    assert nothing is not None and nothing.status == "fail"
+
+
 @pytest.mark.parametrize(
     ("payload", "status"),
     [
@@ -921,8 +944,12 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     async def check_fluvius_sheet(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("fluvius: 2026 gas tariff sheet", "ok")
 
+    def check_protected_excise(*_args: Any, **_kwargs: Any) -> Any:
+        return lc.Check("federal: protected excise for 2026-10", "ok")
+
     monkeypatch.setattr(lc, "check_excise_law", check_excise_law)
     monkeypatch.setattr(lc, "check_excise_tariff", check_excise_tariff)
+    monkeypatch.setattr(lc, "check_protected_excise", check_protected_excise)
     monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
     monkeypatch.setattr(lc, "check_fleet", check_fleet)
     fingerprint = tmp_path / "failures.txt"
@@ -930,7 +957,7 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert lc.main() == 1
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     assert capsys.readouterr().out.startswith(
-        "# Live check: 3 pass, 1 fail, 0 transient, 0 notices"
+        "# Live check: 4 pass, 1 fail, 0 transient, 0 notices"
     )
     assert fleets[-1]["sheet_unread"] is False
 

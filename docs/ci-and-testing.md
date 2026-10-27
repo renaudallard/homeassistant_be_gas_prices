@@ -179,7 +179,9 @@ How the cross-check decides:
   measured against the law too: the run reads article 419 from Justel first
   (`federal: gas excise law`, a failure when the page is not the article)
   and FPS Finance's excise tariff (`federal: gas excise tariff`, a failure
-  when the workbook is not annex 7), and a month whose fleet mostly prints
+  when the workbook is not annex 7; `federal: protected excise for
+  YYYY-MM`, which no card prints, fails when the two disagree on the
+  month or neither gives it), and a month whose fleet mostly prints
   another figure than the one billed fails as `federal: excise ... against
   the law`, `federal: energy contribution ... against the law` (zero from
   August 2026) or `wallonia: connection fee ... against the law`. So does a
