@@ -733,6 +733,19 @@ def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterato
             f"{', '.join(sorted({f.supplier for f in group if agree(f.value, best, unit)}))} "
             f"print {shown(best, unit)} where the integration bills {shown(billed[0], unit)}",
         )
+    elif billed is not None and agree(best, billed[0], unit):
+        # A consensus printed to fewer digits agrees with a stale figure
+        # too: a finer one it agrees with that the billed figure does not is
+        # the one comparison left, made by too few voters for a verdict.
+        for v in cluster:
+            if _step(v, unit) < _step(best, unit) and not agree(v, billed[0], unit):
+                yield Check(
+                    f"{first.scope}: {first.name} for {first.month} against {billed[1]}",
+                    "notice",
+                    f"{', '.join(sorted({f.supplier for f in group if f.value == v}))} "
+                    f"print {shown(v, unit)} where the integration bills "
+                    f"{shown(billed[0], unit)}; the others print fewer digits",
+                )
     rivals = [v for v in values if not agree(v, best, unit)]
     # Finer figures the consensus agrees with but that disagree with each
     # other: printed to fewer digits, it cannot tell which one is right.

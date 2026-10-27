@@ -42,6 +42,7 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import yaml  # type: ignore[import-untyped]
@@ -285,8 +286,38 @@ def test_a_coarse_figure_neither_hides_a_stale_one_nor_fails_the_law() -> None:
     )
     assert _failing(checks) == {}
     assert [c.label for c in checks if c.status == "notice"] == [
-        "epsilon: federal excise above 12000 kWh for 2026-07"
+        "federal: energy contribution for 2026-07 against the law",
+        "epsilon: federal excise above 12000 kWh for 2026-07",
     ]
+
+
+def test_a_finer_figure_a_coarse_consensus_hides_is_compared_with_the_bill() -> None:
+    """Three cards round the excise to 0,99 and one prints 0,9891, while the
+    integration bills a stale 0,9864: the 0,99 agrees with both, so the one
+    finer figure is all that tells, a notice since one voter is no
+    majority."""
+    cards = [
+        _card(_snapshot(sid, label="2026-07", excise=(0.0087238, high), contribution=0.0010577))
+        for sid, high in (
+            ("alpha", 0.0099),
+            ("beta", 0.0099),
+            ("gamma", 0.0099),
+            ("delta", 0.009891),
+        )
+    ]
+    billed = lc._billed
+
+    def stale(first: Any) -> tuple[float, str] | None:
+        return (0.009864, "the law") if first.name == lc._EXCISE_HIGH else billed(first)
+
+    with patch.object(lc, "_billed", stale):
+        checks = lc.consensus(cards)
+    assert _failing(checks) == {}
+    notices = {c.label: c.detail for c in checks if c.status == "notice"}
+    assert notices["federal: excise above 12000 kWh for 2026-07 against the law"] == (
+        "delta print 0.9891 c EUR/kWh where the integration bills 0.9864 c EUR/kWh; "
+        "the others print fewer digits"
+    )
 
 
 def test_a_coarse_consensus_over_finer_figures_that_disagree_is_no_verdict() -> None:

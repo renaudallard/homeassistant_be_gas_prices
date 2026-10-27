@@ -186,7 +186,11 @@ How the cross-check decides:
   fleet mostly stating another VAT rate than `VAT_RATE_REDUCED` (`federal:
   VAT rate ... against the law`), the rate every card that states none is
   billed on; a card stating another rate than the rest is billed on it, so
-  it fails as a departure, never a notice.
+  it fails as a departure, never a notice. Where the fleet's figure is
+  printed to fewer digits and agrees with the billed one, a finer figure
+  it agrees with that the billed one does not is a notice under the same
+  label: one voter is no majority, but a stale billed figure would
+  otherwise pass unseen.
 - A departure the integration does not bill is a notice rather than a
   failure: the excise of a month the law read from Justel or `const.py`
   sets, the Walloon connection fee of any month since the order of 2003,
