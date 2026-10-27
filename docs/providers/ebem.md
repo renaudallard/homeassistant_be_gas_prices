@@ -95,6 +95,13 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
   Read as printed.
 - Imewo T1 proportional 2,62 and West T2 proportional 1,06 (Fluvius 2,62774
   and 1,05500): rounding, where energie.be prints 2,63 and 1,05.
+- The October 2026 card says its figures are rounded to two decimals and
+  that "Bij berekeningen en facturatie wordt er met 7 cijfers na de komma
+  gewerkt in €": EBEM bills the regulated figures unrounded, the 2,12 of
+  Kempen likely included. Billed as printed, there being no regulated DSO
+  table: transport 1,65 for 1,6536 EUR/MWh and the two-decimal terms put a
+  bill at most about 0,8 EUR a year off at 17 000 kWh (Imewo T1 2,62 for
+  2,628: about 0,25 EUR a year at 3 000 kWh), apart from Kempen.
 - Tolerated: "17.59" with a dot (Halle-Vilvoorde T1 fixed) and a stray
   line "7" inside the table (both on every 2026 card), "75 ,60" (Antwerpen
   T2 fixed, every 2025 card, joined before the table is read), "7,5431
