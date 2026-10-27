@@ -12,7 +12,8 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   `ISSUE` is `01` and the card's `YYMM` (`012609` for September 2026); the
   card repeats it as "Tariefkaart versie 012609".
 - `fetch` reads the listing and takes the first link matching the product's
-  token, closed by `.pdf` so `FLEX` never matches `FLEX_ONE` (`card_url`).
+  token, closed by `.pdf` so `FLEX` never matches `FLEX_ONE` nor `FIX`
+  `FIX_ONE` (`card_url`).
 - One Dutch card serves Flanders and Wallonia. A French card exists under
   `/downloads/fr/` and is not read.
 - No probe: the listing sends `Cache-Control: no-store` and a new ETag on
@@ -23,6 +24,7 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 | Contract id | Label (card title) | Token | Kind | Regions |
 |---|---|---|---|---|
 | `eneco_aardgas_vast` | Eneco Aardgas Vast | FIX | fixed | flanders, wallonia |
+| `eneco_aardgas_fix_one` | Eneco Aardgas Fix One | FIX_ONE | fixed | flanders, wallonia |
 | `eneco_aardgas_flex` | Eneco Aardgas Flex | FLEX | indexed, monthly | flanders, wallonia |
 | `eneco_aardgas_flex_one` | Eneco Aardgas Flex One | FLEX_ONE | indexed, monthly | flanders, wallonia |
 
@@ -31,6 +33,10 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   say "voor Vlaanderen en Wallonië".
 - Vast is "vast tijdens het eerste jaar" and "geldig binnen de grenzen van de
   beschikbare volumes": Eneco may stop selling it before the month ends.
+- Fix One (from October 2026) is "een contract van bepaalde duur met een
+  looptijd van 1 jaar", sold "binnen de grenzen van de beschikbare volumes"
+  like Vast, at its own price and fee (9,07 and 65,00 in October 2026,
+  against Vast's 9,26).
 - Flex is open-ended, Flex One "een contract van 1 jaar". Same layout and
   factor; the base differs, and from October 2026 the fee too (65,00 on
   Flex, 50,00 on Flex One).
@@ -42,7 +48,7 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Card month: "Tariefkaart september 2026 van Eneco". `publication_label`
   and `valid_until` (end of that month) come from it.
 - Energy, under "VERBRUIK (€cent/kWh)":
-  - Vast: "65,00 9,13" on one line, yearly fee then price.
+  - Vast and Fix One: "65,00 9,13" on one line, yearly fee then price.
   - Flex and Flex One: the fee alone ("65,00"), then "7,76 Geschatte
     jaarprijs", then "7,67 Maandprijs". `price` is the Maandprijs. Cards
     before 2025 put a ">" before each label; both forms are read.
@@ -100,8 +106,8 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 
 - `fetch_for_month` builds the `01YYMM` URL. Flex issues are on the CDN back
   to at least January 2020, Vast from January 2020 with a gap from January
-  2022 to April 2023, Flex One only from September 2026 (earlier months 404,
-  which is a month with no card).
+  2022 to April 2023, Flex One only from September 2026 and Fix One from
+  October 2026 (earlier months 404, which is a month with no card).
 - No `02YYMM` reissue was found for gas or electricity Flex or Vast from 2019
   to 2026, so only the first issue is asked for.
 - Cards before 2025 list Gaselwest, Iveka, Iverlek, Intergem and Sibelgas and
@@ -141,7 +147,7 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Flex energy leg, formula and footnote check, both regions:
   `test_flex_is_priced_at_the_last_known_index`.
 - Flex One base: `test_flex_one_has_its_own_base`. Vast:
-  `test_vast_is_fixed`.
+  `test_vast_is_fixed`. Fix One: `test_fix_one_is_fixed`.
 - Product title check: `test_card_of_another_product_is_refused`.
 - Flemish DSO rows incl. the wrapped label, transport note:
   `test_flanders_rows_include_the_wrapped_label`.
@@ -153,6 +159,7 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   `test_card_without_the_walloon_connection_fee_is_read`.
 - Pre-2025 layout: `test_pre_2025_card_reads_for_wallonia_only`.
 - Discovery: `test_listing_links_each_product_once`,
+  `test_fix_never_takes_the_fix_one_card`,
   `test_fetch_reads_the_card_the_listing_links`.
 - Archive: the `test_fetch_for_month_*` tests (URL, Brussels midnight,
   wrong month, transient failure, 404 before a product existed, future

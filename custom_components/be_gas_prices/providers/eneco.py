@@ -30,14 +30,15 @@ Wallonia, at
 
     https://cdn.eneco.be/downloads/nl/general/tk/BC_032_<ISSUE>_NL_ENECO_GAS_<TOKEN>.pdf
 
-TOKEN is FIX (Aardgas Vast), FLEX (Aardgas Flex) or FLEX_ONE (Aardgas Flex
-One). ISSUE is "01" and the card's year and month, which the card repeats
-("Tariefkaart versie 012609" for September 2026). The current card is the
+TOKEN is FIX (Aardgas Vast), FIX_ONE (Aardgas Fix One), FLEX (Aardgas Flex)
+or FLEX_ONE (Aardgas Flex One). ISSUE is "01" and the card's year and month,
+which the card repeats ("Tariefkaart versie 012609" for September 2026). The current card is the
 one the public listing links, the same scrape as for electricity. Every past
 issue stays on the CDN, so the built URL is the archive: Flex back to at least
 January 2020, Vast with a gap from January 2022 to April 2023, Flex One only
-from September 2026. No second issue of a month ("02YYMM") was found for Flex
-or Vast, gas or electricity, from 2019 to 2026, so only the first is asked for.
+from September 2026 and Fix One from October 2026. No second issue of a month
+("02YYMM") was found for Flex or Vast, gas or electricity, from 2019 to 2026,
+so only the first is asked for.
 Cards before 2025 name the Fluvius DSOs that merged away and price no Flemish
 household. Their Walloon rows read from February 2024, the first card on which
 the five ORES sub-areas print one tariff.
@@ -138,6 +139,7 @@ class _ContractDef:
 # The label is also the title the card opens with.
 _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef("eneco_aardgas_vast", "Eneco Aardgas Vast", "fixed", "FIX"),
+    _ContractDef("eneco_aardgas_fix_one", "Eneco Aardgas Fix One", "fixed", "FIX_ONE"),
     _ContractDef("eneco_aardgas_flex", "Eneco Aardgas Flex", "indexed", "FLEX"),
     _ContractDef("eneco_aardgas_flex_one", "Eneco Aardgas Flex One", "indexed", "FLEX_ONE"),
 )
@@ -154,7 +156,8 @@ def _contract(contract_id: str, region: str) -> _ContractDef:
 def card_url(listing: str, contract_id: str) -> str:
     """The current card of ``contract_id`` as the listing links it.
 
-    The token is closed by ".pdf", so FLEX never picks up the FLEX_ONE card.
+    The token is closed by ".pdf", so FLEX never picks up the FLEX_ONE card
+    nor FIX the FIX_ONE one.
     """
     token = require_contract(_CONTRACTS_BY_ID, contract_id, "Eneco").token
     match = re.search(rf"{re.escape(_BASE_URL)}/BC_032_\d{{6}}_NL_ENECO_GAS_{token}\.pdf", listing)

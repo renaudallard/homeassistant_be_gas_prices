@@ -61,6 +61,7 @@ _CDN = "https://cdn.eneco.be/downloads/nl/general/tk"
 _FLEX_2609 = "BC_032_012609_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_ONE_2609 = "BC_032_012609_NL_ENECO_GAS_FLEX_ONE.pdf"
 _FIX_2609 = "BC_032_012609_NL_ENECO_GAS_FIX.pdf"
+_FIX_ONE_2610 = "BC_032_012610_NL_ENECO_GAS_FIX_ONE.pdf"
 _FLEX_2608 = "BC_032_012608_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_2604 = "BC_032_012604_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_2412 = "BC_032_012412_NL_ENECO_GAS_FLEX.pdf"
@@ -129,12 +130,23 @@ def test_vast_is_fixed() -> None:
     assert snap.publication_label == "2026-09"
 
 
+@pytest.mark.parametrize(("region", "dsos"), [(REGION_FLANDERS, 8), (REGION_WALLONIA, 2)])
+def test_fix_one_is_fixed(region: str, dsos: int) -> None:
+    # "65,00 9,07", a year fixed, sold from October 2026 beside Vast.
+    snap = _parse("eneco_aardgas_fix_one", region, _FIX_ONE_2610)
+    assert snap.energy == FixedRates(price=approx(0.0907), yearly_fixed_fee=65.0)
+    assert snap.publication_label == "2026-10"
+    assert len(snap.dsos) == dsos
+
+
 @pytest.mark.parametrize(
     ("contract", "name"),
     [
         ("eneco_aardgas_flex", _FLEX_ONE_2609),
         ("eneco_aardgas_flex_one", _FLEX_2609),
         ("eneco_aardgas_flex", _FIX_2609),
+        ("eneco_aardgas_fix_one", _FIX_2609),
+        ("eneco_aardgas_vast", _FIX_ONE_2610),
     ],
 )
 def test_card_of_another_product_is_refused(contract: str, name: str) -> None:
@@ -276,6 +288,7 @@ def test_contracts_are_sold_in_flanders_and_wallonia() -> None:
     by_id = {c.id: c for c in eneco.EXTRACTOR.contracts}
     assert {c: by_id[c].kind for c in by_id} == {
         "eneco_aardgas_vast": "fixed",
+        "eneco_aardgas_fix_one": "fixed",
         "eneco_aardgas_flex": "indexed",
         "eneco_aardgas_flex_one": "indexed",
     }
@@ -289,6 +302,16 @@ def test_listing_links_each_product_once() -> None:
     assert eneco.card_url(listing, "eneco_aardgas_vast") == f"{_CDN}/{_FIX_2609}"
     with pytest.raises(ExtractorError, match="GAS_FLEX_ONE"):
         eneco.card_url(listing.replace("GAS_FLEX_ONE", "GAS_X"), "eneco_aardgas_flex_one")
+
+
+def test_fix_never_takes_the_fix_one_card() -> None:
+    # The October 2026 listing links both; the closing ".pdf" tells them apart.
+    fix_one = f"{_CDN}/{_FIX_ONE_2610}"
+    listing = f'<a href="{fix_one}">Fix One</a> <a href="{_CDN}/{_FIX_2609}">Vast</a>'
+    assert eneco.card_url(listing, "eneco_aardgas_vast") == f"{_CDN}/{_FIX_2609}"
+    assert eneco.card_url(listing, "eneco_aardgas_fix_one") == fix_one
+    with pytest.raises(ExtractorError, match="GAS_FIX_ONE"):
+        eneco.card_url(f'<a href="{_CDN}/{_FIX_2609}">', "eneco_aardgas_fix_one")
 
 
 async def test_fetch_reads_the_card_the_listing_links() -> None:
