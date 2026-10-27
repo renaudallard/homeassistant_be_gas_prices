@@ -110,10 +110,12 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   October 2026 (earlier months 404, which is a month with no card).
 - No `02YYMM` reissue was found for gas or electricity Flex or Vast from 2019
   to 2026, so only the first issue is asked for.
-- Cards before 2025 list Gaselwest, Iveka, Iverlek, Intergem and Sibelgas and
-  fail `require_region` for Flanders. Their Walloon rows read from February
-  2024; the April, May and December 2023 and January 2024 cards checked print
-  five different ORES rows and are refused.
+- Cards before 2025 list Gaselwest, Iveka, Iverlek, Intergem and Sibelgas, so
+  for Flanders they give the energy leg and no DSO row (`signing_dsos`): a
+  contract signed on one is priced on it, and its month on another card.
+  Their Walloon rows read from February 2024; the April, May and December
+  2023 and January 2024 cards checked print five different ORES rows and
+  give the energy leg alone the same way.
 - A month ahead of today (Home Assistant's clock) is not asked for; a card
   naming another month is refused.
 

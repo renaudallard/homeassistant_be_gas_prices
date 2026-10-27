@@ -110,7 +110,7 @@ the layout reader is used here too. Index name: `ZTP-RLP-M`.
 A card that does not parse or names another month moves on to the next
 candidate; a transient failure raises. Readable months: January 2026 on
 in Brussels, February 2026 on in Flanders and Wallonia, less the cards
-refused below.
+refused below; the months before are read for their energy leg only.
 
 ## Card errors, read as printed
 
@@ -150,9 +150,11 @@ refused below.
   1,18296) and no energy contribution.
 - The Walloon cards of November 2025 to January 2026 print the high excise
   band as 0,87717 where the Flemish ones print 0,94757; not checked which
-  is right. Those cards are refused anyway (no transport column).
-- EnergyVision's cards before February 2026 print no transport term and
-  are refused. Brusol's January 2026 card prints it (0,165) and is read.
+  is right. Those cards bill no network anyway (no transport column).
+- EnergyVision's cards before February 2026 print no transport term, so
+  their DSO table is not read: they give the energy leg a contract signed
+  on them is priced on, and no DSO row. Brusol's January 2026 card prints
+  it (0,165) and is read whole.
 - The Walloon GSG card of December 2025 and of February 2026 also exists
   in Dutch (`WAL-nl`). Only the French February card is read; the French
   December card has no transport column either.

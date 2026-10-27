@@ -434,6 +434,29 @@ def test_running_costs_bill_each_month_on_its_own_card() -> None:
     assert costs.projected_year_kwh is None
 
 
+def test_a_signing_card_without_a_table_prices_the_energy_alone() -> None:
+    """A Flemish card from before the Fluvius merger reads its energy leg,
+    which prices the contract signed on it, but no DSO row: its own month is
+    billed on the current card, as an archived card missing a row is."""
+    today = date(2026, 9, 10)
+    card = _flow()
+    old = replace(card, dsos={})
+    signed = FixedRates(price=0.0717, yearly_fixed_fee=17.09)
+    days = {date(2026, 1, 1) + timedelta(days=n): 40.0 for n in range(253)}
+    costs = running_costs(
+        kwh_days=days,
+        today=today,
+        window_start=date(2026, 1, 1),
+        household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
+        current_card=card,
+        month_card=lambda month: old if month == "2026-08" else None,
+        energy_for=lambda snapshot: contract_leg(snapshot.energy, signed, {}),
+        table=TABLE,
+    )
+    assert "2026-08" in costs.months_on_current_card
+    assert all(bill.breakdown.energy == pytest.approx(0.0717) for bill in costs.months)
+
+
 def test_year_end_projection_uses_last_years_remaining_days() -> None:
     today = date(2026, 12, 20)
     card = _flow()

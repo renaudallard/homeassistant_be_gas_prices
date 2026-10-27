@@ -40,8 +40,9 @@ from September 2026 and Fix One from October 2026. No second issue of a month
 ("02YYMM") was found for Flex or Vast, gas or electricity, from 2019 to 2026,
 so only the first is asked for.
 Cards before 2025 name the Fluvius DSOs that merged away and price no Flemish
-household. Their Walloon rows read from February 2024, the first card on which
-the five ORES sub-areas print one tariff.
+household's network, only the energy leg a contract was signed on. Their
+Walloon rows read from February 2024, the first card on which the five ORES
+sub-areas print one tariff.
 
 There is no Brussels card: Brugel's supplier list notes that Eneco no longer
 takes new Brussels residential customers, and the cards are "voor Vlaanderen
@@ -83,6 +84,7 @@ from ..const import (
     REGION_WALLONIA,
 )
 from ._network import (
+    FLUVIUS_MERGED,
     METERING,
     ORES_LABELS,
     T1_FIXED,
@@ -92,6 +94,7 @@ from ._network import (
     excise_bands,
     read_dsos,
     require_region,
+    signing_dsos,
 )
 from ._parse import SIGN_CHARS, cell_value, month_date, parse_sign, require_contract, to_float
 from ._pdf import (
@@ -216,7 +219,7 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
         supplier="eneco",
         contract=contract_id,
         energy=_energy(text, contract),
-        dsos=_dsos(text, region),
+        dsos=signing_dsos(lambda: _dsos(text, region), card_month, FLUVIUS_MERGED),
         taxes=_taxes(text, region),
         source_url=source_url,
         publication_label=f"{card_month:%Y-%m}",

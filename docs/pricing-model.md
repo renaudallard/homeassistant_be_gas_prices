@@ -79,7 +79,11 @@ force on the tariff card date, once that day is past. A variable price is
 the supplier's for each month, so the card of month M sets it whatever the
 signing date. A signing card no one serves any more (neither the supplier's
 archive nor the project's, which keeps thirty-six months) leaves each month on
-its own card's leg. Figures the household typed from its contract
+its own card's leg. A card from before its supplier's current table layout
+(a Flemish card from before the 2025 Fluvius merger, an EnergyVision card
+from before February 2026) is read for its energy leg and levies with no
+DSO rows (`_network.signing_dsos`): it prices a contract signed on it, and
+its own month is billed on another card. Figures the household typed from its contract
 (`manual_rate.py`) are laid over that leg. Where the supplier has published no
 index value up to month M (Ecofix publishes none, and Trevion's and
 Belvus's begin with the value last year's January card names), the card of

@@ -87,6 +87,7 @@ from ..const import (
 )
 from ._network import (
     FLUVIUS_LABELS,
+    FLUVIUS_MERGED,
     METERING,
     ORES_LABELS,
     T1_FIXED,
@@ -99,6 +100,7 @@ from ._network import (
     osp_table,
     read_dsos,
     require_region,
+    signing_dsos,
 )
 from ._parse import SIGN_CHARS, html_cells, month_date, parse_sign, require_contract, to_float
 from ._pdf import fetch_pdf_text, fetch_text, printed_vat_rate
@@ -301,7 +303,7 @@ def parse_snapshot(
         supplier="mega",
         contract=contract_id,
         energy=_energy(text, flat, contract, 1.0 + vat_rate),
-        dsos=_dsos(text, region),
+        dsos=signing_dsos(lambda: _dsos(text, region), card_month, FLUVIUS_MERGED),
         taxes=TaxOverlay(
             excise_bands=bands,
             energy_contribution=contribution,

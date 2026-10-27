@@ -252,10 +252,12 @@ def test_card_that_lost_its_formula_fails_loud() -> None:
 
 def test_pre_2025_card_reads_for_wallonia_only() -> None:
     """The December 2024 card still lists Gaselwest, Iveka and the other
-    Fluvius DSOs that merged away, so no Flemish household can be priced on
-    it. Its Walloon rows and its ">" bulleted energy block read."""
-    with pytest.raises(ExtractorError, match="fluvius_halle_vilvoorde"):
-        _parse("eneco_aardgas_flex", REGION_FLANDERS, _FLEX_2412)
+    Fluvius DSOs that merged away, so no Flemish household's network can be
+    priced on it, but a Flemish contract signed on it is priced on its energy
+    leg. Its Walloon rows and its ">" bulleted energy block read."""
+    flemish = _parse("eneco_aardgas_flex", REGION_FLANDERS, _FLEX_2412)
+    assert flemish.dsos == {}
+    assert flemish.energy == _parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2412).energy
     snap = _parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2412)
     energy = snap.energy
     assert isinstance(energy, IndexedRates)

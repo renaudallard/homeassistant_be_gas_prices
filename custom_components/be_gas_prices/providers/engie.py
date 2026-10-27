@@ -68,6 +68,7 @@ from homeassistant.util import dt as dt_util
 from ..const import REGION_BRUSSELS, REGION_FLANDERS, REGION_WALLONIA
 from ._network import (
     FLUVIUS_LABELS,
+    FLUVIUS_MERGED,
     METERING,
     ORES_LABELS,
     SKIP,
@@ -83,6 +84,7 @@ from ._network import (
     printed_contribution,
     read_dsos,
     require_region,
+    signing_dsos,
 )
 from ._parse import fold_accents, html_rows, month_date, require_contract, to_float
 from ._pdf import MONTH_NAMES, fetch_pdf_text, fetch_text
@@ -252,7 +254,7 @@ def parse_snapshot(
     card_month = _card_month(text)
     vat_rate = _vat_rate(text)
     energy = _energy(text, contract, 1.0 + vat_rate, card_month)
-    dsos = _dsos(text, region)
+    dsos = signing_dsos(lambda: _dsos(text, region), card_month, FLUVIUS_MERGED)
     return SupplierSnapshot(
         supplier="engie",
         contract=contract_id,

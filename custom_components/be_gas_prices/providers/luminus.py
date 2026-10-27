@@ -88,6 +88,7 @@ import aiohttp
 from ..const import DSO_RESA, REGION_FLANDERS, REGION_WALLONIA
 from ._network import (
     FLUVIUS_LABELS,
+    FLUVIUS_MERGED,
     METERING,
     ORES_LABELS,
     T1_FIXED,
@@ -100,6 +101,7 @@ from ._network import (
     excise_bands,
     read_dsos,
     require_region,
+    signing_dsos,
 )
 from ._parse import (
     SIGN_CHARS,
@@ -296,7 +298,7 @@ def parse_snapshot(
         supplier="luminus",
         contract=contract_id,
         energy=_energy(text, contract.kind, 1.0 + vat_rate),
-        dsos=_dsos(text, region),
+        dsos=signing_dsos(lambda: _dsos(text, region), card_month, FLUVIUS_MERGED),
         taxes=taxes,
         source_url=source_url,
         publication_label=f"{card_month:%Y-%m}",

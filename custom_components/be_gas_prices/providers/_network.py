@@ -35,7 +35,7 @@ columns as its card's header does, and this module turns the cells into
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from itertools import pairwise
 
@@ -217,6 +217,30 @@ def require_region(dsos: Mapping[str, DsoOverlay], region: str, supplier: str) -
     missing = sorted(REGION_DSO_KEYS[region] - dsos.keys())
     if missing:
         raise ExtractorError(f"{supplier}: DSO rows not found: {', '.join(missing)}")
+
+
+# The Fluvius areas merged on 1 January 2025: a card from before names the
+# ones that went, and its Flemish table prices no household any more.
+FLUVIUS_MERGED = date(2025, 1, 1)
+
+
+def signing_dsos(
+    read: Callable[[], dict[str, DsoOverlay]], card_month: date, first: date
+) -> dict[str, DsoOverlay]:
+    """The DSO rows ``read`` gives, or none on a card from before ``first``
+    whose table cannot be read for the region any more.
+
+    Such a card is only ever asked for as a signing card or a past month's,
+    and its energy leg is what prices a contract signed on it. A month
+    billed on it finds no DSO row and is billed on another card, as for an
+    archived card missing one.
+    """
+    try:
+        return read()
+    except ExtractorError:
+        if card_month >= first:
+            raise
+        return {}
 
 
 def excise_bands(low: float, high: float | None) -> tuple[tuple[float | None, float], ...]:

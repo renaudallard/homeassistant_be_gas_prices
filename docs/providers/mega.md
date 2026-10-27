@@ -160,7 +160,10 @@ September 2025, January and June 2026.
 
 A product Mega stops listing has no archive through this path. Off-peak Flex
 has no January 2026 card at `Offpeak-Bi-Var` (stub). Older cards parse:
-January 2025, January, March and June 2026 were checked.
+January 2025, January, March and June 2026 were checked. A Flemish card
+from before 2025 names the Fluvius areas that merged away: it gives the
+energy leg a contract signed on it is priced on (Smart Fixed of November
+2024: 6,63 c€/kWh, 111,30 €/year), and no DSO row (`signing_dsos`).
 
 ## Quirks and card errors
 

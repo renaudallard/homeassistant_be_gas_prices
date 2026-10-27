@@ -93,7 +93,10 @@ empty cells and dashes are skipped.
 same URL is the archive. `fetch_for_month` takes the offset in Home
 Assistant's zone (on a UTC host the OS clock is still on the previous month
 for the first hours of the 1st in Brussels), refuses a month ahead of
-today, and refuses a card naming another month than the one asked for.
+today, and refuses a card naming another month than the one asked for. A
+Flemish card from before 2025 names the Fluvius areas that merged away: it
+gives the energy leg a contract signed on it is priced on, and no DSO row
+(`signing_dsos`).
 
 ## Card errors
 

@@ -96,10 +96,12 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
 - The tax block heading is "Taxes et redevances : FL WAL" and prints three
   figures for Flanders then three for Wallonia.
 - Readable back to January 2024 for Wallonia and January 2025 for Flanders.
-  The 2024 cards name Fluvius areas that merged away and fail
-  `require_region` for Flanders; the 2023 cards print five different ORES
-  rows or other levies; the 2021 quarterly cards are titled by quarter
-  ("juillet-septembre 2021"). Each of these is a month with no card.
+  The 2024 cards name Fluvius areas that merged away: for Flanders they
+  give the energy leg and no DSO row (`signing_dsos`), which prices a
+  contract signed on them. The 2023 cards print five different ORES rows
+  or other levies, which leaves the same; the 2021 quarterly cards are
+  titled by quarter ("juillet-septembre 2021") and are a month with no
+  card.
 
 ## Index
 

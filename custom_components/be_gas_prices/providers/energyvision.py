@@ -125,6 +125,7 @@ from ._network import (
     osp_table,
     read_dsos,
     require_region,
+    signing_dsos,
 )
 from ._parse import fold_accents, require_contract, to_float
 from ._pdf import (
@@ -364,7 +365,7 @@ def parse_snapshot(
         supplier="energyvision",
         contract=contract_id,
         energy=_energy(text, contract, 1.0 + vat_rate),
-        dsos=_dsos(text, region),
+        dsos=signing_dsos(lambda: _dsos(text, region), card_month, _TRANSPORT_COLUMN),
         taxes=TaxOverlay(
             excise_bands=_excise(text),
             energy_contribution=_energy_contribution(text),
@@ -460,6 +461,11 @@ _TABLES: dict[str, tuple[str, Mapping[str, str], Sequence[str]]] = {
         (T1_PROP, T1_FIXED, T2_PROP, T2_FIXED, T3_PROP, T3_FIXED, TRANSPORT, METERING),
     ),
 }
+
+
+# The first card printing the transport column. The ones before price each
+# DSO without it, and are read for their energy leg alone.
+_TRANSPORT_COLUMN = date(2026, 2, 1)
 
 
 def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:

@@ -249,6 +249,20 @@ def test_walloon_card_without_its_connection_fee_is_read(contract: str, name: st
         assert snap.energy == FixedRates(price=approx(0.07), yearly_fixed_fee=75.0)
 
 
+def test_a_card_from_before_the_transport_column_gives_its_energy_leg() -> None:
+    """January 2026's fixed card prints no transport column, so no DSO row
+    reads, but "ligt vast voor 1 jaar" at 3,94: a contract signed on it is
+    priced on that, and a later card's table is refused when it fails."""
+    text = _card("EV-0126-GS1JVG-nl.pdf")
+    snap = energyvision.parse_snapshot("energyvision_gas_1_jaar_vast", REGION_FLANDERS, text)
+    assert snap.energy == FixedRates(price=approx(0.0394), yearly_fixed_fee=75.0)
+    assert snap.publication_label == "2026-01"
+    assert snap.dsos == {}
+    september = _card("EV-0926-GS1JVG-nl.pdf").replace("Vlaams Gewest", "x")
+    with pytest.raises(ExtractorError, match="DSO rows not found"):
+        energyvision.parse_snapshot("energyvision_gas_1_jaar_vast", REGION_FLANDERS, september)
+
+
 def test_card_of_the_other_product_is_refused() -> None:
     with pytest.raises(ExtractorError):
         energyvision.parse_snapshot(_GS1JVG, REGION_FLANDERS, _card("EV-0926-GSG-nl.pdf"))
