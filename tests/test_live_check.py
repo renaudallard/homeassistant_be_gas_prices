@@ -807,6 +807,28 @@ async def test_the_index_publication_must_list_what_the_cards_are_priced_on() ->
     )
 
 
+@pytest.mark.parametrize(
+    ("supplier", "today", "status"),
+    [
+        ("acme", date(2026, 10, 10), "ok"),
+        ("acme", date(2026, 10, 11), "fail"),
+        ("acme", date(2026, 11, 1), "fail"),
+        ("totalenergies", date(2026, 10, 27), "ok"),
+        ("totalenergies", date(2026, 11, 1), "fail"),
+    ],
+)
+def test_a_monthly_index_lags_a_month_after_the_first_days(
+    supplier: str, today: date, status: str
+) -> None:
+    """August's value as the newest: early October the September one may
+    not be out yet, later it is stale. TotalEnergies' history always ends
+    two months back."""
+    extractor = _extractor(supplier)
+    card = lc.Card(extractor, "x_var", "flanders", _snapshot(supplier, energy=_indexed("M")))
+    checks = list(lc._index_checks(extractor, {"M": {"2026-08": 61.7}}, [card], today))
+    assert checks[-1].status == status
+
+
 def test_a_quarterly_index_may_lag_its_quarter() -> None:
     extractor = _extractor("acme")
     card = lc.Card(

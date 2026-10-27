@@ -138,9 +138,16 @@ _ATTEMPT_TIMEOUT_S = 300.0
 _GRACE_DAYS = 5
 # How far behind the current month the newest value of an index a card is
 # priced on may be. A monthly index is published in the first days after its
-# month, so early in a month the newest value can be two months back; a
-# quarterly one after its quarter, whose last month is then four months back.
-_INDEX_MAX_LAG = {"month": 2, "quarter": 4}
+# month, so early in a month the newest value can be two months back, and one
+# month back after that: in October 2026 every one gained September's value
+# by the 5th. A quarterly one comes after its quarter, whose last month is
+# then four months back.
+_INDEX_MAX_LAG = {"month": 1, "quarter": 4}
+# Days into a month a monthly index may still lack the month before.
+_INDEX_GRACE_DAYS = 10
+# Publications that run further behind by design: TotalEnergies' history
+# ends two months back (docs/providers/totalenergies.md).
+_INDEX_LAG_BY_SUPPLIER = {"totalenergies": 2}
 # A supplier whose fetches fail on the network this many times in a row is
 # not answering this runner today, and every further fetch would cost the
 # same retries and pauses: a host that accepts and never answers would run
@@ -333,6 +340,10 @@ def _index_checks(
             yield Check(label, "fail", f"unreadable month {newest!r}")
             continue
         allowed = _INDEX_MAX_LAG[period]
+        if period == "month":
+            if today.day <= _INDEX_GRACE_DAYS:
+                allowed += 1
+            allowed = max(allowed, _INDEX_LAG_BY_SUPPLIER.get(ex.id, 0))
         if _lag(today, month) > allowed:
             yield Check(
                 label,
