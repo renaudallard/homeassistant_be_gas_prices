@@ -119,8 +119,10 @@ _REGION_TO_CODE: dict[str, str] = {
     REGION_WALLONIA: "WL",
 }
 
-# The index the variable cards name in their formula.
+# The index the variable cards name in their formula. June 2026's Eco Flux
+# card alone names TTF RLP M, the TTF column of the same table.
 _INDEX = "ZTP RLP M"
+_TTF_INDEX = "TTF RLP M"
 
 
 @dataclass(frozen=True)
@@ -373,7 +375,7 @@ _PRICE_RE = re.compile(r"Coût du gaz \(c€/kWh\)\s+(\d+,\d+)")
 # Smart Variable's printed estimate too is its formula grossed up by 6%.
 # A figure printed with a decimal point is read whole, not cut at the point.
 _FORMULA_RE = re.compile(
-    rf"{_INDEX}\s*\*\s*(\d+(?:[.,]\d+)?)\s*([{SIGN_CHARS}])\s*(\d+(?:[.,]\d+)?)"
+    rf"({_INDEX}|{_TTF_INDEX})\s*\*\s*(\d+(?:[.,]\d+)?)\s*([{SIGN_CHARS}])\s*(\d+(?:[.,]\d+)?)"
 )
 
 
@@ -392,9 +394,9 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: {_INDEX} formula not found")
     vat = 1.0 + VAT_RATE_REDUCED
     return IndexedRates(
-        factor=to_float(formula.group(1)) / 1000.0 * vat,
-        base=parse_sign(formula.group(2)) * to_float(formula.group(3)) / 1000.0 * vat,
-        index=_INDEX,
+        factor=to_float(formula.group(2)) / 1000.0 * vat,
+        base=parse_sign(formula.group(3)) * to_float(formula.group(4)) / 1000.0 * vat,
+        index=formula.group(1),
         price=to_float(price.group(1)) / 100.0,
         yearly_fixed_fee=to_float(fee.group(1)),
         formula=formula.group(0),
@@ -459,30 +461,32 @@ _INDEX_HEADER = "Periode TTF101 Mois TTF103 Trimestre TTF RLP Mois ZTP RLP Mois 
 _INDEX_ROW_RE = re.compile(
     r"^(\d{2})/(\d{4})((?:[ \t]+(?:\d+(?:,\d+)?|-)){5})[ \t]*$", re.MULTILINE
 )
-_ZTP_RLP_COLUMN = 3
+_COLUMNS_READ = {_TTF_INDEX: 2, _INDEX: 3}
 
 
 def parse_index(text: str) -> IndexTable:
-    """The monthly ZTP RLP values of OCTA+'s parameter PDF, in EUR/MWh.
+    """The monthly TTF RLP and ZTP RLP values of OCTA+'s parameter PDF, in
+    EUR/MWh.
 
     One row per delivery month ("08/2026 53,734 45,112 61,729 61,899 -"); a
-    month not over yet prints "-". The other columns (TTF101, TTF103, TTF RLP
-    and the quarterly ZTP RLP) are no gas card's index and are not read.
+    month not over yet prints "-". The other columns (TTF101, TTF103 and the
+    quarterly ZTP RLP) are no gas card's index and are not read.
     """
     if _INDEX_HEADER not in " ".join(text.split()):
         raise ExtractorError("OCTA+: index table heading not found")
-    values: dict[str, float] = {}
+    table: IndexTable = {name: {} for name in _COLUMNS_READ}
     for month, year, cells in _INDEX_ROW_RE.findall(text):
-        cell = cells.split()[_ZTP_RLP_COLUMN]
-        if cell != "-":
-            values[f"{year}-{month}"] = to_float(cell)
-    if not values:
+        for name, column in _COLUMNS_READ.items():
+            cell = cells.split()[column]
+            if cell != "-":
+                table[name][f"{year}-{month}"] = to_float(cell)
+    if not table[_INDEX]:
         raise ExtractorError(f"OCTA+: no {_INDEX} values in the index table")
-    return {_INDEX: values}
+    return table
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
-    """OCTA+'s published ZTP RLP M values."""
+    """OCTA+'s published ZTP RLP M and TTF RLP M values."""
     return parse_index(await fetch_pdf_text_layout(session, _INDEX_URL))
 
 

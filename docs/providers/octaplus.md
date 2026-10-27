@@ -45,7 +45,8 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   `fetch_for_month` still reads their past cards from the archive: a
   household signed on Fixed in July 2026 is billed on July's card (5,67
   c€/kWh), not September's (8,25). June's Eco Flux card indexes on TTF RLP M
-  rather than ZTP RLP M and is not read.
+  ("TTF RLP M * 1,010 + 19,910") where July's names ZTP RLP M with the same
+  figures; it is read on that index.
 
 - Regions: flanders and wallonia for every product.
 - The VL and WL cards print the same energy figures. Both print the DSO tables
@@ -63,7 +64,8 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   cards print no "valables pour tout contrat signé du ... au ..." sentence,
   so the banner is the only date every card has.
 - Energy: "Redevance fixe (€/an) 65,00" and "Coût du gaz (c€/kWh) 6,89".
-- Formula (variable cards only), read after "ZTP RLP M":
+- Formula (variable cards only), read after "ZTP RLP M", or "TTF RLP M" on
+  June 2026's Eco Flux card, whose name becomes the leg's index:
   - Boost Flex: "La formule de prix est la suivante, en EUR/MWh HTVA : ZTP RLP
     M * 1,020 + 3,200." Basic Online: "* 1,020 + 1,940", Eco Boost Flex:
     "* 1,010 + 16,910". The withdrawn Flux printed "* 1,010 + 2,160".
@@ -116,9 +118,10 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   RLP Mois ZTP RLP Trimestre", one row per delivery month over a rolling
   window (10/2024 to 12/2026 on 2026-10-04), e.g. "08/2026 53,734 45,112
   61,729 61,899 -". A month not over prints "-".
-- `parse_index` checks that heading and returns the ZTP RLP Mois column as
-  `{"ZTP RLP M": {"2026-08": 61.899, ...}}` in EUR/MWh. The other columns are
-  no gas card's index and are not read.
+- `parse_index` checks that heading and returns the ZTP RLP Mois and TTF RLP
+  Mois columns as `{"ZTP RLP M": {"2026-08": 61.899, ...}, "TTF RLP M":
+  {"2026-08": 61.729, ...}}` in EUR/MWh. The other columns are no gas card's
+  index and are not read.
 - Definitions differ slightly: the PDF and the Smart Variable card say ZTP
   DAP quotes weighted by the Synergrid RLP; the Boost Flex, Eco Boost Flex
   and Basic Online cards, like Flux before them, say EGSI ZTP indices

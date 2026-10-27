@@ -475,6 +475,25 @@ def test_index_table_reads_ztp_rlp_by_delivery_month() -> None:
     # September is not over: "09/2026 61,479 45,112 - - -".
     assert "2026-09" not in values
     assert len(values) == 26
+    # The third column, which June 2026's Eco Flux card names.
+    assert table["TTF RLP M"]["2026-08"] == pytest.approx(61.729)
+    assert table["TTF RLP M"]["2026-06"] == pytest.approx(45.076)
+    assert "2026-09" not in table["TTF RLP M"]
+
+
+def test_june_eco_flux_card_indexes_on_ttf_rlp() -> None:
+    """ "TTF RLP M * 1,010 + 19,910" in EUR/MWh excluding VAT, where July's
+    card prints the same figures on ZTP RLP M."""
+    snap = octaplus.parse_snapshot(
+        "octaplus_ecoflux", REGION_WALLONIA, _card("2026-06 G OCTA+ECOFLUX RE WL FR.pdf")
+    )
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.index == "TTF RLP M"
+    assert energy.formula == "TTF RLP M * 1,010 + 19,910"
+    assert energy.factor == pytest.approx(1.010 / 1000 * 1.06)
+    assert energy.base == pytest.approx(19.910 / 1000 * 1.06)
+    assert snap.publication_label == "2026-06"
 
 
 def test_index_table_with_another_heading_fails_loud() -> None:
