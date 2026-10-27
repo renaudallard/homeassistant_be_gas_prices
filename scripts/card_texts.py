@@ -59,9 +59,9 @@ PARSER_STAMP = "parser.txt"
 # they rendered, like the OCR engine's.
 _READERS = ("pypdf", "pdfplumber")
 # The code that drives them: every text a row stores was rendered by
-# extract_pdf_text or extract_pdf_text_layout. The extractors' own renderers
-# (Eneco's and Luminus's index tables) feed only the index publications,
-# which keep no text.
+# extract_pdf_text, extract_pdf_text_layout or extract_pdf_text_rows. The
+# extractors' own renderers (Eneco's and Luminus's index tables) feed only
+# the index publications, which keep no text.
 _RENDER_CODE = (
     Path(__file__).resolve().parent.parent
     / "custom_components"

@@ -141,6 +141,7 @@ from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     MIN_TEXT_LAYER_CHARS,
     extract_pdf_text,
     extract_pdf_text_layout,
+    extract_pdf_text_rows,
     fetch_pdf_bytes,
     memoise_text_fetches,
     render_through,
@@ -178,6 +179,7 @@ _PARSER_SOURCES = ("providers/*.py", "const.py", "snapshot_codec.py")
 _RENDERERS: dict[str, Callable[[bytes], str]] = {
     "plain": extract_pdf_text,
     "layout": extract_pdf_text_layout,
+    "rows": extract_pdf_text_rows,
 }
 _LEGEND = (
     "Each month links to what it was parsed from and to what came out of it: `pdf` is the",

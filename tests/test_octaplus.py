@@ -57,9 +57,9 @@ from custom_components.be_gas_prices.month_cards import current_card
 from custom_components.be_gas_prices.providers import octaplus
 from custom_components.be_gas_prices.providers._pdf import render_through
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
-from custom_components.be_gas_prices.providers.base import ExtractorError
+from custom_components.be_gas_prices.providers.base import ExtractorError, SupplierSnapshot
 from custom_components.be_gas_prices.running_costs import Household
-from tests import fixture_page, fixture_text
+from tests import approx, fixture_page, fixture_text
 
 _LISTING = "https://srv.octaplus.be/websiterest/getTarifArchive"
 _SHEET = "https://srv.octaplus.be/websiterest/getTariffSheet"
@@ -620,20 +620,60 @@ async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:
         )
 
 
-async def test_fetch_for_month_has_no_card_for_the_older_template() -> None:
+async def test_fetch_for_month_reads_the_older_template_for_its_energy_leg() -> None:
     """The May 2026 card is the template before the June redesign ("Tarif :
-    Smart Variable")."""
+    Smart Variable"): its formula and fee read, no DSO row does."""
     pages = {
         "AnneeMois=202605": "getTarifArchive_WL_202605_G_RE.json",
         "RequestedPDF=": "getTariffSheet_2026-05 G OCTA+SMARTVARIABLE RE WL FR.json",
     }
     with patch.object(octaplus, "fetch_text", AsyncMock(side_effect=_archive(pages))):
-        assert (
-            await octaplus.fetch_for_month(
-                AsyncMock(), "octaplus_smartvariable", REGION_WALLONIA, date(2026, 5, 1)
-            )
-            is None
+        snap = await octaplus.fetch_for_month(
+            AsyncMock(), "octaplus_smartvariable", REGION_WALLONIA, date(2026, 5, 1)
         )
+    assert snap is not None
+    assert snap.publication_label == "2026-05"
+    assert snap.dsos == {}
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.price == pytest.approx(0.0625)
+    assert energy.yearly_fixed_fee == pytest.approx(160.0)
+
+
+def _older(contract: str, region: str, name: str) -> SupplierSnapshot:
+    return octaplus.parse_older(contract, region, fixture_text("octaplus", name, "rows"))
+
+
+def test_an_older_fixed_card_gives_its_price_and_fee() -> None:
+    """ "o û t d u g a z 4 ,4 9" and "e d e v a n c e fix e (€ / a n ) 6 5
+    ,0 0", spaced glyphs under drop capitals, a year guaranteed."""
+    snap = _older("octaplus_fixed", REGION_FLANDERS, "2026-02 G OCTA+FIXED RE VL FR.pdf")
+    assert snap.energy == FixedRates(price=approx(0.0449), yearly_fixed_fee=65.0)
+    assert snap.publication_label == "2026-02"
+    assert snap.dsos == {}
+    with pytest.raises(ExtractorError, match="the card is for"):
+        _older("octaplus_ecofixed", REGION_FLANDERS, "2026-02 G OCTA+FIXED RE VL FR.pdf")
+    with pytest.raises(ExtractorError, match="card month"):
+        _older("octaplus_fixed", REGION_WALLONIA, "2026-02 G OCTA+FIXED RE VL FR.pdf")
+
+
+def test_an_older_variable_card_is_priced_at_its_monthly_column() -> None:
+    """ "Coût du gaz 3,67 3,86" under "Prix mensuels Prix estimés": the first
+    is "ZTP RLP * 1,01 + 2,16 €/MWh" at August 2025's 32,18, with 6 %."""
+    snap = _older("octaplus_flux", REGION_FLANDERS, "2025-09 G OCTA+FLUX RE VL FR.pdf")
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.index == "ZTP RLP M"
+    assert energy.price == pytest.approx(0.0367)
+    assert energy.factor == pytest.approx(1.01 / 1000 * 1.06)
+    assert energy.base == pytest.approx(2.16 / 1000 * 1.06)
+    assert energy.at(32.18) == pytest.approx(0.0367, abs=5e-5)
+    # A Smart Variable card leaves "(€/an)" off its fee.
+    smart = _older(
+        "octaplus_smartvariable", REGION_FLANDERS, "2025-12 G OCTA+SMARTVARIABLE RE VL FR.pdf"
+    )
+    assert smart.energy.yearly_fixed_fee == pytest.approx(160.0)
+    assert smart.energy.price == pytest.approx(0.0471)
 
 
 async def test_fetch_for_month_raises_on_a_transient_failure() -> None:

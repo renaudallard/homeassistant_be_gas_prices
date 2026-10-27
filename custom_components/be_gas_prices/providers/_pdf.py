@@ -478,6 +478,25 @@ def extract_pdf_text_layout(payload: bytes) -> str:
     )
 
 
+def extract_pdf_text_rows(payload: bytes) -> str:
+    """Extract PDF text via pdfplumber's words, one line per row of words
+    left to right (:func:`word_rows`).
+
+    For a card whose glyphs pdfplumber's layout text spaces out and reads
+    column by column, where the words still sit on their lines, each label
+    beside its figure.
+    """
+    return pdfplumber_text(
+        payload,
+        "rows",
+        lambda pdf: "\n".join(
+            " ".join(word["text"] for word in row)
+            for page in pdf.pages
+            for row in word_rows(page.dedupe_chars().extract_words())
+        ),
+    )
+
+
 async def fetch_pdf_text_layout(
     session: aiohttp.ClientSession, url: str, *, timeout: int = 30
 ) -> str:

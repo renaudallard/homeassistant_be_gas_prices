@@ -38,6 +38,7 @@ import pytest
 from custom_components.be_gas_prices.providers._pdf import (
     extract_pdf_text,
     extract_pdf_text_layout,
+    extract_pdf_text_rows,
 )
 from scripts.card_texts import render_digest
 
@@ -47,6 +48,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 _READERS = {
     "plain": extract_pdf_text,
     "layout": extract_pdf_text_layout,
+    "rows": extract_pdf_text_rows,
 }
 
 

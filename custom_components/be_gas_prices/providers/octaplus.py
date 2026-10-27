@@ -53,9 +53,10 @@ which is what :func:`fetch_index` reads.
 
 The site's archive is two JSON endpoints: getTarifArchive names the cards a
 month had for a region, and getTariffSheet hands one back as a base64 data URL.
-The current template starts with the June 2026 cards. The ones checked from
-September 2025 to May 2026 are an older template this module does not read,
-so :func:`fetch_for_month` returns None for such months.
+The current template starts with the June 2026 cards. The ones from
+September 2025 to May 2026 are an older template, set in spaced glyphs, of
+which only the energy leg is read (:func:`parse_older`): it prices a
+contract signed on one, and no DSO row is.
 """
 
 from __future__ import annotations
@@ -88,6 +89,7 @@ from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_co
 from ._pdf import (
     MONTH_NAMES,
     extract_pdf_text_layout,
+    extract_pdf_text_rows,
     fetch_pdf_text_layout,
     fetch_text,
     head_freshness_key,
@@ -296,8 +298,9 @@ async def fetch_for_month(
     The card arrives inside JSON rather than through a reader, so its bytes
     go through the readers' render hook, where the card archiver keeps them.
     A transient failure raises so the month cache retries it; any other
-    failure, a card from the older template included, is a month with no
-    card, and a card naming another month than the one asked for is refused.
+    failure is a month with no card, and a card naming another month than
+    the one asked for is refused. A card from the older template gives its
+    energy leg alone.
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     code = _REGION_TO_CODE.get(region)
@@ -319,7 +322,10 @@ async def _read_month(
     url = _sheet_url(name)
     payload = _archive_pdf(await fetch_text(session, url, timeout=60), name)
     text = await render_pdf("layout", url, payload, extract_pdf_text_layout)
-    return parse_snapshot(contract.contract_id, region, text, source_url=url)
+    if not text.startswith(_OLDER_TITLE):
+        return parse_snapshot(contract.contract_id, region, text, source_url=url)
+    rows = await render_pdf("rows", url, payload, extract_pdf_text_rows)
+    return parse_older(contract.contract_id, region, rows, source_url=url)
 
 
 def parse_snapshot(
@@ -400,6 +406,77 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
         price=to_float(price.group(1)) / 100.0,
         yearly_fixed_fee=to_float(fee.group(1)),
         formula=formula.group(0),
+    )
+
+
+# The older template, September 2025 to May 2026: "Tarif : Eco Fixed" over
+# "Clients résidentiels en Wallonie - 02/2026 - Tarifs 6% TVAC". Its energy
+# block is set in spaced glyphs under drop capitals ("e d e v a n c e fix e
+# (€ / a n ) 6 5 ,0 0"), so it is matched with the spaces taken out, and the
+# first figure after "Coût du gaz" is the "Prix mensuels" column where a
+# variable card prints it beside the "Prix estimés" one. The formula line,
+# "ZTP RLP * 1,01 + 2,16 €/MWh.", is set plain; its "ZTP RLP" is the monthly
+# value ("indexé mensuellement"), the price at the month before's.
+_OLDER_TITLE = "Tarif : "
+_OLDER_MONTH_RE = re.compile(
+    r"^Clients résidentiels en (Flandre|Wallonie) - (\d{2})/(\d{4}) - Tarifs", re.MULTILINE
+)
+_OLDER_REGIONS = {"Flandre": REGION_FLANDERS, "Wallonie": REGION_WALLONIA}
+# Some Smart Variable cards leave "(€/an)" off the fee's label.
+_OLDER_FEE_RE = re.compile(r"edevancefixe(?:\(€/an\))?(\d+,\d{2})")
+_OLDER_PRICE_RE = re.compile(r"oûtdugaz(\d+,\d{2})")
+_OLDER_FORMULA_RE = re.compile(
+    rf"ZTP RLP(?: M)?\s*\*\s*(\d+(?:,\d+)?)\s*([{SIGN_CHARS}])\s*(\d+(?:,\d+)?)"
+)
+
+
+def parse_older(
+    contract_id: str, region: str, text: str, *, source_url: str | None = None
+) -> SupplierSnapshot:
+    """The energy leg of an older template card, read from pdfplumber's word
+    rows (:func:`extract_pdf_text_rows`), with no DSO row or levy: only a
+    contract signed on it is priced on it."""
+    contract = require_contract(_CONTRACTS_BY_ID, contract_id, "OCTA+")
+    code = _region_code(contract, region)
+    title = text.partition("\n")[0].removeprefix(_OLDER_TITLE)
+    if "".join(title.split()).upper() != contract.slug:
+        raise ExtractorError(f"OCTA+ {contract_id}: the card is for {title!r}")
+    month = _OLDER_MONTH_RE.search(text)
+    if month is None or _OLDER_REGIONS[month.group(1)] != region:
+        raise ExtractorError(f"OCTA+ {contract_id}: no {region} card month found")
+    card_month = month_date(month.group(3), int(month.group(2)), "OCTA+")
+    flat = "".join(text.split())
+    fee = _OLDER_FEE_RE.search(flat)
+    price = _OLDER_PRICE_RE.search(flat)
+    if fee is None or price is None:
+        raise ExtractorError("OCTA+: energy block not found")
+    energy: FixedRates | IndexedRates
+    if contract.kind == "fixed":
+        energy = FixedRates(
+            price=to_float(price.group(1)) / 100.0, yearly_fixed_fee=to_float(fee.group(1))
+        )
+    else:
+        formula = _OLDER_FORMULA_RE.search(text)
+        if formula is None:
+            raise ExtractorError(f"OCTA+ {contract_id}: ZTP RLP formula not found")
+        vat = 1.0 + VAT_RATE_REDUCED
+        energy = IndexedRates(
+            factor=to_float(formula.group(1)) / 1000.0 * vat,
+            base=parse_sign(formula.group(2)) * to_float(formula.group(3)) / 1000.0 * vat,
+            index=_INDEX,
+            price=to_float(price.group(1)) / 100.0,
+            yearly_fixed_fee=to_float(fee.group(1)),
+            formula=formula.group(0),
+        )
+    return SupplierSnapshot(
+        supplier="octaplus",
+        contract=contract_id,
+        energy=energy,
+        dsos={},
+        taxes=TaxOverlay(excise_bands=()),
+        source_url=source_url or _card_url(contract, code),
+        publication_label=f"{card_month:%Y-%m}",
+        valid_until=end_of_month(card_month.year, card_month.month),
     )
 
 

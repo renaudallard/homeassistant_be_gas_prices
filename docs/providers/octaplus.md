@@ -44,9 +44,10 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   (`contract_withdrawn`). Their definitions stay, marked `withdrawn`, so
   `fetch_for_month` still reads their past cards from the archive: a
   household signed on Fixed in July 2026 is billed on July's card (5,67
-  c€/kWh), not September's (8,25). June's Eco Flux card indexes on TTF RLP M
-  ("TTF RLP M * 1,010 + 19,910") where July's names ZTP RLP M with the same
-  figures; it is read on that index.
+  c€/kWh), not September's (8,25), and one signed in February 2026 on
+  February's older template card (4,49). June's Eco Flux card indexes on
+  TTF RLP M ("TTF RLP M * 1,010 + 19,910") where July's names ZTP RLP M
+  with the same figures; it is read on that index.
 
 - Regions: flanders and wallonia for every product.
 - The VL and WL cards print the same energy figures. Both print the DSO tables
@@ -153,13 +154,24 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   (throughout), FLOW and ECOFLOW (2025-02 to 2025-12), FLUX (from 2025-07),
   ECOFLUX (from 2026-01); from 2026-10 BOOSTFIX, BOOSTFLEX, ECOBOOSTFIX,
   ECOBOOSTFLEX and SMARTVARIABLE, Basic Online not listed in that month.
-- Template: cards from June 2026 on are read. The cards checked from
+- Template: cards from June 2026 on are read whole. The cards from
   September 2025 to May 2026 use an older template ("Tarif : Flux", "Clients
-  résidentiels en Wallonie - 05/2026 - Tarifs 6% TVAC") set in spaced glyphs,
-  which pdfplumber reads column by column. `fetch_for_month` returns None for those months, and the month
-  cache falls back to the card archive. Seen on that template: the Walloon
-  connection fee printed 0,075 c€/kWh (ten times the regulated 0,0075), a
-  transport heading in c€/MWh over c€/kWh values, and a stated 6% rate.
+  résidentiels en Wallonie - 05/2026 - Tarifs 6% TVAC") set in spaced glyphs
+  under drop capitals, which pdfplumber's layout text reads column by
+  column. `parse_older` reads its energy leg from pdfplumber's word rows
+  (`_pdf.extract_pdf_text_rows`, the "rows" render) with the spaces taken
+  out: "Redevance fixe (€/an)" (the label without "(€/an)" on some Smart
+  Variable cards), the first figure after "Coût du gaz", and the plain
+  formula line "ZTP RLP * 1,01 + 2,16 €/MWh." It reads no DSO row, so it
+  prices a contract signed on it and no month's network. Every Fixed, Eco
+  Fixed, Flux, Eco Flux and Smart Variable card the archive serves for those
+  months reads (78 in both regions, checked on 2026-10-27). Up to December
+  2025 a variable card prints "Prix mensuels", the formula at the month
+  before's ZTP RLP M (Flux September 2025: 3,67 at August's 32,18 with
+  6 %), beside "Prix estimés"; from January 2026 only the estimate. Seen on
+  that template: the Walloon connection fee printed 0,075 c€/kWh (ten times
+  the regulated 0,0075), a transport heading in c€/MWh over c€/kWh values,
+  and a stated 6% rate.
 - A card naming another month than the one asked for is refused.
 
 ## Known quirks and card errors
@@ -192,5 +204,7 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   from the archive.
 - `fetch_for_month` with the real archive replies: URLs built, render hook,
   a sheet the archive does not hold, a doubled-letter name, another month
-  refused, the older template refused, transient failure raised, Brussels
-  not asked.
+  refused, the older template read for its energy leg, transient failure
+  raised, Brussels not asked.
+- Older template: `test_an_older_fixed_card_gives_its_price_and_fee`,
+  `test_an_older_variable_card_is_priced_at_its_monthly_column`.

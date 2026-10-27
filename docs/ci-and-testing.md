@@ -58,10 +58,11 @@ cache and 54 seconds with a full one.
 ### The fixture-driven pattern
 
 A provider test reads a real card with the reader its extractor uses
-(`fixture_text(supplier, name, "plain" | "layout")`) and pins what the card
-prints: the energy leg, and for an indexed product the formula check (the
-formula at the index value the card names reproduces its printed price); one
-full DSO row per region; the levies; each card error the module knows of.
+(`fixture_text(supplier, name, "plain" | "layout" | "rows")`) and pins
+what the card prints: the energy leg, and for an indexed product the
+formula check (the formula at the index value the card names reproduces its
+printed price); one full DSO row per region; the levies; each card error
+the module knows of.
 `fetch`, `fetch_for_month` and `fetch_index` are tested with the fetch
 helpers patched on the provider module, so no test touches the network. A
 figure the tests quote comes off a fixture card, never from memory.
