@@ -30,7 +30,11 @@ reloads the entry.
   leaves out the contract's start date, tariff card date, end date, count from
   start and typed figures, since the new contract was signed on none of them;
   a start date on the day of a change of contract recorded this year stays,
-  so correcting that change's supplier keeps it.
+  so correcting that change's supplier keeps it. Another product of the same
+  supplier leaves out the same terms, the dates only where they are
+  submitted as the form shows them, a value changed being the new product's,
+  and the count from start with the start date. To keep them for a product picked by mistake, pick it, then
+  enter them again in a second Edit settings.
 - **Compare another contract**: pick a supplier (the custom supplier, with
   no card of its own, is not offered, nor the social tariff, which only a
   protected household can be on) and a contract; both it and

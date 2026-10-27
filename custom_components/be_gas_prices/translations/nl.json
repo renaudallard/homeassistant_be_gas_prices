@@ -176,7 +176,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart van Elegant die binnen de maand opnieuw werd uitgegeven, vul dan de dag van je handtekening in onder Geavanceerd. Een product met † wordt niet meer verkocht: kies het alleen als je contract er nog op loopt. Het wordt dan berekend op zijn laatste tariefkaart, of, met een startdatum, op de kaart van de maand waarin je tekende.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart van Elegant die binnen de maand opnieuw werd uitgegeven, vul dan de dag van je handtekening in onder Geavanceerd. Een product met † wordt niet meer verkocht: kies het alleen als je contract er nog op loopt. Het wordt dan berekend op zijn laatste tariefkaart, of, met een startdatum, op de kaart van de maand waarin je tekende. Kies je een ander product, dan vallen de datums en bedragen van je huidige product weg, tenzij je ze wijzigt.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"

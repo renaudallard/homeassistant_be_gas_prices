@@ -339,6 +339,9 @@ class _FlowSteps:
             given = {k: v for k, v in user_input.items() if k != _ADVANCED}
             given.update(user_input.get(_ADVANCED, {}))
             signed = bool(given.pop(_SIGNED_RATE, False))
+            stale = self._old_contract_terms(given)
+            for key in stale:
+                given.pop(key, None)
             start = parse_date(given.get(CONF_CONTRACT_START_DATE))
             card = parse_date(given.get(CONF_TARIFF_CARD_DATE))
             end = given.get(CONF_CONTRACT_END_DATE)
@@ -361,6 +364,8 @@ class _FlowSteps:
                 for key in _DATE_FIELDS:
                     if not given.get(key):
                         self._data.pop(key, None)
+                for key in stale:
+                    self._data.pop(key, None)
                 self._data.update({k: v for k, v in given.items() if v not in (None, "")})
                 if not self._data.get(CONF_CONTRACT_START_DATE) or switched:
                     self._data.pop(CONF_YTD_FROM_CONTRACT_START, None)
@@ -412,6 +417,28 @@ class _FlowSteps:
         }
         schema = self.add_suggested_values_to_schema(vol.Schema(fields), suggested)
         return self.async_show_form(step_id="contract", data_schema=schema, errors=errors)
+
+    def _old_contract_terms(self, given: dict[str, Any]) -> tuple[str, ...]:
+        """What the contract form showed of the contract held, submitted
+        unchanged with another product picked, and the figures typed for
+        it. They are the old contract's, signed on its own day and card; a
+        value typed anew is the new one's. A start date on this year's
+        switch day stays, as on a change of supplier, and the box counting
+        the year from the start goes with the start date: a ticked box
+        cannot be changed to keep it."""
+        held = self._data.get(CONF_CONTRACT)
+        if held is None or given.get(CONF_CONTRACT) == held:
+            return ()
+        kept = dict(self._data)
+        drop_contract_terms(kept, dt_util.now().date())
+        stale = {
+            key
+            for key in self._data.keys() - kept.keys()
+            if key not in _DATE_FIELDS or given.get(key) == self._data[key]
+        }
+        if CONF_CONTRACT_START_DATE not in stale:
+            stale.discard(CONF_YTD_FROM_CONTRACT_START)
+        return tuple(stale)
 
     async def async_step_signed_rate(
         self, user_input: dict[str, Any] | None = None

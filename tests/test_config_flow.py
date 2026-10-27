@@ -466,6 +466,57 @@ async def test_the_same_contract_keeps_its_terms(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+@pytest.mark.parametrize(
+    ("start", "kept"),
+    [
+        ("2024-05-01", {}),
+        (
+            "2026-01-01",
+            {CONF_CONTRACT_START_DATE: "2026-01-01", CONF_YTD_FROM_CONTRACT_START: True},
+        ),
+    ],
+)
+async def test_another_product_of_the_same_supplier_leaves_the_old_terms_out(
+    hass: HomeAssistant, start: str, kept: dict[str, Any]
+) -> None:
+    """Submitted as the form shows them, Engie Flow's dates would price Easy
+    Fixed on the card of May 2024. A date typed anew is the new product's,
+    such as 1 January for a product the supplier moved the household to,
+    and the box counting the year from the start goes with it."""
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(entry, data={**entry.data, **_SIGNED})
+    result = await _settings_to_contract(hass, entry, REGION_WALLONIA, "engie")
+    shown = _suggested(result)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_CONTRACT: "engie_easy_fixed",
+            CONF_CONTRACT_START_DATE: start,
+            "advanced": {
+                CONF_TARIFF_CARD_DATE: shown[CONF_TARIFF_CARD_DATE],
+                CONF_CONTRACT_END_DATE: shown[CONF_CONTRACT_END_DATE],
+                CONF_YTD_FROM_CONTRACT_START: True,
+                "signed_rate": True,
+            },
+        },
+    )
+    # The figures typed for Engie Flow are not offered for Easy Fixed.
+    assert result["step_id"] == "signed_rate"
+    schema = result["data_schema"]
+    assert schema is not None
+    assert all(key.description["suggested_value"] is None for key in schema.schema)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_DSO: DSO_ORES}
+    )
+    result = await _household_options(hass, result["flow_id"])
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    terms = (*_SIGNED, CONF_CONTRACT_START_DATE)
+    assert entry.data[CONF_CONTRACT] == "engie_easy_fixed"
+    assert {key: entry.data[key] for key in terms if key in entry.data} == kept
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
 @pytest.mark.parametrize(("switched", "kept"), [("2026-06-01", True), ("2025-06-01", False)])
 async def test_correcting_a_switch_s_supplier_keeps_its_day(
     hass: HomeAssistant, switched: str, kept: bool
