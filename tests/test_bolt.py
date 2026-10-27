@@ -511,7 +511,7 @@ def test_listing_without_the_series_fails_loud() -> None:
         bolt.parse_index("<html></html>", date(2026, 10, 7), _BELGIUM)
 
 
-async def test_fetch_index_uses_home_assistants_month() -> None:
+async def test_fetch_index_uses_belgiums_month() -> None:
     with (
         patch.object(
             bolt, "fetch_text", AsyncMock(return_value=fixture_page("bolt", _LISTING_202610))
@@ -536,6 +536,19 @@ async def test_index_months_are_belgian_whatever_home_assistants_zone() -> None:
         values = (await bolt.fetch_index(AsyncMock()))["TTF"]
     assert values["2026-08"] == pytest.approx(61.7310277897321)
     assert values["2026-09"] == pytest.approx(75.3495763449174)
+
+
+async def test_running_month_is_belgiums_east_of_it() -> None:
+    """At 23:30 on 31 October in Brussels it is already November in
+    Helsinki, while the series still holds October's forward value."""
+    dt_util.set_default_time_zone(ZoneInfo("Europe/Helsinki"))
+    page = fixture_page("bolt", _LISTING_202610)
+    with (
+        patch.object(bolt, "fetch_text", AsyncMock(return_value=page)),
+        freeze_time(datetime(2026, 10, 31, 22, 30, tzinfo=UTC)),
+    ):
+        values = (await bolt.fetch_index(AsyncMock()))["TTF"]
+    assert max(values) == "2026-09"
 
 
 def test_a_date_without_its_offset_is_refused() -> None:

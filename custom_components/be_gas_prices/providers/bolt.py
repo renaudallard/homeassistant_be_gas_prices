@@ -516,7 +516,7 @@ _BELGIUM = "Europe/Brussels"
 
 def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
     """The listing's monthly gas series in EUR/MWh, the months before
-    ``today``'s only.
+    ``today``'s only, ``today`` being Belgium's.
 
     The series sits in the page's data as {"date": ..., "price": ...} rows,
     each dated the first of its month at midnight in Belgium ("2026-08-31T
@@ -561,11 +561,14 @@ def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
-    """The monthly means Bolt publishes for the months that are over."""
+    """The monthly means Bolt publishes for the months that are over in
+    Belgium. East of it, Home Assistant's month turns first, while the
+    series still holds the running month's forward value."""
     belgium = await dt_util.async_get_time_zone(_BELGIUM)
     if belgium is None:
         raise ExtractorError(f"Bolt: no time zone data for {_BELGIUM}")
-    return parse_index(await fetch_text(session, _LISTING_URL), dt_util.now().date(), belgium)
+    listing = await fetch_text(session, _LISTING_URL)
+    return parse_index(listing, dt_util.now(belgium).date(), belgium)
 
 
 EXTRACTOR = SupplierExtractor(

@@ -121,10 +121,12 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   ...]}`: one row per month, dated the first of the month at midnight in
   Belgium, priced in EUR/kWh, under no name. `fetch_index` reads it with the
   JSON decoder from that key, converts to EUR/MWh and keeps the months before
-  the current one (Home Assistant's clock). The dates are read in
-  Europe/Brussels whatever Home Assistant's zone: in UTC or Europe/London
-  every value would otherwise be filed a month early, September taking
-  October's forward value. A date without its offset is refused.
+  the current one in Belgium. The dates are read in Europe/Brussels whatever
+  Home Assistant's zone: in UTC or Europe/London every value would otherwise
+  be filed a month early, September taking October's forward value. The
+  current month is Belgium's too: east of it Home Assistant's month turns
+  first, and the running month's forward value would be kept as its mean
+  until the next read. A date without its offset is refused.
 - It matches OCTA+'s "TTF RLP Mois" (EGSI TTF day-ahead weighted by the RLP,
   https://files.octaplus.be/tariffs/paramètres_gaz_fr.pdf) to 0,03 EUR/MWh
   every month from September 2025 to September 2026, and to 0,17 from May to
