@@ -32,7 +32,9 @@ one rule each; none of them is a regulator's figure.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -1017,6 +1019,53 @@ def test_the_workflow_tells_a_crash_from_a_failing_card(
     env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}", "GITHUB_OUTPUT": str(output)}
     subprocess.run(["bash", "-e", "-c", step["run"]], cwd=tmp_path, env=env, check=True)
     assert output.read_text() == f"rc={rc}\n"
+
+
+def test_the_issue_is_filed_by_a_job_that_runs_no_check(tmp_path: Path) -> None:
+    """The check job held a github.token that writes issues while the card
+    readers ran on what the suppliers serve, and handed it to the issue
+    step in its environment, where a process the check left behind could
+    read it. The check's token is read only now. A job of its own files
+    the issue, runs no Python, and reads only what the check hands over."""
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/live_check.yml").read_text()
+    )
+    assert workflow["permissions"] == {"contents": "read"}
+    check = workflow["jobs"]["check"]
+    filer = workflow["jobs"]["file"]
+    assert "permissions" not in check
+    assert "github.token" not in json.dumps(check)
+    assert filer["permissions"] == {"contents": "read", "issues": "write"}
+    for step in filer["steps"]:
+        assert "setup-python" not in step.get("uses", "")
+        assert not re.search(r"\b(python|pip)\b", step.get("run", ""))
+        if step.get("uses", "").startswith("actions/checkout"):
+            assert step["with"]["persist-credentials"] is False
+    upload = next(s for s in check["steps"] if s.get("uses", "").startswith("actions/upload"))
+    download = next(s for s in filer["steps"] if s.get("uses", "").startswith("actions/download"))
+    assert download["with"] == {"name": upload["with"]["name"], "path": "tmp/report"}
+    assert set(upload["with"]["path"].split()) == {"report.md", "failures.txt"}
+    # The report is handed over whenever the issue job runs.
+    assert upload["if"] == filer["if"].replace("needs.check.", "steps.check.")
+
+    # The issue step, over a report handed over where the check leaves it.
+    report = tmp_path / "tmp" / "report"
+    report.mkdir(parents=True)
+    (report / "failures.txt").write_text("ebem/fix/flanders: fetch\n")
+    (report / "report.md").write_text("# Live check\n\n## Failures\n\nx\n\n## All checks\n\n- a\n")
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "file_ci_issue.sh").write_text(
+        'while [ $# -gt 0 ]; do case "$1" in\n'
+        '  --fingerprint) cp "$2" filed_fingerprint.txt ;;\n'
+        "esac; shift; done\n"
+    )
+    step = next(s for s in filer["steps"] if s.get("name", "").startswith("Open or update"))
+    run = re.sub(r"\$\{\{[^}]*\}\}", "x", step["run"])
+    subprocess.run(["bash", "-e", "-c", run], cwd=tmp_path, check=True)
+    body = (tmp_path / "issue_body.md").read_text()
+    assert "- `ebem/fix/flanders: fetch`" in body
+    assert "## Failures" in body and "All checks" not in body
+    assert (tmp_path / "filed_fingerprint.txt").read_text() == "ebem/fix/flanders: fetch\n"
 
 
 def test_a_render_that_never_returns_does_not_hold_the_exit() -> None:

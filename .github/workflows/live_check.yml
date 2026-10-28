@@ -19,9 +19,10 @@ on:
       - "scripts/card_texts.py"
       - ".github/workflows/live_check.yml"
 
+# Read only, unless a job says otherwise: only the job that files the issue
+# writes one.
 permissions:
   contents: read
-  issues: write
 
 # A run still going when the next is scheduled, or two pull requests touching
 # providers/, would otherwise file the same issue twice. The newer run wins.
@@ -31,17 +32,23 @@ concurrency:
 
 jobs:
   check:
+    # Runs the extractors and the card readers on whatever the suppliers
+    # serve, so it holds no token that writes anything: a process it leaves
+    # behind dies with its runner. The issue is filed by the job below, from
+    # the report this one hands over.
     runs-on: ubuntu-latest
     # The script retries each fetch itself, bounds each attempt and gives up
     # on a supplier after three failed fetches in a row, so a host that
     # accepts and never answers costs minutes rather than its whole card
     # list. This only keeps a hung run from idling for the six-hour default.
     timeout-minutes: 60
+    outputs:
+      rc: ${{ steps.check.outputs.rc }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # github.token can write issues; the card readers run third-party
-          # code, which must not find it on disk.
+          # Nothing here needs the token, the repository being public, and
+          # the card readers run third-party code.
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
@@ -124,47 +131,21 @@ jobs:
           fi
           cat report.md
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          # The steps below branch on rc, so this one always succeeds.
+          # The steps below and the issue job branch on rc, so this one
+          # always succeeds.
           exit 0
 
-      - name: Open or update the live-check issue
-        # Skipped on pull_request: the failing job is the signal there, and a
-        # fork's run cannot open an issue anyway.
+      - name: Hand the report over
+        # What the issue job reads: the report and the failing labels.
         if: github.event_name != 'pull_request' && steps.check.outputs.rc == '1'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          {
-            echo "## Run"
-            echo
-            echo "$run_url"
-            echo
-            echo "## Failing checks"
-            echo
-            sed 's/^/- `/; s/$/`/' failures.txt
-            echo
-            # The report without its "All checks" list, which only repeats
-            # the tables above it and would push a large fleet's body past
-            # GitHub's 65,536 character limit.
-            awk '/^## All checks$/{exit} {print}' report.md
-          } > issue_body.md
-          # Defensive cap: a mass failure could still reach the limit through
-          # the tables alone. Cut at a line boundary and point at the log.
-          if [ "$(wc -c < issue_body.md)" -gt 60000 ]; then
-            head -c 60000 issue_body.md | sed '$d' > issue_body.tmp
-            printf '\n_[issue body truncated: full report in the run log]_\n' >> issue_body.tmp
-            mv issue_body.tmp issue_body.md
-          fi
-          # One issue, found by its label, fingerprinted on the failing
-          # labels: a card that stays broken gets one comment a week rather
-          # than one a day, and a failure that changes shape is posted at once.
-          bash scripts/file_ci_issue.sh \
-            --label live-check \
-            --title "[live-check] a gas tariff card check failed" \
-            --body issue_body.md \
-            --fingerprint failures.txt \
-            --workflow .github/workflows/live_check.yml
+        uses: actions/upload-artifact@v7
+        with:
+          name: live-check-report
+          path: |
+            report.md
+            failures.txt
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Note the transient failures
         if: steps.check.outputs.rc == '2'
@@ -186,3 +167,63 @@ jobs:
         run: |
           echo "the live check crashed (rc=${{ steps.check.outputs.rc }}); see the traceback above" >&2
           exit 1
+
+  file:
+    # Holds github.token, which writes issues, and runs only the issue
+    # script, on the report the check handed over. Skipped on pull_request:
+    # the failing job is the signal there, and a fork's run cannot open an
+    # issue anyway.
+    needs: check
+    if: github.event_name != 'pull_request' && needs.check.outputs.rc == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # A folder of its own, so nothing handed over lands on the script that
+      # files the issue.
+      - uses: actions/download-artifact@v8
+        with:
+          name: live-check-report
+          path: tmp/report
+
+      - name: Open or update the live-check issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "## Run"
+            echo
+            echo "$run_url"
+            echo
+            echo "## Failing checks"
+            echo
+            sed 's/^/- `/; s/$/`/' tmp/report/failures.txt
+            echo
+            # The report without its "All checks" list, which only repeats
+            # the tables above it and would push a large fleet's body past
+            # GitHub's 65,536 character limit.
+            awk '/^## All checks$/{exit} {print}' tmp/report/report.md
+          } > issue_body.md
+          # Defensive cap: a mass failure could still reach the limit through
+          # the tables alone. Cut at a line boundary and point at the log.
+          if [ "$(wc -c < issue_body.md)" -gt 60000 ]; then
+            head -c 60000 issue_body.md | sed '$d' > issue_body.tmp
+            printf '\n_[issue body truncated: full report in the run log]_\n' >> issue_body.tmp
+            mv issue_body.tmp issue_body.md
+          fi
+          # One issue, found by its label, fingerprinted on the failing
+          # labels: a card that stays broken gets one comment a week rather
+          # than one a day, and a failure that changes shape is posted at once.
+          bash scripts/file_ci_issue.sh \
+            --label live-check \
+            --title "[live-check] a gas tariff card check failed" \
+            --body issue_body.md \
+            --fingerprint tmp/report/failures.txt \
+            --workflow .github/workflows/live_check.yml
