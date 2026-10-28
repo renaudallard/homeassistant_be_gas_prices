@@ -1024,6 +1024,42 @@ def test_the_glyphs_the_walk_finds_are_filed_by_the_ocr_job(tmp_path: Path) -> N
     assert (ocr / "filed_fingerprint.txt").read_text() == "Bold 4 7\n"
 
 
+def test_the_cards_token_is_on_no_command_line(tmp_path: Path) -> None:
+    """The push handed the token to every push and pull as an extraheader
+    argument, base64 hiding nothing: it sat in git's command line for as
+    long as git ran. The step, run with a git that logs its arguments
+    through a push that has to rebase, leaves it to gh's credential helper,
+    which reads GH_TOKEN, and keeps it out of the clone's config."""
+    token = "t0ken"
+    hidden = (token, base64.b64encode(f"x-access-token:{token}".encode()).decode())
+    origin, work, run = _push_race(tmp_path)
+    log = tmp_path / "argv.log"
+    real = shutil.which("git")
+    assert real is not None
+    stub = tmp_path / "bin" / "git"
+    stub.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nexec "{real}" "$@"\n')
+    stub.chmod(0o755)
+    step = next(s for s in _archive_jobs()["push"]["steps"] if s.get("id") == "push")
+    # The step's own env, the cards secret standing in as the token.
+    given = {
+        name: token if "secrets." in str(value) else str(value)
+        for name, value in step.get("env", {}).items()
+    }
+    env = {**os.environ, "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", **given}
+    done = subprocess.run(
+        ["bash", "-e", "-c", run], cwd=work, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    _assert_landed(origin)
+    argv = log.read_text()
+    assert "push -q" in argv and "pull -q" in argv
+    for secret in hidden:
+        assert secret not in argv
+    config = (work / "tmp" / "cards" / ".git" / "config").read_text()
+    assert token not in config
+    assert "helper = !gh auth git-credential" in config
+
+
 class _ImageAcme(_Acme):
     """Acme publishing its card as page images: no text reader reads it."""
 
