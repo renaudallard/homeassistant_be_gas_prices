@@ -22,12 +22,11 @@ on:
         required: false
         type: boolean
 
-# Read only on this repository: every write, the clone, the push and the
-# releases, goes through the cards repository's own token, and github.token
-# is used by the issue steps alone.
+# Read only on this repository, unless a job says otherwise: every write, the
+# push and the releases, goes through the cards repository's own token, and
+# only the jobs that file issues get a github.token that writes them.
 permissions:
   contents: read
-  issues: write
 
 # A manual run overlapping the schedule would push the same day's cards twice.
 # Queue it instead of cancelling: both runs are worth finishing.
@@ -35,17 +34,23 @@ concurrency:
   group: archive-cards
   cancel-in-progress: false
 
+# Seven jobs, as the electricity archive runs, so no token shares a runner
+# with third-party code. The walk and the index run the integration, and the
+# walk the PDF readers and the OCR engine on whatever the suppliers serve,
+# which could leave a process, a git hook, a git config entry or a GITHUB_ENV
+# line behind for any later step on their runner; neither is given a token.
+# keep, push and token hold the cards token and run only gh, git, jq and the
+# issue script, on what the others hand over as artifacts. ocr and report
+# file issues with github.token alone.
 jobs:
-  archive:
+  walk:
     runs-on: ubuntu-latest
     # The walk's own budget sits on its step below; this only bounds the
-    # upload and the push around it.
+    # install and the hand-over around it.
     timeout-minutes: 420
     steps:
       - uses: actions/checkout@v7
         with:
-          # github.token can write issues; the card readers run third-party
-          # code, which must not find it on disk.
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
@@ -83,14 +88,10 @@ jobs:
         # belongs in the integration's repository, and three years of daily
         # commits certainly do not belong in every HACS download. Cloned
         # shallow under tmp/, which .gitignore covers, and without the token:
-        # the repository is public, and the walk that follows runs third-party
-        # code, which must not find on disk a token that writes to the cards
-        # of three integrations. Only the push is given it.
+        # the repository is public, and this job runs third-party code.
         env:
-          CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
           CARDS_REPO: renaudallard/be_price_cards
         run: |
-          [ -n "$CARDS_TOKEN" ] || { echo "BE_GAS_CARDS is not set" >&2; exit 1; }
           git clone -q --depth=1 "https://github.com/${CARDS_REPO}.git" tmp/cards
           mkdir -p tmp/cards/gas
 
@@ -109,57 +110,23 @@ jobs:
           BACKFILL: ${{ github.event.inputs.backfill_months || '0' }}
           REPARSE: ${{ github.event.inputs.reparse == 'true' && '--reparse' || '' }}
         run: >-
+          mkdir -p tmp/ocr &&
           python scripts/archive_cards.py --out tmp/cards/gas --pdfs tmp/pdfs
           --pdf-base-url "https://github.com/${CARDS_REPO}/releases/download"
           --archive-base-url "https://github.com/${CARDS_REPO}/blob/main/gas"
           --backfill "$BACKFILL"
-          --ocr-failures ocr_failed.txt
+          --ocr-failures tmp/ocr/ocr_failed.txt
           ${REPARSE:+"$REPARSE"}
 
-      - name: Report cards the OCR could not read
-        # A card published as page images is read here and nowhere else: the
-        # live check has no reading of its bytes and can only note it, and
-        # this walk succeeds while any other card is stored. One issue says
-        # so, the same cards posted once a week at most.
-        if: steps.store.outcome == 'success'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          [ -s ocr_failed.txt ] || exit 0
-          {
-            echo "## Cards the OCR could not read"
-            echo
-            echo "Each line is the card and the error:"
-            echo
-            echo '```'
-            cat ocr_failed.txt
-            echo '```'
-            echo
-            echo "The OCR leaves out every line it refused a mark on, so a figure"
-            echo "missing from its reading is most often a glyph its library lacks."
-          } > ocr_failed_body.md
-          # The cards, not the errors: the same card failing again tomorrow
-          # adds nothing, another card is posted at once.
-          cut -d ':' -f 1 ocr_failed.txt | sort -u > ocr_failed_fingerprint.txt
-          bash scripts/file_ci_issue.sh \
-            --label archive-cards-ocr \
-            --title "[archive-cards] the OCR could not read a card" \
-            --body ocr_failed_body.md \
-            --fingerprint ocr_failed_fingerprint.txt \
-            --workflow .github/workflows/archive_cards.yml
-
-      - name: Report glyphs the OCR library has not learnt
+      - name: Find glyphs the OCR library has not learnt
         # The OCR reads a font only through the glyphs it has learnt, and no
         # Ecofix card it learnt from sets bold 4, 7, 8, 9, Q, X, Y or Z. A card
         # published as page images still embeds the fonts of the text set over
         # its picture, so a card stored today can carry a glyph the library
         # lacks before any card needs it read from pixels, and is the card to
-        # learn it from. One issue says so, the same gap posted once a week at
-        # most; a check that fails says so in the log and the run goes on, since
-        # a gap is a reason to retrain, not a broken archive.
-        # It runs the OCR library on supplier PDFs, so without github.token:
-        # the issue is filed by the step after it.
+        # learn it from. The ocr job files what this finds; a check that fails
+        # says so in the log and the run goes on, since a gap is a reason to
+        # retrain, not a broken archive.
         if: steps.store.outcome == 'success'
         continue-on-error: true
         run: |
@@ -181,7 +148,102 @@ jobs:
             echo "ocr-price-cards unlearnt failed on $card (exit $rc)" >&2
             failed=1
           done
-          [ -s unlearnt.txt ] || exit "$failed"
+          if [ -s unlearnt.txt ]; then
+            mv unlearnt.txt tmp/ocr/unlearnt.txt
+          fi
+          exit "$failed"
+
+      - name: Hand the walk over
+        # The rows, texts, sheets and manifest the walk wrote, and the PDFs
+        # it fetched. The PDF folder always holds a file, so a day with no
+        # new card still hands over an artifact for the keep job to read.
+        run: |
+          mkdir -p tmp/pdfs
+          echo "PDFs fetched by this run, by month" > tmp/pdfs/README
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: walk-cards
+          path: tmp/cards/gas
+          if-no-files-found: error
+          retention-days: 3
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: walk-pdfs
+          path: tmp/pdfs
+          if-no-files-found: error
+          retention-days: 3
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: walk-ocr
+          path: |
+            tmp/ocr/ocr_failed.txt
+            tmp/ocr/unlearnt.txt
+          if-no-files-found: error
+          retention-days: 3
+
+  ocr:
+    # Files the cards the OCR could not read, and the glyphs its library
+    # lacks. A card published as page images is read by the walk and nowhere
+    # else: the live check has no reading of its bytes and can only note it,
+    # and the walk succeeds while any other card is stored. Its own job, so
+    # github.token never shares a runner with the readers and the engine; it
+    # takes the walk's lists as an artifact.
+    needs: walk
+    if: ${{ !cancelled() && needs.walk.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: walk-ocr
+          path: tmp/ocr
+
+      - name: Report cards the OCR could not read
+        # One issue says so, the same cards posted once a week at most.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -s tmp/ocr/ocr_failed.txt ] || exit 0
+          {
+            echo "## Cards the OCR could not read"
+            echo
+            echo "Each line is the card and the error:"
+            echo
+            echo '```'
+            cat tmp/ocr/ocr_failed.txt
+            echo '```'
+            echo
+            echo "The OCR leaves out every line it refused a mark on, so a figure"
+            echo "missing from its reading is most often a glyph its library lacks."
+          } > ocr_failed_body.md
+          # The cards, not the errors: the same card failing again tomorrow
+          # adds nothing, another card is posted at once.
+          cut -d ':' -f 1 tmp/ocr/ocr_failed.txt | sort -u > ocr_failed_fingerprint.txt
+          bash scripts/file_ci_issue.sh \
+            --label archive-cards-ocr \
+            --title "[archive-cards] the OCR could not read a card" \
+            --body ocr_failed_body.md \
+            --fingerprint ocr_failed_fingerprint.txt \
+            --workflow .github/workflows/archive_cards.yml
+
+      - name: Report glyphs the OCR library has not learnt
+        # One issue says so, the same gap posted once a week at most.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -s tmp/ocr/unlearnt.txt ] || exit 0
           {
             echo "## Glyphs the OCR library has not learnt"
             echo
@@ -190,7 +252,7 @@ jobs:
             echo "the font and the characters:"
             echo
             echo '```'
-            cat unlearnt.txt
+            cat tmp/ocr/unlearnt.txt
             echo '```'
             echo
             echo "Learn them in ocr_price_cards with \`ocr-price-cards specimen\` on one of"
@@ -199,22 +261,35 @@ jobs:
           } > unlearnt_body.md
           # The fonts and characters, not the cards: the same gap seen on next
           # month's card adds nothing.
-          cut -d ' ' -f 2- unlearnt.txt | sort -u > unlearnt_fingerprint.txt
-          exit "$failed"
-
-      - name: File the glyphs the OCR library has not learnt
-        if: steps.store.outcome == 'success'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          [ -s unlearnt_body.md ] || exit 0
+          cut -d ' ' -f 2- tmp/ocr/unlearnt.txt | sort -u > unlearnt_fingerprint.txt
           bash scripts/file_ci_issue.sh \
             --label archive-cards-glyphs \
             --title "[archive-cards] a card embeds glyphs the OCR library has not learnt" \
             --body unlearnt_body.md \
             --fingerprint unlearnt_fingerprint.txt \
             --workflow .github/workflows/archive_cards.yml
+
+  keep:
+    # Holds the cards token and runs no code of this repository or its
+    # dependencies: gh and jq on the walk's files.
+    needs: walk
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Check the cards token is set
+        env:
+          CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
+        run: '[ -n "$CARDS_TOKEN" ] || { echo "BE_GAS_CARDS is not set" >&2; exit 1; }'
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: walk-cards
+          path: tmp/cards/gas
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: walk-pdfs
+          path: tmp/pdfs
 
       - name: Keep the cards themselves
         id: keep
@@ -277,18 +352,60 @@ jobs:
             fi
           done <<< "$tags"
 
+      - name: Hand the manifest over
+        # Whatever the uploads did, so the months recorded before one failed
+        # still reach the index and the push.
+        if: ${{ !cancelled() && steps.keep.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: kept-manifest
+          path: tmp/cards/gas/pdfs.json
+          if-no-files-found: error
+          retention-days: 3
+
+  index:
+    # Runs the integration again, so no token. It runs whenever the walk
+    # succeeded, even when an upload failed: skipped, the push behind it
+    # threw away the day's rows and texts, and a card a supplier replaces at
+    # a fixed URL was lost for good. A row whose card did not land is still
+    # read by every installation, its sheet links no PDF, and the next run
+    # offers the card again while the supplier still serves it.
+    needs: [walk, keep]
+    if: ${{ !cancelled() && needs.walk.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c requirements-dev.txt \
+            pypdf pdfplumber aiohttp homeassistant defusedxml freezegun
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: walk-cards
+          path: tmp/cards/gas
+
+      - name: Take the kept manifest
+        # Missing when the keep job stopped before its uploads; the walk's
+        # manifest stands then, and the next run offers the PDFs again.
+        id: manifest
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: kept-manifest
+          path: tmp/cards/gas
+
       - name: Index the kept cards for people
         # The walk wrote the coverage sheets before today's uploads were in
         # the manifest; rewrite them now so every month links to a file that
         # exists. No fetch, a second or two.
-        # Runs whenever the walk succeeded, even when an upload failed:
-        # skipped, the push behind it threw away the day's rows and texts,
-        # and a card a supplier replaces at a fixed URL was lost for good. A
-        # row whose card did not land is still read by every installation,
-        # its sheet links no PDF, and the next run offers the card again
-        # while the supplier still serves it.
-        if: ${{ !cancelled() && steps.store.outcome == 'success' }}
-        id: index
         env:
           CARDS_REPO: renaudallard/be_price_cards
         run: >-
@@ -297,8 +414,6 @@ jobs:
           --archive-base-url "https://github.com/${CARDS_REPO}/blob/main/gas"
 
       - name: Write the two READMEs
-        if: ${{ !cancelled() && steps.index.outcome == 'success' }}
-        id: readmes
         # The root README is shared with the electricity and water archive
         # workflows, each of which writes it too: the same text in all three
         # is what keeps them from rewriting one another's every day.
@@ -339,8 +454,43 @@ jobs:
             "repository, one release per month of cards, each file named by its SHA-256." \
             > tmp/cards/gas/README.md
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: indexed-cards
+          path: |
+            tmp/cards/README.md
+            tmp/cards/gas
+          if-no-files-found: error
+          retention-days: 3
+
+  push:
+    # Holds the cards token and runs no code of this repository or its
+    # dependencies: a fresh clone, the indexed files laid over it as plain
+    # files, git.
+    needs: index
+    if: ${{ !cancelled() && needs.index.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the cards repository
+        env:
+          CARDS_REPO: renaudallard/be_price_cards
+        run: git clone -q --depth=1 "https://github.com/${CARDS_REPO}.git" tmp/cards
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: indexed-cards
+          path: tmp/indexed
+
+      - name: Lay the indexed files over the clone
+        # The gas tree is replaced whole, so a row the walk pruned goes, and
+        # the root README is the one the three archives share.
+        run: |
+          rm -rf tmp/cards/gas
+          cp -R tmp/indexed/gas tmp/cards/gas
+          cp tmp/indexed/README.md tmp/cards/README.md
+
       - name: Commit and push what changed
-        if: ${{ !cancelled() && steps.readmes.outcome == 'success' }}
         id: push
         env:
           CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
@@ -376,15 +526,28 @@ jobs:
           done
           exit 1
 
+  token:
+    # Holds the cards token; runs gh and the issue script only.
+    needs: push
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       - name: Warn before the upload token expires
         # A fine-grained token lives a year at most, and the first sign of its
         # expiry would otherwise be the failure issue on the morning after.
         # GitHub reports a fine-grained token's expiry in a response header,
         # so ask, and file an issue while there are still two weeks to make a
-        # new one and update the secret. Runs even when an earlier step
-        # failed: the warning is worth having either way. After the push, so
-        # a failure here cannot keep the day's rows from being pushed.
-        if: always()
+        # new one and update the secret. Runs even when an earlier job failed:
+        # the warning is worth having either way. After the push, so a failure
+        # here cannot keep the day's rows from being pushed.
         env:
           CARDS_TOKEN: ${{ secrets.BE_GAS_CARDS }}
           GH_TOKEN: ${{ github.token }}
@@ -416,21 +579,34 @@ jobs:
             --fingerprint token_fingerprint.txt \
             --workflow .github/workflows/archive_cards.yml
 
+  report:
+    needs: [walk, keep, index, push, token]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       - name: File the failure as an issue
         # Nobody watches the Actions tab. A run that stored nothing, an upload
         # or a push that was refused, or a token that expired would otherwise
         # end the archive quietly. One open issue per problem, a comment per
-        # further failing run, and it says which step failed so the token
-        # case is told from the others.
-        if: failure()
+        # further failing run, and it says which job failed so the token case
+        # is told from the others.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           failed=''
-          [ "${{ steps.store.outcome }}" = 'failure' ] && failed='Store today'"'"'s cards (the walk stored nothing, or crashed)'
-          [ "${{ steps.keep.outcome }}" = 'failure' ] && failed='Keep the cards themselves (the upload to the cards repository; check the BE_GAS_CARDS token, it expires)'
-          [ "${{ steps.push.outcome }}" = 'failure' ] && failed='Commit and push what changed (the push to the cards repository)'
+          [ "${{ needs.walk.result }}" = 'failure' ] && failed='Store today'"'"'s cards (the walk stored nothing, or crashed)'
+          [ "${{ needs.keep.result }}" = 'failure' ] && failed='Keep the cards themselves (the upload to the cards repository; check the BE_GAS_CARDS token, it expires)'
+          [ "${{ needs.index.result }}" = 'failure' ] && failed='Index the kept cards for people (the sheets and READMEs written after the upload)'
+          [ "${{ needs.push.result }}" = 'failure' ] && failed='Commit and push what changed (the push to the cards repository)'
           {
             echo "## Run"
             echo

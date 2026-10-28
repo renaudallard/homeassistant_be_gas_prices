@@ -844,7 +844,7 @@ def _push_race(tmp_path: Path) -> tuple[Path, Path, str]:
     workflow = yaml.safe_load(
         (Path(__file__).resolve().parents[1] / ".github/workflows/archive_cards.yml").read_text()
     )
-    step = next(s for s in workflow["jobs"]["archive"]["steps"] if s.get("id") == "push")
+    step = next(s for s in workflow["jobs"]["push"]["steps"] if s.get("id") == "push")
     stubs = tmp_path / "bin"
     stubs.mkdir()
     (stubs / "sleep").write_text("#!/bin/sh\nexit 0\n")
@@ -899,6 +899,129 @@ def test_the_push_survives_a_pull_that_fails(tmp_path: Path) -> None:
     assert done.returncode == 0, done.stderr
     assert (tmp_path / "pulled").exists()
     _assert_landed(origin)
+
+
+def _archive_jobs() -> dict[str, Any]:
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/archive_cards.yml").read_text()
+    )
+    jobs: dict[str, Any] = workflow["jobs"]
+    return jobs
+
+
+@pytest.mark.parametrize("token", ["secrets.BE_GAS_CARDS", "github.token"])
+def test_a_token_never_shares_a_job_with_third_party_code(token: str) -> None:
+    """The walk, the OCR engine installed from its main branch among it, ran
+    in the one job that later uploaded the cards and pushed them with the
+    token that writes the cards of all three integrations, and filed issues
+    with github.token: a process, a git hook, a git config entry or a
+    GITHUB_ENV line the walk left would have run with either. A job that
+    installs or runs Python must not see either token, in its env or in a
+    checkout credential; a job that sees one runs only gh, git and jq on
+    files handed over as artifacts."""
+    holders = set()
+    for name, job in _archive_jobs().items():
+        assert token not in json.dumps(job.get("env", {})), name
+        steps = job["steps"]
+        holds = any(
+            token in json.dumps(s.get("env", {})) or token in json.dumps(s.get("with", {}))
+            for s in steps
+        )
+        runs_python = any(
+            "setup-python" in s.get("uses", "")
+            or re.search(r"\b(python|pip)\b|^\s*ocr-price-cards\b", s.get("run", ""), re.M)
+            for s in steps
+        )
+        assert not (holds and runs_python), name
+        for step in steps:
+            if step.get("uses", "").startswith("actions/checkout"):
+                assert token not in json.dumps(step.get("with", {})), name
+                assert step["with"]["persist-credentials"] is False, name
+        if holds:
+            holders.add(name)
+    if token == "github.token":
+        assert holders == {"ocr", "token", "report"}
+    else:
+        assert holders == {"keep", "push", "token"}
+
+
+def test_only_the_jobs_that_file_issues_may_write_them() -> None:
+    """Every job got a github.token that writes issues, the walk's and the
+    index's included. Neither files one, but their runner holds it while the
+    PDF readers and the OCR engine run on what the suppliers serve. Only a
+    job that files an issue may write one, and no job writes this
+    repository."""
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/archive_cards.yml").read_text()
+    )
+    assert workflow["permissions"] == {"contents": "read"}
+    for name, job in workflow["jobs"].items():
+        files = any("github.token" in json.dumps(s.get("env", {})) for s in job["steps"])
+        wanted = {"contents": "read", "issues": "write"} if files else None
+        assert job.get("permissions") == wanted, name
+
+
+def test_every_hand_over_comes_from_a_job_run_before() -> None:
+    """The walk's files reach the other jobs only as artifacts: each one a
+    job downloads is uploaded by a job it waits for."""
+    jobs = _archive_jobs()
+
+    def before(name: str) -> set[str]:
+        needs = jobs[name].get("needs", [])
+        direct = {needs} if isinstance(needs, str) else set(needs)
+        return direct.union(*(before(n) for n in direct))
+
+    def artifacts(job: dict[str, Any], action: str) -> set[str]:
+        return {
+            s["with"]["name"]
+            for s in job["steps"]
+            if s.get("uses", "").startswith(f"actions/{action}-artifact")
+        }
+
+    handed = set()
+    for name, job in jobs.items():
+        for wanted in artifacts(job, "download"):
+            assert any(wanted in artifacts(jobs[b], "upload") for b in before(name)), (
+                name,
+                wanted,
+            )
+            handed.add(wanted)
+    assert handed == {"walk-cards", "walk-pdfs", "walk-ocr", "kept-manifest", "indexed-cards"}
+
+
+def test_the_glyphs_the_walk_finds_are_filed_by_the_ocr_job(tmp_path: Path) -> None:
+    """The walk runs the OCR engine on the day's cards and hands what it
+    finds over; the ocr job, which alone holds the issue token, files it."""
+    jobs = _archive_jobs()
+    find = next(s for s in jobs["walk"]["steps"] if s.get("name", "").startswith("Find glyphs"))
+    report = next(s for s in jobs["ocr"]["steps"] if s.get("name", "").startswith("Report glyphs"))
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    # A gap found exits 1 without a traceback.
+    (stubs / "ocr-price-cards").write_text('#!/bin/sh\necho "$2 Bold 4 7"\nexit 1\n')
+    (stubs / "ocr-price-cards").chmod(0o755)
+    env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}"}
+
+    walk = tmp_path / "walk"
+    (walk / "tmp" / "pdfs" / "gas-2026-10").mkdir(parents=True)
+    (walk / "tmp" / "pdfs" / "gas-2026-10" / "a.pdf").write_bytes(b"%PDF a")
+    (walk / "tmp" / "ocr").mkdir()
+    subprocess.run(["bash", "-e", "-c", find["run"]], cwd=walk, env=env, check=True)
+    found = (walk / "tmp" / "ocr" / "unlearnt.txt").read_text()
+    assert found == "tmp/pdfs/gas-2026-10/a.pdf Bold 4 7\n"
+
+    ocr = tmp_path / "ocr"
+    (ocr / "tmp" / "ocr").mkdir(parents=True)
+    (ocr / "tmp" / "ocr" / "unlearnt.txt").write_text(found)
+    (ocr / "scripts").mkdir()
+    (ocr / "scripts" / "file_ci_issue.sh").write_text(
+        'while [ $# -gt 0 ]; do case "$1" in\n'
+        '  --body) cp "$2" filed_body.md ;; --fingerprint) cp "$2" filed_fingerprint.txt ;;\n'
+        "esac; shift; done\n"
+    )
+    subprocess.run(["bash", "-e", "-c", report["run"]], cwd=ocr, env=env, check=True)
+    assert found in (ocr / "filed_body.md").read_text()
+    assert (ocr / "filed_fingerprint.txt").read_text() == "Bold 4 7\n"
 
 
 class _ImageAcme(_Acme):
