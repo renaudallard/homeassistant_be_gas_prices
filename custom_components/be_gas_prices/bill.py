@@ -166,6 +166,9 @@ class MonthBill:
     month: str
     kwh: float
     days: int
+    # The first of those days: the 1st, unless the window or the contract
+    # starts later in the month.
+    first: date
     breakdown: PriceBreakdown
     energy_cost: float
     network_cost: float
@@ -195,8 +198,10 @@ def bill_month(
     kwh: float,
     days: int,
     days_in_year: int,
+    first: date | None = None,
 ) -> MonthBill:
-    """Bill ``kwh`` used over ``days`` days of ``month``.
+    """Bill ``kwh`` used over ``days`` days of ``month``, from ``first`` on,
+    the 1st when not given.
 
     ``card`` prices the network and the levies; ``energy`` is the leg the
     household is billed on, which is the card's own or the signing card's.
@@ -204,7 +209,8 @@ def bill_month(
     offer the household signed.
     """
     year, number = (int(part) for part in month.split("-"))
-    priced = replace(resolve_for_delivery(card, date(year, number, 1)), energy=energy)
+    start = date(year, number, 1)
+    priced = replace(resolve_for_delivery(card, start), energy=energy)
     price, index = resolve_energy_price(energy, table, month)
     breakdown = compute_breakdown(priced, dso, annual_kwh, price)
     fixed = fixed_costs(priced, dso, annual_kwh, caliber).total * days / days_in_year
@@ -212,6 +218,7 @@ def bill_month(
         month=month,
         kwh=kwh,
         days=days,
+        first=start if first is None else first,
         breakdown=breakdown,
         energy_cost=kwh * breakdown.energy,
         network_cost=kwh * breakdown.network,

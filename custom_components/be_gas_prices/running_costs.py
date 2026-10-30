@@ -188,7 +188,11 @@ def running_costs(
         days = (last - first).days + 1
 
         def _bill(
-            card: SupplierSnapshot, month: str = month, kwh: float = kwh, days: int = days
+            card: SupplierSnapshot,
+            month: str = month,
+            kwh: float = kwh,
+            days: int = days,
+            first: date = first,
         ) -> MonthBill:
             return bill_month(
                 month=month,
@@ -201,6 +205,7 @@ def running_costs(
                 kwh=kwh,
                 days=days,
                 days_in_year=year_days,
+                first=first,
             )
 
         bill: MonthBill | None = None

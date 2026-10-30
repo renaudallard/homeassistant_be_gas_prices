@@ -434,6 +434,27 @@ def test_running_costs_bill_each_month_on_its_own_card() -> None:
     assert costs.projected_year_kwh is None
 
 
+def test_each_month_names_the_first_day_it_bills() -> None:
+    """A window opening mid-month starts its first month there; the months
+    after start on the 1st."""
+    card = _flow()
+    costs = running_costs(
+        kwh_days={},
+        today=date(2026, 9, 10),
+        window_start=date(2026, 7, 20),
+        household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
+        current_card=card,
+        month_card=lambda month: None,
+        energy_for=lambda snapshot: snapshot.energy,
+        table=TABLE,
+    )
+    assert [(bill.first, bill.days) for bill in costs.months] == [
+        (date(2026, 7, 20), 12),
+        (date(2026, 8, 1), 31),
+        (date(2026, 9, 1), 10),
+    ]
+
+
 def test_a_signing_card_without_a_table_prices_the_energy_alone() -> None:
     """A Flemish card from before the Fluvius merger reads its energy leg,
     which prices the contract signed on it, but no DSO row: its own month is
