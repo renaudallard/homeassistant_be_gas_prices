@@ -118,6 +118,13 @@ seconds with the caches full. The interpreter is `GATE_PYTHON`, else
 `.venv/bin/python`; actionlint runs over the workflows when its binary sits
 at `tmp/actionlint`.
 
+With `GATE_REMOTE=<host>` pytest runs on that host instead, on the same
+commit shipped with `git archive`, and the other checks stay local. The host
+needs a venv at `~/gas_gate/.venv`, which the gate refreshes with uv when
+`requirements-dev.txt` changes, and keeps its text cache in
+`~/gas_gate/fixture_text`. A host that does not answer, or drops mid-run,
+gets the suite run locally instead.
+
 ## scripts/live_check.py
 
 Fetches every registered (supplier, contract, region) with the extractor the
