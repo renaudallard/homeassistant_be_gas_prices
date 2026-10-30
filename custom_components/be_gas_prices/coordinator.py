@@ -270,6 +270,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
         self.backfill_stamp: str | None = None
+        # The same for the running year's cost (backfill_cost.py).
+        self.cost_backfill_stamp: str | None = None
         self._periods = PeriodBilling(self._months)
         self.unpriced_periods: list[str] = []
         # Those of them that supplied part of the running month.
@@ -395,6 +397,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._months.load_json(blob.get("months"), reread=blob.get("release") != self._release)
         stamp = blob.get("backfill")
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
+        stamp = blob.get("cost_backfill")
+        self.cost_backfill_stamp = stamp if isinstance(stamp, str) else None
         held = blob.get("held")
         self._held = held if isinstance(held, dict) else None
         ranking = DailyRanking.from_json(blob.get("ranking"))
@@ -431,6 +435,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "months": self._months.to_json(),
             "release": self._release,
             "backfill": self.backfill_stamp,
+            "cost_backfill": self.cost_backfill_stamp,
             "ranking": None if self.daily_ranking is None else self.daily_ranking.to_json(),
             "ranking_for": self._settings_digest(),
             "held": self._held,

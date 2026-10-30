@@ -35,8 +35,8 @@ for can reach, is priced on its own card alone, fetched for the occasion,
 and left out where none is found: today's card says nothing of last year.
 
 Run once per calendar year by itself, and again on demand through the
-``backfill_statistics`` service. The running costs are not backfilled: they
-come from the meter's own history and are recomputed from it on every tick.
+``backfill_statistics`` service. The running year's cost is written by
+backfill_cost.py.
 """
 
 from __future__ import annotations
@@ -103,6 +103,19 @@ def _hours(start: datetime, end: datetime) -> list[datetime]:
     return out
 
 
+def _backfill_end() -> datetime:
+    """The end of the last full hour, or of the one before it when it ended
+    moments ago: the recorder queues its compile of that hour at ten seconds
+    past, and an import queued first makes the whole compile fail, every
+    entity's hour lost. Its queue runs in order, so an import made later
+    lands after it."""
+    now = dt_util.utcnow()
+    end = now.replace(minute=0, second=0, microsecond=0)
+    if now - end < _COMPILE_MARGIN:
+        end -= timedelta(hours=1)
+    return end
+
+
 async def backfill_prices(
     hass: HomeAssistant,
     coordinator: GasCoordinator,
@@ -141,16 +154,8 @@ async def backfill_prices(
     present = {key: sid for key, sid in ids.items() if sid is not None}
     if not present:
         return {}
-    # Up to the last full hour, unless it ended moments ago: the recorder
-    # queues its compile of that hour at ten seconds past, and an import
-    # queued first makes the whole compile fail, every entity's hour lost.
-    # Its queue runs in order, so an import made later lands after it.
-    now = dt_util.utcnow()
-    end = now.replace(minute=0, second=0, microsecond=0)
-    if now - end < _COMPILE_MARGIN:
-        end -= timedelta(hours=1)
     begin = dt_util.as_utc(dt_util.start_of_local_day(start))
-    hours = _hours(begin, end)
+    hours = _hours(begin, _backfill_end())
     if not hours:
         # Asked from today in its first hour: nothing to write yet, and a
         # clear would delete the history for nothing.
