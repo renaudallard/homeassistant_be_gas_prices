@@ -131,7 +131,8 @@ archive* option switches it off.
 local days, converted by the recorder to m³ (a volume meter) or kWh (an
 energy meter). A unit Home Assistant cannot convert is refused rather than
 read as m³. A negative daily change is a replaced or re-based `total` meter
-and counts as none.
+and counts as none. The cost history reads the hourly changes as recorded, a
+negative one included, so that a day's hours add up to its change.
 
 ## Postcodes
 

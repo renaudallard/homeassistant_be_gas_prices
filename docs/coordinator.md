@@ -179,7 +179,10 @@ hand is still stale, and it is what lets the card archive stand in.
   is one in the future, which a clear would otherwise delete the history
   for.
   `clear: true` deletes those statistics in full first, since the recorder
-  has no windowed delete, and requires an `entry_id`.
+  has no windowed delete, and requires an `entry_id`. The service also
+  rewrites the year's cost over the year's window, whatever the start date,
+  and a clear leaves it alone: deleting it would take the years before with
+  it.
 
 ## The automatic price history
 
@@ -200,3 +203,26 @@ redraws it), and the tier the measured volume falls in (so a year that crosses
 into another tier redraws its hours on it; the excise blend within a tier, a
 few hundredths of a cent, does not). It is stamped in the Store, and skipped
 where Home Assistant runs no recorder.
+
+## The automatic cost history
+
+Home Assistant counts a new `TOTAL` sensor's statistics from its first value,
+so without this a monthly graph of `current_year_cost` on a fresh entry starts
+at the install. `backfill_cost.backfill_cost_once` runs after the price
+history and writes the sensor's hourly rows from the start of the year's
+window to the last full hour, on the bills of the last tick: each bill's gas
+spread over its days' hours as the meter's hourly changes rose (a day the
+meter fell on weighs what its daily change, the one the bill counted, gives),
+each day's share of the fixed costs at its local midnight, as the sensor
+counts it. The last row is then the sensor's figure. It waits for a tick that
+read the meter and knows the cost (setup's own tick holds the figure without
+its bills), and for the sensor to be registered.
+
+The rows are joined to what the recorder compiled from the live sensor: they
+continue the total recorded before the window (last year's whole bill, on an
+entry that ran through it, since the compile carries its total on across a
+new cycle), and the rows compiled after them, short-term and hourly, are moved
+onto the imported total, with a short-term row at the last imported hour that
+the compile resumes from. When the recorder does not answer one of those reads
+nothing is written. It is stamped in the Store on what the price history is
+stamped on and the meter, so it runs again when either moves.

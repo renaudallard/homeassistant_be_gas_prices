@@ -483,8 +483,8 @@
       }
     },
     "backfill_statistics": {
-      "name": "Prijsgeschiedenis aanvullen",
-      "description": "De uurstatistieken van de prijssensoren schrijven van een startdatum tot het laatste volle uur.",
+      "name": "Statistieken aanvullen",
+      "description": "De uurstatistieken van de prijssensoren schrijven van een startdatum tot het laatste volle uur, en de kosten van het jaar vanaf het begin van het venster van dit jaar.",
       "fields": {
         "entry_id": {
           "name": "Item",
@@ -496,7 +496,7 @@
         },
         "clear": {
           "name": "Eerst wissen",
-          "description": "Wist de statistieken van de sensoren volledig voor het schrijven; vereist een item."
+          "description": "Wist de statistieken van de prijssensoren volledig voor het schrijven; vereist een item. De kosten van het jaar worden herschreven, niet gewist."
         }
       }
     }

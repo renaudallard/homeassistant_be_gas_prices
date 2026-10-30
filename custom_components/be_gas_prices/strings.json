@@ -483,8 +483,8 @@
       }
     },
     "backfill_statistics": {
-      "name": "Backfill price history",
-      "description": "Write the price sensors' hourly statistics from a start date to the last full hour.",
+      "name": "Backfill statistics",
+      "description": "Write the price sensors' hourly statistics from a start date to the last full hour, and the year's cost from the start of the year's window.",
       "fields": {
         "entry_id": {
           "name": "Entry",
@@ -496,7 +496,7 @@
         },
         "clear": {
           "name": "Clear first",
-          "description": "Deletes the sensors' statistics in full before writing; needs an entry."
+          "description": "Deletes the price sensors' statistics in full before writing; needs an entry. The year's cost is rewritten, not deleted."
         }
       }
     }

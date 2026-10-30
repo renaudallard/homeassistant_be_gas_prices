@@ -283,9 +283,9 @@ async def _setup_entry(
     fetch_for_month: AsyncMock | None = None,
 ) -> MockConfigEntry:
     """An Engie Flow entry in Wallonia, on the September card unless given
-    another, read from the meter. The price history it writes at setup is
-    left out: through a real recorder that is minutes of work, and a test
-    below does it for a day."""
+    another, read from the meter. The price and cost history it writes at
+    setup is left out: through a real recorder the prices are minutes of
+    work, and the tests ask for each themselves."""
     stub = replace(
         engie.EXTRACTOR,
         fetch=AsyncMock(return_value=card or _card()),
@@ -312,6 +312,7 @@ async def _setup_entry(
     with (
         patch.dict(providers.EXTRACTORS, {"engie": stub}),
         patch("custom_components.be_gas_prices.backfill_once_a_year", AsyncMock()),
+        patch("custom_components.be_gas_prices.backfill_cost_once", AsyncMock()),
     ):
         await hass.config_entries.async_setup(entry.entry_id)
         # Setup's own refresh reads no meter; the one that does runs after it.

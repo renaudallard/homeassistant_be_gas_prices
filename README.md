@@ -107,6 +107,17 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   1 January the first time an entry runs in a year, or to the contract start
   when the year counts from it, or to a change of contract recorded this
   year.
+- **Cost history backfill**: `current_year_cost`'s statistics are filled back
+  to the start of the year's window from the meter's hourly statistics, so a
+  monthly statistics graph of it shows the months before the install too.
+  Each month's gas is priced on its bill and each day's share of the fixed
+  costs lands at midnight, as the sensor counts them. It runs once a refresh
+  has read the meter and the cost is known, and again when what the year is
+  priced from changes (a month's card, the index, the calorific values, the
+  law's figures, the settings or the volume tier) or the meter does. The past
+  is written on what the year is priced from today, so where the sensor
+  showed something else then, the difference shows once, in the hour after
+  the last one written.
 
 **Choosing a contract**
 
@@ -419,8 +430,12 @@ service: be_gas_prices.backfill_statistics
 data:
   entry_id: 01H...                       # optional; required with clear
   start_date: "2026-01-01"               # optional; 1 January, or the contract start when the year counts from it; never before 1 January of last year
-  clear: false                           # true deletes the sensors' statistics in full first
+  clear: false                           # true deletes the price sensors' statistics in full first
 ```
+
+`backfill_statistics` also rewrites `current_year_cost`'s statistics over the
+year's window, whatever the start date. `clear` leaves them alone: deleting
+them would take the years before with them.
 
 ## Diagnostics
 

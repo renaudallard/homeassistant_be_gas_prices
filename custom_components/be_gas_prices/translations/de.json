@@ -483,8 +483,8 @@
       }
     },
     "backfill_statistics": {
-      "name": "Preisverlauf nachtragen",
-      "description": "Die stündlichen Statistiken der Preissensoren von einem Startdatum bis zur letzten vollen Stunde schreiben.",
+      "name": "Statistiken nachtragen",
+      "description": "Die stündlichen Statistiken der Preissensoren von einem Startdatum bis zur letzten vollen Stunde schreiben, und die Kosten des Jahres ab dem Beginn des Fensters dieses Jahres.",
       "fields": {
         "entry_id": {
           "name": "Eintrag",
@@ -496,7 +496,7 @@
         },
         "clear": {
           "name": "Zuerst löschen",
-          "description": "Löscht die Statistiken der Sensoren vollständig vor dem Schreiben; erfordert einen Eintrag."
+          "description": "Löscht die Statistiken der Preissensoren vollständig vor dem Schreiben; erfordert einen Eintrag. Die Kosten des Jahres werden neu geschrieben, nicht gelöscht."
         }
       }
     }

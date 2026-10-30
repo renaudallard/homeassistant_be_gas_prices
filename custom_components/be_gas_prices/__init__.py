@@ -54,6 +54,7 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.json import JsonValueType
 
 from .backfill import backfill_once_a_year, backfill_prices
+from .backfill_cost import backfill_cost, backfill_cost_once
 from .const import CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE, DOMAIN, PLATFORMS, STORAGE_VERSION
 from .coordinator import GasCoordinator
 from .daily_ranking import ranking_minute
@@ -145,6 +146,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             written.update(
                 await backfill_prices(hass, coordinator, start, clear=call.data["clear"])
             )
+            # The cost is the year's whatever the start, rewritten rather than
+            # cleared: a clear would take the years before with it.
+            written.update(await backfill_cost(hass, coordinator))
         return {"rows": written}
 
     hass.services.async_register(DOMAIN, SERVICE_REFRESH, _refresh, schema=_REFRESH_SCHEMA)
@@ -206,10 +210,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
         async def _run() -> None:
             try:
                 await backfill_once_a_year(hass, coordinator)
+                await backfill_cost_once(hass, coordinator)
             finally:
                 running.discard(entry.entry_id)
 
-        entry.async_create_background_task(hass, _run(), f"{DOMAIN} price history")
+        entry.async_create_background_task(hass, _run(), f"{DOMAIN} statistics backfill")
 
     entry.async_on_unload(coordinator.async_add_listener(_maybe_backfill))
     _maybe_backfill()

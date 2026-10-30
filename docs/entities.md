@@ -41,7 +41,7 @@ checks none, so the next one does.
 
 - `be_gas_prices.refresh` (`entry_id` optional).
 - `be_gas_prices.backfill_statistics` (`entry_id`, `start_date`, `clear`),
-  returning the rows written per statistic.
+  returning the rows written per statistic, `current_year_cost`'s included.
 
 ## Repairs
 
