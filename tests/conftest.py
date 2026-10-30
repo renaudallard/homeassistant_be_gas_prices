@@ -73,6 +73,18 @@ def _force_brussels_timezone(request: pytest.FixtureRequest) -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _recorder_as_loaded() -> Iterator[None]:
+    """Count Home Assistant's recorder as running, as it is in production.
+
+    The tests read the meter through stubs on a Home Assistant that never
+    loads the recorder, which would raise the recorder_missing card on
+    every entry. A test of that case patches it back to False.
+    """
+    with patch("custom_components.be_gas_prices.issues.recorder_loaded", return_value=True):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def _render_threads_wound_down() -> Iterator[None]:
     """A card render settles its awaited result from a daemon thread, which
     may still be winding down when the test ends: waited for here, before

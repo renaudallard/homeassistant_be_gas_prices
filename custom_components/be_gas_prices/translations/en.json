@@ -469,6 +469,10 @@
     "contract_withdrawn": {
       "title": "{supplier} no longer sells {contract}",
       "description": "{supplier} withdrew {contract}, so its tariff card is no longer published. {entry} keeps pricing on the last card held for it, which stays right while your contract runs on those terms, but it will not change again. If {supplier} moves you to another product, choose \"Record a change of contract this year\" in the entry's options, enter the first day of the new product and pick it. \"Edit settings\" would price the whole year on the new product's cards. A new product from 1 January is set in \"Edit settings\" instead, since the withdrawn one supplied nothing this year."
+    },
+    "recorder_missing": {
+      "title": "Home Assistant's recorder is not running",
+      "description": "The costs and volumes of {entry} are read from the gas meter's history, which Home Assistant's recorder keeps, and the recorder is not loaded. They stay unknown until it runs; the price sensors are not affected.\n\nEnable the recorder (it is part of default_config, or add `recorder:` to configuration.yaml) and restart Home Assistant."
     }
   },
   "services": {

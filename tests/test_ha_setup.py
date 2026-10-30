@@ -1660,6 +1660,23 @@ async def test_a_meter_read_that_fails_still_names_the_meter_problem(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_home_assistant_without_its_recorder_is_told_so(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Without the recorder no meter can be read and the costs stay unknown
+    for good; a card says why, and goes once the recorder runs."""
+    with patch("custom_components.be_gas_prices.issues.recorder_loaded", return_value=False):
+        entry = await _setup(hass)
+    issues = ir.async_get(hass)
+    key = f"recorder_missing_{entry.entry_id}"
+    issue = issues.async_get_issue(DOMAIN, key)
+    assert issue is not None and issue.translation_key == "recorder_missing"
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, key) is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_restart_on_a_named_meter_shows_its_held_figures(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

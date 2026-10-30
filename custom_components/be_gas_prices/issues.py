@@ -37,6 +37,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN
+from .gas_meter import recorder_loaded
 
 if TYPE_CHECKING:
     from .coordinator import GasCoordinator
@@ -54,6 +55,7 @@ ISSUES = (
     "meter_unit",
     "several_meters",
     "contract_withdrawn",
+    "recorder_missing",
 )
 
 
@@ -143,6 +145,10 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
             bool(coordinator.meter_error),
             {**base, "error": coordinator.meter_error or "-"},
         )
+    # Every cost is priced from the meter's history the recorder keeps, so
+    # without it they stay unknown for good, which reads like a frozen
+    # sensor unless something says why.
+    _sync(hass, entry.entry_id, "recorder_missing", not recorder_loaded(hass), base)
     if coordinator.meter_count is not None:
         # Left alone by a tick that failed before it looked for the meter,
         # like the meter card above.

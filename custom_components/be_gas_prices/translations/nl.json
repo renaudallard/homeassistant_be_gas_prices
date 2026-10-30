@@ -469,6 +469,10 @@
     "contract_withdrawn": {
       "title": "{supplier} verkoopt {contract} niet meer",
       "description": "{supplier} heeft {contract} stopgezet en publiceert de tariefkaart ervan niet meer. {entry} blijft rekenen met de laatste kaart die ervoor bewaard is. Die blijft juist zolang je contract tegen die voorwaarden loopt, maar verandert niet meer. Zet {supplier} je over naar een ander product, kies dan in de opties van het item \"Een contractwissel van dit jaar vastleggen\", vul de eerste dag van het nieuwe product in en kies het. \"Instellingen wijzigen\" zou het hele jaar op de kaarten van het nieuwe product berekenen. Begon het nieuwe product op 1 januari, gebruik dan \"Instellingen wijzigen\": het stopgezette product leverde dit jaar niets."
+    },
+    "recorder_missing": {
+      "title": "De recorder van Home Assistant draait niet",
+      "description": "De kosten en volumes van {entry} worden gelezen uit de geschiedenis van de gasmeter, die de recorder van Home Assistant bijhoudt, en de recorder is niet geladen. Ze blijven onbekend tot hij draait; de prijssensoren worden niet beïnvloed.\n\nSchakel de recorder in (hij hoort bij default_config, of voeg `recorder:` toe aan configuration.yaml) en herstart Home Assistant."
     }
   },
   "services": {

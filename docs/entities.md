@@ -56,6 +56,7 @@ checks none, so the next one does.
 | `card_read_by_ocr` | The entry prices on the card archive's OCR reading of a card published as images (Ecofix). Informational; clears by itself when the supplier publishes a readable card again. |
 | `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. The costs keep the last figures meanwhile. |
 | `several_meters` | The Energy dashboard lists several gas meters and none is set in the options. |
+| `recorder_missing` | Home Assistant runs without its recorder, so no meter can be read and the costs and volumes stay unknown; it goes once the recorder runs. The price sensors are not affected. |
 | `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card of the last month it was sold, from the card archive or the supplier's own archive) keeps pricing and never goes stale, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
 
 ## Diagnostics

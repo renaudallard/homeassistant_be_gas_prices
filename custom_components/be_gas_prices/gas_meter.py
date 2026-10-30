@@ -132,6 +132,12 @@ async def _energy_manager(hass: HomeAssistant) -> Any | None:
         return None
 
 
+def recorder_loaded(hass: HomeAssistant) -> bool:
+    """Whether Home Assistant runs its recorder, which keeps the meter's
+    history every cost is priced from."""
+    return "recorder" in hass.config.components
+
+
 def _recorder(hass: HomeAssistant) -> Any | None:
     """The running recorder, or None where there is none and never will be."""
     try:
