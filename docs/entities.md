@@ -54,7 +54,7 @@ checks none, so the next one does.
 | `card_missing` | As `extractor_failed`, but the last fetch found no card at the address: a 404 or 410, or a web page served in the card's place (`_pdf.is_missing_card_error`). The supplier has not published the card yet, withdrew the product or moved its cards. |
 | `card_unreadable` | The supplier published its card as images and the card archive holds no reading of it for the month. |
 | `card_read_by_ocr` | The entry prices on the card archive's OCR reading of a card published as images (Ecofix). Informational; clears by itself when the supplier publishes a readable card again. |
-| `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. |
+| `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. The costs keep the last figures meanwhile. |
 | `several_meters` | The Energy dashboard lists several gas meters and none is set in the options. |
 | `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card of the last month it was sold, from the card archive or the supplier's own archive) keeps pricing and never goes stale, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
 

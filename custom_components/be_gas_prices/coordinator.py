@@ -1278,6 +1278,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # meter: read none, as setup's own tick, and leave the figures
             # held for a tick that does.
             deferred = True
+        kind: MeterKind | None = None
+        meter_days: dict[date, float] = {}
+        if not deferred:
+            kind, meter_days = await self._read_meter(today)
+            # A recorder that did not answer is no year of no gas: the last
+            # figures stand, as on setup's own tick, until a read answers.
+            deferred = bool(self.meter_error)
         if deferred:
             # No meter read: the figures the last tick that read it left,
             # those still true (_held_for), and the measured volume they
@@ -1295,7 +1302,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # no part of this year's cost.
             self.unpriced_periods = []
             self.unpriced_this_month = []
-            kind, meter_days = await self._read_meter(today)
             kwh_days = (
                 to_kwh(meter_days, self._factor_for(kind), date(today.year, 1, 1))
                 if meter_days

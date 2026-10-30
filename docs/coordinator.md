@@ -99,7 +99,10 @@ cards (`issues.sync_issues`).
    leaves the meter card alone. It does not leave `meter_reads_pending`
    set, since a load that failed never ends: the ranking and the price
    history go ahead on the held volume, or the typed one when none is held,
-   and the next tick that names the meter reads it.
+   and the next tick that names the meter reads it. A read the recorder
+   fails (`meter_error`, the `meter_unit` card) is held the same way: the
+   last figures stand for that tick, priced on the held volume, rather than
+   unknown, and the Store keeps the figures of the last read that answered.
 6. **The bill** (`_build`): the measured rolling year replaces the typed
    volume where there is one, the current contract's months are walked from
    its first day this year, earlier contracts are billed on their own cards,

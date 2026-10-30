@@ -460,7 +460,7 @@
     },
     "meter_unit": {
       "title": "Gasmeter kan niet gelezen worden",
-      "description": "De gasmeter van {entry} kan niet gebruikt worden: {error}. De lopende kosten blijven onbekend tot dit is opgelost."
+      "description": "De gasmeter van {entry} kan niet gebruikt worden: {error}. De lopende kosten houden de laatst gelezen cijfers aan, of blijven onbekend als er geen zijn, tot dit is opgelost."
     },
     "several_meters": {
       "title": "Meerdere gasmeters in het Energiedashboard",

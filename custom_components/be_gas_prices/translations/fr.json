@@ -460,7 +460,7 @@
     },
     "meter_unit": {
       "title": "Le compteur de gaz ne peut pas être lu",
-      "description": "Le compteur de gaz de {entry} ne peut pas être utilisé : {error}. Les coûts courants restent inconnus tant que ce n'est pas corrigé."
+      "description": "Le compteur de gaz de {entry} ne peut pas être utilisé : {error}. Les coûts courants gardent les derniers chiffres lus, ou restent inconnus s'il n'y en a pas, tant que ce n'est pas corrigé."
     },
     "several_meters": {
       "title": "Plusieurs compteurs de gaz dans le tableau de bord Énergie",

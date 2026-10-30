@@ -460,7 +460,7 @@
     },
     "meter_unit": {
       "title": "Der Gaszähler kann nicht gelesen werden",
-      "description": "Der Gaszähler von {entry} kann nicht verwendet werden: {error}. Die laufenden Kosten bleiben unbekannt, bis das behoben ist."
+      "description": "Der Gaszähler von {entry} kann nicht verwendet werden: {error}. Die laufenden Kosten behalten die zuletzt gelesenen Werte, oder bleiben unbekannt, wenn es keine gibt, bis das behoben ist."
     },
     "several_meters": {
       "title": "Mehrere Gaszähler im Energie-Dashboard",

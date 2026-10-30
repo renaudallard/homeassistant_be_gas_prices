@@ -453,7 +453,8 @@ attached to an issue as it is.
 - **Repairs**: what needs you shows up under **Settings, System, Repairs**:
   a stale card (fixing it fetches the card again), a card that could not be
   read or is missing, one read from its image, a meter that cannot be read
-  and several gas meters on the Energy dashboard.
+  (the costs keep their last figures meanwhile) and several gas meters on
+  the Energy dashboard.
 - **Debug logging**: add this to `configuration.yaml` and restart, or turn
   on debug logging from the integration's page, which logs the same:
 

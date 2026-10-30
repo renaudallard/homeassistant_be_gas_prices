@@ -460,7 +460,7 @@
     },
     "meter_unit": {
       "title": "Gas meter cannot be read",
-      "description": "The gas meter of {entry} cannot be used: {error}. The running costs stay unknown until it is fixed."
+      "description": "The gas meter of {entry} cannot be used: {error}. The running costs keep the last figures read, or stay unknown when there are none, until it is fixed."
     },
     "several_meters": {
       "title": "Several gas meters in the Energy dashboard",

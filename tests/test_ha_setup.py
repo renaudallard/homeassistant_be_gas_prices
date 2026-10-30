@@ -1616,10 +1616,10 @@ async def test_a_forced_fetch_waiting_on_setup_is_not_made_meter_only(
 async def test_a_meter_read_that_fails_still_names_the_meter_problem(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
-    """The held measured volume prices at setup, but the recorder fails the
-    meter read after it, which then cannot price the typed volume: the tick
-    fails, and the card naming the recorder problem is raised all the
-    same."""
+    """The held measured volume prices at setup, and the recorder failing
+    the meter read after it leaves the held figures and that volume
+    standing, rather than the typed volume the card cannot price; the card
+    naming the recorder problem is raised all the same."""
     card = fetch.return_value
     ores = card.dsos[DSO_ORES]
     t1_only = replace(ores, tiers={TIER_T1: ores.tiers[TIER_T1]})
@@ -1651,7 +1651,9 @@ async def test_a_meter_read_that_fails_still_names_the_meter_problem(
         assert await hass.config_entries.async_reload(entry.entry_id)
         await hass.async_block_till_done(wait_background_tasks=True)
     coordinator = entry.runtime_data
-    assert not coordinator.last_update_success
+    assert coordinator.last_update_success
+    assert coordinator.data.annual_kwh_measured
+    assert coordinator.data.current_year_cost is not None
     assert not coordinator.meter_reads_pending
     issues = ir.async_get(hass)
     assert issues.async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}") is not None
@@ -2556,8 +2558,9 @@ async def test_a_restart_does_not_hold_a_typed_volume_as_measured(
 async def test_a_failed_meter_read_keeps_the_figures_held_for_a_restart(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
-    """The recorder failing an hourly read leaves the costs unknown for that
-    tick, but a restart still shows those the last good read gave."""
+    """The recorder failing an hourly read leaves the last costs standing
+    for that tick, and a restart still shows those the last good read
+    gave."""
     data = {**DATA, CONF_GAS_METER: "sensor.gas"}
     kind = AsyncMock(return_value="energy")
     with (
@@ -2573,7 +2576,9 @@ async def test_a_failed_meter_read_keeps_the_figures_held_for_a_restart(
         assert held is not None and held["current_year_cost"] is not None
         kind.side_effect = RecorderUnavailable("recorder query for sensor.gas failed")
         await coordinator.async_refresh()
-        assert coordinator.data.current_year_cost is None
+        assert coordinator.data.current_year_cost == held["current_year_cost"]
+        assert coordinator.data.current_month_cost == held["current_month_cost"]
+        assert coordinator.meter_error
     assert coordinator._held == held
 
 
