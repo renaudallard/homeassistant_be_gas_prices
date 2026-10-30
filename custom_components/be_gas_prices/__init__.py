@@ -48,6 +48,7 @@ from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
@@ -152,7 +153,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         return {"rows": written}
 
     hass.services.async_register(DOMAIN, SERVICE_REFRESH, _refresh, schema=_REFRESH_SCHEMA)
-    hass.services.async_register(
+    # For administrators only, as Home Assistant registers its own statistics
+    # services: a clear deletes a statistic's whole history, which nothing
+    # gives back. A call with no user, as an automation's is, still goes
+    # through.
+    async_register_admin_service(
+        hass,
         DOMAIN,
         SERVICE_BACKFILL,
         _backfill,

@@ -42,6 +42,8 @@ checks none, so the next one does.
 - `be_gas_prices.refresh` (`entry_id` optional).
 - `be_gas_prices.backfill_statistics` (`entry_id`, `start_date`, `clear`),
   returning the rows written per statistic, `current_year_cost`'s included.
+  It is registered with `async_register_admin_service`, so a user who is not
+  an administrator is refused; an automation, which has no user, is not.
 
 ## Repairs
 

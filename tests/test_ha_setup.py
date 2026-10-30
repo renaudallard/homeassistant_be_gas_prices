@@ -39,9 +39,9 @@ import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.repairs import repairs_flow_manager
 from homeassistant.config_entries import ConfigEntryDisabler, ConfigEntryState
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Context, HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError, Unauthorized
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.loader import async_get_integration
@@ -533,6 +533,44 @@ async def test_a_backfill_from_the_future_is_refused_before_any_clear(
         )
     assert raised.value.translation_key == "start_date_in_future"
     backfill.assert_not_called()
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_only_an_administrator_can_backfill(
+    hass: HomeAssistant, fetch: AsyncMock, hass_read_only_user: Any, hass_admin_user: Any
+) -> None:
+    """A clear deletes a statistic's whole history, so a user who is not an
+    administrator is refused, as on Home Assistant's own statistics
+    services; an administrator and an automation, which has no user, are
+    not."""
+    entry = await _setup(hass)
+    data = {"entry_id": entry.entry_id, "clear": True}
+    with (
+        patch(
+            "custom_components.be_gas_prices.backfill_prices", AsyncMock(return_value={})
+        ) as prices,
+        patch("custom_components.be_gas_prices.backfill_cost", AsyncMock(return_value={})),
+    ):
+        with pytest.raises(Unauthorized):
+            await hass.services.async_call(
+                DOMAIN,
+                "backfill_statistics",
+                data,
+                blocking=True,
+                context=Context(user_id=hass_read_only_user.id),
+                return_response=True,
+            )
+        assert prices.await_count == 0
+        for context in (Context(user_id=hass_admin_user.id), None):
+            await hass.services.async_call(
+                DOMAIN,
+                "backfill_statistics",
+                data,
+                blocking=True,
+                context=context,
+                return_response=True,
+            )
+    assert prices.await_count == 2
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

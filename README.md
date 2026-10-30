@@ -435,7 +435,8 @@ data:
 
 `backfill_statistics` also rewrites `current_year_cost`'s statistics over the
 year's window, whatever the start date. `clear` leaves them alone: deleting
-them would take the years before with them.
+them would take the years before with them. Only an administrator can call
+it, as with Home Assistant's own statistics actions; an automation can too.
 
 ## Diagnostics
 
