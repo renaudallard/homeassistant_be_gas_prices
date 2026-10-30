@@ -200,31 +200,56 @@ async def daily_consumption(
     and counts as none. Raises :class:`RecorderUnavailable` when a running
     recorder could not answer; returns {} when there is no recorder.
     """
+    if end < start:
+        return {}
+    start_dt = dt_util.start_of_local_day(start).astimezone(UTC)
+    end_dt = dt_util.start_of_local_day(end + timedelta(days=1)).astimezone(UTC)
+    changes = await _changes(hass, statistic_id, kind, start_dt, end_dt, "day")
+    return {dt_util.as_local(hour).date(): max(0.0, change) for hour, change in changes.items()}
+
+
+async def hourly_changes(
+    hass: HomeAssistant,
+    statistic_id: str,
+    kind: MeterKind,
+    start: datetime,
+    end: datetime,
+) -> dict[datetime, float]:
+    """The meter's change in each UTC hour of [start, end), as recorded:
+    a negative one is kept, so that a day's hours add up to its change.
+    Raises and returns as :func:`daily_consumption` does."""
+    return await _changes(hass, statistic_id, kind, start, end, "hour")
+
+
+async def _changes(
+    hass: HomeAssistant,
+    statistic_id: str,
+    kind: MeterKind,
+    start: datetime,
+    end: datetime,
+    period: Literal["day", "hour"],
+) -> dict[datetime, float]:
     instance = _recorder(hass)
-    if instance is None or end < start:
+    if instance is None:
         return {}
     from homeassistant.components.recorder.statistics import statistics_during_period
 
-    start_dt = dt_util.start_of_local_day(start).astimezone(UTC)
-    end_dt = dt_util.start_of_local_day(end + timedelta(days=1)).astimezone(UTC)
     try:
         stats = await instance.async_add_executor_job(
             statistics_during_period,
             hass,
-            start_dt,
-            end_dt,
+            start,
+            end,
             {statistic_id},
-            "day",
+            period,
             _target_units(kind),
             {"change"},
         )
     except Exception as err:
         raise RecorderUnavailable(f"recorder query for {statistic_id} failed: {err}") from err
-    out: dict[date, float] = {}
+    out: dict[datetime, float] = {}
     for row in stats.get(statistic_id, []):
         change = row.get("change")
-        if change is None:
-            continue
-        day = dt_util.as_local(datetime.fromtimestamp(row["start"], UTC)).date()
-        out[day] = max(0.0, float(change))
+        if change is not None:
+            out[datetime.fromtimestamp(row["start"], UTC)] = float(change)
     return out

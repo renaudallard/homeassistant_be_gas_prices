@@ -174,6 +174,14 @@ async def test_a_meter_that_falls_counts_no_gas_that_day(
         date(2026, 9, 2): 0.0,
         date(2026, 9, 3): pytest.approx(12.0),
     }
+    # By the hour the fall is kept, so the second day's hours add up to its
+    # change before it is counted as none.
+    day2 = start + timedelta(days=1)
+    hours = await gas_meter.hourly_changes(hass, METER, "volume", day2, day2 + timedelta(days=1))
+    assert len(hours) == 24
+    assert hours[day2] == pytest.approx(0.5)
+    assert hours[day2 + timedelta(hours=12)] == pytest.approx(-19.5)
+    assert sum(hours.values()) == pytest.approx(-8.0)
 
 
 async def test_a_unit_nothing_converts_is_refused(recorder_mock: Any, hass: HomeAssistant) -> None:
