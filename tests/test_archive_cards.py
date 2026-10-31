@@ -121,14 +121,18 @@ class _Response:
 
 
 class _Session:
-    """Just enough of aiohttp for the readers: one canned body per URL."""
+    """Just enough of aiohttp for the readers: one canned body per URL, 404
+    for the ones in ``missing``."""
 
     def __init__(self, pages: dict[str, bytes]) -> None:
         self.pages = pages
+        self.missing: set[str] = set()
         self.asked: list[str] = []
 
     def get(self, url: str, **_kw: Any) -> _Response:
         self.asked.append(url)
+        if url in self.missing:
+            return _Response(b"", 404)
         if url not in self.pages:
             raise aiohttp.ClientConnectionError(url)
         return _Response(self.pages[url])
@@ -737,6 +741,59 @@ async def test_a_replay_answers_the_names_a_parse_asks_for(
         out,
         only=frozenset({"nobody"}),
         extractors=[_Reissued(factor=2.0).extractor()],
+        now=NOW,
+        sleep=_no_sleep,
+    )
+    assert (summary.replayed, summary.reparsed) == (1, 1)
+    assert not summary.unreplayable
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert row["energy"]["price"] == pytest.approx(0.16)
+    assert len(web.asked) == asked
+
+
+# The folders of the month a card prices and of the month before.
+_THIS_FOLDER = "https://acme.test/2026-09/card.pdf"
+_LAST_FOLDER = "https://acme.test/2026-08/card.pdf"
+
+
+class _Refiled(_Acme):
+    """A supplier that files each card under the month it uploaded it, as
+    Brusol does, so the parse asks the month's own folder first."""
+
+    async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+        for url in (_THIS_FOLDER, _LAST_FOLDER):
+            try:
+                text = await _pdf.fetch_pdf_rendered(
+                    session, url, variant="plain", timeout=30, render=self.render
+                )
+            except ExtractorError as err:
+                if not _pdf.is_missing_card_error(str(err)):
+                    raise
+                continue
+            return _parse(text, self.factor, contract)
+        raise ExtractorError("Acme: no card in either folder")
+
+
+async def test_a_replay_answers_a_card_asked_under_another_folder_with_a_404(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The row read the card the month before's folder holds, the month's
+    own having answered 404. The replay answers that one 404 too, so the
+    parse goes on to the card the row read, where refusing it as a network
+    error left the month unreplayable."""
+    out = tmp_path / "gas"
+    web.missing.add(_THIS_FOLDER)
+    web.pages[_LAST_FOLDER] = _card("2026-09", "0.08")
+    await ac.archive(out, extractors=[_Refiled().extractor()], now=NOW, sleep=_no_sleep)
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert [source["url"] for source in row["_sources"]] == [_LAST_FOLDER]
+    asked = len(web.asked)
+
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        only=frozenset({"nobody"}),
+        extractors=[_Refiled(factor=2.0).extractor()],
         now=NOW,
         sleep=_no_sleep,
     )

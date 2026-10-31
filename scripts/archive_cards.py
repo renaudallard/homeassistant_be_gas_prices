@@ -798,8 +798,12 @@ def _upload(url: str) -> tuple[str, int]:
     return stem, -1
 
 
-class _Head:
-    """The answer to a HEAD: a status and no header."""
+def _file_name(url: str) -> str:
+    return url.rsplit("/", 1)[-1]
+
+
+class _Answer:
+    """An answer the replay gives itself: a status, no header and no body."""
 
     history = ()
 
@@ -807,7 +811,7 @@ class _Head:
         self.status = status
         self.headers: dict[str, str] = {}
 
-    async def __aenter__(self) -> _Head:
+    async def __aenter__(self) -> _Answer:
         return self
 
     async def __aexit__(self, *_exc: object) -> None:
@@ -821,23 +825,32 @@ class _Offline:
     readers never reach this for those. A HEAD answers for each card the row
     read and for the uploads Drupal keeps from before it, and 404 for any
     other name, so a parse that asks for names before it reads one, as
-    EnergyVision's does, comes to the card the row read. Anything else the
-    parse asks for is refused as a network error, which the readers wrap the
-    way they wrap a real one, and the row is left as it was and reported.
+    EnergyVision's does, comes to the card the row read. A GET for a card
+    the row read, asked under another folder, answers 404 as the site did
+    when the row was read: Brusol files each card under the month it
+    uploaded it, and the parse asks the delivery month's folder first.
+    Anything else the parse asks for is refused as a network error, which
+    the readers wrap the way they wrap a real one, and the row is left as it
+    was and reported.
     """
 
     def __init__(self, cards: Iterable[str] = ()) -> None:
-        self._uploads = {_upload(url) for url in cards}
+        self._cards = frozenset(cards)
+        self._uploads = {_upload(url) for url in self._cards}
+        self._names = {_file_name(url) for url in self._cards}
 
     def get(self, url: str, **_kw: Any) -> Any:
+        if url not in self._cards and _file_name(url) in self._names:
+            return _Answer(404)
         raise aiohttp.ClientConnectionError(f"a replay is offline: {url}")
 
-    post = get
+    def post(self, url: str, **_kw: Any) -> Any:
+        raise aiohttp.ClientConnectionError(f"a replay is offline: {url}")
 
-    def head(self, url: str, **_kw: Any) -> _Head:
+    def head(self, url: str, **_kw: Any) -> _Answer:
         plain, upload = _upload(url)
         held = any(name == plain and upload <= read for name, read in self._uploads)
-        return _Head(200 if held else 404)
+        return _Answer(200 if held else 404)
 
 
 async def _kept_pdf(
