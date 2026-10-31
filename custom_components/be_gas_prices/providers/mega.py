@@ -68,6 +68,11 @@ part of the tariff, so it is not read.
 
 Mega's CDN sends the cards with a bogus "Content-Encoding: UTF-8" header,
 which aiohttp ignores as an encoding it does not know.
+
+Off-peak Flex, Off-peak Fixed, Prepaid Flex and Prepaid Fixed left the
+listing and the product pages on 30 October 2026, in every region. A
+household on one is priced on its last card, October's, and its past months
+are built off that card's name, since the listing no longer links one.
 """
 
 from __future__ import annotations
@@ -117,6 +122,7 @@ from .base import (
 
 _LISTING_URL = "https://www.mega.be/fr/energie/cartes-tarifaires"
 _INDEX_URL = "https://www.mega.be/fr/energie/indexation-de-nos-produits-variables"
+_CARD_BASE = "https://my.mega.be/resources/tarif/Mega-FR-NG-B2C-"
 
 _REGION_TO_CODE: dict[str, str] = {
     REGION_FLANDERS: "VL",
@@ -133,10 +139,20 @@ class _ContractDef:
     listing_name: str  # the data-product-element value on the listing
     card_name: str  # the name the card prints, less its term ("2Y")
     regions: frozenset[str] = ALL_REGIONS
+    # The first day Mega no longer sold it, and its last card's name past
+    # the region code, which stands in for the listing's link once the
+    # listing drops it.
+    withdrawn: date | None = None
+    last_card: str = ""
 
 
-# Every residential gas product on the listing. There is no Dynamic gas card,
-# and Off-peak Impact has a Walloon card only, priced like Off-peak Flex. The
+# The day the listing stopped linking Off-peak Flex and Fixed and Prepaid
+# Flex and Fixed, whose October 2026 cards are their last.
+_OFFPEAK_PREPAID_WITHDRAWN = date(2026, 10, 30)
+
+# Every residential gas product on the listing, and the ones it dropped, still
+# offered to the households on them. There is no Dynamic gas card, and
+# Off-peak Impact has a Walloon card only, priced like Off-peak Flex. The
 # listing also links two SME cards, which are professional and not listed
 # here.
 _CONTRACTS: tuple[_ContractDef, ...] = (
@@ -144,10 +160,22 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef("mega_cosy_flex", "Mega Cosy Flex", "indexed", "Cosy Flex", "Cosy Flex"),
     _ContractDef("mega_online_flex", "Mega Online Flex", "indexed", "Online Flex", "Online Flex"),
     _ContractDef(
-        "mega_prepaid_flex", "Mega Prepaid Flex", "indexed", "Prepaid Flex", "Prepaid Flex"
+        "mega_prepaid_flex",
+        "Mega Prepaid Flex",
+        "indexed",
+        "Prepaid Flex",
+        "Prepaid Flex",
+        withdrawn=_OFFPEAK_PREPAID_WITHDRAWN,
+        last_card="102026-Prepaid",
     ),
     _ContractDef(
-        "mega_offpeak_flex", "Mega Off-peak Flex", "indexed", "Off-peak Flex", "Offpeak Flex"
+        "mega_offpeak_flex",
+        "Mega Off-peak Flex",
+        "indexed",
+        "Off-peak Flex",
+        "Offpeak Flex",
+        withdrawn=_OFFPEAK_PREPAID_WITHDRAWN,
+        last_card="102026-Offpeak-Bi-Var",
     ),
     _ContractDef(
         "mega_offpeak_impact",
@@ -161,10 +189,22 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef("mega_cosy_fixed", "Mega Cosy Fixed", "fixed", "Cosy Fixed", "Cosy Fixed"),
     _ContractDef("mega_online_fixed", "Mega Online Fixed", "fixed", "Online Fixed", "Online Fixed"),
     _ContractDef(
-        "mega_prepaid_fixed", "Mega Prepaid Fixed", "fixed", "Prepaid Fixed", "Prepaid Fixed"
+        "mega_prepaid_fixed",
+        "Mega Prepaid Fixed",
+        "fixed",
+        "Prepaid Fixed",
+        "Prepaid Fixed",
+        withdrawn=_OFFPEAK_PREPAID_WITHDRAWN,
+        last_card="102026-Prepaid0110-Fix",
     ),
     _ContractDef(
-        "mega_offpeak_fixed", "Mega Off-peak Fixed", "fixed", "Off-peak Fixed", "Offpeak Fixed"
+        "mega_offpeak_fixed",
+        "Mega Off-peak Fixed",
+        "fixed",
+        "Off-peak Fixed",
+        "Offpeak Fixed",
+        withdrawn=_OFFPEAK_PREPAID_WITHDRAWN,
+        last_card="102026-Offpeak-Bi0110-Fix",
     ),
     _ContractDef("mega_zen_fixed", "Mega Zen Fixed", "fixed", "Zen Fixed", "Zen Fixed"),
 )
@@ -183,9 +223,7 @@ def _listed_url(listing: str, contract: _ContractDef, code: str) -> str | None:
     the other regions' links of the same product never match."""
     match = re.search(
         r'data-product-element="' + re.escape(contract.listing_name) + r'"[^>]*?'
-        r'href="(https://my\.mega\.be/resources/tarif/Mega-FR-NG-B2C-'
-        + code
-        + r'-\d{6}-[^"]+\.pdf)"',
+        r'href="(' + re.escape(_CARD_BASE) + code + r'-\d{6}-[^"]+\.pdf)"',
         listing,
     )
     return None if match is None else match.group(1)
@@ -242,6 +280,12 @@ def archive_url(current: str, year_month: date) -> str:
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
     """The card the listing links today for ``contract_id`` in ``region``."""
+    contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Mega")
+    if contract.withdrawn is not None:
+        raise ExtractorError(
+            f"Mega withdrew {contract.label} on {contract.withdrawn:%Y-%m-%d}: "
+            "only its past cards are read"
+        )
     url = card_url(await fetch_text(session, _LISTING_URL), contract_id, region)
     return await _read(session, contract_id, region, url)
 
@@ -255,9 +299,12 @@ async def _read(
 async def _read_month(
     session: aiohttp.ClientSession, contract_id: str, region: str, year_month: date
 ) -> SupplierSnapshot:
-    listing = await fetch_text(session, _LISTING_URL)
-    url = archive_url(card_url(listing, contract_id, region), year_month)
-    return await _read(session, contract_id, region, url)
+    contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Mega")
+    if contract.withdrawn is None:
+        current = card_url(await fetch_text(session, _LISTING_URL), contract_id, region)
+    else:
+        current = f"{_CARD_BASE}{_region_code(contract, region)}-{contract.last_card}.pdf"
+    return await _read(session, contract_id, region, archive_url(current, year_month))
 
 
 async def fetch_for_month(
@@ -268,12 +315,12 @@ async def fetch_for_month(
 ) -> SupplierSnapshot | None:
     """The card Mega published for a past month, or None.
 
-    The URL is built off the listing's current one, so a product Mega no
-    longer lists has no archive here. A month ahead of Home Assistant's
-    clock is refused rather than asked for. A transient failure raises so
-    the month cache retries it; any other failure, the HTML stub the CDN
-    serves for a card it never published included, is a month with no card,
-    and a card naming another month than the one asked for is refused too.
+    The URL is built off the listing's current one, or off a withdrawn
+    product's last card. A month ahead of Home Assistant's clock is refused
+    rather than asked for. A transient failure raises so the month cache
+    retries it; any other failure, the HTML stub the CDN serves for a card
+    it never published included, is a month with no card, and a card naming
+    another month than the one asked for is refused too.
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     if contract is None or region not in contract.regions:
@@ -561,7 +608,13 @@ EXTRACTOR = SupplierExtractor(
     id="mega",
     label="Mega",
     contracts=tuple(
-        Contract(id=c.contract_id, label=c.label, kind=c.kind, regions=c.regions)
+        Contract(
+            id=c.contract_id,
+            label=c.label,
+            kind=c.kind,
+            regions=c.regions,
+            withdrawn=c.withdrawn,
+        )
         for c in _CONTRACTS
     ),
     fetch=fetch,

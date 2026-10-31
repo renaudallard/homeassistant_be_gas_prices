@@ -344,10 +344,56 @@ def test_listing_links_the_gas_card(contract: str, region: str, name: str) -> No
 
 def test_every_contract_is_on_the_listing_where_it_is_sold() -> None:
     for contract in mega.EXTRACTOR.contracts:
+        if contract.withdrawn is not None:
+            continue
         for region in contract.regions:
             assert "-NG-B2C-" in mega.card_url(_listing(), contract.id, region)
     with pytest.raises(ExtractorError):
         mega.card_url(_listing(), "mega_offpeak_impact", REGION_FLANDERS)
+
+
+def test_the_products_dropped_on_30_october_are_withdrawn() -> None:
+    withdrawn = {c.id: c.withdrawn for c in mega.EXTRACTOR.contracts if c.withdrawn is not None}
+    assert withdrawn == dict.fromkeys(
+        ("mega_prepaid_flex", "mega_offpeak_flex", "mega_prepaid_fixed", "mega_offpeak_fixed"),
+        date(2026, 10, 30),
+    )
+
+
+async def test_a_withdrawn_product_is_not_fetched() -> None:
+    listing = AsyncMock(return_value=_listing())
+    with (
+        patch.object(mega, "fetch_text", listing),
+        pytest.raises(ExtractorError, match="Mega withdrew Mega Prepaid Flex on 2026-10-30"),
+    ):
+        await mega.fetch(AsyncMock(), "mega_prepaid_flex", REGION_WALLONIA)
+    listing.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("contract", "name"),
+    [
+        ("mega_prepaid_fixed", "WL-092026-Prepaid0109-Fix"),
+        ("mega_offpeak_flex", "WL-092026-Offpeak-Bi-Var"),
+    ],
+)
+async def test_a_withdrawn_products_past_month_is_built_off_its_last_card(
+    contract: str, name: str
+) -> None:
+    """The listing no longer links it: its October card's name is moved to
+    the month asked for, as the listing's link would have been."""
+    listing = AsyncMock(return_value=_listing())
+    fetched = AsyncMock(return_value=_card(name))
+    with (
+        freeze_time(datetime(2026, 11, 15, 12)),
+        patch.object(mega, "fetch_text", listing),
+        patch.object(mega, "fetch_pdf_text", fetched),
+    ):
+        snap = await mega.fetch_for_month(AsyncMock(), contract, REGION_WALLONIA, date(2026, 9, 1))
+    assert snap is not None
+    assert snap.publication_label == "2026-09"
+    assert fetched.call_args.args[1] == f"{_CDN}Mega-FR-NG-B2C-{name}.pdf"
+    listing.assert_not_called()
 
 
 def test_a_region_left_off_the_listing_is_rewritten_from_another() -> None:

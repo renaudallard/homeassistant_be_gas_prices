@@ -54,6 +54,16 @@ top-up products; the gas Prepaid cards bill metered consumption on the same
 formula and table as the others ("payez votre energie par avance de 3
 mois"), so they are registered here.
 
+Off-peak Flex, Off-peak Fixed, Prepaid Flex and Prepaid Fixed left the
+listing on 30 October 2026, in every region, and no product page sells them
+any more; the listing's only off-peak product is Off-peak Impact, in
+Wallonia. They are withdrawn from that day (`withdrawn`): the setup still
+offers them, marked †, to a household whose contract runs on one, an entry
+on one keeps pricing on its last card, October's (the Flex ones go on
+following the monthly index), `fetch` refuses them and the comparisons and
+the live check leave them out. `last_card` keeps the last card's name past
+the region code, which their archive is built off.
+
 ## How each figure is read
 
 The card is read with pypdf (`fetch_pdf_text`), which puts one value per line.
@@ -142,7 +152,9 @@ about 0,04 EUR/MWh.
 
 ## Archive
 
-`fetch_for_month` reads the listing, then rewrites the current URL: the
+`fetch_for_month` reads the listing, then rewrites the current URL, or a
+withdrawn product's last card (`last_card`), which the listing no longer
+links: the
 `-MMYYYY-` segment and the month of the suffix's issue date, whose day
 becomes `01` (`Cosy0809` for September becomes `Cosy0108` for August). A
 suffix without a date (`Prepaid`, `Offpeak-Bi-Var`) only changes its
@@ -158,8 +170,9 @@ issue dated the 1st: the electricity archive from January to September 2026
 gas card fetched for August 2026, and gas Smart Flex in January 2024, January and
 September 2025, January and June 2026.
 
-A product Mega stops listing has no archive through this path. Off-peak Flex
-has no January 2026 card at `Offpeak-Bi-Var` (stub). Older cards parse:
+A product Mega stops listing has no archive through the listing, hence
+`last_card` on the withdrawn ones. Off-peak Flex has no January 2026 card at
+`Offpeak-Bi-Var` (stub). Older cards parse:
 January 2025, January, March and June 2026 were checked. A Flemish card
 from before 2025 names the Fluvius areas that merged away: it gives the
 energy leg a contract signed on it is priced on (Smart Fixed of November
@@ -210,6 +223,9 @@ energy leg a contract signed on it is priced on (Smart Fixed of November
   `test_walloon_card_without_the_connection_fee_is_read`.
 - Listing: `test_listing_links_the_gas_card`,
   `test_every_contract_is_on_the_listing_where_it_is_sold`.
+- Withdrawn: `test_the_products_dropped_on_30_october_are_withdrawn`,
+  `test_a_withdrawn_product_is_not_fetched`,
+  `test_a_withdrawn_products_past_month_is_built_off_its_last_card`.
 - Archive: `test_archive_url_moves_both_months` and the `fetch_for_month`
   tests (URL built, Brussels clock, month refusal, CDN stub, transient
   failures, future month).
