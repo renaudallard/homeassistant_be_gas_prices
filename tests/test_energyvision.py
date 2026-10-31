@@ -27,10 +27,11 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.be_gas_prices import excise_law, tarbel
 from custom_components.be_gas_prices.const import (
@@ -48,6 +49,7 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.pricing import PricingError, compute_breakdown
 from custom_components.be_gas_prices.providers import energyvision
+from custom_components.be_gas_prices.providers._pdf import is_transient_fetch_error
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers._resolve import resolve_for_delivery
 from custom_components.be_gas_prices.providers.base import ExtractorError
@@ -278,38 +280,16 @@ def test_card_of_another_region_is_refused() -> None:
 
 
 _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
+_BRUSOL_PAGE = (
+    "https://www.brusol.be/nl/elektriciteit-en-gas/schrijf-je-in-voor-goedkope-stroom-van-brusol"
+)
+_SEPTEMBER = datetime(2026, 9, 15, 10)
 
 
 @pytest.mark.parametrize(
-    ("contract", "region", "page", "url", "card", "month"),
+    ("page", "url", "card", "month"),
     [
         (
-            _GSG,
-            REGION_FLANDERS,
-            "tariefkaart.html",
-            _EV_FILES + "EV-0926-GSG-nl.pdf",
-            "EV-0926-GSG-nl.pdf",
-            "2026-09",
-        ),
-        (
-            _GSG,
-            REGION_WALLONIA,
-            "tariefkaart.html",
-            _EV_FILES + "EV-0926-GSG-WAL-fr.pdf",
-            "EV-0926-GSG-WAL-fr.pdf",
-            "2026-09",
-        ),
-        (
-            _GS1JVG,
-            REGION_WALLONIA,
-            "tariefkaart.html",
-            _EV_FILES + "EV-0926-GS1JVG-WAL-fr.pdf",
-            "EV-0926-GS1JVG-WAL-fr.pdf",
-            "2026-09",
-        ),
-        (
-            _GSG,
-            REGION_BRUSSELS,
             "brusol/signup-goedkope-stroom-nl.html",
             "https://www.brusol.be/sites/default/files/2026-08/EV-0926-GSG-BXL-nl.pdf",
             "brusol/EV-0926-GSG-BXL-nl.pdf",
@@ -317,8 +297,6 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
         ),
         # The October page ends the card's href in a space.
         (
-            _GSG,
-            REGION_BRUSSELS,
             "brusol/signup-goedkope-stroom-nl-2026-10.html",
             "https://www.brusol.be/sites/default/files/2026-09/EV-1026-GSG-BXL-nl.pdf",
             "brusol/EV-1026-GSG-BXL-nl.pdf",
@@ -326,8 +304,8 @@ _EV_FILES = "https://www.energyvision.be/sites/default/files/inline-files/"
         ),
     ],
 )
-async def test_fetch_reads_the_card_the_page_links(
-    contract: str, region: str, page: str, url: str, card: str, month: str
+async def test_fetch_reads_the_card_brusols_page_links(
+    page: str, url: str, card: str, month: str
 ) -> None:
     listing = AsyncMock(return_value=fixture_page("energyvision", page))
     fetched = AsyncMock(return_value=_card(card))
@@ -335,10 +313,171 @@ async def test_fetch_reads_the_card_the_page_links(
         patch.object(energyvision, "fetch_text", listing),
         patch.object(energyvision, "fetch_pdf_text_layout", fetched),
     ):
-        snap = await energyvision.fetch(AsyncMock(), contract, region)
+        snap = await energyvision.fetch(AsyncMock(), _GSG, REGION_BRUSSELS)
+    assert listing.call_args.args[1] == _BRUSOL_PAGE
     assert fetched.call_args.args[1] == url
     assert snap.source_url == url
     assert snap.publication_label == month
+
+
+def _uploads(*names: str, down: str = "") -> AsyncMock:
+    """A HEAD answering for the EnergyVision files ``names``, each with a
+    Last-Modified of its own, failing for ``down`` as a site that is down
+    fails, and 404 for any other."""
+
+    def head(_session: object, url: str) -> str:
+        name = url.removeprefix(_EV_FILES)
+        if name == down:
+            raise ExtractorError(f"network error fetching {url}: reset")
+        if name not in names:
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        return f"stamp of {name}"
+
+    return AsyncMock(side_effect=head)
+
+
+def _asked(head: AsyncMock) -> list[str]:
+    return [call.args[1].removeprefix(_EV_FILES) for call in head.call_args_list]
+
+
+@pytest.mark.parametrize(
+    ("contract", "region", "name"),
+    [
+        (_GSG, REGION_FLANDERS, "EV-0926-GSG-nl.pdf"),
+        (_GSG, REGION_WALLONIA, "EV-0926-GSG-WAL-fr.pdf"),
+        (_GS1JVG, REGION_FLANDERS, "EV-0926-GS1JVG-nl.pdf"),
+        (_GS1JVG, REGION_WALLONIA, "EV-0926-GS1JVG-WAL-fr.pdf"),
+    ],
+)
+async def test_fetch_finds_the_card_by_its_name(contract: str, region: str, name: str) -> None:
+    """The listing links no card since 30 October 2026: its script asks for
+    the month's name and the first two uploads after it, as the fetch does."""
+    head = _uploads(name)
+    fetched = AsyncMock(return_value=_card(name))
+    with (
+        freeze_time(_SEPTEMBER),
+        patch.object(energyvision, "head_or_raise", head),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        snap = await energyvision.fetch(AsyncMock(), contract, region)
+    stem = name.removesuffix(".pdf")
+    assert _asked(head) == [name, f"{stem}_0.pdf", f"{stem}_1.pdf"]
+    assert fetched.call_args.args[1] == _EV_FILES + name
+    assert snap.source_url == _EV_FILES + name
+    assert snap.publication_label == "2026-09"
+
+
+@pytest.mark.parametrize(
+    ("uploaded", "read", "asked"),
+    [
+        # Each upload after the first in turn, up to the first one missing.
+        (("", "_0", "_1", "_2"), "_2", ("", "_0", "_1", "_2", "_3")),
+        # A missing _0 is passed over, as the listing's script passes it.
+        (("", "_1"), "_1", ("", "_0", "_1", "_2")),
+        # A missing _1 ends the walk, whatever was uploaded after it.
+        (("", "_0", "_2"), "_0", ("", "_0", "_1")),
+        # No further than _9, the script's limit.
+        (
+            ("", *(f"_{n}" for n in range(11))),
+            "_9",
+            ("", *(f"_{n}" for n in range(10))),
+        ),
+    ],
+)
+async def test_fetch_reads_the_newest_upload(
+    uploaded: tuple[str, ...], read: str, asked: tuple[str, ...]
+) -> None:
+    stem = "EV-0926-GSG-nl"
+    head = _uploads(*(f"{stem}{suffix}.pdf" for suffix in uploaded))
+    fetched = AsyncMock(return_value=_card(f"{stem}.pdf"))
+    with (
+        freeze_time(_SEPTEMBER),
+        patch.object(energyvision, "head_or_raise", head),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        await energyvision.fetch(AsyncMock(), _GSG, REGION_FLANDERS)
+    assert _asked(head) == [f"{stem}{suffix}.pdf" for suffix in asked]
+    assert fetched.call_args.args[1] == f"{_EV_FILES}{stem}{read}.pdf"
+
+
+async def test_fetch_reads_last_months_card_until_this_months_is_up() -> None:
+    """Half past midnight on 1 October in Brussels, still 30 September in
+    UTC: the month asked first is Home Assistant's."""
+    head = _uploads("EV-0926-GSG-nl.pdf")
+    fetched = AsyncMock(return_value=_card("EV-0926-GSG-nl.pdf"))
+    with (
+        freeze_time(datetime(2026, 9, 30, 22, 30)),
+        patch.object(energyvision, "head_or_raise", head),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        snap = await energyvision.fetch(AsyncMock(), _GSG, REGION_FLANDERS)
+    assert _asked(head) == [
+        "EV-1026-GSG-nl.pdf",
+        "EV-1026-GSG-nl_0.pdf",
+        "EV-1026-GSG-nl_1.pdf",
+        "EV-0926-GSG-nl.pdf",
+        "EV-0926-GSG-nl_0.pdf",
+        "EV-0926-GSG-nl_1.pdf",
+    ]
+    assert snap.publication_label == "2026-09"
+
+
+async def test_fetch_without_a_card_this_month_or_the_month_before() -> None:
+    fetched = AsyncMock()
+    with (
+        freeze_time(_SEPTEMBER),
+        patch.object(energyvision, "head_or_raise", _uploads("EV-0726-GSG-nl.pdf")),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+        pytest.raises(ExtractorError, match="no GSG nl card for 2026-09 or the month before"),
+    ):
+        await energyvision.fetch(AsyncMock(), _GSG, REGION_FLANDERS)
+    fetched.assert_not_called()
+
+
+async def test_fetch_raises_when_the_site_does_not_answer() -> None:
+    """A name that fails for another reason than not being there is no
+    month without a card: the fetch is tried again."""
+    fetched = AsyncMock()
+    with (
+        freeze_time(_SEPTEMBER),
+        patch.object(
+            energyvision,
+            "head_or_raise",
+            _uploads("EV-0926-GSG-nl.pdf", down="EV-0926-GSG-nl_0.pdf"),
+        ),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+        pytest.raises(ExtractorError) as err,
+    ):
+        await energyvision.fetch(AsyncMock(), _GSG, REGION_FLANDERS)
+    assert is_transient_fetch_error(str(err.value))
+    fetched.assert_not_called()
+
+
+async def test_probe_follows_the_current_card() -> None:
+    """The listing's ETag no longer moves with a card: the key is the
+    current card's name and Last-Modified, which a card uploaded again
+    moves, and None when the site does not answer."""
+    probed = AsyncMock(), _GSG, REGION_FLANDERS
+    plain = "EV-0926-GSG-nl.pdf"
+    with freeze_time(_SEPTEMBER):
+        with patch.object(energyvision, "head_or_raise", _uploads(plain)):
+            first = await energyvision.probe(*probed)
+        with patch.object(energyvision, "head_or_raise", _uploads(plain, "EV-0926-GSG-nl_0.pdf")):
+            again = await energyvision.probe(*probed)
+        with patch.object(
+            energyvision, "head_or_raise", _uploads(plain, down="EV-0926-GSG-nl_0.pdf")
+        ):
+            down = await energyvision.probe(*probed)
+    assert first == f"{_EV_FILES}{plain} stamp of {plain}"
+    assert again == f"{_EV_FILES}EV-0926-GSG-nl_0.pdf stamp of EV-0926-GSG-nl_0.pdf"
+    assert down is None
+
+
+async def test_brussels_probe_heads_brusols_page() -> None:
+    head = AsyncMock(return_value=None)
+    with patch.object(energyvision, "head_freshness_key", head):
+        assert await energyvision.probe(AsyncMock(), _GSG, REGION_BRUSSELS) is None
+    assert head.call_args.args[1] == _BRUSOL_PAGE
 
 
 async def test_fetch_for_month_builds_the_plain_name() -> None:

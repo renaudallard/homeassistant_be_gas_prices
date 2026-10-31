@@ -788,20 +788,56 @@ def _parser_digest() -> str:
     return digest.hexdigest()
 
 
+def _upload(url: str) -> tuple[str, int]:
+    """A card's address without Drupal's re-upload suffix, and which upload
+    it names: -1 for the plain name, n for ``<name>_<n>.pdf``."""
+    stem = url.removesuffix(".pdf")
+    plain, sep, upload = stem.rpartition("_")
+    if sep and upload.isdigit():
+        return plain, int(upload)
+    return stem, -1
+
+
+class _Head:
+    """The answer to a HEAD: a status and no header."""
+
+    history = ()
+
+    def __init__(self, status: int) -> None:
+        self.status = status
+        self.headers: dict[str, str] = {}
+
+    async def __aenter__(self) -> _Head:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        return None
+
+
 class _Offline:
     """The session a replayed parse runs on: it contacts nobody.
 
     Every text the row read is in the memo before the parse starts, so the
-    readers never reach this for those. Anything else the parse asks for is
-    refused as a network error, which the readers wrap the way they wrap a
-    real one, and the row is left as it was and reported.
+    readers never reach this for those. A HEAD answers for each card the row
+    read and for the uploads Drupal keeps from before it, and 404 for any
+    other name, so a parse that asks for names before it reads one, as
+    EnergyVision's does, comes to the card the row read. Anything else the
+    parse asks for is refused as a network error, which the readers wrap the
+    way they wrap a real one, and the row is left as it was and reported.
     """
+
+    def __init__(self, cards: Iterable[str] = ()) -> None:
+        self._uploads = {_upload(url) for url in cards}
 
     def get(self, url: str, **_kw: Any) -> Any:
         raise aiohttp.ClientConnectionError(f"a replay is offline: {url}")
 
-    head = get
     post = get
+
+    def head(self, url: str, **_kw: Any) -> _Head:
+        plain, upload = _upload(url)
+        held = any(name == plain and upload <= read for name, read in self._uploads)
+        return _Head(200 if held else 404)
 
 
 async def _kept_pdf(
@@ -908,7 +944,7 @@ async def _replay_row(
         else:
             cards.readers[key] = source.get("readers", "")
     cards.calls.clear()
-    offline: Any = _Offline()
+    offline: Any = _Offline(s["url"] for s in sources if "pdf" in s)
     with memoise_text_fetches(memo), render_through(cards.render):
         try:
             if via == "archive":

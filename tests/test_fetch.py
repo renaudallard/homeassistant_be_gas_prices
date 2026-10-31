@@ -36,7 +36,13 @@ from aiohttp.test_utils import TestServer
 from yarl import URL
 
 from custom_components.be_gas_prices.providers import _pdf
-from custom_components.be_gas_prices.providers._pdf import fetch_pdf_bytes, fetch_text
+from custom_components.be_gas_prices.providers._pdf import (
+    fetch_pdf_bytes,
+    fetch_text,
+    head_or_raise,
+    is_missing_card_error,
+    is_transient_fetch_error,
+)
 from custom_components.be_gas_prices.providers.base import ExtractorError
 
 
@@ -147,6 +153,8 @@ class _Session:
     def get(self, url: str, **_kw: Any) -> _Redirected:
         return self.resp
 
+    head = get
+
 
 @pytest.mark.parametrize(
     "hops",
@@ -155,13 +163,45 @@ class _Session:
         ("https://a.be/x", "http://a.be/y", "https://a.be/z"),
     ],
 )
-@pytest.mark.parametrize("fetch", [fetch_text, fetch_pdf_bytes])
+@pytest.mark.parametrize("fetch", [fetch_text, fetch_pdf_bytes, head_or_raise])
 async def test_a_redirect_off_https_is_refused(fetch: Any, hops: tuple[str, ...]) -> None:
     session: Any = _Session(_Redirected(*hops))
     with pytest.raises(ExtractorError, match="redirected off https") as err:
         await fetch(session, hops[0])
     # The target stays out of what the user is shown.
     assert "192.168" not in str(err.value)
+
+
+async def test_a_head_tells_a_name_not_there_from_a_site_that_is_down(
+    socket_enabled: None,
+) -> None:
+    async def card(request: web.Request) -> web.Response:
+        return web.Response(
+            body=b"%PDF", headers={"Last-Modified": "Thu, 01 Oct 2026 07:34:44 GMT"}
+        )
+
+    async def busy(request: web.Request) -> web.Response:
+        return web.Response(status=503)
+
+    app = web.Application()
+    app.router.add_get("/card.pdf", card)
+    app.router.add_get("/busy.pdf", busy)
+    async with TestServer(app) as server, aiohttp.ClientSession() as session:
+        url = str(server.make_url("/card.pdf"))
+        assert await head_or_raise(session, url) == "Thu, 01 Oct 2026 07:34:44 GMT"
+        with pytest.raises(ExtractorError) as missing:
+            await head_or_raise(session, str(server.make_url("/card_0.pdf")))
+        with pytest.raises(ExtractorError) as down:
+            await head_or_raise(session, str(server.make_url("/busy.pdf")))
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(ExtractorError) as gone:
+            await head_or_raise(session, url)
+    assert is_missing_card_error(str(missing.value))
+    assert not is_transient_fetch_error(str(missing.value))
+    assert is_transient_fetch_error(str(down.value))
+    assert not is_missing_card_error(str(down.value))
+    # The server has closed.
+    assert str(gone.value).startswith("network error fetching")
 
 
 def test_a_redirect_to_another_site_over_https_is_followed() -> None:

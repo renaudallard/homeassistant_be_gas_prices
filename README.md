@@ -357,12 +357,13 @@ start date it is priced on the card of the month signed.
 
 Every hour, each entry runs one refresh:
 
-- **The tariff card**: the supplier's probe first, a cheap request (a HEAD
-  or a small query) that says whether the card changed. The card is fetched
-  again when it did, when it is 24 hours old for a supplier without a probe,
-  and on every refresh once the month it prices is over, until the next one
-  is out. A fetch has 180 s in all; past that, or on a failure, the last
-  good card keeps pricing and the next refresh tries again.
+- **The tariff card**: the supplier's probe first, one or a few cheap
+  requests (HEADs or a small query) that say whether the card changed. The
+  card is fetched again when it did, when it is 24 hours old for a supplier
+  without a probe, and on every refresh once the month it prices is over,
+  until the next one is out. A fetch has 180 s in all; past that, or on a
+  failure, the last good card keeps pricing and the next refresh tries
+  again.
 - **The supplier's index values**, for an indexed contract, twice a day.
 - **Atrias's calorific values**, once a day, only for an entry converting on
   its reception station, and only the months not held yet.

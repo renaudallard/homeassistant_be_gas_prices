@@ -550,6 +550,33 @@ async def head_freshness_key(
         return None
 
 
+async def head_or_raise(
+    session: aiohttp.ClientSession, url: str, *, timeout: int = 10
+) -> str | None:
+    """HEAD ``url`` and return its ``Last-Modified``, or None when it sends
+    none, raising the way the fetch helpers do when it fails.
+
+    For a lookup that asks for names before it downloads one. ``HTTP
+    <status>`` at 400 and above and ``network error fetching`` on a client
+    error or a timeout let :func:`is_missing_card_error` tell a name nobody
+    uploaded from a supplier that is down, where :func:`head_freshness_key`
+    answers None to both.
+    """
+    try:
+        async with session.head(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            timeout=aiohttp.ClientTimeout(total=timeout),
+            allow_redirects=True,
+        ) as resp:
+            guard_redirect(url, resp)
+            if resp.status >= 400:
+                raise ExtractorError(f"HTTP {resp.status} fetching {url}")
+            return resp.headers.get("Last-Modified")
+    except (aiohttp.ClientError, TimeoutError) as err:
+        raise ExtractorError(f"network error fetching {url}: {error_text(err)}") from err
+
+
 def printed_vat_rate(text: str, *patterns: str | re.Pattern[str]) -> float | None:
     """The VAT rate a card states, as a fraction, or ``None`` where none of
     ``patterns`` matches.

@@ -6,10 +6,21 @@ Tests: `tests/test_energyvision.py`, fixtures in
 
 ## Where the cards are
 
-- EnergyVision (Flanders, Wallonia): https://www.energyvision.be/nl-be/tariefkaart
-  links `/sites/default/files/inline-files/EV-<MMYY>-<CODE>-<nl|WAL-fr>[_N].pdf`.
-  `_N` is Drupal's re-upload suffix, so the current card is read off the
-  listing. Probe: the listing's ETag.
+- EnergyVision (Flanders, Wallonia): the cards are filed as
+  `/sites/default/files/inline-files/EV-<MMYY>-<CODE>-<nl|WAL-fr>[_N].pdf`,
+  `_N` being Drupal's re-upload suffix (`_0`, then `_1` and so on, the
+  earlier files kept). Since 30 October 2026
+  https://www.energyvision.be/nl-be/tariefkaart links none: its script,
+  `/sites/default/files/ftp/tariefkaarten.min.js`, builds the names and
+  shows the newest upload that answers. The fetch asks for the same names
+  with HEAD requests, in the same order: this month's plain name, `_0` and
+  `_1`, the newest of them that answers, and from `_1` on each next one
+  while it answers, up to `_9`, the script's limit. With none, last month's
+  card, which the listing shows until the new one is up; with neither, the
+  fetch fails. The month is Home Assistant's, where the script takes
+  Brussels'. A HEAD failing for another reason than a 404 or a 410 fails
+  the fetch as transient. Probe: the current card's URL and Last-Modified,
+  which a new month and a card uploaded again both move.
 - Brusol (Brussels): https://www.brusol.be/nl/elektriciteit-en-gas/schrijf-je-in-voor-goedkope-stroom-van-brusol
   links `https://www.brusol.be/sites/default/files/<upload YYYY-MM>/EV-<MMYY>-GSG-BXL-nl.pdf`,
   from October 2026 with a space before the closing quote. The page sends no ETag or Last-Modified, so Brussels has no probe key.
@@ -179,7 +190,13 @@ Not modelled: the one-off welcome credit the Flemish cards print
   name with the regulated fee, the `_0` re-upload and the GS1JVG card read
   without a fee row.
 - The other product's card and another region refused.
-- `fetch` for four product and region pairs off the two pages.
+- `fetch` in Brussels off Brusol's page, its October href ending in a space.
+- `fetch` elsewhere by name, for the four product and region pairs: the
+  names asked in order, the newest upload, a missing `_0` passed over, a
+  missing `_1` ending the walk, the `_9` limit, last month's card on the 1st
+  in Home Assistant's zone, no card, a site that does not answer.
+- `probe`: the key moving with a card uploaded again, None when the site
+  does not answer, Brusol's page headed for Brussels.
 - `fetch_for_month`: the plain name, both Brusol folders in order, another
   month, a transient failure, no Brussels GS1JVG.
 - The index document table and `fetch_index` following the page link.

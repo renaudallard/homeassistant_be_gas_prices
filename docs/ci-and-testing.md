@@ -258,8 +258,11 @@ no row names any more.
 When the parser sources, the PDF readers or the OCR engine change (their
 digest is stamped in `parser.txt`), or with `--reparse`, every row is parsed
 again from its stored texts: the clock pinned to its capture day with
-freezegun, a session that refuses every request, the texts served through
-the memo and `render_through`. A card that arrived inside JSON (OCTA+'s archive) stores a
+freezegun, a session that refuses every request but a HEAD, the texts served
+through the memo and `render_through`. A HEAD answers for each card the row
+read and for the uploads Drupal keeps from before it, and 404 for any other
+name, so EnergyVision's fetch, which asks for the names in turn, comes to
+the card the row read. A card that arrived inside JSON (OCTA+'s archive) stores a
 `{{card:<sha256>}}` reference and gets its bytes back from the release. A
 row the parser now refuses, or reads as another month's, is removed, so no
 installation bills on the old reading; one that asks for something it never

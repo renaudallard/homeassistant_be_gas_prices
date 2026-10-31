@@ -97,11 +97,12 @@ class _Response:
     content_length = None
     charset = None
     history = ()
-    status = 200
 
-    def __init__(self, body: bytes) -> None:
+    def __init__(self, body: bytes, status: int = 200) -> None:
         self._body = body
         self.content = _Body(body)
+        self.status = status
+        self.headers: dict[str, str] = {}
 
     async def text(self, errors: str = "strict") -> str:
         return self._body.decode("utf-8", errors=errors)
@@ -131,6 +132,10 @@ class _Session:
         if url not in self.pages:
             raise aiohttp.ClientConnectionError(url)
         return _Response(self.pages[url])
+
+    def head(self, url: str, **_kw: Any) -> _Response:
+        self.asked.append(url)
+        return _Response(b"", 200 if url in self.pages else 404)
 
     async def __aenter__(self) -> _Session:
         return self
@@ -690,6 +695,56 @@ async def test_a_row_the_parser_cannot_rebuild_offline_is_left_as_it_was(
     assert len(summary.unreplayable) == 1
     assert "a replay is offline" in summary.unreplayable[0]
     assert not summary.download_failed
+
+
+class _Reissued(_Acme):
+    """A supplier that keeps each card it uploaded again beside the earlier
+    ones, as Drupal does, and asks for the names in turn before reading the
+    newest that answers, as EnergyVision's fetch does."""
+
+    async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+        newest = CARD_URL
+        for upload in range(3):
+            name = CARD_URL.removesuffix(".pdf") + f"_{upload}.pdf"
+            try:
+                await _pdf.head_or_raise(session, name)
+            except ExtractorError:
+                break
+            newest = name
+        text = await _pdf.fetch_pdf_rendered(
+            session, newest, variant="plain", timeout=30, render=self.render
+        )
+        return _parse(text, self.factor, contract)
+
+
+async def test_a_replay_answers_the_names_a_parse_asks_for(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The row read the second upload after the first. The replay answers a
+    HEAD for it and for the uploads before it, and 404 for the next name,
+    so the parse comes to the card the row read without a request."""
+    out = tmp_path / "gas"
+    second = CARD_URL.removesuffix(".pdf") + "_1.pdf"
+    web.pages[CARD_URL.removesuffix(".pdf") + "_0.pdf"] = _card("2026-09", "0.07")
+    web.pages[second] = _card("2026-09", "0.08")
+    await ac.archive(out, extractors=[_Reissued().extractor()], now=NOW, sleep=_no_sleep)
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert [source["url"] for source in row["_sources"]] == [second]
+    asked = len(web.asked)
+
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        only=frozenset({"nobody"}),
+        extractors=[_Reissued(factor=2.0).extractor()],
+        now=NOW,
+        sleep=_no_sleep,
+    )
+    assert (summary.replayed, summary.reparsed) == (1, 1)
+    assert not summary.unreplayable
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    assert row["energy"]["price"] == pytest.approx(0.16)
+    assert len(web.asked) == asked
 
 
 async def test_a_card_handed_over_inside_json_is_kept_once_and_put_back_for_a_replay(
