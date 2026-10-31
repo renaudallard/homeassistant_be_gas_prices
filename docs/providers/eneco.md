@@ -32,7 +32,13 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   plus de contrat aux nouveaux clients résidentiels bruxellois", and the cards
   say "voor Vlaanderen en Wallonië".
 - Vast is "vast tijdens het eerste jaar" and "geldig binnen de grenzen van de
-  beschikbare volumes": Eneco may stop selling it before the month ends.
+  beschikbare volumes": Eneco may stop selling it before the month ends. It
+  left the listing on 30 October 2026, Fix One being the fixed product sold
+  since, and is withdrawn from that day: the setup still offers it, marked
+  †, to a household whose contract runs on it, an entry on it keeps pricing
+  on its last card, October's, `fetch` refuses it, and the comparisons and
+  the live check leave it out. Its past issues are still built off the CDN's
+  names.
 - Fix One (from October 2026) is "een contract van bepaalde duur met een
   looptijd van 1 jaar", sold "binnen de grenzen van de beschikbare volumes"
   like Vast, at its own price and fee (9,07 and 65,00 in October 2026,
@@ -163,6 +169,8 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Discovery: `test_listing_links_each_product_once`,
   `test_fix_never_takes_the_fix_one_card`,
   `test_fetch_reads_the_card_the_listing_links`.
+- Withdrawn: `test_aardgas_vast_is_withdrawn`,
+  `test_a_withdrawn_product_is_not_fetched_but_its_past_months_are`.
 - Archive: the `test_fetch_for_month_*` tests (URL, Brussels midnight,
   wrong month, transient failure, 404 before a product existed, future
   month and Brussels region).

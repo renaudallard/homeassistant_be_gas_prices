@@ -316,6 +316,32 @@ def test_fix_never_takes_the_fix_one_card() -> None:
         eneco.card_url(f'<a href="{_CDN}/{_FIX_2609}">', "eneco_aardgas_fix_one")
 
 
+def test_aardgas_vast_is_withdrawn() -> None:
+    withdrawn = {c.id: c.withdrawn for c in eneco.EXTRACTOR.contracts if c.withdrawn is not None}
+    assert withdrawn == {"eneco_aardgas_vast": date(2026, 10, 30)}
+
+
+async def test_a_withdrawn_product_is_not_fetched_but_its_past_months_are() -> None:
+    """Vast left the listing on 30 October 2026: its past issues are still
+    built off the CDN's names, which the listing never gave."""
+    listing = AsyncMock(return_value=fixture_page("eneco", "listing_nl.html"))
+    fetched = AsyncMock(return_value=_card(_FIX_2609))
+    with (
+        freeze_time(datetime(2026, 11, 15, 12)),
+        patch.object(eneco, "fetch_text", listing),
+        patch.object(eneco, "fetch_pdf_text", fetched),
+    ):
+        with pytest.raises(ExtractorError, match="Eneco withdrew Eneco Aardgas Vast on 2026-10-30"):
+            await eneco.fetch(AsyncMock(), "eneco_aardgas_vast", REGION_WALLONIA)
+        snap = await eneco.fetch_for_month(
+            AsyncMock(), "eneco_aardgas_vast", REGION_WALLONIA, date(2026, 9, 1)
+        )
+    listing.assert_not_called()
+    assert snap is not None
+    assert snap.publication_label == "2026-09"
+    assert fetched.call_args.args[1] == f"{_CDN}/{_FIX_2609}"
+
+
 async def test_fetch_reads_the_card_the_listing_links() -> None:
     with (
         patch.object(

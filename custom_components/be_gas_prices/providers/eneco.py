@@ -48,6 +48,10 @@ There is no Brussels card: Brugel's supplier list notes that Eneco no longer
 takes new Brussels residential customers, and the cards are "voor Vlaanderen
 en Wallonië".
 
+Aardgas Vast left the listing on 30 October 2026, Fix One being the fixed
+product sold since. A household on Vast is priced on its last card,
+October's, and its past issues are still read off the CDN.
+
 Every figure is 6% VAT inclusive, the formula included: it carries its own
 multiplier ("(0,1 X TTFDAW-RLP-M + 1,074) X 1,06"). Both variable products
 index on TTFDAW-RLP-M, the RLP-weighted mean of the ICIS Heren TTF day-ahead
@@ -137,11 +141,15 @@ class _ContractDef:
     label: str
     kind: TariffKind
     token: str  # GAS_<TOKEN> in the file name
+    # The first day Eneco no longer sold it.
+    withdrawn: date | None = None
 
 
 # The label is also the title the card opens with.
 _CONTRACTS: tuple[_ContractDef, ...] = (
-    _ContractDef("eneco_aardgas_vast", "Eneco Aardgas Vast", "fixed", "FIX"),
+    _ContractDef(
+        "eneco_aardgas_vast", "Eneco Aardgas Vast", "fixed", "FIX", withdrawn=date(2026, 10, 30)
+    ),
     _ContractDef("eneco_aardgas_fix_one", "Eneco Aardgas Fix One", "fixed", "FIX_ONE"),
     _ContractDef("eneco_aardgas_flex", "Eneco Aardgas Flex", "indexed", "FLEX"),
     _ContractDef("eneco_aardgas_flex_one", "Eneco Aardgas Flex One", "indexed", "FLEX_ONE"),
@@ -171,7 +179,12 @@ def card_url(listing: str, contract_id: str) -> str:
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
     """The current card for ``contract_id``, read for ``region``."""
-    _contract(contract_id, region)
+    contract = _contract(contract_id, region)
+    if contract.withdrawn is not None:
+        raise ExtractorError(
+            f"Eneco withdrew {contract.label} on {contract.withdrawn:%Y-%m-%d}: "
+            "only its past cards are read"
+        )
     return await _read(
         session, contract_id, region, card_url(await fetch_text(session, _LISTING_URL), contract_id)
     )
@@ -468,7 +481,10 @@ EXTRACTOR = SupplierExtractor(
     id="eneco",
     label="Eneco",
     contracts=tuple(
-        Contract(id=c.contract_id, label=c.label, kind=c.kind, regions=_REGIONS) for c in _CONTRACTS
+        Contract(
+            id=c.contract_id, label=c.label, kind=c.kind, regions=_REGIONS, withdrawn=c.withdrawn
+        )
+        for c in _CONTRACTS
     ),
     fetch=fetch,
     fetch_for_month=fetch_for_month,
