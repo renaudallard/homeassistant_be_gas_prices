@@ -65,6 +65,8 @@ _LISTING = "https://srv.octaplus.be/websiterest/getTarifArchive"
 _SHEET = "https://srv.octaplus.be/websiterest/getTariffSheet"
 BOOSTFLEX_WL = "G_OCTA_BOOSTFLEX_RE_WL_FR.pdf"
 ECOBOOSTFLEX_VL = "G_OCTA_ECOBOOSTFLEX_RE_VL_FR.pdf"
+# November's, whose formula is stated in c€/kWh.
+ECOBOOSTFLEX_VL_NOVEMBER = "G_OCTA_ECOBOOSTFLEX_RE_VL_FR_2026-11.pdf"
 BASICONLINE_VL = "G_OCTA_BASICONLINE_RE_VL_FR.pdf"
 BOOSTFIX_WL = "G_OCTA_BOOSTFIX_RE_WL_FR.pdf"
 # November's, whose heading reads "BOOST FIX - GAZ" where October's has
@@ -154,6 +156,30 @@ def test_printed_estimate_is_the_formula_at_the_v_test_value() -> None:
     ).energy
     assert isinstance(energy, IndexedRates)
     assert energy.at(_v_test("09/2026")) == pytest.approx(energy.price, abs=5e-5)
+
+
+def test_the_november_2026_formula_is_read_in_cents() -> None:
+    """From November the cards state the formula in c€/kWh, "en cEUR/kWh HTVA :
+    ZTP RLP M * 1,010 + 1,6910" where October printed "1,010 + 16,910" in
+    EUR/MWh, and say a parameter published in EUR/MWh, as the index is, is
+    divided by 10 first. Read as EUR/MWh, the base came out ten times too
+    small. The printed estimate, 11,34 c€/kWh, is the formula at the month's
+    V-test value."""
+    energy = octaplus.parse_snapshot(
+        "octaplus_ecoboostflex", REGION_FLANDERS, _card(ECOBOOSTFLEX_VL_NOVEMBER)
+    ).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(1.010 / 1000 * 1.06)
+    assert energy.base == pytest.approx(1.6910 / 100 * 1.06)
+    assert energy.price == pytest.approx(0.1134)
+    assert energy.at(_v_test("11/2026")) == pytest.approx(energy.price, abs=5e-5)
+
+
+@pytest.mark.parametrize("unit", ["cEUR/MWh", "EUR/kWh"])
+def test_a_formula_in_a_unit_no_card_has_used_fails_loud(unit: str) -> None:
+    text = _card(ECOBOOSTFLEX_VL_NOVEMBER).replace("en cEUR/kWh HTVA", f"en {unit} HTVA")
+    with pytest.raises(ExtractorError, match="formula in"):
+        octaplus.parse_snapshot("octaplus_ecoboostflex", REGION_FLANDERS, text)
 
 
 @pytest.mark.parametrize(

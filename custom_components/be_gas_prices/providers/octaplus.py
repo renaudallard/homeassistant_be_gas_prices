@@ -44,7 +44,8 @@ up by the statutory residential rate.
 
 Every variable product indexes on "ZTP RLP M", the RLP-weighted mean
 of the ZTP day-ahead quotes of the delivery month, known only once the month
-is over. The card prints the formula in EUR/MWh excluding VAT and a price that
+is over. The card prints the formula excluding VAT, in EUR/MWh until October
+2026 and in c€/kWh since, and a price that
 is not the formula at the last known value but a twelve-month estimate at the
 forward "V-test" value OCTA+ publishes at octaplus.be/prixattendus. That
 estimate is the only price the card prints, so it is the one the snapshot
@@ -389,6 +390,16 @@ _PRICE_RE = re.compile(r"Coût du gaz \(c€/kWh\)\s+(\d+,\d+)")
 _FORMULA_RE = re.compile(
     rf"({_INDEX}|{_TTF_INDEX})\s*\*\s*(\d+(?:[.,]\d+)?)\s*([{SIGN_CHARS}])\s*(\d+(?:[.,]\d+)?)"
 )
+# The unit of the formula, stated ahead of it since the August 2026 cards, "La
+# formule de prix est la suivante, en EUR/MWh HTVA :" and "en cEUR/kWh HTVA :"
+# from November, or after it on Smart Variable's, "+ 10 EUR/MWh".
+_UNIT_AHEAD_RE = re.compile(r"\ben\s+(c?)(?:EUR|€)\s*/\s*(MWh|kWh)\s+HTVA\s*:\s*$")
+_UNIT_AFTER_RE = re.compile(r"\s*(c?)(?:EUR|€)\s*/\s*(MWh|kWh)")
+# What the base is divided by to reach EUR/kWh, per unit stated. The November
+# cards add that a parameter published in EUR/MWh, as the index is, is divided
+# by 10 before their c€/kWh formula applies, which leaves the factor on the
+# index in EUR/MWh as it was.
+_BASE_DIVISORS = {("", "MWh"): 1000.0, ("c", "kWh"): 100.0}
 
 
 def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
@@ -404,10 +415,16 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
     formula = _FORMULA_RE.search(text)
     if formula is None:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: {_INDEX} formula not found")
+    stated = _UNIT_AHEAD_RE.search(text, max(0, formula.start() - 60), formula.start())
+    stated = stated or _UNIT_AFTER_RE.match(text, formula.end())
+    unit = (stated.group(1), stated.group(2)) if stated else ("", "MWh")
+    divisor = _BASE_DIVISORS.get(unit)
+    if divisor is None:
+        raise ExtractorError(f"OCTA+ {contract.contract_id}: formula in {unit[0]}€/{unit[1]}")
     vat = 1.0 + VAT_RATE_REDUCED
     return IndexedRates(
         factor=to_float(formula.group(2)) / 1000.0 * vat,
-        base=parse_sign(formula.group(3)) * to_float(formula.group(4)) / 1000.0 * vat,
+        base=parse_sign(formula.group(3)) * to_float(formula.group(4)) / divisor * vat,
         index=formula.group(1),
         price=to_float(price.group(1)) / 100.0,
         yearly_fixed_fee=to_float(fee.group(1)),

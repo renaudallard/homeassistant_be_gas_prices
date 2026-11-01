@@ -71,10 +71,19 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   - Boost Flex: "La formule de prix est la suivante, en EUR/MWh HTVA : ZTP RLP
     M * 1,020 + 3,200." Basic Online: "* 1,020 + 1,940", Eco Boost Flex:
     "* 1,010 + 16,910". The withdrawn Flux printed "* 1,010 + 2,160".
+  - From November 2026 the sentence states c€/kWh: Boost Flex "La formule de
+    prix est la suivante, en cEUR/kWh HTVA : ZTP RLP M * 1,020 + 0,3200.",
+    Basic Online "+ 0,1940", Eco Boost Flex "+ 1,6910". The card adds that a
+    parameter published in EUR/MWh, as the index is, is divided by 10 before
+    the formula applies.
   - Smart Variable: "La formule tarifaire est : ZTP RLP M* 1,15+ 10 EUR/MWh."
-    It does not say HTVA.
+    It does not say HTVA, and still states EUR/MWh in November.
   - `factor` = 1,020 / 1000 x 1,06 and `base` = 3,200 / 1000 x 1,06, in
-    EUR/kWh with the index in EUR/MWh.
+    EUR/kWh with the index in EUR/MWh. The unit is the one stated ahead of the
+    formula, or after it on Smart Variable's. A base in c€/kWh is divided by
+    100 instead, so the November formulas bill what October's did; read as
+    EUR/MWh it came out ten times too small. A formula in any other unit
+    fails the parse.
 - VAT: the cards print "TVAC" and no rate, so `card_vat_rate` is None and the
   formulas are grossed up by the statutory 6% (`const.VAT_RATE_REDUCED`).
 - Price: the only price on a variable card is "prix moyen estimé pour les 12
@@ -87,7 +96,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
     and Smart Variable 8,643 c€/kWh with 6% on top, against 6,89, 8,77 and
     8,64 printed. Smart Variable only reproduces grossed up, so its formula is
     excluding VAT too. June (44,244: Flux 4,97, Smart Variable 6,45) and July
-    (39,377: Flux 4,44) reproduce the same way.
+    (39,377: Flux 4,44) reproduce the same way, and so does November (89,194:
+    Boost Flex 9,98, Eco Boost Flex 11,34 and Basic Online 9,85, their bases
+    read in c€/kWh, and Smart Variable 11,93).
 - DSO table, "LES TARIFS DES RÉSEAUX (c€/kWh)": columns 0-5000 kWh terme fixe
   (€/an) and terme proportionnel (c€/kWh), 5001-150 000 kWh the same, Tarif
   Gestion données (€/an, "-" in Wallonia), Transport (c€/kWh). No T3.
@@ -194,6 +205,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   Smart Variable VL (September): its formula spelling, estimate and fee.
 - The printed estimate equals the formula at the V-test value read from
   `paramètres_forward_fr.pdf` (Smart Variable, September).
+- November's Eco Boost Flex VL: the formula in c€/kWh read with its base over
+  100, its estimate at the November V-test value, and a formula in another
+  unit refused.
 - Boost Fix WL and Eco Boost Fix VL: price and fee. November's Boost Fix WL,
   whose heading puts the product first: price, fee, month, and another
   product refused.
