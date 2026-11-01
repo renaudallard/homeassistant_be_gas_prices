@@ -408,6 +408,22 @@ def test_a_region_left_off_the_listing_is_rewritten_from_another() -> None:
     )
 
 
+def test_a_product_still_sold_off_the_listing_is_built_off_its_last_card() -> None:
+    """The November 2026 listing dropped Zen Fixed in every region while Mega
+    still sold it and published its card: October's name, moved to this
+    month, stands in for the link."""
+    listing = _listing().replace('data-product-element="Zen Fixed"', 'data-product-element="x"')
+    with freeze_time(datetime(2026, 11, 15, 12)):
+        url = mega.card_url(listing, "mega_zen_fixed", REGION_WALLONIA)
+    assert url == f"{_CDN}Mega-FR-NG-B2C-WL-112026-Zen0111-Fix.pdf"
+
+
+def test_a_product_no_region_lists_without_a_last_card_is_refused() -> None:
+    listing = _listing().replace('data-product-element="Smart Flex"', 'data-product-element="x"')
+    with pytest.raises(ExtractorError, match="no WL card on the listing"):
+        mega.card_url(listing, "mega_smart_flex", REGION_WALLONIA)
+
+
 @pytest.mark.parametrize(
     ("current", "month", "expected"),
     [

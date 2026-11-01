@@ -21,6 +21,10 @@ region's anchor of a product while the card is still published (the
 electricity listing lost Dynamic Wallonia overnight in July 2026), another
 region's URL is rewritten to the region's segment; a card not published
 there fails on the CDN's stub, one for another region on `require_region`.
+A product no region links any more takes its `last_card`, moved to this
+month: Zen Fixed, which the November 2026 listing dropped in every region
+while the fixed-price page still sells it and the CDN serves its November
+card.
 
 The CDN answers a card it does not have with a 200 HTML page (11721 bytes in
 September 2026). `fetch_pdf_text` refuses it by its magic bytes.
@@ -152,10 +156,9 @@ about 0,04 EUR/MWh.
 
 ## Archive
 
-`fetch_for_month` reads the listing, then rewrites the current URL, or a
-withdrawn product's last card (`last_card`), which the listing no longer
-links: the
-`-MMYYYY-` segment and the month of the suffix's issue date, whose day
+`fetch_for_month` reads the listing, then rewrites the current URL, or the
+last card the listing linked (`last_card`) for a product it no longer links:
+the `-MMYYYY-` segment and the month of the suffix's issue date, whose day
 becomes `01` (`Cosy0809` for September becomes `Cosy0108` for August). A
 suffix without a date (`Prepaid`, `Offpeak-Bi-Var`) only changes its
 `MMYYYY`. The listing's month keeps the listing URL unchanged.
@@ -171,9 +174,9 @@ gas card fetched for August 2026, and gas Smart Flex in January 2024, January an
 September 2025, January and June 2026.
 
 A product Mega stops listing has no archive through the listing, hence
-`last_card` on the withdrawn ones. Off-peak Flex has no January 2026 card at
-`Offpeak-Bi-Var` (stub). Older cards parse:
-January 2025, January, March and June 2026 were checked. A Flemish card
+`last_card` on the withdrawn ones and on Zen Fixed. Off-peak Flex has no
+January 2026 card at `Offpeak-Bi-Var` (stub). Older cards parse: January
+2025, January, March and June 2026 were checked. A Flemish card
 from before 2025 names the Fluvius areas that merged away: it gives the
 energy leg a contract signed on it is priced on (Smart Fixed of November
 2024: 6,63 c€/kWh, 111,30 €/year), and no DSO row (`signing_dsos`).
@@ -222,7 +225,9 @@ energy leg a contract signed on it is priced on (Smart Fixed of November
   transport or the month. A Walloon card without the connection fee reads:
   `test_walloon_card_without_the_connection_fee_is_read`.
 - Listing: `test_listing_links_the_gas_card`,
-  `test_every_contract_is_on_the_listing_where_it_is_sold`.
+  `test_every_contract_is_on_the_listing_where_it_is_sold`,
+  `test_a_product_still_sold_off_the_listing_is_built_off_its_last_card`,
+  `test_a_product_no_region_lists_without_a_last_card_is_refused`.
 - Withdrawn: `test_the_products_dropped_on_30_october_are_withdrawn`,
   `test_a_withdrawn_product_is_not_fetched`,
   `test_a_withdrawn_products_past_month_is_built_off_its_last_card`.

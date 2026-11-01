@@ -73,6 +73,10 @@ Off-peak Flex, Off-peak Fixed, Prepaid Flex and Prepaid Fixed left the
 listing and the product pages on 30 October 2026, in every region. A
 household on one is priced on its last card, October's, and its past months
 are built off that card's name, since the listing no longer links one.
+
+Zen Fixed left the listing with the November 2026 cards, in every region,
+while the fixed-price page still sells it and the CDN serves its November
+card. Its card is built off the last listed card's name, moved to this month.
 """
 
 from __future__ import annotations
@@ -82,6 +86,7 @@ from dataclasses import dataclass
 from datetime import date
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from ..const import (
     DSO_RESA,
@@ -139,10 +144,11 @@ class _ContractDef:
     listing_name: str  # the data-product-element value on the listing
     card_name: str  # the name the card prints, less its term ("2Y")
     regions: frozenset[str] = ALL_REGIONS
-    # The first day Mega no longer sold it, and its last card's name past
-    # the region code, which stands in for the listing's link once the
-    # listing drops it.
+    # The first day Mega no longer sold it.
     withdrawn: date | None = None
+    # The name past the region code of the last card the listing linked,
+    # which stands in for the listing's link once the listing drops the
+    # product: a withdrawn one, or one Mega still sells and publishes.
     last_card: str = ""
 
 
@@ -206,7 +212,17 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
         withdrawn=_OFFPEAK_PREPAID_WITHDRAWN,
         last_card="102026-Offpeak-Bi0110-Fix",
     ),
-    _ContractDef("mega_zen_fixed", "Mega Zen Fixed", "fixed", "Zen Fixed", "Zen Fixed"),
+    # Off the listing from the November 2026 cards, in every region, while
+    # the fixed-price page still sells it and the CDN serves its November
+    # card under October's name moved a month.
+    _ContractDef(
+        "mega_zen_fixed",
+        "Mega Zen Fixed",
+        "fixed",
+        "Zen Fixed",
+        "Zen Fixed",
+        last_card="102026-Zen0110-Fix",
+    ),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 
@@ -238,6 +254,10 @@ def card_url(listing: str, contract_id: str, region: str) -> str:
     -B2C-<code>- segment, so another region's link is rewritten for it. That
     is a guess at the URL: a card not published there fails its download,
     and a card of another region fails ``require_region``.
+
+    A product no region links any more takes its ``last_card``, moved to
+    this month, as Zen Fixed does since the November 2026 listing dropped
+    it. A card Mega did not publish under that name fails on the CDN's stub.
     """
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Mega")
     code = _region_code(contract, region)
@@ -248,7 +268,14 @@ def card_url(listing: str, contract_id: str, region: str) -> str:
         sibling = None if other == code else _listed_url(listing, contract, other)
         if sibling is not None:
             return sibling.replace(f"-NG-B2C-{other}-", f"-NG-B2C-{code}-", 1)
+    if contract.last_card:
+        return archive_url(_last_card_url(contract, code), dt_util.now().date())
     raise ExtractorError(f"Mega {contract_id}: no {code} card on the listing")
+
+
+def _last_card_url(contract: _ContractDef, code: str) -> str:
+    """The last card the listing linked for ``contract`` in the region ``code``."""
+    return f"{_CARD_BASE}{code}-{contract.last_card}.pdf"
 
 
 _URL_MONTH_RE = re.compile(r"-(\d{2})(\d{4})-(?=[^/]*\.pdf$)")
@@ -303,7 +330,7 @@ async def _read_month(
     if contract.withdrawn is None:
         current = card_url(await fetch_text(session, _LISTING_URL), contract_id, region)
     else:
-        current = f"{_CARD_BASE}{_region_code(contract, region)}-{contract.last_card}.pdf"
+        current = _last_card_url(contract, _region_code(contract, region))
     return await _read(session, contract_id, region, archive_url(current, year_month))
 
 
