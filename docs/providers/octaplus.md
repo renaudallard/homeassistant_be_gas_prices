@@ -58,8 +58,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 ## How each figure is read
 
 - Product: the card's first line, "GAZ SMARTVARIABLE", "GAZ BOOST FLEX" or
-  "GAZ ECO BOOST FIX", must name the contract's slug once its spaces are
-  dropped, or the parse fails.
+  "GAZ ECO BOOST FIX" up to October 2026 and "SMARTVARIABLE - GAZ",
+  "BOOST FLEX - GAZ" or "ECO BOOST FIX - GAZ" from the November cards, must
+  name the contract's slug once its spaces are dropped, or the parse fails.
 - Card month: the banner "FICHE TARIFAIRE SEPTEMBRE 2026" gives
   `publication_label` and `valid_until` (last day of that month). The fixed
   cards print no "valables pour tout contrat signé du ... au ..." sentence,
@@ -193,7 +194,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   Smart Variable VL (September): its formula spelling, estimate and fee.
 - The printed estimate equals the formula at the V-test value read from
   `paramètres_forward_fr.pdf` (Smart Variable, September).
-- Boost Fix WL and Eco Boost Fix VL: price and fee.
+- Boost Fix WL and Eco Boost Fix VL: price and fee. November's Boost Fix WL,
+  whose heading puts the product first: price, fee, month, and another
+  product refused.
 - Flanders table (Fluvius West in full, Kempen) and Wallonia table (RESA and
   ORES in full, five ORES rows collapsed).
 - Levies on the WL and VL cards; a VL card read for Wallonia, Brussels,

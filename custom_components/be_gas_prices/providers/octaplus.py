@@ -348,17 +348,23 @@ def parse_snapshot(
     )
 
 
+# The heading a card opens with, its product spaced out: "GAZ BOOST FLEX" up
+# to October 2026, "BOOST FLEX - GAZ" from the November cards. Words split by
+# single spaces, so a malformed line cannot send the match into backtracking.
+_HEADING_RE = re.compile(r"^(?:GAZ (\S+(?: \S+)*)|(\S+(?: \S+)*) - GAZ)[ \t]*$", re.MULTILINE)
+
+
 def _check_product(text: str, contract: _ContractDef) -> None:
-    """The card opens with its product, "GAZ SMARTVARIABLE", "GAZ BOOST FLEX"
-    or "GAZ ECO BOOST FIX": its slug, spaced out. The archive match is loose
-    enough to warrant making sure it found the product asked for."""
-    # Words split by single spaces, so a malformed line cannot send the
-    # match into backtracking.
-    match = re.search(r"^GAZ (\S+(?: \S+)*)[ \t]*$", text, re.MULTILINE)
+    """The card opens with its product, "SMARTVARIABLE", "BOOST FLEX" or
+    "ECO BOOST FIX": its slug, spaced out, in either heading order. The
+    archive match is loose enough to warrant making sure it found the
+    product asked for."""
+    match = _HEADING_RE.search(text)
     if match is None:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: product heading not found")
-    if "".join(match.group(1).split()) != contract.slug:
-        raise ExtractorError(f"OCTA+ {contract.contract_id}: the card is for {match.group(1)}")
+    product = match.group(1) or match.group(2)
+    if "".join(product.split()) != contract.slug:
+        raise ExtractorError(f"OCTA+ {contract.contract_id}: the card is for {product}")
 
 
 _CARD_MONTH_RE = re.compile(r"FICHE TARIFAIRE\s+(\S+)\s+(\d{4})")

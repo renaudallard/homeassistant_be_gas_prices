@@ -67,6 +67,9 @@ BOOSTFLEX_WL = "G_OCTA_BOOSTFLEX_RE_WL_FR.pdf"
 ECOBOOSTFLEX_VL = "G_OCTA_ECOBOOSTFLEX_RE_VL_FR.pdf"
 BASICONLINE_VL = "G_OCTA_BASICONLINE_RE_VL_FR.pdf"
 BOOSTFIX_WL = "G_OCTA_BOOSTFIX_RE_WL_FR.pdf"
+# November's, whose heading reads "BOOST FIX - GAZ" where October's has
+# "GAZ BOOST FIX".
+BOOSTFIX_WL_NOVEMBER = "G_OCTA_BOOSTFIX_RE_WL_FR_2026-11.pdf"
 ECOBOOSTFIX_VL = "G_OCTA_ECOBOOSTFIX_RE_VL_FR.pdf"
 # Smart Variable's card for October, put up on 30 September, and September's.
 SMARTVARIABLE_WL = "G_OCTA_SMARTVARIABLE_RE_WL_FR.pdf"
@@ -254,10 +257,27 @@ def test_card_of_another_product_is_refused(contract: str, name: str, named: str
         octaplus.parse_snapshot(contract, REGION_WALLONIA, _card(name))
 
 
+def test_the_november_2026_heading_puts_the_product_first() -> None:
+    """The November cards open with "BOOST FIX - GAZ", which a heading read
+    only as "GAZ <product>" refused on every card."""
+    snap = octaplus.parse_snapshot(
+        "octaplus_boostfix", REGION_WALLONIA, _card(BOOSTFIX_WL_NOVEMBER)
+    )
+    assert isinstance(snap.energy, FixedRates)
+    assert snap.energy.price == pytest.approx(0.1159)
+    assert snap.energy.yearly_fixed_fee == pytest.approx(110.0)
+    assert snap.publication_label == "2026-11"
+    with pytest.raises(ExtractorError, match="the card is for BOOST FIX"):
+        octaplus.parse_snapshot(
+            "octaplus_ecoboostfix", REGION_WALLONIA, _card(BOOSTFIX_WL_NOVEMBER)
+        )
+
+
 def test_a_malformed_heading_line_is_passed_over_at_once() -> None:
     """A line of a word run ended by a double space and another word, which
-    the heading pattern once took exponential time over, is no heading."""
-    text = "GAZ " + "a" * 40 + "  \tb\n" + _card(BOOSTFLEX_WL)
+    the heading pattern once took exponential time over, is no heading, in
+    either order."""
+    text = "GAZ " + "a" * 40 + "  \tb\n" + "a" * 40 + "  \tb - GAZ\n" + _card(BOOSTFLEX_WL)
     started = time.monotonic()
     snap = octaplus.parse_snapshot("octaplus_boostflex", REGION_WALLONIA, text)
     assert time.monotonic() - started < 1.0
