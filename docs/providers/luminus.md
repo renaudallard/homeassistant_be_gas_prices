@@ -151,6 +151,30 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
 - A card naming another month than the one asked for is refused; transient
   failures raise.
 
+### When the current card is missing
+
+In November 2026 Luminus moved BasicFlex Online to a new product id
+(`a1paa000002QbZ5AAK` for gas, the one its own product page names) and
+attached no card to it, so the current-card address answered 404 in both
+regions. The archive still served a November card under the id the October
+list names (`a1p0800000CEbfNAAT`), made on 29 October, a day before the other
+November cards, with October's formula. The other gas formulas kept their
+figures that month (ComfyFlex and ComfyFlex+ only dropped their zero-weighted
+TTF 1-0-3 term), so it prices November as they do.
+
+So when the current-card address has no card (a 404 or 410, or a web page
+served instead), `fetch` asks the archive (`_archived_current`): the running
+month's product list first, then the previous month's, each id for the
+running month's card, and the first card naming the running month stands in.
+Its `source_url` is the archive address. With none, the address's own failure
+is raised, so the entry still reads as a card not published yet. A transient
+failure at the address asks nothing. A normal change of id leaves nothing
+under the old one (Comfy's September 2026 id served no card for October), so
+this only finds a card left under the previous id. The electricity
+integration does not do this: there the old id's November card kept October's
+prices while every other product's formula rose by about the green energy
+cost.
+
 ## Campaigns (not modelled)
 
 September 2026 online cards, both regions:
@@ -229,3 +253,7 @@ September 2026 online cards, both regions:
 - Archive: the `test_fetch_for_month_*` tests (product id and URLs, wrong
   month, transient failure, "Pdf not available", future month, Brussels
   midnight).
+- Missing current card: `test_a_card_missing_at_its_address_is_read_from_the_archive`,
+  `test_a_card_missing_from_the_archive_too_fails_as_missing`,
+  `test_an_archived_card_of_another_month_does_not_stand_in`,
+  `test_a_transient_failure_at_the_address_asks_no_archive`.

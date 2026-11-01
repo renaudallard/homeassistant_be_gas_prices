@@ -73,17 +73,20 @@ not yet known empty, which its text layer cannot tell apart, so the figures
 are placed under their year by position.
 
 The archive is two endpoints: one lists a signing month's products with
-their ids, the other serves a product's card for that month and region.
+their ids, the other serves a product's card for that month and region. It
+also stands in for a current card the endpoint above has no longer, as
+``_archived_current`` explains.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from ..const import DSO_RESA, REGION_FLANDERS, REGION_WALLONIA
 from ._network import (
@@ -118,6 +121,7 @@ from ._pdf import (
     fetch_pdf_text,
     fetch_text,
     head_freshness_key,
+    is_missing_card_error,
     parse_json,
     pdfplumber_text,
     printed_vat_rate,
@@ -125,7 +129,7 @@ from ._pdf import (
     word_rows,
 )
 from ._rates import Contract, FixedRates, IndexedRates, IndexPeriod, TariffKind
-from ._validity import end_of_month, future_month, month_card
+from ._validity import card_or_none, end_of_month, future_month, month_card
 from .base import (
     DsoOverlay,
     ExtractorError,
@@ -194,9 +198,54 @@ def _product_key(name: str) -> str:
 
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
-    """The configured region's current card for ``contract_id``."""
+    """The configured region's current card for ``contract_id``.
+
+    Where the address has no card, the archive is asked for the running
+    month's (``_archived_current``); with none there either, the address's
+    own failure is raised, so the entry reads as a card not published yet.
+    """
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Luminus")
-    return await _read(session, contract_id, region, _document_url(contract, region))
+    try:
+        return await _read(session, contract_id, region, _document_url(contract, region))
+    except ExtractorError as err:
+        if not is_missing_card_error(str(err)):
+            raise
+        missing = err
+    card = await card_or_none(_archived_current(session, contract, region))
+    if card is None:
+        raise missing
+    return card
+
+
+async def _archived_current(
+    session: aiohttp.ClientSession, contract: _ContractDef, region: str
+) -> SupplierSnapshot | None:
+    """The running month's card from the archive, for a product whose
+    current-card address has none.
+
+    In November 2026 Luminus moved BasicFlex to a new product id, the one its
+    own product page names, and attached no card to it, so the address
+    answered 404 in both regions. The archive still served a November card
+    under the id the October list names. So the running month's list is asked
+    first and the previous month's after it, each id for the running month's
+    card, and the first card that names the running month is taken. A normal
+    change of id leaves nothing under the old one: Comfy's September 2026 id
+    served no card for October.
+    """
+    tab = _REGION_TO_TAB[region]
+    running = dt_util.now().date().replace(day=1)
+    previous = (running - timedelta(days=1)).replace(day=1)
+    asked: set[str] = set()
+    for listed in (running, previous):
+        product_id = await _archive_product_id(session, contract, tab, f"{listed:%Y-%m}")
+        if product_id is None or product_id in asked:
+            continue
+        asked.add(product_id)
+        url = _archive_card_url(product_id, running, tab)
+        card = await month_card(_read(session, contract.contract_id, region, url), running)
+        if card is not None:
+            return card
+    return None
 
 
 async def _read(
@@ -268,15 +317,18 @@ async def _read_month(
     region: str,
     year_month: date,
 ) -> SupplierSnapshot | None:
-    month = f"{year_month:%Y-%m}"
-    product_id = await _archive_product_id(session, contract, tab, month)
+    product_id = await _archive_product_id(session, contract, tab, f"{year_month:%Y-%m}")
     if product_id is None:
         return None
-    url = (
-        f"{_ARCHIVE_PDF_URL}?language=FR&productId={product_id}"
-        f"&date={month}&region={tab}&inline=true"
-    )
+    url = _archive_card_url(product_id, year_month, tab)
     return await _read(session, contract.contract_id, region, url)
+
+
+def _archive_card_url(product_id: str, year_month: date, tab: str) -> str:
+    return (
+        f"{_ARCHIVE_PDF_URL}?language=FR&productId={product_id}"
+        f"&date={year_month:%Y-%m}&region={tab}&inline=true"
+    )
 
 
 def parse_snapshot(

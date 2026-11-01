@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, datetime
 from functools import cache
 from unittest.mock import AsyncMock, patch
@@ -564,6 +565,97 @@ async def test_fetch_for_month_takes_the_month_in_brussels_time() -> None:
             AsyncMock(), "luminus_comfy", REGION_WALLONIA, date(2026, 10, 1)
         )
     assert "signing=2026-10" in listed.call_args.args[1]
+
+
+_BASICFLEX_V_NOVEMBER = "archive_BasicFlex_Gaz_Flanders_2026-11.pdf"
+_PRODUCTS_BY_MONTH = {
+    "2026-10": "archive_products_Gas_Flanders_2026-10.json",
+    "2026-11": "archive_products_Gas_Flanders_2026-11.json",
+}
+_LIVE_404 = "HTTP 404 fetching https://www.luminus.be/api-next/get-pricelist/"
+_NO_PDF = "expected a PDF at x, payload starts with b'\"Pdf not available.\"'"
+
+
+def _products(session: object, url: str, **kwargs: object) -> str:
+    return fixture_page("luminus", _PRODUCTS_BY_MONTH[url.split("signing=")[1]])
+
+
+def _basicflex_cards(old_id_card: str | None) -> Callable[..., str]:
+    """BasicFlex as Luminus served it in November 2026: nothing at the address
+    nor under the November list's id, and ``old_id_card`` under October's."""
+
+    def serve(session: object, url: str, **kwargs: object) -> str:
+        if "get-pricelist" in url:
+            raise ExtractorError(_LIVE_404)
+        if "productId=a1p0800000CEbfNAAT&" in url and old_id_card is not None:
+            return _card(old_id_card)
+        raise ExtractorError(_NO_PDF)
+
+    return serve
+
+
+async def test_a_card_missing_at_its_address_is_read_from_the_archive() -> None:
+    """In November 2026 BasicFlex's address answered 404: its new product id
+    had no card, while the October list's id still served November's."""
+    with (
+        freeze_time(datetime(2026, 11, 1, 12)),
+        patch.object(luminus, "fetch_text", AsyncMock(side_effect=_products)) as listed,
+        patch.object(
+            luminus,
+            "fetch_pdf_text",
+            AsyncMock(side_effect=_basicflex_cards(_BASICFLEX_V_NOVEMBER)),
+        ) as fetched,
+    ):
+        snap = await luminus.fetch(AsyncMock(), "luminus_basicflex", REGION_FLANDERS)
+    assert snap.valid_until == date(2026, 11, 30)
+    assert snap.source_url == (
+        "https://www.luminus.be/api/pricelist/pdf?language=FR"
+        "&productId=a1p0800000CEbfNAAT&date=2026-11&region=Flanders&inline=true"
+    )
+    assert [c.args[1].split("signing=")[1] for c in listed.call_args_list] == [
+        "2026-11",
+        "2026-10",
+    ]
+    asked = [c.args[1] for c in fetched.call_args_list]
+    assert "productId=a1paa000002QbZ5AAK&date=2026-11&" in asked[1]
+    assert asked[2] == snap.source_url
+
+
+async def test_a_card_missing_from_the_archive_too_fails_as_missing() -> None:
+    """With no card under either id the address's 404 is what the entry sees,
+    so it reads as a card not published yet."""
+    with (
+        freeze_time(datetime(2026, 11, 1, 12)),
+        patch.object(luminus, "fetch_text", AsyncMock(side_effect=_products)),
+        patch.object(luminus, "fetch_pdf_text", AsyncMock(side_effect=_basicflex_cards(None))),
+        pytest.raises(ExtractorError, match=r"^HTTP 404"),
+    ):
+        await luminus.fetch(AsyncMock(), "luminus_basicflex", REGION_FLANDERS)
+
+
+async def test_an_archived_card_of_another_month_does_not_stand_in() -> None:
+    """The card found must name the running month: September's does not."""
+    with (
+        freeze_time(datetime(2026, 11, 1, 12)),
+        patch.object(luminus, "fetch_text", AsyncMock(side_effect=_products)),
+        patch.object(
+            luminus, "fetch_pdf_text", AsyncMock(side_effect=_basicflex_cards(_BASICFLEX_W))
+        ),
+        pytest.raises(ExtractorError, match=r"^HTTP 404"),
+    ):
+        await luminus.fetch(AsyncMock(), "luminus_basicflex", REGION_WALLONIA)
+
+
+async def test_a_transient_failure_at_the_address_asks_no_archive() -> None:
+    with (
+        patch.object(luminus, "fetch_text", AsyncMock()) as listed,
+        patch.object(
+            luminus, "fetch_pdf_text", AsyncMock(side_effect=ExtractorError("HTTP 503 fetching x"))
+        ),
+        pytest.raises(ExtractorError, match="HTTP 503"),
+    ):
+        await luminus.fetch(AsyncMock(), "luminus_basicflex", REGION_FLANDERS)
+    listed.assert_not_called()
 
 
 def test_every_product_is_sold_in_flanders_and_wallonia() -> None:
