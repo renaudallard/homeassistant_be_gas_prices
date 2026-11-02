@@ -82,7 +82,7 @@
           "caliber": "Indiqué sur votre compteur de gaz ; la plupart des logements ont un G4 ou un G6. Il détermine une redevance bruxelloise.",
           "gas_meter": "Le capteur qui compte votre consommation de gaz, en m³ ou en kWh. Laissez-le vide pour utiliser celui du tableau de bord Énergie.",
           "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
-          "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés.",
+          "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés. Lit aussi, une fois par jour, le taux de TVA sur lequel les cartes archivées s'accordent, pour les prix qu'une carte donne sans taux et les chiffres repris d'un contrat. Désactivée, l'intégration ne contacte pas GitHub, et un taux de TVA qu'une carte n'indique pas est le dernier lu quand l'option était active, ou sinon 6 %.",
           "daily_compare": "Une fois par jour, comparer tous les contrats de votre région et afficher la meilleure économie dans un capteur."
         }
       },
@@ -226,7 +226,7 @@
           "caliber": "Indiqué sur votre compteur de gaz ; la plupart des logements ont un G4 ou un G6. Il détermine une redevance bruxelloise.",
           "gas_meter": "Le capteur qui compte votre consommation de gaz, en m³ ou en kWh. Laissez-le vide pour utiliser celui du tableau de bord Énergie.",
           "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
-          "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés.",
+          "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés. Lit aussi, une fois par jour, le taux de TVA sur lequel les cartes archivées s'accordent, pour les prix qu'une carte donne sans taux et les chiffres repris d'un contrat. Désactivée, l'intégration ne contacte pas GitHub, et un taux de TVA qu'une carte n'indique pas est le dernier lu quand l'option était active, ou sinon 6 %.",
           "daily_compare": "Une fois par jour, comparer tous les contrats de votre région et afficher la meilleure économie dans un capteur."
         }
       },

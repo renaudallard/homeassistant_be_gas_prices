@@ -82,7 +82,7 @@
           "caliber": "Staat op je gasmeter; de meeste woningen hebben een G4 of G6. Hij bepaalt een Brusselse heffing.",
           "gas_meter": "De sensor die je gasverbruik telt, in m³ of kWh. Laat leeg om die van het Energiedashboard te gebruiken.",
           "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
-          "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd.",
+          "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd. Leest ook, één keer per dag, het btw-tarief waarover de gearchiveerde kaarten het eens zijn, voor de prijzen die een kaart zonder tarief vermeldt en de cijfers die van een contract overgenomen zijn. Staat dit uit, dan contacteert de integratie GitHub niet, en een btw-tarief dat een kaart niet vermeldt is het laatste dat gelezen werd toen dit aan stond, of anders 6%.",
           "daily_compare": "Vergelijk één keer per dag alle contracten in je gewest en toon de grootste besparing als sensor."
         }
       },
@@ -226,7 +226,7 @@
           "caliber": "Staat op je gasmeter; de meeste woningen hebben een G4 of G6. Hij bepaalt een Brusselse heffing.",
           "gas_meter": "De sensor die je gasverbruik telt, in m³ of kWh. Laat leeg om die van het Energiedashboard te gebruiken.",
           "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
-          "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd.",
+          "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd. Leest ook, één keer per dag, het btw-tarief waarover de gearchiveerde kaarten het eens zijn, voor de prijzen die een kaart zonder tarief vermeldt en de cijfers die van een contract overgenomen zijn. Staat dit uit, dan contacteert de integratie GitHub niet, en een btw-tarief dat een kaart niet vermeldt is het laatste dat gelezen werd toen dit aan stond, of anders 6%.",
           "daily_compare": "Vergelijk één keer per dag alle contracten in je gewest en toon de grootste besparing als sensor."
         }
       },

@@ -138,9 +138,10 @@ archive* option switches it off.
 
 Beside the cards, the workflow writes `gas/vat.json`: per card month, the
 residential VAT rate three suppliers or more state and none contradicts.
-`vat_rates.py` reads it once a day
-(`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json`,
-a failure waiting six hours) and keeps it in each entry's Store. A month is
+`vat_rates.py` reads it once a day for an entry with the card archive
+option on (`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json`,
+a failure waiting six hours) and keeps it in each entry's Store; an entry
+with the option off reads nothing and bills on the table it last read. A month is
 billed on its own entry, or on the last month before it that agreed; before
 the table has been read, or for a month before the first it holds, on the
 law's 6 % in `const.py`. That rate grosses the law's figures on a card that

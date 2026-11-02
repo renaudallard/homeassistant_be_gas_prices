@@ -40,7 +40,9 @@ residential rate (`on_vat`, in `bill.contract_leg`), as it grosses the
 figures a household typed from its contract: the rate of the card archive's
 VAT table (`vat_rates.py`), which the cards of the month agree on, 6 % in
 every month it holds so far, and the law's 6 % in `const.py` before it has
-been read or for a month before the first it holds. The live check fails
+been read or for a month before the first it holds. An entry with the card
+archive option off never reads the table and bills on the one it last read.
+The live check fails
 when most cards that state a rate state another one than the law's. `PriceBreakdown` reports each part VAT
 inclusive, so `energy + network + taxes == all_in`.
 

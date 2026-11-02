@@ -36,6 +36,8 @@ by the month billed and never applied backwards: a month the table does not
 hold takes the last month before it that it does, then the rate in
 ``const.py``. Held for the process, refreshed daily, and kept in every
 entry's store so a restart without the network still knows the last one.
+Only an entry that lets the card archive be read refreshes it; one that
+keeps the archive out bills on the table last read.
 """
 
 from __future__ import annotations

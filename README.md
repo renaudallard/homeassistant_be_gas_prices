@@ -205,8 +205,9 @@ all_in = (energy + tier_proportional + transport + excise + energy_contribution)
 Per year: the supplier's fixed fee, the tier's fixed term, the metering fee
 (Flanders and Brussels) and in Brussels the per-meter levy, accrued by the
 day. VAT is the residential rate the cards of the month agree on, read daily
-from the project's card archive (6% in every month so far), on everything but
-the Walloon connection fee; the levies the law sets are put on the rate the
+from the project's card archive while its option is on (6% in every month so
+far, and until the table is read), on everything but the Walloon connection
+fee; the levies the law sets are put on the rate the
 card states, should a card state another one Belgium levies. On the social tariff, the CREG's network part stands in
 for the tier, transport and metering, and the excise is the protected
 customer's rate. The details,
@@ -327,8 +328,9 @@ manifest.
    excise slices until your meter has measured a full year), your meter size
    in Brussels, your gas meter (leave blank to use the Energy dashboard's),
    the **conversion factor** printed on your bill, whether the project's
-   card archive may be read (an Ecofix entry prices on it), and whether to
-   compare every contract daily.
+   card archive may be read (an Ecofix entry prices on it, and it gives the
+   VAT rate a card does not state), and whether to compare every contract
+   daily.
 5. **Reception station**, only when the factor was left empty: its monthly
    calorific value from Atrias converts cubic metres to kWh instead.
 
@@ -396,6 +398,8 @@ Every hour, each entry runs one refresh:
   fee a card may leave out. A failure waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
+- **The card archive's VAT table**, once a day, for an entry with the card
+  archive option on; a failure keeps what was read and waits six hours.
 - **The gas meter**, from the recorder's statistics, on every refresh.
 
 With *compare daily* on, every contract is ranked once a day, at a minute
@@ -428,10 +432,11 @@ reached. The request names the supplier, the contract, the region and the
 month and nothing else; the option in the settings switches it off.
 
 The workflow also writes the residential VAT rate the cards of each month
-agree on, three suppliers or more stating one rate and none another. Every
-installation reads that table once a day, a request that names nothing about
-it, and bills each month on its rate where a card states none, along with the
-figures you typed from your contract.
+agree on, three suppliers or more stating one rate and none another. An
+installation with the option on reads that table once a day, a request that
+names nothing about it, and bills each month on its rate where a card states
+none, along with the figures you typed from your contract. One with the
+option off never contacts GitHub and bills on the last table it read, or 6%.
 
 The archive keeps the running month and the thirty-six before it, as long
 as a fixed contract runs on its signing card. A signing month older than

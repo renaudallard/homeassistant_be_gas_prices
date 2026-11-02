@@ -1050,8 +1050,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # is resolved against when it is priced below.
             await excise_law.ensure_excise_law(self._session)
             await tarbel.ensure_tariff(self._session)
-            # The residential VAT rate the cards of each month agree on.
-            await vat_rates.ensure_vat_rates(self._session)
+            # The residential VAT rate the cards of each month agree on, from
+            # the card archive: an entry that keeps it out contacts GitHub for
+            # nothing and bills on the table it last read.
+            if self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE):
+                await vat_rates.ensure_vat_rates(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the

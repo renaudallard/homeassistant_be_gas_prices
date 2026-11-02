@@ -204,7 +204,8 @@ ENERGY_CONTRIBUTION_ZEROED_FROM: Final = (2026, 8)
 # the first it holds.
 VAT_RATE_REDUCED: Final = 0.06
 # The card archive's table of the residential VAT rate the cards of each month
-# agree on, which scripts/archive_cards.py writes and vat_rates.py reads.
+# agree on, which scripts/archive_cards.py writes and vat_rates.py reads for an
+# entry with the card archive option on.
 VAT_TABLE_URL: Final = (
     "https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json"
 )
@@ -290,8 +291,8 @@ CONF_PREVIOUS_CONTRACTS: Final = "previous_contracts"
 CONF_SWITCH_DATE: Final = "switch_date"
 
 # Whether this entry may read the card archive (CARD_ARCHIVE_URL) for a past
-# month its supplier no longer serves. Off keeps the integration from
-# contacting GitHub at all.
+# month its supplier no longer serves, and its VAT table (VAT_TABLE_URL). Off
+# keeps the integration from contacting GitHub at all.
 CONF_CARD_ARCHIVE: Final = "card_archive"
 DEFAULT_CARD_ARCHIVE: Final = True
 

@@ -3056,8 +3056,6 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
     assert hass_storage[store]["data"]["tarbel"] == stored
     assert hass_storage[store]["data"]["tarbel_contribution"] == contribution
     assert hass_storage[store]["data"]["vat_rates"] == vat
-    reads: Any = vat_rates.ensure_vat_rates
-    reads.assert_awaited()
     before = coordinator.card_months_signature()
     tarbel.hold(((date(2027, 1, 1), date(2027, 3, 31), 0.01139, 0.01139),))
     assert coordinator.card_months_signature() != before
@@ -3067,6 +3065,35 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
     before = coordinator.card_months_signature()
     vat_rates.hold({"residential": {"2027-01": {"rate": 0.21}}})
     assert coordinator.card_months_signature() != before
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("use_archive", [True, False])
+async def test_only_an_entry_reading_the_archive_reads_its_vat_table(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any], use_archive: bool
+) -> None:
+    """The VAT table is the card archive's: an entry that keeps the archive
+    out asks GitHub for nothing and bills on the table it last read."""
+    vat = {"residential": {"2026-09": {"rate": 0.21}}}
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_CARD_ARCHIVE: use_archive}
+    )
+    store = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[store] = {
+        "version": 1,
+        "key": store,
+        "data": {
+            "snapshot": snapshot_to_json(fetch.return_value),
+            "fetched_at": "2026-09-14T08:00:00+00:00",
+            "vat_rates": vat,
+        },
+    }
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    reads: Any = vat_rates.ensure_vat_rates
+    assert (reads.await_count > 0) is use_archive
+    assert vat_rates.residential_vat(date(2026, 9, 15)) == 0.21
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
