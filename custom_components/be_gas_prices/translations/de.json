@@ -488,7 +488,7 @@
     },
     "backfill_statistics": {
       "name": "Statistiken nachtragen",
-      "description": "Die stündlichen Statistiken der Preissensoren von einem Startdatum bis zur letzten vollen Stunde schreiben, und die Kosten des Jahres ab dem Beginn des Fensters dieses Jahres.",
+      "description": "Die stündlichen Statistiken der Preissensoren von einem Startdatum bis zur letzten Stunde, deren Statistik der Recorder schon berechnet hat, schreiben, und die Kosten des Jahres ab dem Beginn des Fensters dieses Jahres.",
       "fields": {
         "entry_id": {
           "name": "Eintrag",

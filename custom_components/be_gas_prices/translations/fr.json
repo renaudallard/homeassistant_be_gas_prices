@@ -488,7 +488,7 @@
     },
     "backfill_statistics": {
       "name": "Compléter les statistiques",
-      "description": "Écrire les statistiques horaires des capteurs de prix depuis une date de début jusqu'à la dernière heure complète, et le coût de l'année depuis le début de la fenêtre de l'année.",
+      "description": "Écrire les statistiques horaires des capteurs de prix depuis une date de début jusqu'à la dernière heure dont l'enregistreur a calculé les statistiques, et le coût de l'année depuis le début de la fenêtre de l'année.",
       "fields": {
         "entry_id": {
           "name": "Entrée",

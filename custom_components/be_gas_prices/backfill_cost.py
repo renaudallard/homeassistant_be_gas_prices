@@ -115,7 +115,8 @@ def cost_rows(
 
 async def backfill_cost(hass: HomeAssistant, coordinator: GasCoordinator) -> dict[str, int]:
     """Write ``current_year_cost``'s hourly rows from the start of the
-    window to the last full hour, on the bills of the last tick.
+    window to the newest hour the recorder has compiled, on the bills of
+    the last tick.
 
     Returns the rows written per statistic id. Nothing is written without a
     recorder, before a tick has billed the year off the meter, while the
@@ -133,7 +134,7 @@ async def backfill_cost(hass: HomeAssistant, coordinator: GasCoordinator) -> dic
         return {}
     # The instant the sensor gives as its last reset.
     reset = dt_util.as_utc(dt_util.start_of_local_day(coordinator.window_start(data.day)))
-    hours = _hours(reset, _backfill_end())
+    hours = _hours(reset, await _backfill_end(hass))
     if not hours:
         return {}
     try:

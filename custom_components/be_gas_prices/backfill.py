@@ -56,10 +56,6 @@ from .pricing import PriceBreakdown
 
 _LOGGER = logging.getLogger(__name__)
 
-# How long after an hour ends the recorder may still not have queued its
-# compile of it (at ten seconds past, on a loop that may be busy).
-_COMPILE_MARGIN = timedelta(minutes=5)
-
 # The price sensors and how each reads a month's price, with their unit.
 _SERIES: tuple[tuple[str, str], ...] = (
     ("current_price", "EUR/kWh"),
@@ -103,17 +99,46 @@ def _hours(start: datetime, end: datetime) -> list[datetime]:
     return out
 
 
-def _backfill_end() -> datetime:
-    """The end of the last full hour, or of the one before it when it ended
-    moments ago: the recorder queues its compile of that hour at ten seconds
-    past, and an import queued first makes the whole compile fail, every
-    entity's hour lost. Its queue runs in order, so an import made later
-    lands after it."""
-    now = dt_util.utcnow()
-    end = now.replace(minute=0, second=0, microsecond=0)
-    if now - end < _COMPILE_MARGIN:
-        end -= timedelta(hours=1)
-    return end
+def _newest_statistics_run(hass: HomeAssistant) -> datetime | None:
+    """The start of the newest period the recorder has compiled, read on its
+    own executor."""
+    from homeassistant.components.recorder.db_schema import StatisticsRuns
+    from homeassistant.components.recorder.models import process_timestamp
+    from homeassistant.helpers.recorder import session_scope
+    from sqlalchemy import func
+
+    with session_scope(hass=hass, read_only=True) as session:
+        start: datetime | None = session.query(func.max(StatisticsRuns.start)).scalar()
+    return process_timestamp(start)
+
+
+async def _backfill_end(hass: HomeAssistant) -> datetime:
+    """The end of the newest hour the recorder has compiled.
+
+    The recorder writes an hour's rows when it compiles that hour's last
+    five minutes, ten seconds after the hour, and much later after a
+    restart: its catch-up for the hours Home Assistant was down waits for
+    startup to finish. It inserts those rows without an upsert, so a row an
+    import got in first makes the insert fail, and the recorder then rolls
+    back that whole period for every entity, its run marker with it, and
+    never compiles it again. Each compiled period leaves a run marker and
+    the catch-up resumes after the newest one, so every hour that ends by
+    the end of that period is settled. Without the marker, the hour that
+    has just ended is taken as not compiled yet.
+    """
+    from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
+    from homeassistant.components.recorder.db_schema import StatisticsShortTerm
+
+    hour = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+    try:
+        newest = await get_instance(hass).async_add_executor_job(_newest_statistics_run, hass)
+    except Exception as err:  # whatever the recorder raised
+        _LOGGER.debug("could not read the recorder's last statistics run: %s", err)
+        newest = None
+    if newest is None:
+        return hour - timedelta(hours=1)
+    end: datetime = newest + StatisticsShortTerm.duration
+    return min(hour, end.replace(minute=0, second=0, microsecond=0))
 
 
 async def backfill_prices(
@@ -124,9 +149,8 @@ async def backfill_prices(
     clear: bool = False,
 ) -> dict[str, int]:
     """Write the hourly price rows from ``start``, or from the day the
-    current contract took over at the last recorded switch, to the last
-    full hour, or the one before it in the minutes the recorder is
-    compiling it.
+    current contract took over at the last recorded switch, to the newest
+    hour the recorder has compiled.
 
     Returns the rows written per statistic id, none without a recorder.
     ``clear`` deletes the sensors' statistics first, whole, since the
@@ -155,7 +179,7 @@ async def backfill_prices(
     if not present:
         return {}
     begin = dt_util.as_utc(dt_util.start_of_local_day(start))
-    hours = _hours(begin, _backfill_end())
+    hours = _hours(begin, await _backfill_end(hass))
     if not hours:
         # Asked from today in its first hour: nothing to write yet, and a
         # clear would delete the history for nothing.

@@ -488,7 +488,7 @@
     },
     "backfill_statistics": {
       "name": "Statistieken aanvullen",
-      "description": "De uurstatistieken van de prijssensoren schrijven van een startdatum tot het laatste volle uur, en de kosten van het jaar vanaf het begin van het venster van dit jaar.",
+      "description": "De uurstatistieken van de prijssensoren schrijven van een startdatum tot het laatste uur waarvan de recorder de statistieken al heeft berekend, en de kosten van het jaar vanaf het begin van het venster van dit jaar.",
       "fields": {
         "entry_id": {
           "name": "Item",

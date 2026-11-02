@@ -172,8 +172,8 @@ hand is still stale, and it is what lets the card archive stand in.
   gave; the button does not wait.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
-  the last full hour, or the one before it in the first minutes of an hour,
-  while the recorder compiles that one itself, never before the last recorded
+  the newest hour the recorder has compiled, which after a restart can be
+  hours behind the clock until its catch-up runs, never before the last recorded
   change of contract, whatever its year: the hours before it were the
   earlier contract's. A month before the year's window is priced on
   its own card only, fetched for the occasion, and skipped where none is
@@ -213,13 +213,13 @@ Home Assistant counts a new `TOTAL` sensor's statistics from its first value,
 so without this a monthly graph of `current_year_cost` on a fresh entry starts
 at the install. `backfill_cost.backfill_cost_once` runs after the price
 history and writes the sensor's hourly rows from the start of the year's
-window to the last full hour, on the bills of the last tick: each bill's gas
-spread over its days' hours as the meter's hourly changes rose (a day the
-meter fell on weighs what its daily change, the one the bill counted, gives),
-each day's share of the fixed costs at its local midnight, as the sensor
-counts it. The last row is then the sensor's figure. It waits for a tick that
-read the meter and knows the cost (setup's own tick holds the figure without
-its bills), and for the sensor to be registered.
+window to the newest hour the recorder has compiled, on the bills of the last
+tick: each bill's gas spread over its days' hours as the meter's hourly
+changes rose (a day the meter fell on weighs what its daily change, the one
+the bill counted, gives), each day's share of the fixed costs at its local
+midnight, as the sensor counts it. The last row is then the sensor's figure.
+It waits for a tick that read the meter and knows the cost (setup's own tick
+holds the figure without its bills), and for the sensor to be registered.
 
 The rows are joined to what the recorder compiled from the live sensor: they
 continue the total recorded before the window (last year's whole bill, on an

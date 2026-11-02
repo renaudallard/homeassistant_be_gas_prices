@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -433,11 +433,16 @@ async def test_a_backfill_with_no_hour_to_write_clears_nothing(
 async def test_the_hour_the_recorder_is_compiling_is_left_to_it(
     recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
 ) -> None:
-    """Two minutes past ten the recorder may not have queued its compile of
-    nine to ten yet: an import before it would make it fail."""
+    """Two minutes past ten the recorder may not have compiled nine to ten
+    yet: its newest run is the five minutes from 09:50, and an import before
+    its compile of the hour would make that compile fail."""
     await _zone(hass)
     entry = await _setup_entry(hass)
-    counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 15))
+    newest = datetime(2026, 9, 15, 7, 50, tzinfo=UTC)
+    with patch(
+        "custom_components.be_gas_prices.backfill._newest_statistics_run", return_value=newest
+    ):
+        counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 15))
     assert counts["sensor.engie_flow_current_price"] == 9
 
 
