@@ -30,6 +30,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -54,7 +55,7 @@ from pytest_homeassistant_custom_component.components.recorder.common import (
     async_wait_recording_done,
 )
 
-from custom_components.be_gas_prices import gas_meter, providers
+from custom_components.be_gas_prices import backfill, gas_meter, providers
 from custom_components.be_gas_prices.backfill import backfill_prices
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -444,6 +445,32 @@ async def test_the_hour_the_recorder_is_compiling_is_left_to_it(
     ):
         counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 15))
     assert counts["sensor.engie_flow_current_price"] == 9
+
+
+@pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
+async def test_the_price_history_gives_the_event_loop_turns(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A year of five series held the loop for a fifth of a second on a
+    Raspberry Pi. It is priced a long month at a time, the loop free to run
+    whatever else is waiting in between."""
+    await _zone(hass)
+    entry = await _setup_entry(hass)
+    turns: list[float] = []
+
+    async def _turn(delay: float) -> None:
+        turns.append(delay)
+        await asyncio.sleep(delay)
+
+    # A day a slice here, so a fortnight is enough to count them.
+    with (
+        patch.object(backfill, "_HOURS_PER_TURN", 24),
+        patch.object(backfill, "asyncio", SimpleNamespace(sleep=_turn)),
+    ):
+        counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 1))
+    hours = counts["sensor.engie_flow_current_price"]
+    assert hours > 300
+    assert turns == [0] * (hours // 24)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")

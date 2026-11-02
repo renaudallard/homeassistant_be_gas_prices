@@ -317,7 +317,18 @@ async def test_the_year_is_written_from_the_meter(
     # The sensor's first five minutes, which the cycle is joined to.
     do_adhoc_statistics(hass, start=dt_util.utcnow().replace(second=0, microsecond=0))
     await async_wait_recording_done(hass)
-    counts = await backfill_cost(hass, coordinator)
+    # The year's bills are spread off the event loop.
+    loop_thread = threading.get_ident()
+    spread_on: list[int] = []
+    cost_rows = backfill_cost_module.cost_rows
+
+    def _spread(*args: Any) -> Any:
+        spread_on.append(threading.get_ident())
+        return cost_rows(*args)
+
+    with patch.object(backfill_cost_module, "cost_rows", _spread):
+        counts = await backfill_cost(hass, coordinator)
+    assert spread_on and loop_thread not in spread_on
     jan1 = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 1, 1)))
     assert counts == {sid: int((dt_util.utcnow().replace(minute=0) - jan1).total_seconds()) // 3600}
     await async_wait_recording_done(hass)

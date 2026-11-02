@@ -41,6 +41,7 @@ backfill_cost.py.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -55,6 +56,11 @@ from .coordinator import GasCoordinator
 from .pricing import PriceBreakdown
 
 _LOGGER = logging.getLogger(__name__)
+
+# How many hours the backfill prices between turns of the event loop: a long
+# month. A year of five series at once held the loop for a fifth of a second
+# on a Raspberry Pi.
+_HOURS_PER_TURN = 744
 
 # The price sensors and how each reads a month's price, with their unit.
 _SERIES: tuple[tuple[str, str], ...] = (
@@ -194,7 +200,9 @@ async def backfill_prices(
         await coordinator.async_fill_month_cards(early)
     rows: dict[str, list[Any]] = {key: [] for key in present}
     prices: dict[str, tuple[PriceBreakdown, float | None] | None] = {}
-    for hour in hours:
+    for n, hour in enumerate(hours, 1):
+        if n % _HOURS_PER_TURN == 0:
+            await asyncio.sleep(0)
         month = month_key(dt_util.as_local(hour).date())
         if month not in prices:
             prices[month] = coordinator.month_price(month, own_card=month < window)

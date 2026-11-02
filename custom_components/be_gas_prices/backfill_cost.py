@@ -149,7 +149,9 @@ async def backfill_cost(hass: HomeAssistant, coordinator: GasCoordinator) -> dic
     except RecorderUnavailable as err:
         _LOGGER.debug("cost backfill: %s", err)
         return {}
-    totals = cost_rows(data.months, changes, hours)
+    # Off the event loop: a year of hours is a twentieth of a second of it on
+    # a Raspberry Pi.
+    totals = await hass.async_add_executor_job(cost_rows, data.months, changes, hours)
     if totals is None:
         # Billed for another day than today: the next tick bills this one.
         return {}
