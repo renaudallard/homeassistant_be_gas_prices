@@ -197,7 +197,7 @@ async def _import_cost_rows(
         StatisticMetaData,
     )
 
-    base = await _total_before(hass, sid, totals[0][0], reset)
+    base = await _total_before(hass, sid, totals[0][0])
     if base is None:
         return False
     rows = [
@@ -260,12 +260,11 @@ async def _read(
     return list(got.get(sid, []))
 
 
-async def _total_before(
-    hass: HomeAssistant, sid: str, first: datetime, reset: datetime
-) -> float | None:
-    """What the recorded total holds before ``first`` beyond the cost of
-    this cycle: all of it for a row of an earlier cycle, 0.0 with nothing
-    recorded, None when the recorder did not answer.
+async def _total_before(hass: HomeAssistant, sid: str, first: datetime) -> float | None:
+    """What the recorded total holds before ``first``, the whole of an
+    earlier cycle: 0.0 with nothing recorded, None when the recorder did not
+    answer. The window opens at the cycle's reset, so no row before its first
+    hour is of this cycle.
 
     The last row is found by month, then by hour within that month, so a
     long gap costs two short reads. A read by month runs on to the end of
@@ -283,11 +282,7 @@ async def _total_before(
         return None
     if not hours or hours[-1].get("sum") is None:
         return 0.0
-    row = hours[-1]
-    total = float(row["sum"])
-    if datetime.fromtimestamp(row["start"], UTC) < reset:
-        return total
-    return total - float(row.get("state") or 0.0)
+    return float(hours[-1]["sum"])
 
 
 def _moved(last: StatisticData, reset: datetime, later: list[Any]) -> list[StatisticData]:
