@@ -219,13 +219,21 @@ changes rose (a day the meter fell on weighs what its daily change, the one
 the bill counted, gives), each day's share of the fixed costs at its local
 midnight, as the sensor counts it. The last row is then the sensor's figure.
 It waits for a tick that read the meter and knows the cost (setup's own tick
-holds the figure without its bills), and for the sensor to be registered.
+holds the figure without its bills), for the sensor to be registered, and for
+the recorder to have compiled some of the sensor's own statistics, which it
+does within five minutes. A sensor the recorder never compiles, disabled or
+excluded from it, is not written at all (`_compiled`): no tick would find
+those statistics.
 
 The rows are joined to what the recorder compiled from the live sensor: they
 continue the total recorded before the window (last year's whole bill, on an
 entry that ran through it, since the compile carries its total on across a
-new cycle), and the rows compiled after them, short-term and hourly, are moved
-onto the imported total, with a short-term row at the last imported hour that
-the compile resumes from. When the recorder does not answer one of those reads
-nothing is written. It is stamped in the Store on what the price history is
-stamped on and the meter, so it runs again when either moves.
+new cycle), and the recorder moves the sensor's own rows, short-term and
+hourly, onto the imported total in its own queue: a sum adjustment from the
+start of the window, queued ahead of the import, so a row it compiles
+meanwhile is moved with the rest. The adjustment is what the reads found
+between the two totals, so two joins that read before either was written, a
+tick's and a service call's, moved the rows twice: one join of a sensor runs
+at a time, and it holds until the recorder has committed what it queued.
+When the recorder does not answer one of those reads nothing is written. It is stamped in the Store on what the price
+history is stamped on and the meter, so it runs again when either moves.

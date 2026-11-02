@@ -112,12 +112,14 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   monthly statistics graph of it shows the months before the install too.
   Each month's gas is priced on its bill and each day's share of the fixed
   costs lands at midnight, as the sensor counts them. It runs once a refresh
-  has read the meter and the cost is known, and again when what the year is
-  priced from changes (a month's card, the index, the calorific values, the
-  law's figures, the settings or the volume tier) or the meter does. The past
+  has read the meter, the cost is known and the sensor has recorded its first
+  five minutes, and again when what the year is priced from changes (a
+  month's card, the index, the calorific values, the law's figures, the
+  settings or the volume tier) or the meter does. The past
   is written on what the year is priced from today, so where the sensor
   showed something else then, the difference shows once, in the hour after
-  the last one written.
+  the last one written. A disabled cost sensor, or one the recorder
+  excludes, is left out.
 
 **Choosing a contract**
 

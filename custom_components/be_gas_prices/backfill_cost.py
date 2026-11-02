@@ -41,25 +41,28 @@ total, or the dashboards read a step that never happened.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
+from homeassistant.util.hass_dict import HassKey
 
 from .backfill import _backfill_end, _hours, _statistic_id
 from .bill import MonthBill
 from .coordinator import GasCoordinator
 from .gas_meter import RecorderUnavailable, hourly_changes, statistic_kind
 
-if TYPE_CHECKING:
-    from homeassistant.components.recorder.models import StatisticData
-
 _LOGGER = logging.getLogger(__name__)
 
 _KEY = "current_year_cost"
+
+# The locks _import_cost_rows holds while it joins a cycle, by statistic id.
+_JOIN_LOCKS: HassKey[dict[str, asyncio.Lock]] = HassKey("be_gas_prices_cost_joins")
 
 
 def cost_rows(
@@ -120,7 +123,8 @@ async def backfill_cost(hass: HomeAssistant, coordinator: GasCoordinator) -> dic
 
     Returns the rows written per statistic id. Nothing is written without a
     recorder, before a tick has billed the year off the meter, while the
-    cost is unknown, or when the recorder did not answer one of the reads.
+    cost is unknown, for a sensor the recorder does not compile, or when it
+    did not answer one of the reads.
     """
     if "recorder" not in hass.config.components:
         return {}
@@ -130,7 +134,7 @@ async def backfill_cost(hass: HomeAssistant, coordinator: GasCoordinator) -> dic
         # A tick that read no meter holds the cost without its bills.
         return {}
     sid = _statistic_id(hass, coordinator.entry.entry_id, _KEY)
-    if sid is None:
+    if sid is None or not _compiled(hass, sid):
         return {}
     # The instant the sensor gives as its last reset.
     reset = dt_util.as_utc(dt_util.start_of_local_day(coordinator.window_start(data.day)))
@@ -175,45 +179,37 @@ async def backfill_cost_once(hass: HomeAssistant, coordinator: GasCoordinator) -
 async def _import_cost_rows(
     hass: HomeAssistant, sid: str, totals: list[tuple[datetime, float]], reset: datetime
 ) -> bool:
-    """Import ``totals`` as a continuation of the recorded total.
+    """Import ``totals`` as the cycle of the recorded total.
 
-    The live compile carries its total on across a new cycle rather than
-    restart it, so on an entry that ran through last year the row before
-    the window holds last year's whole bill: the rows are shifted by what
-    the total held before them. The rows the live compile wrote after them,
-    short-term and hourly, are moved onto the imported total, the newest
-    short-term row, which the compile resumes from, with them; a short-term
-    row at the last imported hour seeds it when there is none yet.
+    The rows continue the total recorded before the window: the live compile
+    carries its total on across a new cycle rather than restart it, so on an
+    entry that ran through last year the row before the window holds last
+    year's whole bill.
+
+    The rows the live compile wrote are moved onto the imported total by the
+    recorder: an adjustment queued ahead of the import shifts the total of
+    every row from the reset by what lies between the two, five-minute and
+    hourly alike, and the import then writes its hours over the live ones. A
+    row compiled before the adjustment reaches the queue is shifted with the
+    rest, and one compiled after it carries on from a shifted one. Read and
+    written back from here, the rows the recorder compiled between the read
+    and the import stayed on the old total, and the next hour fell by the
+    whole bill. The five-minute rows are all the sensor's own, so they climb
+    as it did; where it showed another figure than the rewritten cycle, the
+    difference lands in the hour after the last one written.
 
     False, with nothing imported, when the recorder did not answer one of
-    the reads: a total it could not read, taken for none, put every row
-    below the recorded one.
+    the reads, or holds no live row of the sensor yet to join the cycle to:
+    a new sensor's first is compiled within five minutes.
     """
     from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
-    from homeassistant.components.recorder.db_schema import Statistics, StatisticsShortTerm
+    from homeassistant.components.recorder.db_schema import Statistics
     from homeassistant.components.recorder.models import (
         StatisticData,
         StatisticMeanType,
         StatisticMetaData,
     )
 
-    base = await _total_before(hass, sid, totals[0][0])
-    if base is None:
-        return False
-    rows = [
-        StatisticData(
-            start=hour,
-            state=round(total, 4),
-            sum=round(base + total, 4),
-            last_reset=reset,
-        )
-        for hour, total in totals
-    ]
-    last = rows[-1]
-    short = await _read(hass, sid, last["start"] + timedelta(minutes=5), None, "5minute")
-    hourly = await _read(hass, sid, last["start"] + timedelta(hours=1), None, "hour")
-    if short is None or hourly is None:
-        return False
     metadata = StatisticMetaData(
         mean_type=StatisticMeanType.NONE,
         has_sum=True,
@@ -224,11 +220,65 @@ async def _import_cost_rows(
         unit_of_measurement="EUR",
     )
     instance = get_instance(hass)
-    instance.async_import_statistics(metadata, [*rows, *_moved(last, reset, hourly)], Statistics)
-    instance.async_import_statistics(
-        metadata, [last, *_moved(last, reset, short)], StatisticsShortTerm
-    )
+    # One join at a time, each read once the one before it is written: the
+    # shift is what the reads found between the two totals, and two joins
+    # that read before either wrote, a tick's and a service call's, moved the
+    # live rows twice.
+    async with hass.data.setdefault(_JOIN_LOCKS, {}).setdefault(sid, asyncio.Lock()):
+        base = await _total_before(hass, sid, totals[0][0])
+        if base is None:
+            return False
+        anchor = await _live_anchor(hass, sid, totals[-1][0] + timedelta(hours=1))
+        if anchor is None:
+            return False
+        state, total = anchor
+        rows = [
+            StatisticData(
+                start=hour,
+                state=round(value, 4),
+                sum=round(base + value, 4),
+                last_reset=reset,
+            )
+            for hour, value in totals
+        ]
+        # Within a cycle the live compile adds to the total exactly what the
+        # state moves by, a new price included, so every live row stands the
+        # same distance above or below its state, and one shift puts them all
+        # on the imported total. None is needed once they are there, as on
+        # every run after the first.
+        shift = round(base - (total - state), 4)
+        if shift:
+            instance.async_adjust_statistics(sid, reset, shift, "EUR")
+        instance.async_import_statistics(metadata, rows, Statistics)
+        await instance.async_block_till_done()
     return True
+
+
+def _compiled(hass: HomeAssistant, sid: str) -> bool:
+    """Whether the recorder compiles the statistics of ``sid``: an enabled
+    sensor it records. The cycle joins the live rows, and a sensor it does
+    not compile never has any, which every tick would read the meter's year
+    for again."""
+    from homeassistant.components.recorder import is_entity_recorded
+
+    found = er.async_get(hass).async_get(sid)
+    if found is not None and found.disabled_by is not None:
+        return False
+    return is_entity_recorded(hass, sid)
+
+
+async def _live_anchor(hass: HomeAssistant, sid: str, end: datetime) -> tuple[float, float] | None:
+    """The state and the total of a live row of the cycle near ``end``: the
+    sensor's hour before it, or, for a sensor that started after it, its
+    first five minutes. None when the recorder did not answer, or holds
+    neither."""
+    rows = await _read(hass, sid, end - timedelta(hours=1), end, "hour")
+    if rows is not None and not rows:
+        rows = await _read(hass, sid, end, None, "5minute")
+    for row in rows or []:
+        if row.get("state") is not None and row.get("sum") is not None:
+            return float(row["state"]), float(row["sum"])
+    return None
 
 
 async def _read(
@@ -252,7 +302,7 @@ async def _read(
             {sid},
             period,
             None,
-            {"sum", "state", "last_reset"},
+            {"sum", "state"},
         )
     except Exception as err:  # whatever the recorder raised
         _LOGGER.debug("could not read the statistics of %s: %s", sid, err)
@@ -283,37 +333,3 @@ async def _total_before(hass: HomeAssistant, sid: str, first: datetime) -> float
     if not hours or hours[-1].get("sum") is None:
         return 0.0
     return float(hours[-1]["sum"])
-
-
-def _moved(last: StatisticData, reset: datetime, later: list[Any]) -> list[StatisticData]:
-    """The live rows after ``last``, moved onto its total.
-
-    Each keeps its state, and the total moves from ``last`` by what the live
-    compile added: the cost's move within the cycle, and the whole state of
-    a new one across its reset, as the compile counts it. A row of an
-    earlier cycle is left where it is.
-    """
-    from homeassistant.components.recorder.models import StatisticData
-
-    cycle = reset.timestamp()
-    total = float(last.get("sum") or 0.0)
-    before = float(last.get("state") or 0.0)
-    opened = cycle
-    moved: list[StatisticData] = []
-    for row in later:
-        state, row_reset = row.get("state"), row.get("last_reset")
-        if state is None or row_reset is None or row_reset < cycle:
-            continue
-        if row_reset != opened:
-            before, opened = 0.0, row_reset
-        total += state - before
-        before = state
-        moved.append(
-            StatisticData(
-                start=datetime.fromtimestamp(row["start"], UTC),
-                state=state,
-                sum=round(total, 4),
-                last_reset=datetime.fromtimestamp(row_reset, UTC),
-            )
-        )
-    return moved
