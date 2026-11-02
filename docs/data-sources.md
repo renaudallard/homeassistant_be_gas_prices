@@ -148,6 +148,18 @@ law's 6 % in `const.py`. That rate grosses the law's figures on a card that
 states none, a formula a parser grossed by 6 % for want of a stated rate,
 and the figures a household typed from its contract.
 
+It also writes `gas/law.json`: per month from January 2025 up to the
+current one, what the integration bills on from the law, the excise of
+both slices, the protected customer's rate and the energy contribution,
+read from FPS Finance's tariff and Justel the way an installation reads
+them. A month they still give is written again, figure by figure; one
+they no longer give keeps what was written. `law_archive.py` reads it once
+a day for an entry with the card archive option on
+(`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/law.json`,
+a failure waiting six hours), keeps it in each entry's Store, and answers
+only for a month the entry's own readings do not give, ahead of the
+figures `const.py` holds.
+
 ## The recorder
 
 `gas_meter.py` reads the gas meter's long-term statistics, daily `change` in

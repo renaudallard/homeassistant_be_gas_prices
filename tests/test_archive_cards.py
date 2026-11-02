@@ -51,6 +51,7 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from homeassistant.util import dt as dt_util
 
+from custom_components.be_gas_prices import excise_law, tarbel
 from custom_components.be_gas_prices.const import CARD_ARCHIVE_URL
 from custom_components.be_gas_prices.month_cards import fetch_archived_card, fetch_archived_row
 from custom_components.be_gas_prices.providers import _pdf
@@ -269,10 +270,29 @@ async def test_a_row_is_what_the_integration_reads_for_a_past_month(
     assert json.loads((out / "vat.json").read_text(encoding="utf-8")) == {
         "residential": {"2026-09": {"too_few": {"0.06": ["acme"]}}}
     }
+    # And the law table, read as an installation reads the law: what the
+    # integration bills each month on, from the first month it does.
+    reads: list[Any] = [excise_law.ensure_excise_law, tarbel.ensure_tariff]
+    for read in reads:
+        read.assert_awaited_once()
+    law = json.loads((out / "law.json").read_text(encoding="utf-8"))["residential"]
+    assert (min(law), max(law)) == ("2025-01", "2026-09")
     reader = _Session(
         {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": path.read_bytes()}
     )
     assert await fetch_archived_card(reader, "acme", "acme_fix", "wallonia", "2026-09") == expected  # type: ignore[arg-type]
+
+
+async def test_a_law_read_that_raised_costs_the_run_nothing(tmp_path: Path, web: _Session) -> None:
+    out = tmp_path / "gas"
+    reads: list[Any] = [excise_law.ensure_excise_law, tarbel.ensure_tariff]
+    for read in reads:
+        read.side_effect = RuntimeError("a bug in the reader")
+    summary = await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    assert summary.failed == []
+    assert (out / ROW / "2026-09.json").exists()
+    law = json.loads((out / "law.json").read_text(encoding="utf-8"))["residential"]
+    assert (min(law), max(law)) == ("2025-01", "2026-09")
 
 
 async def test_a_row_with_a_short_tier_pair_is_no_card() -> None:

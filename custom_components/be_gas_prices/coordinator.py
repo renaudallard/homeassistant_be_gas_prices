@@ -57,7 +57,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import calorific, excise_law, fluvius, tarbel, vat_rates
+from . import calorific, excise_law, fluvius, law_archive, tarbel, vat_rates
 from .bill import IndexValue, bill_month, contract_leg, merged_index, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -394,6 +394,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         tarbel.restore_contribution(blob.get("tarbel_contribution"))
         fluvius.restore(blob.get("fluvius"))
         vat_rates.restore(blob.get("vat_rates"))
+        law_archive.restore(blob.get("law_archive"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
@@ -438,6 +439,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "tarbel_contribution": tarbel.contribution_held_table(),
             "fluvius": fluvius.held_table(),
             "vat_rates": vat_rates.held_table(),
+            "law_archive": law_archive.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
             "backfill": self.backfill_stamp,
@@ -491,6 +493,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 tarbel.contribution_held_table(),
                 fluvius.held_table(),
                 vat_rates.held_table(),
+                law_archive.held_table(),
             ]
         )
         tier = "" if self.household is None else tier_for(self.household.annual_kwh)
@@ -1050,11 +1053,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # is resolved against when it is priced below.
             await excise_law.ensure_excise_law(self._session)
             await tarbel.ensure_tariff(self._session)
-            # The residential VAT rate the cards of each month agree on, from
-            # the card archive: an entry that keeps it out contacts GitHub for
-            # nothing and bills on the table it last read.
+            # The residential VAT rate the cards of each month agree on, and
+            # what the law billed each month the readings above no longer
+            # give, from the card archive: an entry that keeps it out
+            # contacts GitHub for nothing and bills on the tables it last read.
             if self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE):
                 await vat_rates.ensure_vat_rates(self._session)
+                await law_archive.ensure_law_archive(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the

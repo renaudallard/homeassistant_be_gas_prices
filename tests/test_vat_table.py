@@ -40,7 +40,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.util import dt as dt_util
 
-from custom_components.be_gas_prices import vat_rates
+from custom_components.be_gas_prices import archive_table, vat_rates
 from custom_components.be_gas_prices.bill import MonthBill, bill_month, card_leg, contract_leg
 from custom_components.be_gas_prices.const import (
     CALIBER_Q10,
@@ -188,20 +188,20 @@ def test_the_store_round_trips_and_never_replaces_a_read() -> None:
 async def test_the_table_is_read_once_a_day_and_a_failure_never_raises() -> None:
     table = json.dumps({"residential": {"2026-11": {"rate": 0.21}}})
     fetch = AsyncMock(return_value=table)
-    with patch.object(vat_rates, "fetch_text", fetch):
+    with patch.object(archive_table, "fetch_text", fetch):
         await ensure_vat_rates(None)  # type: ignore[arg-type]
         await ensure_vat_rates(None)  # type: ignore[arg-type]
     assert fetch.await_count == 1
     assert vat_rates.residential_vat(NOV) == 0.21
-    vat_rates._fetched_at = dt_util.utcnow() - timedelta(days=2)
+    vat_rates._TABLE.fetched_at = dt_util.utcnow() - timedelta(days=2)
     for failure in (ExtractorError("timeout"), "not json", "[1, 2]"):
-        vat_rates._failed_at = None
+        vat_rates._TABLE.failed_at = None
         broken: AsyncMock | None = (
             AsyncMock(side_effect=failure) if isinstance(failure, Exception) else None
         )
-        with patch.object(vat_rates, "fetch_text", broken or AsyncMock(return_value=failure)):
+        with patch.object(archive_table, "fetch_text", broken or AsyncMock(return_value=failure)):
             await ensure_vat_rates(None)  # type: ignore[arg-type]
-        assert vat_rates._failed_at is not None
+        assert vat_rates._TABLE.failed_at is not None
         # What was read goes on billing.
         assert vat_rates.residential_vat(NOV) == 0.21
 

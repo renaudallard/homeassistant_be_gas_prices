@@ -71,7 +71,9 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   are what the law sets, whatever a stale or wrong card prints. The excise
   and the energy contribution are read daily from FPS Finance's excise
   tariff, which lists each quarter the law's notices set, and from the law
-  itself on Justel, with the steps it has already voted for the coming years.
+  itself on Justel, with the steps it has already voted for the coming years;
+  a month neither gives any more is billed on what the project's card
+  archive kept of it, where the entry lets the archive be read.
 - **The social tariff** for protected customers, whoever supplies them: the
   CREG's quarterly price, the protected customer's excise from the law and,
   in Wallonia, the connection fee, with no fixed cost and no energy
@@ -329,7 +331,8 @@ manifest.
    in Brussels, your gas meter (leave blank to use the Energy dashboard's),
    the **conversion factor** printed on your bill, whether the project's
    card archive may be read (an Ecofix entry prices on it, and it gives the
-   VAT rate a card does not state), and whether to compare every contract
+   VAT rate a card does not state and the law's figures of a month the
+   tariff and Justel no longer give), and whether to compare every contract
    daily.
 5. **Reception station**, only when the factor was left empty: its monthly
    calorific value from Atrias converts cubic metres to kWh instead.
@@ -398,8 +401,9 @@ Every hour, each entry runs one refresh:
   fee a card may leave out. A failure waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
-- **The card archive's VAT table**, once a day, for an entry with the card
-  archive option on; a failure keeps what was read and waits six hours.
+- **The card archive's VAT and law tables**, once a day each, for an entry
+  with the card archive option on; a failure keeps what was read and waits
+  six hours.
 - **The gas meter**, from the recorder's statistics, on every refresh.
 
 With *compare daily* on, every contract is ranked once a day, at a minute
@@ -437,6 +441,15 @@ installation with the option on reads that table once a day, a request that
 names nothing about it, and bills each month on its rate where a card states
 none, along with the figures you typed from your contract. One with the
 option off never contacts GitHub and bills on the last table it read, or 6%.
+
+It also writes what the integration bills each month on from the law, the
+excise of both slices, the protected customer's rate and the energy
+contribution, read from FPS Finance's tariff and Justel as an installation
+reads them. Neither keeps every month it once gave, the tariff only the
+quarters it still publishes and Justel only the wording in force, so a
+month they no longer give keeps what was written. An installation with the
+option on reads that table once a day too, and bills it only for a month
+its own reading of the tariff and the law does not give.
 
 The archive keeps the running month and the thirty-six before it, as long
 as a fixed contract runs on its signing card. A signing month older than

@@ -36,7 +36,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
-from .. import excise_law, fluvius, tarbel
+from .. import excise_law, fluvius, law_archive, tarbel
 from ..const import (
     CALIBER_Q10,
     ENERGY_CONTRIBUTION_KNOWN_FROM,
@@ -122,7 +122,8 @@ def law_excise(delivery: date) -> tuple[float, float] | None:
     lists for it (tarbel.py), the quarterly notices of art. 420 included;
     else the quarterly figures const.py holds; else article 419 as read from
     Justel, from the day the wording in force dates, its voted steps for the
-    years to come included; and None outside all three."""
+    years to come included; else what the card archive kept for a month
+    they no longer give (law_archive.py); and None outside all four."""
     listed = tarbel.excise_for(delivery)
     if listed is not None:
         return listed
@@ -133,7 +134,8 @@ def law_excise(delivery: date) -> tuple[float, float] | None:
             for start, low, high in reversed(GAS_EXCISE_RESIDENTIAL_HTVA)
             if start <= month
         )
-    return excise_law.excise_for(delivery)
+    read = excise_law.excise_for(delivery)
+    return read if read is not None else law_archive.excise_for(delivery)
 
 
 def law_protected_excise(delivery: date) -> float | None:
@@ -141,9 +143,18 @@ def law_protected_excise(delivery: date) -> float | None:
     in force for ``delivery``: article 419 as read from Justel, from the day
     its wording dates, the steps voted after it included, since the
     quarterly notices of art. 420 do not move it; else the period FPS
-    Finance's excise tariff lists (tarbel.py); None outside both."""
-    rate = excise_law.protected_excise_for(delivery)
-    return rate if rate is not None else tarbel.protected_excise_for(delivery)
+    Finance's excise tariff lists (tarbel.py); else what the card archive
+    kept for a month they no longer give (law_archive.py); None outside all
+    three."""
+    for source in (
+        excise_law.protected_excise_for,
+        tarbel.protected_excise_for,
+        law_archive.protected_excise_for,
+    ):
+        rate = source(delivery)
+        if rate is not None:
+            return rate
+    return None
 
 
 def law_contribution(delivery: date) -> float | None:
@@ -151,17 +162,20 @@ def law_contribution(delivery: date) -> float | None:
     sets for ``delivery``: the period FPS Finance's excise tariff lists for
     it (tarbel.py); else article 419 as read from Justel, beside the excise,
     from the day its wording dates, the steps voted after it included; else
-    the figures const.py holds, for an entry that has read neither yet and
-    for a month the tariff no longer lists; and None before the excise
-    window, where the card is read as printed."""
+    what the card archive kept for a month they no longer give
+    (law_archive.py); else the figures const.py holds, for an entry that has
+    read none of them; and None before the excise window, where the card is
+    read as printed."""
     if not _in_window(delivery, ENERGY_CONTRIBUTION_KNOWN_FROM, None):
         return None
-    listed = tarbel.contribution_for(delivery)
-    if listed is not None:
-        return listed
-    read = excise_law.contribution_for(delivery)
-    if read is not None:
-        return read
+    for source in (
+        tarbel.contribution_for,
+        excise_law.contribution_for,
+        law_archive.contribution_for,
+    ):
+        rate = source(delivery)
+        if rate is not None:
+            return rate
     if _in_window(delivery, ENERGY_CONTRIBUTION_ZEROED_FROM, None):
         return 0.0
     return ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA

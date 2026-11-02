@@ -54,6 +54,7 @@ from custom_components.be_gas_prices import (
     diagnostics,
     excise_law,
     fluvius,
+    law_archive,
     providers,
     snapshot_codec,
     tarbel,
@@ -3065,16 +3066,21 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
     before = coordinator.card_months_signature()
     vat_rates.hold({"residential": {"2027-01": {"rate": 0.21}}})
     assert coordinator.card_months_signature() != before
+    before = coordinator.card_months_signature()
+    law_archive.hold({"residential": {"2024-12": {"protected": 0.0031}}})
+    assert coordinator.card_months_signature() != before
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize("use_archive", [True, False])
-async def test_only_an_entry_reading_the_archive_reads_its_vat_table(
+async def test_only_an_entry_reading_the_archive_reads_its_tables(
     hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any], use_archive: bool
 ) -> None:
-    """The VAT table is the card archive's: an entry that keeps the archive
-    out asks GitHub for nothing and bills on the table it last read."""
+    """The VAT and law tables are the card archive's: an entry that keeps
+    the archive out asks GitHub for nothing and bills on the tables it last
+    read."""
     vat = {"residential": {"2026-09": {"rate": 0.21}}}
+    law = {"residential": {"2024-12": {"protected": 0.0031}}}
     entry = MockConfigEntry(
         domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_CARD_ARCHIVE: use_archive}
     )
@@ -3086,14 +3092,19 @@ async def test_only_an_entry_reading_the_archive_reads_its_vat_table(
             "snapshot": snapshot_to_json(fetch.return_value),
             "fetched_at": "2026-09-14T08:00:00+00:00",
             "vat_rates": vat,
+            "law_archive": law,
         },
     }
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
-    reads: Any = vat_rates.ensure_vat_rates
-    assert (reads.await_count > 0) is use_archive
+    for table in (vat_rates.ensure_vat_rates, law_archive.ensure_law_archive):
+        reads: Any = table
+        assert (reads.await_count > 0) is use_archive
     assert vat_rates.residential_vat(date(2026, 9, 15)) == 0.21
+    assert law_archive.held_table() == law
+    await entry.runtime_data.async_save()
+    assert hass_storage[store]["data"]["law_archive"] == law
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

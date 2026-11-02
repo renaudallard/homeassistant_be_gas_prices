@@ -69,6 +69,8 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `tarbel.py` | The residential special excise by quarter, the notices of article 420 included, and the energy contribution, read daily from FPS Finance's excise tariff (XLSX) and kept in the Store. |
 | `xlsx.py` | The cells of a workbook as text, for the two readers above. |
 | `vat_rates.py` | The residential VAT rate by delivery month, read daily from the card archive's `vat.json` (the rate the cards of each month agree on) by an entry that lets the archive be read, and kept in the Store; `const.py`'s rate before it is read. |
+| `law_archive.py` | What the integration billed each month on from the law, read daily from the card archive's `law.json` by an entry that lets the archive be read, and kept in the Store; billed only for a month the tariff and Justel no longer give. |
+| `archive_table.py` | The daily read of those two tables, a failure waiting six hours. |
 | `month_cards.py` | The card of a past month: the card archive in be_price_cards, then the supplier's archive. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
 | `contract_periods.py` | Contracts the household held earlier in the year, recorded at a switch, billed on their own suppliers' cards. |
 | `manual_rate.py` | Figures the household typed from its own contract, laid over the signing card. |
@@ -123,7 +125,8 @@ async_setup_entry                       __init__.py
         excise:    article 419 from Justel daily              excise_law.py
                    FPS Finance's excise tariff daily          tarbel.py
         vat:       the card archive's VAT table daily         vat_rates.py
-                   (an entry reading the card archive)
+        law:       the card archive's law table daily         law_archive.py
+                   (both for an entry reading the card archive)
         fluvius:   this year's gas tariff sheet, once         fluvius.py
                    (an entry billing a Flemish contract)
         months:    past months' cards, supplier archive then card archive

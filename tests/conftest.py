@@ -204,11 +204,26 @@ def _vat_table_unread() -> Iterator[None]:
     from custom_components.be_gas_prices import vat_rates
 
     vat_rates._RESIDENTIAL.clear()
-    vat_rates._fetched_at = None
-    vat_rates._failed_at = None
+    vat_rates._TABLE.fetched_at = None
+    vat_rates._TABLE.failed_at = None
     with patch.object(vat_rates, "ensure_vat_rates", AsyncMock()):
         yield
     vat_rates._RESIDENTIAL.clear()
+
+
+@pytest.fixture(autouse=True)
+def _law_table_unread() -> Iterator[None]:
+    """The tick reads the card archive's law table. Tests start with none
+    held, so every month is billed on the readings and const.py, and never
+    reach the network."""
+    from custom_components.be_gas_prices import law_archive
+
+    law_archive._HELD.clear()
+    law_archive._TABLE.fetched_at = None
+    law_archive._TABLE.failed_at = None
+    with patch.object(law_archive, "ensure_law_archive", AsyncMock()):
+        yield
+    law_archive._HELD.clear()
 
 
 # The data management fee each year's Fluvius gas tariff sheet prints, EUR/year

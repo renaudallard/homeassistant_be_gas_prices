@@ -59,6 +59,9 @@ again, by the same readers and render code only.
 Every supplier's index publication (its ``fetch_index``) is kept as
 ``<out>/indices/<supplier>.json``, {index: {"YYYY-MM": EUR/MWh}}, merged into
 what earlier runs kept, so a month the supplier's page stopped listing stays.
+The law is read the way an installation reads it, and what the integration
+bills each month on from it goes to ``<out>/law.json`` the same way, so a
+month FPS Finance's tariff and Justel no longer give stays.
 
 A parser fix reaches the stored months by itself. When the parser sources,
 the PDF readers or the OCR engine changed since the rows were last replayed
@@ -136,6 +139,8 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
     targets,
 )
 
+from custom_components.be_gas_prices import excise_law, tarbel  # noqa: E402
+from custom_components.be_gas_prices.const import GAS_EXCISE_KNOWN_FROM  # noqa: E402
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     MIN_TEXT_LAYER_CHARS,
@@ -145,6 +150,11 @@ from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     fetch_pdf_bytes,
     memoise_text_fetches,
     render_through,
+)
+from custom_components.be_gas_prices.providers._resolve import (  # noqa: E402
+    law_contribution,
+    law_excise,
+    law_protected_excise,
 )
 from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     CardNotReadableError,
@@ -163,6 +173,7 @@ _INDICES = "indices"
 _MANIFEST = "pdfs.json"
 _COVERAGE = "coverage.md"
 _VAT = "vat.json"
+_LAW = "law.json"
 _COVERAGE_DIR = "coverage"
 # The running month and the thirty-six before it, the same retention the
 # other two namespaces keep: a fixed contract runs up to three years on the
@@ -824,6 +835,51 @@ def _write_vat(out: Path) -> None:
     (out / _VAT).write_text(json.dumps(table, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def _law_month(month: date) -> dict[str, Any]:
+    """What the integration bills ``month`` on from the law, as it reads the
+    law now (providers/_resolve.py): the excise of both slices, the
+    protected customer's rate and the energy contribution, each one left out
+    while it is not known."""
+    entry: dict[str, Any] = {}
+    excise = law_excise(month)
+    if excise is not None:
+        entry["excise"] = [excise[0], excise[1]]
+    for name, rate in (
+        ("protected", law_protected_excise(month)),
+        ("contribution", law_contribution(month)),
+    ):
+        if rate is not None:
+            entry[name] = rate
+    return entry
+
+
+def _write_law(out: Path, today: date) -> int:
+    """``law.json``: what the integration bills each month on from the law,
+    from the first month it does up to this one. Returns the months held.
+
+    Neither source keeps every month it once gave: FPS Finance's tariff
+    lists the quarters it still publishes and Justel the wording in force.
+    So a month the integration still bills from them is written again,
+    figure by figure, and one it no longer does keeps what was written,
+    which is what an installation reads for it (law_archive.py).
+    Deterministic, so a day that changed nothing rewrites the same bytes.
+    """
+    path = out / _LAW
+    held = _read_json(path)
+    section = held.get("residential") if isinstance(held, dict) else None
+    months: dict[str, Any] = dict(section) if isinstance(section, dict) else {}
+    year, month = GAS_EXCISE_KNOWN_FROM
+    while (year, month) <= (today.year, today.month):
+        entry = _law_month(date(year, month, 1))
+        if entry:
+            label = _month_id(year, month)
+            kept = months.get(label)
+            months[label] = {**(kept if isinstance(kept, dict) else {}), **entry}
+        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    _write_json(path, {"residential": dict(sorted(months.items()))})
+    return len(months)
+
+
 def _parser_digest() -> str:
     """One digest over every source a parse depends on, and what reads the
     cards: the PDF readers and the OCR engine, so a new release of either
@@ -1206,6 +1262,14 @@ async def archive(
                 ),
                 summary,
             )
+        # The law the months are billed on, read as an installation reads
+        # it, for law.json; outside the memo, so no card counts it a source.
+        # A read that raised must not cost the cards.
+        for read in (excise_law.ensure_excise_law, tarbel.ensure_tariff):
+            try:
+                await read(session)
+            except Exception as err:
+                print(f"the law could not be read: {type(err).__name__}: {err}")
     if summary.download_failed and stamp is not None:
         # Stamping now would call the rows it missed replayed, and no later
         # run would look at them again until an unrelated parser change.
@@ -1215,10 +1279,11 @@ async def archive(
     removed = _prune(out, keep_months, today) + _drop_unnamed_texts(out)
     _write_coverage(out, pdf_base_url, archive_base_url)
     _write_vat(out)
+    law = _write_law(out, today)
     print(
         f"{summary.stored} stored, {summary.unchanged} unchanged, "
         f"{summary.backfilled} backfilled, {summary.reoffered} offered again, "
-        f"{summary.absent} absent, "
+        f"{summary.absent} absent, {law} months of the law, "
         f"{len(summary.failed)} failed, {summary.indices} index tables changed, "
         f"{removed} pruned, {len(wanted)} cards asked; {cards.rendered} rendered, "
         f"{cards.served} served from stored text, {len(cards.saved)} new PDFs kept; "

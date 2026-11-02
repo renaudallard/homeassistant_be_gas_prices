@@ -128,12 +128,14 @@ the card was printed for:
     its wording dates (1 August 2026), with the steps the programme law of
     30 May 2026 voted (11,39 and 12,24 from 1 January 2027, and on through
     2029), each billed from its own month until a notice for its quarter is
-    listed.
+    listed;
+  - else on what the card archive kept of the month (`law_archive.py`,
+    the archive's `law.json`), for a month neither still gives.
 
   Both are read daily and kept in the entry's Store; while neither has
-  been read, a month from August 2026 bills the excise its card prints, and
-  a card that prints none for gas (EnergyVision's Walloon fixed card) cannot
-  price it.
+  been read and the archive holds nothing for it, a month from August 2026
+  bills the excise its card prints, and a card that prints none for gas
+  (EnergyVision's Walloon fixed card) cannot price it.
   Most April to June 2026 cards still printed the first quarter's rate.
   Ecofix, Sparki, Belvus and the Energy Together brands still printed the
   pre-August excise on their September 2026 cards, and OCTA+ and
@@ -145,7 +147,8 @@ the card was printed for:
   EUR/MWh excluding VAT from 1 August 2026, 3,42 from 2027, and on through
   2029), else on the period FPS Finance's excise tariff lists (exempt from
   April to June 2023, 2,77 EUR/MWh from July 2023 to July 2026, 3,09 to
-  December 2026). A month neither gives cannot be priced. That card bills no energy contribution,
+  December 2026), else on what the card archive kept of the month. A month
+  none of them gives cannot be priced. That card bills no energy contribution,
   which protected customers are exempt from, and no Fluvius data management
   fee: its network part is the CREG's and stands in for the operator's
   tariffs.
@@ -154,10 +157,10 @@ the card was printed for:
   of the contribution alone, which run to 31 July 2026, and zero on the rows
   of August and September 2026 that carry both), else article 419 on Justel,
   which prints it beside each slice's excise (zero in the wording of
-  1 August 2026 and in every step voted after it). `const.py` holds the same
-  figures for an entry that has read neither yet and for a month the tariff
-  no longer lists: 0,9978 EUR/MWh from January 2025 to July 2026, zero from
-  1 August 2026.
+  1 August 2026 and in every step voted after it), else what the card
+  archive kept of the month. `const.py` holds the same figures for an entry
+  that has read none of them: 0,9978 EUR/MWh from January 2025 to July 2026,
+  zero from 1 August 2026.
 - Fluvius's data management fee for a yearly-read meter, read off Fluvius's
   gas tariff sheet of the delivery year (`fluvius.py`; 17,51 EUR/year
   excluding VAT in 2025, 17,85 in 2026, one figure for every area), where a

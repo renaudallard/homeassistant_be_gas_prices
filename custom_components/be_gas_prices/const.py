@@ -209,6 +209,12 @@ VAT_RATE_REDUCED: Final = 0.06
 VAT_TABLE_URL: Final = (
     "https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json"
 )
+# The card archive's table of what the integration bills each month on from
+# the law, which scripts/archive_cards.py writes and law_archive.py reads for
+# an entry with the card archive option on.
+LAW_TABLE_URL: Final = (
+    "https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/law.json"
+)
 
 # Brussels per-meter levy (gas ordinance of 1 April 2004, art.
 # 20septiesdecies): a yearly amount by meter caliber in m3/h, and for the
@@ -291,8 +297,9 @@ CONF_PREVIOUS_CONTRACTS: Final = "previous_contracts"
 CONF_SWITCH_DATE: Final = "switch_date"
 
 # Whether this entry may read the card archive (CARD_ARCHIVE_URL) for a past
-# month its supplier no longer serves, and its VAT table (VAT_TABLE_URL). Off
-# keeps the integration from contacting GitHub at all.
+# month its supplier no longer serves, and its VAT and law tables
+# (VAT_TABLE_URL, LAW_TABLE_URL). Off keeps the integration from contacting
+# GitHub at all.
 CONF_CARD_ARCHIVE: Final = "card_archive"
 DEFAULT_CARD_ARCHIVE: Final = True
 
