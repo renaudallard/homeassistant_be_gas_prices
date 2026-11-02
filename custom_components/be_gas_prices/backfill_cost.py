@@ -261,12 +261,16 @@ def _compiled(hass: HomeAssistant, sid: str) -> bool:
     sensor it records. The cycle joins the live rows, and a sensor it does
     not compile never has any, which every tick would read the meter's year
     for again."""
-    from homeassistant.components.recorder import is_entity_recorded
+    from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
 
     found = er.async_get(hass).async_get(sid)
     if found is not None and found.disabled_by is not None:
         return False
-    return is_entity_recorded(hass, sid)
+    # The filter is_entity_recorded reads: newer releases (2026.9.4) only
+    # re-export that function from the recorder package, and strict mypy
+    # refuses the import there.
+    recorded = get_instance(hass).entity_filter
+    return recorded is None or recorded(sid)
 
 
 async def _live_anchor(hass: HomeAssistant, sid: str, end: datetime) -> tuple[float, float] | None:
