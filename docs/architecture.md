@@ -41,9 +41,9 @@ A Belgian gas bill fuses three sources:
 
 The rule that shapes the codebase comes from the electricity integration: no
 supplier price is ever typed into Python source. Every figure comes from a
-live card. The excise is read from FPS Finance's excise tariff (`tarbel.py`)
-and the law itself (`excise_law.py`), and the Fluvius data management fee
-from Fluvius's tariff sheet (`fluvius.py`). The few regulated figures in
+live card. The excise and the energy contribution are read from FPS Finance's
+excise tariff (`tarbel.py`) and the law itself (`excise_law.py`), and the
+Fluvius data management fee from Fluvius's tariff sheet (`fluvius.py`). The few regulated figures in
 `const.py` are set by law or by the regulator for everyone they apply to and
 carry the months they are known to cover.
 
@@ -61,9 +61,9 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `pricing.py` | The per-kWh breakdown and the yearly fixed costs of one household on one card. Pure. |
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption, or its hourly changes, out of recorder statistics, in m³ or kWh. |
 | `calorific.py` | Atrias's monthly gross calorific value per gas reception station: the kWh one cubic metre is worth. |
-| `excise_law.py` | The residential special excise and its voted steps, read daily from article 419 on Justel and kept in the Store. |
+| `excise_law.py` | The residential special excise and its voted steps, and the energy contribution beside it, read daily from article 419 on Justel and kept in the Store. |
 | `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store. |
-| `tarbel.py` | The residential special excise by quarter, the notices of article 420 included, read daily from FPS Finance's excise tariff (XLSX) and kept in the Store. |
+| `tarbel.py` | The residential special excise by quarter, the notices of article 420 included, and the energy contribution, read daily from FPS Finance's excise tariff (XLSX) and kept in the Store. |
 | `xlsx.py` | The cells of a workbook as text, for the two readers above. |
 | `month_cards.py` | The card of a past month: the card archive in be_price_cards, then the supplier's archive. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
 | `contract_periods.py` | Contracts the household held earlier in the year, recorded at a switch, billed on their own suppliers' cards. |

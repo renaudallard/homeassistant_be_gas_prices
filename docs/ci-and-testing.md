@@ -206,7 +206,8 @@ How the cross-check decides:
 - A departure the integration does not bill is a notice rather than a
   failure: the excise of a month the law read from Justel or `const.py`
   sets, the Walloon connection fee of any month since the order of 2003,
-  the energy contribution of a month `const.py` knows the law for, and a
+  the energy contribution of a month the tariff, the law or `const.py`
+  gives, and a
   Fluvius data management fee a card leaves out in a year whose Fluvius
   tariff sheet was read. Past those the same departure fails.
 - The run reads this year's Fluvius gas tariff sheet first too (`fluvius:

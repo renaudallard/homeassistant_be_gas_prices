@@ -120,6 +120,79 @@ def test_the_published_tariff_gives_each_quarter_s_two_slices(
     assert all(0.004 < low < 0.011 and 0.008 < high < 0.012 for *_d, low, high in periods)
 
 
+def test_the_published_tariff_gives_the_energy_contribution(
+    contribution_tariff_periods: tuple[tarbel.ContributionPeriod, ...],
+) -> None:
+    """0,9978 EUR/MWh on the rows of the contribution alone, which name no
+    first day, to 31 July 2026, and 0 on the rows that carry both, August and
+    September 2026. The excise rows of the quarters before say they are the
+    excise alone, and their 0 under code 300 is no contribution."""
+    assert contribution_tariff_periods == (
+        (None, date(2026, 7, 31), pytest.approx(0.0009978)),
+        (date(2026, 8, 1), date(2026, 9, 30), 0.0),
+    )
+    assert tarbel.contribution_for(date(2025, 3, 1)) == pytest.approx(0.0009978)
+    assert tarbel.contribution_for(date(2026, 7, 31)) == pytest.approx(0.0009978)
+    assert tarbel.contribution_for(date(2026, 8, 1)) == 0.0
+    # October to December 2026 are listed as the excise alone: the law gives
+    # their contribution.
+    assert tarbel.contribution_for(date(2026, 10, 1)) is None
+
+
+_EXCISE_ONLY = (
+    "Aardgas gebruikt als verwarmingsbrandstof voor niet-zakelijk gebruik, m.u.v. de "
+    "beschermde residentiële afnemer\nDeze code betreft enkel de bijzondere accijns - voor "
+    "de bijdrage op de energie moet u een andere code gebruiken\nvoor een jaarlijks "
+    "verbruik {slice}\nvan toepassing vanaf 01/01/2025 tot en met 31/03/2025"
+)
+_CONTRIBUTION_ONLY = (
+    "Aardgas gebruikt als verwarmingsbrandstof voor niet-zakelijk gebruik, m.u.v. de "
+    "beschermde residentiële afnemer\nVan toepassing tot en met 31/07/2026\nDeze code "
+    "betreft enkel de bijdrage op de energie - voor de bijzondere accijns moet u een andere "
+    "code gebruiken"
+)
+
+
+def test_a_synthetic_contribution_reads() -> None:
+    rows = [
+        [
+            _EXCISE_ONLY.format(slice="van 0 tot 12 MWh"),
+            "100\n200\n300",
+            "0\n8,23\n0",
+            "EUR per MWh",
+        ],
+        [_EXCISE_ONLY.format(slice="vanaf 12 MWh"), "100\n200\n300", "0\n8,94\n0", "EUR per MWh"],
+        [_CONTRIBUTION_ONLY, "100\n200\n300", "0\n0\n1,25", "EUR per MWh"],
+    ]
+    payload = _workbook(rows)
+    assert tarbel.parse_contribution(payload) == ((None, date(2026, 7, 31), 0.00125),)
+    # The excise is read off the excise rows alone, as before.
+    assert tarbel.parse(payload) == (
+        (date(2025, 1, 1), date(2025, 3, 31), pytest.approx(0.00823), pytest.approx(0.00894)),
+    )
+
+
+async def test_a_contribution_the_tariff_cannot_read_leaves_the_excise_read(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Two figures for one period: the contribution is left to the law and
+    const.py, and the excise stays read."""
+    tarbel._HELD.clear()
+    tarbel._CONTRIBUTION_HELD.clear()
+    rows = [
+        *_QUARTER,
+        [_CONTRIBUTION_ONLY, "100\n200\n300", "0\n0\n0,9978", "EUR per MWh"],
+        [_CONTRIBUTION_ONLY, "100\n200\n300", "0\n0\n1,9978", "EUR per MWh"],
+    ]
+    with patch.object(tarbel, "fetch_bytes", AsyncMock(return_value=_workbook(rows))):
+        tarbel._fetched_at = None
+        tarbel._failed_at = None
+        await ensure_tariff(None)  # type: ignore[arg-type]
+    assert tarbel.excise_for(date(2027, 1, 1)) == (0.01139, 0.01139)
+    assert tarbel.contribution_for(date(2026, 1, 1)) is None
+    assert "energy contribution tariff could not be read" in caplog.text
+
+
 def test_the_published_tariff_gives_the_protected_customer_s_periods(
     protected_tariff_periods: tuple[tarbel.ProtectedPeriod, ...],
 ) -> None:
@@ -302,3 +375,14 @@ def test_the_store_round_trips_and_never_replaces_a_read() -> None:
     assert tarbel.protected_held_table() == protected
     tarbel.restore_protected([["2027-01-01", None, 0.5]])
     assert tarbel.protected_held_table() == protected
+    contribution: Any = tarbel.contribution_held_table()
+    assert contribution == [[None, "2026-07-31", 0.0009978], ["2026-08-01", "2026-09-30", 0.0]]
+    tarbel._CONTRIBUTION_HELD.clear()
+    tarbel.restore_contribution(contribution)
+    assert tarbel.contribution_held_table() == contribution
+    tarbel.restore_contribution([[None, "2026-07-31", 0.5]])
+    assert tarbel.contribution_held_table() == contribution
+    tarbel._CONTRIBUTION_HELD.clear()
+    for broken in ([[None, None, 0.001]], [["bad", None, 0.001]], [[None, "2026-07-31", 0.5]]):
+        tarbel.restore_contribution(broken)
+        assert tarbel.contribution_held_table() == [], broken

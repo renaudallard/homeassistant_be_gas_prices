@@ -40,6 +40,7 @@ from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_KEMPEN,
     DSO_ORES,
     DSO_SIBELGA,
+    ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA,
     REGION_BRUSSELS,
     REGION_WALLONIA,
     TIER_T1,
@@ -57,6 +58,7 @@ from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._resolve import (
     brussels_levy,
     effective_excise,
+    law_contribution,
     resolve_connection_fee,
     resolve_federal_levies,
     resolve_network,
@@ -140,6 +142,28 @@ def test_law_bills_a_month_before_august_on_its_own_rates() -> None:
         (None, pytest.approx(0.00989139)),
     )
     assert resolved.energy_contribution == pytest.approx(0.001057668)
+
+
+def test_the_energy_contribution_is_read_from_the_tariff_then_the_law() -> None:
+    """FPS Finance's tariff first, then article 419 on Justel, and const.py's
+    figures only where neither gives the month."""
+    tarbel._CONTRIBUTION_HELD.clear()
+    tarbel.hold_contribution(((None, date(2026, 7, 31), 0.0012),))
+    excise_law._CONTRIBUTION_HELD[:] = [(date(2026, 8, 1), 0.0004)]
+    assert law_contribution(date(2026, 3, 1)) == 0.0012
+    assert law_contribution(date(2026, 9, 1)) == 0.0004
+    march = resolve_federal_levies(_stale_taxes(), date(2026, 3, 1))
+    assert march.energy_contribution == pytest.approx(0.0012 * 1.06)
+    # Both giving a month, the tariff is billed, as for the excise.
+    tarbel.hold_contribution(((date(2026, 8, 1), date(2026, 9, 30), 0.0002),))
+    assert law_contribution(date(2026, 8, 1)) == 0.0002
+    # Before the excise window the card is read as printed, whatever the
+    # tariff covers.
+    assert law_contribution(date(2024, 12, 1)) is None
+    tarbel._CONTRIBUTION_HELD.clear()
+    excise_law._CONTRIBUTION_HELD.clear()
+    assert law_contribution(date(2026, 3, 1)) == ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA
+    assert law_contribution(date(2026, 9, 1)) == 0.0
 
 
 def test_law_takes_each_quarter_s_excise() -> None:

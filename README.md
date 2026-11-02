@@ -68,10 +68,10 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
   year, and the federal excise is billed per slice of the annual volume.
 - **The levies from the law**: for the delivery months the law is known for,
   the special excise, the energy contribution and the Walloon connection fee
-  are what the law sets, whatever a stale or wrong card prints. The excise is
-  read daily from FPS Finance's excise tariff, which lists each quarter the
-  law's notices set, and from the law itself on Justel, with the steps it has
-  already voted for the coming years.
+  are what the law sets, whatever a stale or wrong card prints. The excise
+  and the energy contribution are read daily from FPS Finance's excise
+  tariff, which lists each quarter the law's notices set, and from the law
+  itself on Justel, with the steps it has already voted for the coming years.
 - **The social tariff** for protected customers, whoever supplies them: the
   CREG's quarterly price, the protected customer's excise from the law and,
   in Wallonia, the connection fee, with no fixed cost and no energy

@@ -49,7 +49,12 @@ text of article 419 of the programme law of 27 December 2004:
   bills; a page whose protected paragraph cannot be read still gives the
   household rates, and the live check fails on it;
 - the day the rate in force took effect is the entry into force of the
-  amendment bracket around it (1 August 2026).
+  amendment bracket around it (1 August 2026);
+- beside each slice's excise, the energy contribution ("cotisation sur
+  l'énergie"), with the same steps: zero in the wording of 1 August 2026 and
+  in every step after it. The two slices have to agree on it, since a bill
+  levies one; a page whose contribution cannot be read still gives the
+  excise.
 
 A page that is not the article as expected (another band, a rate past
 0,05 EUR/kWh, a missing slice) is refused whole. It is read once a day, a
@@ -71,8 +76,14 @@ Finance publishes for excise declarations (annex 7):
   niet-zakelijk gebruik, m.u.v. de beschermde residentiële afnemer", "van 0
   tot 12 MWh" or "vanaf 12 MWh", "van toepassing vanaf ... tot en met ...",
   in EUR per MWh, the ordinary and the special excise (codes 100 and 200)
-  added; the energy contribution's own codes are left out, and the columns
-  are found by their headers;
+  added, and the columns found by their headers;
+- the energy contribution, code 300: up to July 2026 on rows of its own
+  ("enkel de bijdrage op de energie", "van toepassing tot en met
+  31/07/2026", no first day), 0,9978 EUR/MWh, while the excise rows of those
+  quarters say "enkel de bijzondere accijns" and carry 0 under that code,
+  which is not read as the contribution; on the rows that carry both, August
+  and September 2026, zero. A month no row gives is left to the law. Rows
+  that cannot be read leave the excise read;
 - the protected customer's rows, "beschermde residentiële afnemer", one per
   period and without slices: exempt from April to June 2023, 2,77 EUR/MWh
   from July 2023 to July 2026, 3,09 from August 2026. Article 420 §3/1 does

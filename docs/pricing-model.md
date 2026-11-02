@@ -141,8 +141,15 @@ the card was printed for:
   which protected customers are exempt from, and no Fluvius data management
   fee: its network part is the CREG's and stands in for the operator's
   tariffs.
-- The energy contribution, 0,9978 EUR/MWh excluding VAT from January 2025 to
-  July 2026, zero from 1 August 2026.
+- The energy contribution, read like the excise: the period FPS Finance's
+  excise tariff lists for the month (0,9978 EUR/MWh excluding VAT on its rows
+  of the contribution alone, which run to 31 July 2026, and zero on the rows
+  of August and September 2026 that carry both), else article 419 on Justel,
+  which prints it beside each slice's excise (zero in the wording of
+  1 August 2026 and in every step voted after it). `const.py` holds the same
+  figures for an entry that has read neither yet and for a month the tariff
+  no longer lists: 0,9978 EUR/MWh from January 2025 to July 2026, zero from
+  1 August 2026.
 - Fluvius's data management fee for a yearly-read meter, read off Fluvius's
   gas tariff sheet of the delivery year (`fluvius.py`; 17,51 EUR/year
   excluding VAT in 2025, 17,85 in 2026, one figure for every area), where a

@@ -190,7 +190,10 @@ WALLOON_CONNECTION_FEE_KNOWN_FROM: Final = (2003, 7)
 # TarBel codes Q516 and Q517), from the start of the excise window, and the
 # month it stopped being levied: the programme law of 30 May 2026 set it to
 # zero from 1 August 2026. Compared against the DELIVERY month, since the levy
-# is law rather than a contract term.
+# is law rather than a contract term. FPS Finance's excise tariff (tarbel.py)
+# and article 419 on Justel (excise_law.py) are read for it first; these
+# answer for an entry that has read neither yet and for a month the tariff
+# no longer lists, which Justel's wording in force does not reach.
 ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA: Final = 0.0009978
 ENERGY_CONTRIBUTION_KNOWN_FROM: Final = GAS_EXCISE_KNOWN_FROM
 ENERGY_CONTRIBUTION_ZEROED_FROM: Final = (2026, 8)

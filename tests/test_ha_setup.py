@@ -2976,7 +2976,10 @@ async def test_the_excise_law_is_read_by_the_tick_and_kept_in_the_store(
     a restart without the network, and a law read anew draws the price
     history again."""
     stored = excise_law.held_table()
+    contribution = excise_law.contribution_held_table()
+    assert contribution
     excise_law._HELD.clear()
+    excise_law._CONTRIBUTION_HELD.clear()
     entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
     store = f"{DOMAIN}.{entry.entry_id}"
     hass_storage[store] = {
@@ -2986,19 +2989,25 @@ async def test_the_excise_law_is_read_by_the_tick_and_kept_in_the_store(
             "snapshot": snapshot_to_json(fetch.return_value),
             "fetched_at": "2026-09-14T08:00:00+00:00",
             "excise_law": stored,
+            "excise_law_contribution": contribution,
         },
     }
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert excise_law.held_table() == stored
+    assert excise_law.contribution_held_table() == contribution
     ensure: Any = excise_law.ensure_excise_law
     ensure.assert_awaited()
     coordinator = entry.runtime_data
     await coordinator.async_save()
     assert hass_storage[store]["data"]["excise_law"] == stored
+    assert hass_storage[store]["data"]["excise_law_contribution"] == contribution
     before = coordinator.card_months_signature()
     excise_law.hold(((date(2027, 4, 1), 0.012, 0.013),))
+    assert coordinator.card_months_signature() != before
+    before = coordinator.card_months_signature()
+    excise_law.hold_contribution(((date(2027, 4, 1), 0.0005),))
     assert coordinator.card_months_signature() != before
 
 
@@ -3010,7 +3019,10 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
     restart without the network, and a quarter newly listed draws the price
     history again."""
     stored = tarbel.held_table()
+    contribution = tarbel.contribution_held_table()
+    assert contribution
     tarbel._HELD.clear()
+    tarbel._CONTRIBUTION_HELD.clear()
     entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
     store = f"{DOMAIN}.{entry.entry_id}"
     hass_storage[store] = {
@@ -3020,19 +3032,25 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
             "snapshot": snapshot_to_json(fetch.return_value),
             "fetched_at": "2026-09-14T08:00:00+00:00",
             "tarbel": stored,
+            "tarbel_contribution": contribution,
         },
     }
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     assert tarbel.held_table() == stored
+    assert tarbel.contribution_held_table() == contribution
     ensure: Any = tarbel.ensure_tariff
     ensure.assert_awaited()
     coordinator = entry.runtime_data
     await coordinator.async_save()
     assert hass_storage[store]["data"]["tarbel"] == stored
+    assert hass_storage[store]["data"]["tarbel_contribution"] == contribution
     before = coordinator.card_months_signature()
     tarbel.hold(((date(2027, 1, 1), date(2027, 3, 31), 0.01139, 0.01139),))
+    assert coordinator.card_months_signature() != before
+    before = coordinator.card_months_signature()
+    tarbel.hold_contribution(((date(2027, 1, 1), date(2027, 3, 31), 0.0005),))
     assert coordinator.card_months_signature() != before
 
 

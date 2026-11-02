@@ -50,6 +50,7 @@ def _nothing_held() -> None:
     """conftest holds the published article; these tests read it."""
     excise_law._HELD.clear()
     excise_law._PROTECTED_HELD.clear()
+    excise_law._CONTRIBUTION_HELD.clear()
     excise_law._fetched_at = None
     excise_law._failed_at = None
 
@@ -78,6 +79,56 @@ def test_the_protected_customer_s_rate_is_read_with_its_steps() -> None:
     assert excise_law.protected_excise_for(date(2026, 7, 1)) is None
     assert excise_law.protected_excise_for(date(2026, 12, 31)) == 0.00309
     assert excise_law.protected_excise_for(date(2027, 1, 1)) == 0.00342
+
+
+def test_the_energy_contribution_is_read_beside_the_excise() -> None:
+    """Each slice prints "cotisation sur l'énergie" beside its excise: zero
+    in the wording of 1 August 2026 and in every step after it, and nothing
+    before that wording, whose months FPS Finance's tariff gives."""
+    assert excise_law.parse_contribution(_PAGE) == (
+        (date(2026, 8, 1), 0.0),
+        (date(2027, 1, 1), 0.0),
+        (date(2028, 1, 1), 0.0),
+        (date(2029, 1, 1), 0.0),
+    )
+    # A step the law raised is read in its own month, off both slices.
+    raised = _PAGE
+    for rate in ("11,39", "12,24"):
+        raised = _raise_contribution(raised, rate)
+    excise_law.hold_contribution(excise_law.parse_contribution(raised))
+    assert excise_law.contribution_for(date(2026, 7, 1)) is None
+    assert excise_law.contribution_for(date(2026, 12, 1)) == 0.0
+    assert excise_law.contribution_for(date(2027, 3, 1)) == 0.0005
+    # One slice alone raised: a bill levies one contribution, so the law is
+    # not read for it.
+    with pytest.raises(excise_law.ExciseLawError, match="different energy contributions"):
+        excise_law.parse_contribution(_raise_contribution(_PAGE, "11,39"))
+
+
+def _raise_contribution(page: str, special: str) -> str:
+    """``page`` with the contribution beside the gas step whose special
+    excise is ``special`` raised to 0,5 EUR/MWh, in the HTML Justel serves."""
+    old = (
+        f"spécial: {special} euros par MWh (pouvoir calorifique supérieur);<BR>&nbsp;&nbsp;  "
+        "- cotisation sur l'énergie: 0 euro"
+    )
+    assert page.count(old) == 1, special
+    return page.replace(old, old.replace("énergie: 0 euro", "énergie: 0,5 euro"))
+
+
+async def test_a_contribution_that_cannot_be_read_leaves_the_excise_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    page = _PAGE.replace("cotisation sur l'énergie: 0 euro par MWh", "cotisation: 0 euro par MWh")
+
+    async def fetch_text(_session: Any, _url: str, **_kwargs: Any) -> str:
+        return page
+
+    monkeypatch.setattr(excise_law, "fetch_text", fetch_text)
+    await ensure_excise_law(None)  # type: ignore[arg-type]
+    assert excise_law.excise_for(date(2026, 8, 1)) == (0.01031, 0.01116)
+    assert excise_law.contribution_for(date(2026, 8, 1)) is None
+    assert excise_law._failed_at is None
 
 
 async def test_a_protected_rate_that_cannot_be_read_leaves_the_household_s(
@@ -146,6 +197,14 @@ def test_the_store_round_trips_and_never_replaces_a_read() -> None:
     assert excise_law.protected_held_table() == protected
     excise_law.restore_protected([["2026-08-01", 0.5]])
     assert excise_law.protected_held_table() == protected
+    excise_law.hold_contribution(excise_law.parse_contribution(_PAGE))
+    contribution = excise_law.contribution_held_table()
+    assert contribution
+    excise_law._CONTRIBUTION_HELD.clear()
+    excise_law.restore_contribution(contribution)
+    assert excise_law.contribution_held_table() == contribution
+    excise_law.restore_contribution([["2026-08-01", 0.5]])
+    assert excise_law.contribution_held_table() == contribution
 
 
 async def test_the_law_is_read_once_a_day(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -388,8 +388,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             }
         excise_law.restore(blob.get("excise_law"))
         excise_law.restore_protected(blob.get("excise_law_protected"))
+        excise_law.restore_contribution(blob.get("excise_law_contribution"))
         tarbel.restore(blob.get("tarbel"))
         tarbel.restore_protected(blob.get("tarbel_protected"))
+        tarbel.restore_contribution(blob.get("tarbel_contribution"))
         fluvius.restore(blob.get("fluvius"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
@@ -429,8 +431,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
             "excise_law": excise_law.held_table(),
             "excise_law_protected": excise_law.protected_held_table(),
+            "excise_law_contribution": excise_law.contribution_held_table(),
             "tarbel": tarbel.held_table(),
             "tarbel_protected": tarbel.protected_held_table(),
+            "tarbel_contribution": tarbel.contribution_held_table(),
             "fluvius": fluvius.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
@@ -479,8 +483,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 LAW_FIGURES,
                 excise_law.held_table(),
                 excise_law.protected_held_table(),
+                excise_law.contribution_held_table(),
                 tarbel.held_table(),
                 tarbel.protected_held_table(),
+                tarbel.contribution_held_table(),
                 fluvius.held_table(),
             ]
         )
@@ -1033,9 +1039,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if not reprice_only:
             await self._refresh_index()
             await self._refresh_calorific()
-            # The excise the law sets and the one FPS Finance's tariff lists
-            # by quarter, which every residential month is resolved against
-            # when it is priced below.
+            # The excise and the energy contribution the law sets and the
+            # ones FPS Finance's tariff lists, which every residential month
+            # is resolved against when it is priced below.
             await excise_law.ensure_excise_law(self._session)
             await tarbel.ensure_tariff(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
