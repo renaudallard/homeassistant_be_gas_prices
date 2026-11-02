@@ -449,6 +449,10 @@ jobs:
             "  and month, in EUR/MWh." \
             "- \`pdfs.json\`: which release holds each card, by SHA-256." \
             "- \`parser.txt\`: the digest of the parser the rows were last replayed with." \
+            "- \`vat.json\`: per month, the residential VAT rate the cards agree on (three" \
+            "  suppliers or more stating one rate and none another); a month they disagree" \
+            "  on, or too few state, is listed as disputed or too_few and read by no" \
+            "  installation." \
             "" \
             "The PDFs themselves are the assets of the \`gas-<YYYY-MM>\` releases of this" \
             "repository, one release per month of cards, each file named by its SHA-256." \
