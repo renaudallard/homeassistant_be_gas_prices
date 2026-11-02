@@ -40,10 +40,11 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import aiohttp
@@ -52,7 +53,7 @@ import yaml  # type: ignore[import-untyped]
 from homeassistant.util import dt as dt_util
 
 from custom_components.be_gas_prices import excise_law, tarbel
-from custom_components.be_gas_prices.const import CARD_ARCHIVE_URL
+from custom_components.be_gas_prices.const import CARD_ARCHIVE_URL, EXCISE_LAW_URL
 from custom_components.be_gas_prices.month_cards import fetch_archived_card, fetch_archived_row
 from custom_components.be_gas_prices.providers import _pdf
 from custom_components.be_gas_prices.providers._network import excise_bands
@@ -75,6 +76,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 # imported by dotted path; mypy cannot follow that.
 import archive_cards as ac  # type: ignore[import-not-found]
 import card_texts  # type: ignore[import-not-found]
+import live_check  # type: ignore[import-not-found]
 
 NOW = datetime(2026, 9, 11, 6, 0, tzinfo=UTC)
 LISTING_URL = "https://acme.test/tariffs"
@@ -224,6 +226,25 @@ class _Acme:
         )
 
 
+@pytest.fixture(autouse=True)
+def law_reads(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, Any]]:
+    """The run reads the law as the live check does. Tests see it as
+    conftest holds it and reach no network: the reads made, by name and
+    the pause they were handed."""
+    made: list[tuple[str, Any]] = []
+
+    def stub(name: str) -> Callable[..., Awaitable[Any]]:
+        async def read(_session: Any, *, sleep: Any) -> Any:
+            made.append((name, sleep))
+            return SimpleNamespace(label=f"federal: {name}", status="ok", detail="")
+
+        return read
+
+    monkeypatch.setattr(ac, "check_excise_law", stub("gas excise law"))
+    monkeypatch.setattr(ac, "check_excise_tariff", stub("gas excise tariff"))
+    return made
+
+
 async def _no_sleep(_seconds: float) -> None:
     return None
 
@@ -241,7 +262,7 @@ def _digest(payload: bytes) -> str:
 
 
 async def test_a_row_is_what_the_integration_reads_for_a_past_month(
-    tmp_path: Path, web: _Session
+    tmp_path: Path, web: _Session, law_reads: list[tuple[str, Any]]
 ) -> None:
     """The row is the codec's snapshot with the archive's own keys beside
     it, at the path month_cards asks for, and the reader ignores the extra
@@ -270,11 +291,10 @@ async def test_a_row_is_what_the_integration_reads_for_a_past_month(
     assert json.loads((out / "vat.json").read_text(encoding="utf-8")) == {
         "residential": {"2026-09": {"too_few": {"0.06": ["acme"]}}}
     }
-    # And the law table, read as an installation reads the law: what the
-    # integration bills each month on, from the first month it does.
-    reads: list[Any] = [excise_law.ensure_excise_law, tarbel.ensure_tariff]
-    for read in reads:
-        read.assert_awaited_once()
+    # And the law table, the law read as the live check reads it, with the
+    # run's pause: what the integration bills each month on, from the first
+    # month it does.
+    assert law_reads == [("gas excise law", _no_sleep), ("gas excise tariff", _no_sleep)]
     law = json.loads((out / "law.json").read_text(encoding="utf-8"))["residential"]
     assert (min(law), max(law)) == ("2025-01", "2026-09")
     reader = _Session(
@@ -283,16 +303,57 @@ async def test_a_row_is_what_the_integration_reads_for_a_past_month(
     assert await fetch_archived_card(reader, "acme", "acme_fix", "wallonia", "2026-09") == expected  # type: ignore[arg-type]
 
 
-async def test_a_law_read_that_raised_costs_the_run_nothing(tmp_path: Path, web: _Session) -> None:
+async def test_a_dropped_connection_to_justel_is_tried_again(
+    tmp_path: Path,
+    web: _Session,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A reset connection on its one read cost a run every month of the law
+    in force. The read is tried again after a pause, as the live check's
+    is, and a read that fails all the same is reported and costs the cards
+    nothing."""
+    monkeypatch.setattr(ac, "check_excise_law", live_check.check_excise_law)
+    monkeypatch.setattr(ac, "check_excise_tariff", live_check.check_excise_tariff)
+    for held in (
+        excise_law._HELD,
+        excise_law._PROTECTED_HELD,
+        excise_law._CONTRIBUTION_HELD,
+        tarbel._HELD,
+        tarbel._PROTECTED_HELD,
+        tarbel._CONTRIBUTION_HELD,
+    ):
+        held.clear()
+    page = (
+        Path(__file__).parent / "fixtures" / "justel" / "loi_programme_2004_fr.html"
+    ).read_bytes()
+    answers: list[Any] = [
+        ExtractorError(
+            f"network error fetching {EXCISE_LAW_URL}: [Errno 104] Connection reset by peer"
+        ),
+        page.decode("iso-8859-1"),
+    ]
+
+    async def justel(*_args: Any, **_kwargs: Any) -> str:
+        answer = answers.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        return str(answer)
+
+    async def no_tariff(_session: Any) -> Any:
+        raise tarbel.TarbelError("the workbook is not annex 7")
+
+    monkeypatch.setattr(live_check, "fetch_text", justel)
+    monkeypatch.setattr(tarbel, "fetch_tariff", no_tariff)
     out = tmp_path / "gas"
-    reads: list[Any] = [excise_law.ensure_excise_law, tarbel.ensure_tariff]
-    for read in reads:
-        read.side_effect = RuntimeError("a bug in the reader")
     summary = await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    assert answers == []
     assert summary.failed == []
     assert (out / ROW / "2026-09.json").exists()
     law = json.loads((out / "law.json").read_text(encoding="utf-8"))["residential"]
-    assert (min(law), max(law)) == ("2025-01", "2026-09")
+    # The excise of August and September 2026 only Justel gives here.
+    assert law["2026-09"]["excise"] == pytest.approx([0.01031, 0.01116])
+    assert "federal: gas excise tariff: fail: " in capsys.readouterr().out
 
 
 async def test_a_row_with_a_short_tier_pair_is_no_card() -> None:

@@ -445,7 +445,8 @@ option off never contacts GitHub and bills on the last table it read, or 6%.
 It also writes what the integration bills each month on from the law, the
 excise of both slices, the protected customer's rate and the energy
 contribution, read from FPS Finance's tariff and Justel as an installation
-reads them. Neither keeps every month it once gave, the tariff only the
+reads them, a dropped connection tried again. Neither keeps every month it
+once gave, the tariff only the
 quarters it still publishes and Justel only the wording in force, so a
 month they no longer give keeps what was written. An installation with the
 option on reads that table once a day too, and bills it only for a month

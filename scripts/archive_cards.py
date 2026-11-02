@@ -59,7 +59,7 @@ again, by the same readers and render code only.
 Every supplier's index publication (its ``fetch_index``) is kept as
 ``<out>/indices/<supplier>.json``, {index: {"YYYY-MM": EUR/MWh}}, merged into
 what earlier runs kept, so a month the supplier's page stopped listing stays.
-The law is read the way an installation reads it, and what the integration
+The law is read the way the live check reads it, and what the integration
 bills each month on from it goes to ``<out>/law.json`` the same way, so a
 month FPS Finance's tariff and Justel no longer give stays.
 
@@ -133,13 +133,14 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
     BRUSSELS,
     GIVE_UP_AFTER,
     Patience,
+    check_excise_law,
+    check_excise_tariff,
     fetch_with_retry,
     is_transient,
     label_month,
     targets,
 )
 
-from custom_components.be_gas_prices import excise_law, tarbel  # noqa: E402
 from custom_components.be_gas_prices.const import GAS_EXCISE_KNOWN_FROM  # noqa: E402
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
@@ -1262,14 +1263,15 @@ async def archive(
                 ),
                 summary,
             )
-        # The law the months are billed on, read as an installation reads
-        # it, for law.json; outside the memo, so no card counts it a source.
-        # A read that raised must not cost the cards.
-        for read in (excise_law.ensure_excise_law, tarbel.ensure_tariff):
-            try:
-                await read(session)
-            except Exception as err:
-                print(f"the law could not be read: {type(err).__name__}: {err}")
+        # The law the months are billed on, for law.json, read as the live
+        # check reads it: as an installation does, a network failure tried
+        # again after a pause, and any other reported rather than raised, so
+        # it costs the cards nothing. Outside the memo, so no card counts it
+        # a source.
+        for read in (check_excise_law, check_excise_tariff):
+            check = await read(session, sleep=sleep)
+            if check.status != "ok":
+                print(f"{check.label}: {check.status}: {check.detail}")
     if summary.download_failed and stamp is not None:
         # Stamping now would call the rows it missed replayed, and no later
         # run would look at them again until an unrelated parser change.

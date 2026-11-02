@@ -269,7 +269,9 @@ under `gas/`:
 - `law.json`: per month from January 2025 up to the current one, what the
   integration bills on from the law as the run read it (`_write_law`), a
   month it no longer gives keeping what was written, which `law_archive.py`
-  reads.
+  reads. The run reads the law with the live check's `check_excise_law` and
+  `check_excise_tariff`, so a network failure is tried again after a pause
+  and one that persists is printed, costing the cards nothing.
 
 A row is rewritten only when the parse changed, so a quiet day writes
 nothing. Months older than `--keep-months` (36) are removed, with the texts
