@@ -48,7 +48,9 @@ says nothing about the card, and checks what came back:
   - the excise law on Justel, FPS Finance's excise tariff and this year's
     Fluvius gas tariff sheet read as the integration reads them, and the
     fleet's excise, energy contribution, VAT rate, Walloon connection fee
-    and Fluvius metering fee measured against what the integration bills.
+    and Fluvius metering fee measured against what the integration bills,
+    on the month's VAT rate in the card archive's table (``vat.json`` in
+    the ``--texts`` checkout, 6 % without one).
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -71,10 +73,11 @@ import argparse
 import asyncio
 import functools
 import itertools
+import json
 import re
 import sys
 import traceback
-from collections.abc import Awaitable, Callable, Iterable, Iterator
+from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping
 from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -93,7 +96,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
-from custom_components.be_gas_prices import excise_law, fluvius, tarbel  # noqa: E402
+from custom_components.be_gas_prices import excise_law, fluvius, tarbel, vat_rates  # noqa: E402
 from custom_components.be_gas_prices.const import (  # noqa: E402
     EXCISE_LAW_URL,
     FLUVIUS_KEYS,
@@ -124,6 +127,7 @@ from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     SupplierExtractor,
     SupplierSnapshot,
 )
+from custom_components.be_gas_prices.vat_rates import residential_vat  # noqa: E402
 
 BRUSSELS = ZoneInfo("Europe/Brussels")
 
@@ -625,22 +629,25 @@ def _law_figure(name: str, month: str) -> float | None:
     residential card prints it: the excise of a slice and the energy
     contribution including VAT, the VAT exempt Walloon connection fee, and
     the residential VAT rate it puts a figure printed excluding VAT on where
-    a card states none. None when it bills the card's."""
+    a card states none: the month's in the card archive's VAT table, as held
+    (check_vat_table). None when it bills the card's."""
     parsed = label_month(month)
     if parsed is None:
         return None
+    first = date(parsed[0], parsed[1], 1)
+    rate = residential_vat(first)
     if name == _VAT:
-        return VAT_RATE_REDUCED
+        return rate
     if name == _CONNECTION_FEE:
         return WALLOON_CONNECTION_FEE if parsed >= WALLOON_CONNECTION_FEE_KNOWN_FROM else None
     if name == _CONTRIBUTION:
-        contribution = law_contribution(date(parsed[0], parsed[1], 1))
-        return None if contribution is None else contribution * (1 + VAT_RATE_REDUCED)
+        contribution = law_contribution(first)
+        return None if contribution is None else contribution * (1 + rate)
     slice_ = _EXCISE_SLICES.get(name)
     if slice_ is None:
         return None
-    rates = law_excise(date(parsed[0], parsed[1], 1))
-    return None if rates is None else rates[slice_] * (1 + VAT_RATE_REDUCED)
+    rates = law_excise(first)
+    return None if rates is None else rates[slice_] * (1 + rate)
 
 
 def _billed_from_law(name: str, month: str) -> bool:
@@ -650,13 +657,14 @@ def _billed_from_law(name: str, month: str) -> bool:
 
 def _sheet_fee(figure: Figure) -> float | None:
     """The data management fee including VAT a Fluvius row of a card is
-    billed when it prints none, from the year's tariff sheet, or None for
-    any other figure and a year whose sheet was not read."""
+    billed when it prints none, from the year's tariff sheet on the month's
+    residential rate, or None for any other figure and a year whose sheet
+    was not read."""
     parsed = label_month(figure.month)
     if figure.name != "metering" or figure.scope not in FLUVIUS_KEYS or parsed is None:
         return None
     fee = fluvius.data_management_fee(parsed[0])
-    return None if fee is None else fee * (1 + VAT_RATE_REDUCED)
+    return None if fee is None else fee * (1 + residential_vat(date(parsed[0], parsed[1], 1)))
 
 
 def _filled_from_regulation(figure: Figure) -> bool:
@@ -924,6 +932,29 @@ def check_protected_excise(today: date, *, law_read: bool, tariff_read: bool) ->
     return Check(label, "ok", f"{shown(rate, 'EUR/kWh')} excluding VAT")
 
 
+def check_vat_table(texts: Path | None) -> Check:
+    """The card archive's VAT table, read from its checkout and held for the
+    fleet to be measured against the month's rate, as an installation
+    bills it: run before the fleet. Without a checkout or a table the
+    figures are measured on const.py's rate, as an installation that has
+    read none bills them, which is a notice. A table that does not read
+    fails, since every installation then keeps the table it held."""
+    label = "archive: VAT table"
+    path = None if texts is None else texts / "vat.json"
+    if path is None or not path.is_file():
+        return Check(
+            label, "notice", f"no table to read, measured on {shown(VAT_RATE_REDUCED, 'rate')}"
+        )
+    try:
+        table = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(table, Mapping) or "residential" not in table:
+            raise ValueError("no residential rates")
+    except (OSError, ValueError) as err:
+        return Check(label, "fail", f"{path.name}: {err}")
+    vat_rates.hold(table)
+    return Check(label, "ok")
+
+
 async def check_fluvius_sheet(
     session: aiohttp.ClientSession,
     today: date,
@@ -1027,6 +1058,7 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             )
             if protected is not None:
                 checks.append(protected)
+            checks.append(check_vat_table(texts))
             sheet = await check_fluvius_sheet(session, today)
             checks.append(sheet)
             checks += await check_fleet(
@@ -1049,7 +1081,10 @@ def main() -> int:
         type=Path,
         default=None,
         metavar="DIR",
-        help="the gas directory of a be_price_cards checkout; cards it holds are not rendered again",
+        help=(
+            "the gas directory of a be_price_cards checkout; cards it holds are not "
+            "rendered again, and its VAT table is the one the fleet is measured on"
+        ),
     )
     parser.add_argument(
         "--fingerprint",

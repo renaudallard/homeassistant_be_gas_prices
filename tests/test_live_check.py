@@ -52,6 +52,7 @@ import yaml  # type: ignore[import-untyped]
 from custom_components.be_gas_prices import excise_law, fluvius, tarbel
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
+from custom_components.be_gas_prices.providers._resolve import law_contribution, law_excise
 from custom_components.be_gas_prices.providers.base import (
     CardNotReadableError,
     DsoOverlay,
@@ -530,9 +531,9 @@ def _stating(snapshot: SupplierSnapshot, rate: float) -> SupplierSnapshot:
 
 def test_the_vat_rate_the_cards_state_is_measured_against_the_law() -> None:
     """A card stating another rate is billed on it, so it fails; the fleet
-    stating another rate than const.py's 6 % fails against the law, since
-    every card that states none is billed on that. A card that states no
-    rate does not vote."""
+    stating another rate than the month's (const.py's 6 % while no VAT table
+    is held) fails against the law, since every card that states none is
+    billed on that. A card that states no rate does not vote."""
     fleet = [_card(_stating(_snapshot(sid), 0.06)) for sid in ("alpha", "beta")]
     assert _failing(lc.consensus([*fleet, _card(_snapshot("delta"))])) == {}
     odd = _card(_stating(_snapshot("gamma"), 0.12))
@@ -541,6 +542,71 @@ def test_the_vat_rate_the_cards_state_is_measured_against_the_law() -> None:
     [(label, detail)] = _failing(lc.consensus(raised)).items()
     assert label == "federal: VAT rate for 2026-09 against the law"
     assert detail == "alpha, beta print 9 % where the integration bills 6 %"
+
+
+def _vat_table(directory: Path, rates: dict[str, float]) -> Path:
+    """``vat.json`` as the card archive writes it, in ``directory``."""
+    table = {"residential": {month: {"rate": rate} for month, rate in rates.items()}}
+    (directory / "vat.json").write_text(json.dumps(table), encoding="utf-8")
+    return directory
+
+
+def test_the_vat_table_is_read_from_the_archive_s_checkout(tmp_path: Path) -> None:
+    """Held for the fleet when it reads. No checkout or no table is a
+    notice, the figures being measured on 6 % as an installation without
+    one bills them; a table that does not read fails."""
+    assert lc.check_vat_table(None).status == "notice"
+    assert lc.check_vat_table(tmp_path).status == "notice"
+    (tmp_path / "vat.json").write_text("{", encoding="utf-8")
+    assert lc.check_vat_table(tmp_path).status == "fail"
+    (tmp_path / "vat.json").write_text(json.dumps({"rates": {}}), encoding="utf-8")
+    assert lc.check_vat_table(tmp_path).status == "fail"
+    assert lc.residential_vat(date(2026, 9, 1)) == 0.06
+    check = lc.check_vat_table(_vat_table(tmp_path, {"2026-09": 0.21}))
+    assert (check.label, check.status) == ("archive: VAT table", "ok")
+    assert lc.residential_vat(date(2026, 9, 1)) == 0.21
+
+
+def test_the_law_s_figures_are_measured_on_the_month_s_vat_rate(tmp_path: Path) -> None:
+    """The integration bills the law's figures, the sheet's fee and a card
+    stating no rate on the month's rate in the archive's VAT table, so the
+    fleet is measured on it too."""
+    low, high = law_excise(date(2026, 9, 1)) or (0.0, 0.0)
+    fleet = [
+        _card(
+            _stating(
+                _snapshot(
+                    sid,
+                    excise=(round(low * 1.21, 7), round(high * 1.21, 7)),
+                    metering=round(18.5 / 1.06 * 1.21, 2),
+                ),
+                0.21,
+            )
+        )
+        for sid in ("alpha", "beta")
+    ]
+    # The contribution is zero from August 2026.
+    contribution = law_contribution(date(2026, 7, 1)) or 0.0
+    assert contribution
+    fleet += [
+        _card(
+            _stating(
+                _snapshot(sid, label="2026-07", contribution=round(contribution * 1.21, 7)),
+                0.21,
+            )
+        )
+        for sid in ("alpha", "beta")
+    ]
+    billed = {
+        "federal: VAT rate for 2026-09 against the law",
+        "federal: excise up to 12000 kWh for 2026-09 against the law",
+        "federal: excise above 12000 kWh for 2026-09 against the law",
+        "fluvius_kempen: metering for 2026-09 against the Fluvius sheet",
+        "federal: energy contribution for 2026-07 against the law",
+    }
+    assert billed <= set(_failing(lc.consensus(fleet)))
+    lc.check_vat_table(_vat_table(tmp_path, {"2026-07": 0.21}))
+    assert not billed & set(_failing(lc.consensus(fleet)))
 
 
 def test_a_documented_card_error_is_a_notice_while_the_card_prints_it() -> None:
@@ -950,14 +1016,8 @@ async def test_the_custom_and_withdrawn_suppliers_are_not_checked() -> None:
     assert await lc.check_fleet(None, [withdrawn, custom], TODAY, sleep=_no_sleep) == []
 
 
-def test_main_writes_the_fingerprint_and_returns_the_code(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    fleets: list[dict[str, Any]] = []
-
-    async def check_fleet(*_args: Any, **kwargs: Any) -> list[Any]:
-        fleets.append(kwargs)
-        return [lc.Check("gone/gone_fix/flanders: fetch", "fail", "HTTP 404")]
+def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The law, the tariff and the sheet read, without the network."""
 
     async def check_excise_law(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: gas excise law", "ok")
@@ -975,13 +1035,26 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     monkeypatch.setattr(lc, "check_excise_tariff", check_excise_tariff)
     monkeypatch.setattr(lc, "check_protected_excise", check_protected_excise)
     monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
+
+
+def test_main_writes_the_fingerprint_and_returns_the_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fleets: list[dict[str, Any]] = []
+
+    async def check_fleet(*_args: Any, **kwargs: Any) -> list[Any]:
+        fleets.append(kwargs)
+        return [lc.Check("gone/gone_fix/flanders: fetch", "fail", "HTTP 404")]
+
+    _offline(monkeypatch)
     monkeypatch.setattr(lc, "check_fleet", check_fleet)
     fingerprint = tmp_path / "failures.txt"
     monkeypatch.setattr(sys, "argv", ["live_check.py", "--fingerprint", str(fingerprint)])
     assert lc.main() == 1
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
+    # Without the archive's checkout there is no VAT table to read.
     assert capsys.readouterr().out.startswith(
-        "# Live check: 4 pass, 1 fail, 0 transient, 0 notices"
+        "# Live check: 4 pass, 1 fail, 0 transient, 1 notices"
     )
     assert fleets[-1]["sheet_unread"] is False
 
@@ -998,6 +1071,29 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
 
     monkeypatch.setattr(lc, "check_fleet", crash)
     assert lc.main() == 3
+
+
+def test_the_run_holds_the_archive_s_vat_table_before_the_fleet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The VAT table comes from the checkout ``--texts`` names, and is held
+    by the time the fleet is measured."""
+    rates: list[float] = []
+
+    async def check_fleet(*_args: Any, **_kwargs: Any) -> list[Any]:
+        rates.append(lc.residential_vat(date(2026, 9, 1)))
+        return []
+
+    _offline(monkeypatch)
+    monkeypatch.setattr(lc, "check_fleet", check_fleet)
+    texts = _vat_table(tmp_path, {"2026-09": 0.21})
+    fingerprint = tmp_path / "failures.txt"
+    monkeypatch.setattr(
+        sys, "argv", ["live_check.py", "--texts", str(texts), "--fingerprint", str(fingerprint)]
+    )
+    assert lc.main() == 0
+    assert rates == [0.21]
+    assert "- [x] archive: VAT table" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(("fingerprint", "rc"), [(False, "3"), (True, "1")])

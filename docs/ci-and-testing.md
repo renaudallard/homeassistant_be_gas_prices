@@ -195,9 +195,12 @@ How the cross-check decides:
   another figure than the one billed fails as `federal: excise ... against
   the law`, `federal: energy contribution ... against the law` (zero from
   August 2026) or `wallonia: connection fee ... against the law`. So does a
-  fleet mostly stating another VAT rate than `VAT_RATE_REDUCED`, the rate
-  the law sets (`federal: VAT rate ... against the law`), which a card
-  stating none is billed on until the archive's VAT table gives its month;
+  fleet mostly stating another VAT rate than the one a card stating none is
+  billed on (`federal: VAT rate ... against the law`): the month's rate in
+  the card archive's VAT table, which the run reads from the checkout it
+  takes the texts from (`archive: VAT table`, a notice without a table and
+  `VAT_RATE_REDUCED` then, a failure when it does not read), and on which
+  the law's figures and the Fluvius sheet's fee are measured too;
   a card stating another rate than the rest is billed on it, so
   it fails as a departure, never a notice. Where the fleet's figure is
   printed to fewer digits and agrees with the billed one, a finer figure
@@ -347,7 +350,7 @@ a day, and a failure that changes shape is posted at once.
 | --- | --- | --- |
 | `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite; pip's downloads, the two mypy caches and the fixture text are kept between runs with `actions/cache` |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
-| `live_check.yml` | daily, and on pull requests that touch a provider or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and reads the report the check hands over |
+| `live_check.yml` | daily, and on pull requests that touch a provider, the VAT table's reader or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and reads the report the check hands over |
 | `archive_cards.yml` | daily at 05:53 UTC, before the live check | seven jobs, so no token shares a runner with third-party code, each passing what it made to the next as an artifact: `walk`, with no token, on Python 3.14 with the OCR engine, clones be_price_cards without credentials and archives into `gas/`; `keep` uploads the PDFs as `gas-<YYYY-MM>` releases with `BE_GAS_CARDS` and prunes those past 36 months; `index`, with no token, whenever the walk succeeded even if an upload failed, rewrites the sheets and writes the root and `gas/` READMEs; `push` lays them over a fresh clone and pushes with `BE_GAS_CARDS` through gh's credential helper (`gh auth git-credential`), on no command line and in no file, and a rebase retry; `token` warns 14 days before the token expires; `ocr` files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`); `report` files an issue when a job failed. Only `ocr`, `token` and `report` get a `github.token` that writes issues |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
 
