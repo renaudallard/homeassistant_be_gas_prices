@@ -191,7 +191,13 @@ How the cross-check decides:
   and FPS Finance's excise tariff (`federal: gas excise tariff`, a failure
   when the workbook is not annex 7; `federal: protected excise for
   YYYY-MM`, which no card prints, fails when the two disagree on the
-  month or neither gives it), and a month whose fleet mostly prints
+  month or neither gives it). The two are held against each other on the
+  household excise and the energy contribution in every month within a year
+  of the run that both give (`federal: household excise, the law against
+  FPS Finance's tariff`, `federal: energy contribution, the law against FPS
+  Finance's tariff`, a notice when no month is given by both): the tariff
+  is billed first, so the fleet would only show a misread of the law once
+  the tariff stops listing a month. A month whose fleet mostly prints
   another figure than the one billed fails as `federal: excise ... against
   the law`, `federal: energy contribution ... against the law` (zero from
   August 2026) or `wallonia: connection fee ... against the law`. So does a
@@ -350,7 +356,7 @@ a day, and a failure that changes shape is posted at once.
 | --- | --- | --- |
 | `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite; pip's downloads, the two mypy caches and the fixture text are kept between runs with `actions/cache` |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
-| `live_check.yml` | daily, and on pull requests that touch a provider, the VAT table's reader or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and reads the report the check hands over |
+| `live_check.yml` | daily, and on pull requests that touch a provider, the readers of the law, of FPS Finance's tariff or of the VAT table, or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and reads the report the check hands over |
 | `archive_cards.yml` | daily at 05:53 UTC, before the live check | seven jobs, so no token shares a runner with third-party code, each passing what it made to the next as an artifact: `walk`, with no token, on Python 3.14 with the OCR engine, clones be_price_cards without credentials and archives into `gas/`; `keep` uploads the PDFs as `gas-<YYYY-MM>` releases with `BE_GAS_CARDS` and prunes those past 36 months; `index`, with no token, whenever the walk succeeded even if an upload failed, rewrites the sheets and writes the root and `gas/` READMEs; `push` lays them over a fresh clone and pushes with `BE_GAS_CARDS` through gh's credential helper (`gh auth git-credential`), on no command line and in no file, and a rebase retry; `token` warns 14 days before the token expires; `ocr` files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`); `report` files an issue when a job failed. Only `ocr`, `token` and `report` get a `github.token` that writes issues |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
 

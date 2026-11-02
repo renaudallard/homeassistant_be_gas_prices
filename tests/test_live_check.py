@@ -718,6 +718,45 @@ def test_the_protected_excise_is_the_law_s_and_the_tariff_s() -> None:
     assert nothing is not None and nothing.status == "fail"
 
 
+def test_the_law_and_the_tariff_agree_on_the_household_levies() -> None:
+    """The fleet is measured against the tariff wherever it lists a month,
+    so a misread of the law would only show once the tariff stops listing
+    it: in every month both give, the two must agree."""
+    october = date(2026, 10, 27)
+    excise, contribution = lc.check_law_against_tariff(october, law_read=True, tariff_read=True)
+    assert excise == lc.Check(
+        "federal: household excise, the law against FPS Finance's tariff",
+        "ok",
+        "2026-08 to 2026-12",
+    )
+    assert contribution == lc.Check(
+        "federal: energy contribution, the law against FPS Finance's tariff",
+        "ok",
+        "2026-08 to 2026-09",
+    )
+    # The law misread from October on, one slice only, and its contribution
+    # from September.
+    excise_law.hold(((date(2026, 10, 1), 0.01031, 0.01117),))
+    excise_law.hold_contribution(((date(2026, 9, 1), 0.0005),))
+    excise, contribution = lc.check_law_against_tariff(october, law_read=True, tariff_read=True)
+    assert (excise.status, excise.detail) == (
+        "fail",
+        "2026-10: the law gives 1.031 c EUR/kWh and 1.117 c EUR/kWh where FPS Finance's "
+        "tariff gives 1.031 c EUR/kWh and 1.116 c EUR/kWh, excluding VAT, and 2 months after",
+    )
+    assert (contribution.status, contribution.detail) == (
+        "fail",
+        "2026-09: the law gives 0.05 c EUR/kWh where FPS Finance's tariff gives "
+        "0 c EUR/kWh, excluding VAT",
+    )
+    # A source that failed has its own check; far from the tariff's quarters
+    # no month is given by both.
+    assert lc.check_law_against_tariff(october, law_read=False, tariff_read=True) == []
+    assert lc.check_law_against_tariff(october, law_read=True, tariff_read=False) == []
+    later = lc.check_law_against_tariff(date(2029, 6, 1), law_read=True, tariff_read=True)
+    assert [c.status for c in later] == ["notice", "notice"]
+
+
 @pytest.mark.parametrize(
     ("payload", "status"),
     [
@@ -1031,9 +1070,15 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
     def check_protected_excise(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: protected excise for 2026-10", "ok")
 
+    def check_law_against_tariff(*_args: Any, **kwargs: Any) -> list[Any]:
+        # Run on what the two reads above answered.
+        assert kwargs == {"law_read": True, "tariff_read": True}
+        return [lc.Check("federal: household excise, the law against FPS Finance's tariff", "ok")]
+
     monkeypatch.setattr(lc, "check_excise_law", check_excise_law)
     monkeypatch.setattr(lc, "check_excise_tariff", check_excise_tariff)
     monkeypatch.setattr(lc, "check_protected_excise", check_protected_excise)
+    monkeypatch.setattr(lc, "check_law_against_tariff", check_law_against_tariff)
     monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
 
 
@@ -1054,7 +1099,7 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     # Without the archive's checkout there is no VAT table to read.
     assert capsys.readouterr().out.startswith(
-        "# Live check: 4 pass, 1 fail, 0 transient, 1 notices"
+        "# Live check: 5 pass, 1 fail, 0 transient, 1 notices"
     )
     assert fleets[-1]["sheet_unread"] is False
 

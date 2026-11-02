@@ -15,7 +15,10 @@ on:
   pull_request:
     paths:
       - "custom_components/be_gas_prices/providers/**"
-      # The VAT table the fleet is measured on.
+      # The law and FPS Finance's tariff, which the check reads as the
+      # integration does, and the VAT table the fleet is measured on.
+      - "custom_components/be_gas_prices/excise_law.py"
+      - "custom_components/be_gas_prices/tarbel.py"
       - "custom_components/be_gas_prices/vat_rates.py"
       - "scripts/live_check.py"
       - "scripts/card_texts.py"

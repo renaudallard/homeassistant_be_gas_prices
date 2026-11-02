@@ -50,7 +50,10 @@ says nothing about the card, and checks what came back:
     fleet's excise, energy contribution, VAT rate, Walloon connection fee
     and Fluvius metering fee measured against what the integration bills,
     on the month's VAT rate in the card archive's table (``vat.json`` in
-    the ``--texts`` checkout, 6 % without one).
+    the ``--texts`` checkout, 6 % without one);
+  - the law and FPS Finance's tariff agreeing on the household excise and
+    the energy contribution in every month around this one that both give,
+    since the fleet is measured against the tariff wherever it lists a month.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -158,6 +161,9 @@ _INDEX_LAG_BY_SUPPLIER = {"totalenergies": 2}
 # the job into its timeout before anything is reported or committed. Give up
 # on it for the run instead.
 GIVE_UP_AFTER = 3
+# The months either side of the current one in which the law and FPS
+# Finance's tariff are held against each other wherever both give a rate.
+_LAW_AGAINST_TARIFF_MONTHS = 12
 
 Status = Literal["ok", "fail", "transient", "notice"]
 
@@ -932,6 +938,64 @@ def check_protected_excise(today: date, *, law_read: bool, tariff_read: bool) ->
     return Check(label, "ok", f"{shown(rate, 'EUR/kWh')} excluding VAT")
 
 
+def _rates(value: float | tuple[float, ...] | None) -> tuple[float, ...] | None:
+    return (value,) if isinstance(value, float) else value
+
+
+def check_law_against_tariff(today: date, *, law_read: bool, tariff_read: bool) -> list[Check]:
+    """The household excise and the energy contribution, Justel's against
+    FPS Finance's tariff, in every month around this one that both give.
+    The integration bills the tariff first, and the fleet is measured
+    against what it bills, so a misread of the law would only show once the
+    tariff stops listing a month and the law is billed: where both give a
+    month, they must agree. A month only one gives cannot be compared, and
+    nothing is while a source that failed leaves nothing to compare, its own
+    check being the failure."""
+    if not (law_read and tariff_read):
+        return []
+    now = today.year * 12 + today.month - 1
+    months = [
+        date(index // 12, index % 12 + 1, 1)
+        for index in range(now - _LAW_AGAINST_TARIFF_MONTHS, now + _LAW_AGAINST_TARIFF_MONTHS + 1)
+    ]
+    sources: tuple[tuple[str, Callable[[date], Any], Callable[[date], Any]], ...] = (
+        ("household excise", excise_law.excise_for, tarbel.excise_for),
+        ("energy contribution", excise_law.contribution_for, tarbel.contribution_for),
+    )
+    checks = []
+    for what, by_law, by_tariff in sources:
+        label = f"federal: {what}, the law against FPS Finance's tariff"
+        both = []
+        for month in months:
+            law = _rates(by_law(month))
+            listed = _rates(by_tariff(month))
+            if law is not None and listed is not None:
+                both.append((month, law, listed))
+        apart = [
+            (month, law, listed)
+            for month, law, listed in both
+            if any(abs(a - b) > 1e-9 for a, b in zip(law, listed, strict=True))
+        ]
+        if apart:
+            month, law, listed = apart[0]
+            more = f", and {len(apart) - 1} months after" if len(apart) > 1 else ""
+            checks.append(
+                Check(
+                    label,
+                    "fail",
+                    f"{month:%Y-%m}: the law gives "
+                    f"{' and '.join(shown(r, 'EUR/kWh') for r in law)} where FPS Finance's "
+                    f"tariff gives {' and '.join(shown(r, 'EUR/kWh') for r in listed)}, "
+                    f"excluding VAT{more}",
+                )
+            )
+        elif both:
+            checks.append(Check(label, "ok", f"{both[0][0]:%Y-%m} to {both[-1][0]:%Y-%m}"))
+        else:
+            checks.append(Check(label, "notice", "no month both give"))
+    return checks
+
+
 def check_vat_table(texts: Path | None) -> Check:
     """The card archive's VAT table, read from its checkout and held for the
     fleet to be measured against the month's rate, as an installation
@@ -1058,6 +1122,9 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             )
             if protected is not None:
                 checks.append(protected)
+            checks += check_law_against_tariff(
+                today, law_read=checks[0].status == "ok", tariff_read=checks[1].status == "ok"
+            )
             checks.append(check_vat_table(texts))
             sheet = await check_fluvius_sheet(session, today)
             checks.append(sheet)
