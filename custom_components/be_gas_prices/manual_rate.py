@@ -30,7 +30,8 @@ neither reaches the month, or the offer had figures of its own, the household
 can type them. They are laid over the energy leg the card gives, each on its
 own: a fixed contract's price, an indexed contract's factor and base, and the
 yearly fee. Typed excluding VAT the way formulas are printed, they are put on
-the card's VAT-inclusive basis here.
+the card's VAT-inclusive basis here, at the residential rate of the month
+billed (vat_rates.py).
 """
 
 from __future__ import annotations
@@ -45,7 +46,6 @@ from .const import (
     CONF_MANUAL_FEE,
     CONF_MANUAL_PRICE,
     MANUAL_FACTOR_MAX,
-    VAT_RATE_REDUCED,
 )
 from .providers._rates import EnergyRates, FixedRates, IndexedRates
 
@@ -61,9 +61,10 @@ def _number(data: dict[str, Any], key: str) -> float | None:
     return None if value is None or value == "" else float(value)
 
 
-def manual_leg(leg: EnergyRates, data: dict[str, Any]) -> EnergyRates:
-    """``leg`` with the typed figures of ``data`` in place of the card's."""
-    vat = 1.0 + VAT_RATE_REDUCED
+def manual_leg(leg: EnergyRates, data: dict[str, Any], vat_rate: float) -> EnergyRates:
+    """``leg`` with the typed figures of ``data`` in place of the card's,
+    grossed by ``vat_rate``, the residential rate of the month billed."""
+    vat = 1.0 + vat_rate
     price = _number(data, CONF_MANUAL_PRICE)
     factor = _number(data, CONF_MANUAL_FACTOR)
     base = _number(data, CONF_MANUAL_BASE)

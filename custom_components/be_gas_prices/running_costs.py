@@ -40,10 +40,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from .bill import MonthBill, bill_month, month_key
+from .bill import LegFor, MonthBill, bill_month, month_key
 from .const import MEASURED_FULL_YEAR_DAYS, MEASURED_YEAR_GAP_DAYS
 from .pricing import PricingError
-from .providers._rates import EnergyRates
 from .providers.base import IndexTable, SupplierSnapshot
 
 
@@ -166,7 +165,7 @@ def running_costs(
     household: Household,
     current_card: SupplierSnapshot,
     month_card: Callable[[str], SupplierSnapshot | None],
-    energy_for: Callable[[SupplierSnapshot], EnergyRates],
+    energy_for: LegFor,
     table: IndexTable | None,
 ) -> RunningCosts:
     """Bill every month from ``window_start`` to ``today`` on its own card.
@@ -197,7 +196,7 @@ def running_costs(
             return bill_month(
                 month=month,
                 card=card,
-                energy=energy_for(card),
+                energy_for=energy_for,
                 table=table,
                 dso=household.dso,
                 annual_kwh=household.annual_kwh,
@@ -227,7 +226,7 @@ def running_costs(
         rest = bill_month(
             month=current_month,
             card=current_card,
-            energy=energy_for(current_card),
+            energy_for=energy_for,
             table=table,
             dso=household.dso,
             annual_kwh=household.annual_kwh,

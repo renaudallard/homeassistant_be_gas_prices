@@ -45,7 +45,7 @@ from .providers.base import DsoOverlay, DsoTier, SupplierSnapshot, TaxOverlay
 # Bumped whenever a field is added, removed or changes meaning. A field added
 # is read with a default from an older blob, which still prices: the card it
 # holds is fetched again at once and kept only while no fetch succeeds.
-SNAPSHOT_SCHEMA_VERSION = 1
+SNAPSHOT_SCHEMA_VERSION = 2
 # The oldest schema still read. Raised to the version only by a bump that
 # changes what a stored field means, or that refuses a card an older release
 # misread: those blobs are then dropped, as every other one was before.
@@ -54,6 +54,10 @@ SNAPSHOT_SCHEMA_FLOOR = 1
 
 class SnapshotDecodeError(ValueError):
     """The blob is not a snapshot this release can read."""
+
+
+# The fields of an indexed leg a parser may gross by an assumed VAT rate.
+_VAT_GROSSABLE = {"factor", "base", "price"}
 
 
 def _energy_to_json(energy: EnergyRates) -> dict[str, Any]:
@@ -76,6 +80,7 @@ def _energy_to_json(energy: EnergyRates) -> dict[str, Any]:
         "formula": energy.formula,
         "settled": energy.settled,
         "period": energy.period,
+        "vat_grossed": list(energy.vat_grossed),
     }
 
 
@@ -93,6 +98,9 @@ def _energy_from_json(blob: dict[str, Any]) -> EnergyRates:
         period = blob["period"]
         if period not in ("month", "quarter"):
             raise SnapshotDecodeError(f"unknown index period {period!r}")
+        grossed = blob.get("vat_grossed", [])
+        if not isinstance(grossed, list) or not set(grossed) <= _VAT_GROSSABLE:
+            raise SnapshotDecodeError(f"unknown grossed fields {grossed!r}")
         return IndexedRates(
             factor=float(blob["factor"]),
             base=float(blob["base"]),
@@ -102,6 +110,7 @@ def _energy_from_json(blob: dict[str, Any]) -> EnergyRates:
             formula=blob.get("formula"),
             settled=bool(blob["settled"]),
             period=period,
+            vat_grossed=tuple(str(name) for name in grossed),
         )
     raise SnapshotDecodeError(f"unknown energy kind {kind!r}")
 

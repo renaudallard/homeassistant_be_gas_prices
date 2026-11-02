@@ -162,6 +162,7 @@ _TEXTS = "texts"
 _INDICES = "indices"
 _MANIFEST = "pdfs.json"
 _COVERAGE = "coverage.md"
+_VAT = "vat.json"
 _COVERAGE_DIR = "coverage"
 # The running month and the thirty-six before it, the same retention the
 # other two namespaces keep: a fixed contract runs up to three years on the
@@ -776,6 +777,53 @@ def _write_coverage(
 # ---- replaying the stored rows through the current parser -------------------
 
 
+# How many suppliers have to state one rate for a month, none stating another,
+# before it is the month's rate (vat_rates.py reads the result).
+_VAT_AGREEING = 3
+
+
+def _vat_consensus(stated: dict[str, set[float]]) -> dict[str, Any]:
+    """One month's entry from ``{supplier: rates its cards state}``.
+
+    ``rate`` only when at least ``_VAT_AGREEING`` suppliers state one rate and
+    none states another, one of which may be the same supplier stating two.
+    A disagreement is written out as ``disputed``, a single rate stated by too
+    few as ``too_few``: an installation reads neither and keeps the last month
+    that agreed.
+    """
+    by_rate: dict[float, list[str]] = {}
+    for supplier, rates in stated.items():
+        for rate in rates:
+            by_rate.setdefault(rate, []).append(supplier)
+    listed = {f"{rate:g}": sorted(names) for rate, names in sorted(by_rate.items())}
+    if len(by_rate) > 1:
+        return {"disputed": listed}
+    ((rate, names),) = by_rate.items()
+    if len(names) < _VAT_AGREEING:
+        return {"too_few": listed}
+    return {"rate": rate, "suppliers": sorted(names)}
+
+
+def _write_vat(out: Path) -> None:
+    """``vat.json``: the residential VAT rate the cards of each month agree on.
+
+    Built from the rows on disk, each carrying the rate its card states
+    (``taxes.card_vat_rate``), per card month. A row whose card states none
+    adds nothing, and every gas card is residential. Deterministic, so a day
+    that changed nothing rewrites the same bytes.
+    """
+    stated: dict[str, dict[str, set[float]]] = {}
+    for path in sorted(out.glob(ROWS_GLOB)):
+        row = _read_row(path)
+        rate = (row or {}).get("taxes", {}).get("card_vat_rate")
+        if not isinstance(rate, (int, float)) or isinstance(rate, bool):
+            continue
+        supplier = path.parts[-4]
+        stated.setdefault(path.stem, {}).setdefault(supplier, set()).add(round(float(rate), 4))
+    table = {"residential": {month: _vat_consensus(by) for month, by in sorted(stated.items())}}
+    (out / _VAT).write_text(json.dumps(table, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def _parser_digest() -> str:
     """One digest over every source a parse depends on, and what reads the
     cards: the PDF readers and the OCR engine, so a new release of either
@@ -1166,6 +1214,7 @@ async def archive(
     (out / PARSER_STAMP).write_text(f"{parser}\n", encoding="utf-8")
     removed = _prune(out, keep_months, today) + _drop_unnamed_texts(out)
     _write_coverage(out, pdf_base_url, archive_base_url)
+    _write_vat(out)
     print(
         f"{summary.stored} stored, {summary.unchanged} unchanged, "
         f"{summary.backfilled} backfilled, {summary.reoffered} offered again, "

@@ -135,6 +135,8 @@ def _energy(text: str, label: str) -> IndexedRates:
     formula = _FORMULA_RE.search(text)
     if fee is None or price is None or formula is None:
         raise ExtractorError(f"{label}: fee, price or formula not found")
+    # The card prints the formula and its last price excluding VAT and states
+    # no rate: grossed by the residential one, which the month billed moves.
     vat = 1.0 + VAT_RATE_REDUCED
     return IndexedRates(
         factor=to_float(formula.group(1)) / 1000.0 * vat,
@@ -143,6 +145,7 @@ def _energy(text: str, label: str) -> IndexedRates:
         price=to_float(price.group(1) or price.group(2)) / 100.0 * vat,
         yearly_fixed_fee=to_float(fee.group(1)),
         formula=formula.group(0),
+        vat_grossed=("factor", "base", "price"),
     )
 
 

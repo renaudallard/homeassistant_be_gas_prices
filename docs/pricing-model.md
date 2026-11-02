@@ -34,8 +34,14 @@ Residential cards print everything VAT inclusive, so `TaxOverlay.vat_rate` is
 0.0 and the multiplier is 1. A formula printed excluding VAT is grossed up in
 its parser by the residential 6 % (`VAT_RATE_REDUCED`): Bolt's, energie.be's,
 OCTA+'s and the Energy Together brands' cards state no rate, and that rate
-reproduces their printed prices. The live check fails when most cards that
-state a rate state another one. `PriceBreakdown` reports each part VAT
+reproduces their printed prices. The parser names what it grossed
+(`IndexedRates.vat_grossed`), and the month billed moves it onto that month's
+residential rate (`on_vat`, in `bill.contract_leg`), as it grosses the
+figures a household typed from its contract: the rate of the card archive's
+VAT table (`vat_rates.py`), which the cards of the month agree on, 6 % in
+every month it holds so far, and the law's 6 % in `const.py` before it has
+been read or for a month before the first it holds. The live check fails
+when most cards that state a rate state another one than the law's. `PriceBreakdown` reports each part VAT
 inclusive, so `energy + network + taxes == all_in`.
 
 ## The year's fixed costs
@@ -168,9 +174,10 @@ The energy contribution and the Walloon connection fee have no end: the
 card is read as printed only before them, January 2025 and July 2003, which
 no bill reaches. Only residential cards are touched. The figures excluding
 VAT are put on the rate the card states for its customers (`card_vat_rate`)
-when it is one Belgium levies (6, 12 or 21 %), else on the residential 6 %:
-every card read so far states 6 % or nothing, and a stated rate outside
-those three is taken for a misread.
+when it is one Belgium levies (6, 12 or 21 %), else on the month's
+residential rate from the card archive's VAT table (`vat_rates.py`, 6 % in
+every month it holds so far): every card read so far states 6 % or nothing,
+and a stated rate outside those three is taken for a misread.
 
 ## The running costs
 

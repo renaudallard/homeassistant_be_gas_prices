@@ -56,6 +56,7 @@ from ..const import (
     WALLOON_CONNECTION_FEE,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
 )
+from ..vat_rates import residential_vat
 from ._network import excise_bands
 from .base import DsoOverlay, SupplierSnapshot, TaxOverlay
 
@@ -173,11 +174,13 @@ def law_contribution(delivery: date) -> float | None:
 _BELGIAN_VAT_RATES = (VAT_RATE_REDUCED, 0.12, 0.21)
 
 
-def _vat_factor(taxes: TaxOverlay) -> float:
-    """What a law figure excluding VAT is multiplied by on ``taxes``'s card."""
+def _vat_factor(taxes: TaxOverlay, delivery: date) -> float:
+    """What a law figure excluding VAT is multiplied by on ``taxes``'s card
+    for ``delivery``: the rate the card states, else the residential rate of
+    the month (vat_rates.py)."""
     rate = taxes.card_vat_rate
     if rate is None or not any(abs(rate - known) < 1e-9 for known in _BELGIAN_VAT_RATES):
-        rate = VAT_RATE_REDUCED
+        rate = residential_vat(delivery)
     return 1 + rate
 
 
@@ -206,7 +209,7 @@ def resolve_federal_levies(
     """
     if taxes.vat_rate != 0.0:
         return taxes
-    factor = _vat_factor(taxes)
+    factor = _vat_factor(taxes, delivery)
     if protected:
         rate = law_protected_excise(delivery)
         return replace(
@@ -240,7 +243,7 @@ def resolve_network(
     htva = fluvius.data_management_fee(delivery.year)
     if taxes.vat_rate != 0.0 or htva is None:
         return dsos
-    fee = htva * _vat_factor(taxes)
+    fee = htva * _vat_factor(taxes, delivery)
     return {
         key: replace(overlay, metering_per_year=fee)
         if key in FLUVIUS_KEYS and overlay.metering_per_year == 0.0

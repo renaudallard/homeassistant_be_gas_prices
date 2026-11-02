@@ -35,6 +35,7 @@ import pytest
 from custom_components.be_gas_prices.bill import (
     MonthBill,
     bill_month,
+    card_leg,
     contract_leg,
     index_for,
     merged_index,
@@ -51,6 +52,7 @@ from custom_components.be_gas_prices.const import (
     REGION_FLANDERS,
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
+    VAT_RATE_REDUCED,
 )
 from custom_components.be_gas_prices.providers import engie, sparki
 from custom_components.be_gas_prices.providers._network import excise_bands
@@ -140,7 +142,7 @@ def test_a_variable_price_set_by_a_formula_is_provisional() -> None:
     bill = bill_month(
         month="2026-09",
         card=card,
-        energy=card.energy,
+        energy_for=card_leg,
         table=None,
         dso=DSO_FLUVIUS_ANTWERPEN,
         annual_kwh=10_000.0,
@@ -158,12 +160,12 @@ def test_a_variable_contract_is_billed_on_the_card_of_the_month() -> None:
     in August is billed at September's price in September."""
     august, september = _sparki("augustus").energy, _sparki("september").energy
     assert august.price != september.price
-    assert contract_leg(september, august, {}) is september
+    assert contract_leg(september, august, {}, VAT_RATE_REDUCED) is september
 
 
 def test_a_fixed_contract_keeps_the_price_it_was_signed_at() -> None:
     signed = FixedRates(price=0.10, yearly_fixed_fee=60.0)
-    assert contract_leg(FixedRates(price=0.07), signed, {}) is signed
+    assert contract_leg(FixedRates(price=0.07), signed, {}, VAT_RATE_REDUCED) is signed
 
 
 def test_a_signed_formula_moves_with_the_index_its_month_card_implies() -> None:
@@ -172,12 +174,14 @@ def test_a_signed_formula_moves_with_the_index_its_month_card_implies() -> None:
     not held at the signing month's price."""
     signed = IndexedRates(factor=0.001, base=0.004, index="TTF", price=0.064)
     own = IndexedRates(factor=0.0011, base=0.005, index="TTF", price=0.0765)
-    assert contract_leg(own, signed, {}).price == pytest.approx(signed.at(65.0))
+    assert contract_leg(own, signed, {}, VAT_RATE_REDUCED).price == pytest.approx(signed.at(65.0))
     # Typed figures are priced at the same index.
-    typed = contract_leg(own, signed, {CONF_MANUAL_FACTOR: 0.1, CONF_MANUAL_BASE: 0.2})
+    typed = contract_leg(
+        own, signed, {CONF_MANUAL_FACTOR: 0.1, CONF_MANUAL_BASE: 0.2}, VAT_RATE_REDUCED
+    )
     assert typed.price == pytest.approx((0.1 * 65.0 + 0.2) / 100.0 * 1.06)
     # No signing card and nothing typed: the card's own leg as printed.
-    assert contract_leg(own, None, {}) is own
+    assert contract_leg(own, None, {}, VAT_RATE_REDUCED) is own
 
 
 def test_a_signed_formula_before_the_first_index_value_moves_with_its_card() -> None:
@@ -188,10 +192,12 @@ def test_a_signed_formula_before_the_first_index_value_moves_with_its_card() -> 
     signed = IndexedRates(factor=0.001, base=0.004, index="TTF", price=0.064)
     own = IndexedRates(factor=0.0011, base=0.005, index="TTF", price=0.0765)
     table = {"TTF": {"2026-03": 40.0}}
-    leg = contract_leg(own, signed, {})
+    leg = contract_leg(own, signed, {}, VAT_RATE_REDUCED)
     assert resolve_energy_price(leg, table, "2026-01")[0] == pytest.approx(signed.at(65.0))
     assert resolve_energy_price(leg, table, "2026-03")[0] == pytest.approx(signed.at(40.0))
-    typed = contract_leg(own, None, {CONF_MANUAL_FACTOR: 0.1, CONF_MANUAL_BASE: 0.2})
+    typed = contract_leg(
+        own, None, {CONF_MANUAL_FACTOR: 0.1, CONF_MANUAL_BASE: 0.2}, VAT_RATE_REDUCED
+    )
     assert resolve_energy_price(typed, table, "2026-01")[0] == pytest.approx(
         (0.1 * 65.0 + 0.2) / 100.0 * 1.06
     )
@@ -202,8 +208,8 @@ def test_nothing_is_laid_over_a_typed_custom_card() -> None:
     into an earlier contract by a recorded switch, leave its card alone."""
     own = FixedRates(price=0.075, yearly_fixed_fee=60.0)
     data = {CONF_SUPPLIER: SUPPLIER_CUSTOM, CONF_MANUAL_PRICE: 8.0}
-    assert contract_leg(own, None, data) is own
-    assert contract_leg(own, None, {**data, CONF_SUPPLIER: "engie"}).price == (
+    assert contract_leg(own, None, data, VAT_RATE_REDUCED) is own
+    assert contract_leg(own, None, {**data, CONF_SUPPLIER: "engie"}, VAT_RATE_REDUCED).price == (
         pytest.approx(0.08 * 1.06)
     )
 
@@ -223,7 +229,7 @@ def test_bill_month_applies_the_law_to_the_delivery_month() -> None:
     sept = bill_month(
         month="2026-09",
         card=stale,
-        energy=stale.energy,
+        energy_for=card_leg,
         table=TABLE,
         dso=DSO_ORES,
         annual_kwh=10_000.0,
@@ -237,7 +243,7 @@ def test_bill_month_applies_the_law_to_the_delivery_month() -> None:
     july = bill_month(
         month="2026-07",
         card=stale,
-        energy=stale.energy,
+        energy_for=card_leg,
         table=TABLE,
         dso=DSO_ORES,
         annual_kwh=10_000.0,
@@ -268,7 +274,7 @@ def test_a_settled_month_missing_from_the_table_is_provisional() -> None:
         return bill_month(
             month=month,
             card=card,
-            energy=card.energy,
+            energy_for=card_leg,
             table=table,
             dso=DSO_ORES,
             annual_kwh=10_000.0,
@@ -309,11 +315,12 @@ def test_a_signed_leg_is_final_only_on_a_settled_card_of_its_month() -> None:
     assert isinstance(early.energy, IndexedRates) and not early.energy.settled
 
     def provisional(card: SupplierSnapshot) -> bool:
-        leg = contract_leg(card.energy, july.energy, {CONF_SUPPLIER: "engie"})
         return bill_month(
             month="2026-09",
             card=card,
-            energy=leg,
+            energy_for=lambda own, vat: contract_leg(
+                own.energy, july.energy, {CONF_SUPPLIER: "engie"}, vat
+            ),
             table=None,
             dso=DSO_ORES,
             annual_kwh=10_000.0,
@@ -328,13 +335,13 @@ def test_a_signed_leg_is_final_only_on_a_settled_card_of_its_month() -> None:
     # The comparisons quote the own contract on the card with its leg laid
     # over it: the same answer.
     for card, expected in ((settled, False), (early, True)):
-        leg = contract_leg(card.energy, july.energy, {CONF_SUPPLIER: "engie"})
+        leg = contract_leg(card.energy, july.energy, {CONF_SUPPLIER: "engie"}, VAT_RATE_REDUCED)
         quoted = replace(card, energy=leg)
         assert (
             bill_month(
                 month="2026-09",
                 card=quoted,
-                energy=quoted.energy,
+                energy_for=card_leg,
                 table=None,
                 dso=DSO_ORES,
                 annual_kwh=10_000.0,
@@ -352,7 +359,7 @@ def test_bill_month_accrues_the_fixed_costs_by_the_day() -> None:
     bill = bill_month(
         month="2026-07",
         card=card,
-        energy=card.energy,
+        energy_for=card_leg,
         table=TABLE,
         dso=DSO_ORES,
         annual_kwh=17_000.0,
@@ -419,7 +426,7 @@ def test_running_costs_bill_each_month_on_its_own_card() -> None:
         household=household,
         current_card=card,
         month_card=lambda month: august if month == "2026-08" else None,
-        energy_for=lambda snapshot: snapshot.energy,
+        energy_for=card_leg,
         table=TABLE,
     )
     assert [bill.month for bill in costs.months] == [f"2026-{m:02d}" for m in range(1, 10)]
@@ -445,7 +452,7 @@ def test_each_month_names_the_first_day_it_bills() -> None:
         household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
         current_card=card,
         month_card=lambda month: None,
-        energy_for=lambda snapshot: snapshot.energy,
+        energy_for=card_leg,
         table=TABLE,
     )
     assert [(bill.first, bill.days) for bill in costs.months] == [
@@ -471,7 +478,7 @@ def test_a_signing_card_without_a_table_prices_the_energy_alone() -> None:
         household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
         current_card=card,
         month_card=lambda month: old if month == "2026-08" else None,
-        energy_for=lambda snapshot: contract_leg(snapshot.energy, signed, {}),
+        energy_for=lambda snapshot, vat: contract_leg(snapshot.energy, signed, {}, vat),
         table=TABLE,
     )
     assert "2026-08" in costs.months_on_current_card
@@ -492,7 +499,7 @@ def test_year_end_projection_uses_last_years_remaining_days() -> None:
         household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
         current_card=card,
         month_card=lambda month: None,
-        energy_for=lambda snapshot: snapshot.energy,
+        energy_for=card_leg,
         table=TABLE,
     )
     assert costs.projected_year_kwh == pytest.approx(costs.ytd_kwh + 11 * 30.0)

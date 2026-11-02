@@ -416,6 +416,7 @@ def _indexed(text: str) -> IndexedRates:
         price=price,
         yearly_fixed_fee=fee,
         formula=formula.group(1),
+        vat_grossed=("factor", "base"),
     )
 
 

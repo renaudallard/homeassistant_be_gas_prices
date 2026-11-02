@@ -34,11 +34,11 @@ pricing engine.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Literal
 
-from ..const import REGIONS
+from ..const import REGIONS, VAT_RATE_REDUCED
 
 # How the energy price of a contract is set:
 #
@@ -119,6 +119,12 @@ class IndexedRates:
     because it is a fact rather than a projection. ``settled`` is True where
     the index is fixed before the delivery month starts (a month-ahead
     average such as Engie's ZTP101), so the printed price is the billed one.
+
+    ``vat_grossed`` names the fields a parser put on the VAT-inclusive basis
+    by an assumed rate, ``VAT_RATE_REDUCED``, because the card prints them
+    excluding VAT and states no rate: the formula of energie.be, Bolt and
+    OCTA+, and Energy Together's with its price. :func:`on_vat` moves them
+    onto the rate of the month billed.
     """
 
     factor: float
@@ -129,6 +135,7 @@ class IndexedRates:
     formula: str | None = None
     settled: bool = False
     period: IndexPeriod = "month"
+    vat_grossed: tuple[str, ...] = ()
 
     def at(self, index_value: float) -> float:
         """The price in EUR/kWh at ``index_value`` EUR/MWh."""
@@ -136,3 +143,16 @@ class IndexedRates:
 
 
 EnergyRates = FixedRates | VariableRates | IndexedRates
+
+
+def on_vat(energy: EnergyRates, rate: float) -> EnergyRates:
+    """``energy`` with the fields a parser grossed by ``VAT_RATE_REDUCED``
+    (``IndexedRates.vat_grossed``) put on ``rate`` instead, the leg then
+    naming none. Identity for a leg with none, and at the rate assumed."""
+    if not isinstance(energy, IndexedRates) or not energy.vat_grossed:
+        return energy
+    if rate == VAT_RATE_REDUCED:
+        return energy
+    ratio = (1.0 + rate) / (1.0 + VAT_RATE_REDUCED)
+    moved = {name: getattr(energy, name) * ratio for name in energy.vat_grossed}
+    return replace(energy, **moved, vat_grossed=())

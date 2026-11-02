@@ -195,9 +195,10 @@ How the cross-check decides:
   another figure than the one billed fails as `federal: excise ... against
   the law`, `federal: energy contribution ... against the law` (zero from
   August 2026) or `wallonia: connection fee ... against the law`. So does a
-  fleet mostly stating another VAT rate than `VAT_RATE_REDUCED` (`federal:
-  VAT rate ... against the law`), the rate every card that states none is
-  billed on; a card stating another rate than the rest is billed on it, so
+  fleet mostly stating another VAT rate than `VAT_RATE_REDUCED`, the rate
+  the law sets (`federal: VAT rate ... against the law`), which a card
+  stating none is billed on until the archive's VAT table gives its month;
+  a card stating another rate than the rest is billed on it, so
   it fails as a departure, never a notice. Where the fleet's figure is
   printed to fewer digits and agrees with the billed one, a finer figure
   it agrees with that the billed one does not is a notice under the same
@@ -251,6 +252,11 @@ under `gas/`:
   `pdfs.json` says which release holds each digest.
 - `indices/<supplier>.json`: each `fetch_index` table, merged into what
   earlier runs kept.
+- `vat.json`: per card month, the residential VAT rate the rows state
+  (`taxes.card_vat_rate`) when three suppliers or more state one rate and
+  none states another, which `vat_rates.py` reads; a month they disagree on
+  is written as `disputed`, one stated by too few as `too_few`, and neither
+  is billed on.
 
 A row is rewritten only when the parse changed, so a quiet day writes
 nothing. Months older than `--keep-months` (36) are removed, with the texts

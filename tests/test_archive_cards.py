@@ -264,6 +264,11 @@ async def test_a_row_is_what_the_integration_reads_for_a_past_month(
     expected = _snapshot("acme_fix", "2026-09", 0.08)
     assert snapshot_from_json(row) == expected
     assert CARD_ARCHIVE_URL.endswith(f"/gas/{ac.ROWS}")
+    # The VAT table is written beside the rows: one supplier stating a rate is
+    # too few to bill a month on.
+    assert json.loads((out / "vat.json").read_text(encoding="utf-8")) == {
+        "residential": {"2026-09": {"too_few": {"0.06": ["acme"]}}}
+    }
     reader = _Session(
         {f"{CARD_ARCHIVE_URL}/acme/acme_fix/wallonia/2026-09.json": path.read_bytes()}
     )

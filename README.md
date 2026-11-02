@@ -204,9 +204,10 @@ all_in = (energy + tier_proportional + transport + excise + energy_contribution)
 
 Per year: the supplier's fixed fee, the tier's fixed term, the metering fee
 (Flanders and Brussels) and in Brussels the per-meter levy, accrued by the
-day. VAT is 6% on everything but the Walloon connection fee; the levies the
-law sets are put on the rate the card states, should a card state another
-one Belgium levies. On the social tariff, the CREG's network part stands in
+day. VAT is the residential rate the cards of the month agree on, read daily
+from the project's card archive (6% in every month so far), on everything but
+the Walloon connection fee; the levies the law sets are put on the rate the
+card states, should a card state another one Belgium levies. On the social tariff, the CREG's network part stands in
 for the tier, transport and metering, and the excise is the protected
 customer's rate. The details,
 with the sources of every regulated figure, are in
@@ -425,6 +426,12 @@ published as images, as a stand-in when it holds no card or a stale one, and
 for an earlier contract's running month while that supplier cannot be
 reached. The request names the supplier, the contract, the region and the
 month and nothing else; the option in the settings switches it off.
+
+The workflow also writes the residential VAT rate the cards of each month
+agree on, three suppliers or more stating one rate and none another. Every
+installation reads that table once a day, a request that names nothing about
+it, and bills each month on its rate where a card states none, along with the
+figures you typed from your contract.
 
 The archive keeps the running month and the thirty-six before it, as long
 as a fixed contract runs on its signing card. A signing month older than

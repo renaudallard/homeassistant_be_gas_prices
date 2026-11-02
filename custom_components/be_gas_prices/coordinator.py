@@ -57,7 +57,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import calorific, excise_law, fluvius, tarbel
+from . import calorific, excise_law, fluvius, tarbel, vat_rates
 from .bill import IndexValue, bill_month, contract_leg, merged_index, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -393,6 +393,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         tarbel.restore_protected(blob.get("tarbel_protected"))
         tarbel.restore_contribution(blob.get("tarbel_contribution"))
         fluvius.restore(blob.get("fluvius"))
+        vat_rates.restore(blob.get("vat_rates"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
@@ -436,6 +437,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             "tarbel_protected": tarbel.protected_held_table(),
             "tarbel_contribution": tarbel.contribution_held_table(),
             "fluvius": fluvius.held_table(),
+            "vat_rates": vat_rates.held_table(),
             "months": self._months.to_json(),
             "release": self._release,
             "backfill": self.backfill_stamp,
@@ -488,6 +490,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 tarbel.protected_held_table(),
                 tarbel.contribution_held_table(),
                 fluvius.held_table(),
+                vat_rates.held_table(),
             ]
         )
         tier = "" if self.household is None else tier_for(self.household.annual_kwh)
@@ -872,8 +875,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         row = self._months.get(self.extractor.id, self.contract, self.region, month)
         return None if row is None else row.snapshot
 
-    def _energy_for(self, card: SupplierSnapshot) -> EnergyRates:
-        """The energy leg a card bills this household on: the signing card's
+    def _energy_for(self, card: SupplierSnapshot, vat_rate: float) -> EnergyRates:
+        """The energy leg a card bills this household on at ``vat_rate``, the
+        residential rate of the month billed: the signing card's
         when the entry names a signing month the archive can serve and the
         contract holds its figures, with the figures the household typed
         from its contract laid over it. The signing card is the one of the
@@ -884,7 +888,9 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             today_month = month_key(dt_util.now().date())
             signing = keys[-1]
             signed = self._snapshot if signing == today_month else self._month_card(signing)
-        return contract_leg(card.energy, None if signed is None else signed.energy, self._data)
+        return contract_leg(
+            card.energy, None if signed is None else signed.energy, self._data, vat_rate
+        )
 
     def month_price(
         self, month: str, *, own_card: bool = False
@@ -908,7 +914,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 bill = bill_month(
                     month=month,
                     card=card,
-                    energy=self._energy_for(card),
+                    energy_for=self._energy_for,
                     table=self._index_table,
                     dso=household.dso,
                     annual_kwh=household.annual_kwh,
@@ -1044,6 +1050,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             # is resolved against when it is priced below.
             await excise_law.ensure_excise_law(self._session)
             await tarbel.ensure_tariff(self._session)
+            # The residential VAT rate the cards of each month agree on.
+            await vat_rates.ensure_vat_rates(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the
@@ -1172,7 +1180,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         return OwnContract(
             self.extractor,
             self.contract,
-            replace(snapshot, energy=self._energy_for(snapshot)),
+            replace(
+                snapshot,
+                energy=self._energy_for(snapshot, vat_rates.residential_vat(dt_util.now().date())),
+            ),
             read_by_ocr=self.card_read_by_ocr,
             table=self._index_table,
         )
@@ -1356,7 +1367,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         now_bill = bill_month(
             month=month,
             card=snapshot,
-            energy=self._energy_for(snapshot),
+            energy_for=self._energy_for,
             table=self._index_table,
             dso=household.dso,
             annual_kwh=household.annual_kwh,
@@ -1366,7 +1377,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             days_in_year=365,
         )
         fixed = fixed_costs(
-            replace(resolve_for_delivery(snapshot, today), energy=self._energy_for(snapshot)),
+            replace(
+                resolve_for_delivery(snapshot, today),
+                energy=self._energy_for(snapshot, vat_rates.residential_vat(today)),
+            ),
             household.dso,
             household.annual_kwh,
             household.caliber,

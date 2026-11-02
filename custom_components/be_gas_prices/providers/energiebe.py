@@ -306,7 +306,7 @@ def _indexed(text: str) -> IndexedRates:
         raise ExtractorError("energie.be: variable card formula not found")
     price, fee = _price_and_fee(text)
     # The card states no VAT rate; the residential one the law sets is what
-    # reproduces its printed price.
+    # reproduces its printed price, and the month billed moves it.
     vat = 1.0 + VAT_RATE_REDUCED
     # TTF_RLP in c EUR/kWh is the index in EUR/MWh over 10, and the formula
     # yields c EUR/kWh: factor / 1000 per EUR/MWh, base / 100, both grossed.
@@ -318,6 +318,7 @@ def _indexed(text: str) -> IndexedRates:
         price=price,
         yearly_fixed_fee=fee,
         formula=formula.group(0),
+        vat_grossed=("factor", "base"),
     )
 
 

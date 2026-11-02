@@ -198,8 +198,16 @@ ENERGY_CONTRIBUTION_RESIDENTIAL_HTVA: Final = 0.0009978
 ENERGY_CONTRIBUTION_KNOWN_FROM: Final = GAS_EXCISE_KNOWN_FROM
 ENERGY_CONTRIBUTION_ZEROED_FROM: Final = (2026, 8)
 
-# Belgian VAT on residential gas (Royal Decree nr. 20, table A, XIV).
+# Belgian VAT on residential gas (Royal Decree nr. 20, table A, XIV). The rate
+# billed is the card archive's table of the rate the cards agree on
+# (vat_rates.py); this answers before it has been read and for a month before
+# the first it holds.
 VAT_RATE_REDUCED: Final = 0.06
+# The card archive's table of the residential VAT rate the cards of each month
+# agree on, which scripts/archive_cards.py writes and vat_rates.py reads.
+VAT_TABLE_URL: Final = (
+    "https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json"
+)
 
 # Brussels per-meter levy (gas ordinance of 1 April 2004, art.
 # 20septiesdecies): a yearly amount by meter caliber in m3/h, and for the

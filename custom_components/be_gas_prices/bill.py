@@ -49,6 +49,7 @@ The rules this encodes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
@@ -56,9 +57,14 @@ from typing import Any
 from .const import CONF_SUPPLIER, SUPPLIER_CUSTOM
 from .manual_rate import manual_leg
 from .pricing import PriceBreakdown, compute_breakdown, energy_price, fixed_costs
-from .providers._rates import EnergyRates, IndexedRates, VariableRates
+from .providers._rates import EnergyRates, IndexedRates, VariableRates, on_vat
 from .providers._resolve import resolve_for_delivery
 from .providers.base import IndexTable, SupplierSnapshot
+from .vat_rates import residential_vat
+
+# The energy leg a card bills a household on at a residential VAT rate: the
+# card's own, or the signing card's with the figures the household typed.
+type LegFor = Callable[[SupplierSnapshot, float], EnergyRates]
 
 
 @dataclass(frozen=True)
@@ -111,14 +117,24 @@ def merged_index(held: IndexTable | None, fetched: IndexTable, month: str) -> In
     return table
 
 
+def card_leg(card: SupplierSnapshot, vat_rate: float) -> EnergyRates:
+    """The card's own energy leg at ``vat_rate``, for a card no contract is
+    laid over."""
+    return on_vat(card.energy, vat_rate)
+
+
 def contract_leg(
     own: EnergyRates,
     signed: EnergyRates | None,
     data: dict[str, Any],
+    vat_rate: float,
 ) -> EnergyRates:
     """The energy leg a month is billed on, from the card of the month
     (``own``), the signing card's leg where one is known and the figures
-    the household typed (``data``).
+    the household typed (``data``), at ``vat_rate``, the residential rate
+    of the month: a figure a parser grossed by an assumed rate is moved onto
+    it (:func:`on_vat`), and the typed figures are grossed by it, before the
+    signed formula is priced at the index of the card of the month.
 
     For a month the supplier has published no value of the index up to, a
     card prints only its own month's price. The index that price was set at
@@ -133,8 +149,10 @@ def contract_leg(
     """
     if data.get(CONF_SUPPLIER) == SUPPLIER_CUSTOM:
         return own
+    own = on_vat(own, vat_rate)
+    signed = None if signed is None else on_vat(signed, vat_rate)
     leg = own if signed is None or isinstance(signed, VariableRates) else signed
-    leg = manual_leg(leg, data)
+    leg = manual_leg(leg, data, vat_rate)
     if (
         leg is not own
         and isinstance(leg, IndexedRates)
@@ -190,7 +208,7 @@ def bill_month(
     *,
     month: str,
     card: SupplierSnapshot,
-    energy: EnergyRates,
+    energy_for: LegFor,
     table: IndexTable | None,
     dso: str,
     annual_kwh: float,
@@ -203,13 +221,15 @@ def bill_month(
     """Bill ``kwh`` used over ``days`` days of ``month``, from ``first`` on,
     the 1st when not given.
 
-    ``card`` prices the network and the levies; ``energy`` is the leg the
-    household is billed on, which is the card's own or the signing card's.
-    The supplier's fixed fee follows the energy leg, since it is part of the
-    offer the household signed.
+    ``card`` prices the network and the levies; ``energy_for`` gives the
+    leg the household is billed on, the card's own or the signing card's,
+    at the residential VAT rate of ``month`` (vat_rates.py). The supplier's
+    fixed fee follows the energy leg, since it is part of the offer the
+    household signed.
     """
     year, number = (int(part) for part in month.split("-"))
     start = date(year, number, 1)
+    energy = energy_for(card, residential_vat(start))
     priced = replace(resolve_for_delivery(card, start), energy=energy)
     price, index = resolve_energy_price(energy, table, month)
     breakdown = compute_breakdown(priced, dso, annual_kwh, price)

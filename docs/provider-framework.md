@@ -50,8 +50,9 @@ card the parser refuses and the held card keeps pricing.
 - Figures as the card prints them, converted to EUR. A residential card is VAT
   inclusive (`vat_rate` 0.0); a formula printed excluding VAT is grossed up by
   the card's own printed rate, or the residential 6 % where the card prints
-  none (Energy Together, Bolt, energie.be, OCTA+), and one already carrying
-  "x 1,06" is not grossed again.
+  none (Energy Together, Bolt, energie.be, OCTA+), naming the fields it
+  grossed in `IndexedRates.vat_grossed` for the month billed to move onto
+  its own rate, and one already carrying "x 1,06" is not grossed again.
 - `IndexedRates.price` is the card's figure at the last known index where it
   prints one, else its printed estimate. `index` names the supplier's own
   series, the key of its `fetch_index` table.

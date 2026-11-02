@@ -429,6 +429,7 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
         price=to_float(price.group(1)) / 100.0,
         yearly_fixed_fee=to_float(fee.group(1)),
         formula=formula.group(0),
+        vat_grossed=("factor", "base"),
     )
 
 
@@ -490,6 +491,7 @@ def parse_older(
             price=to_float(price.group(1)) / 100.0,
             yearly_fixed_fee=to_float(fee.group(1)),
             formula=formula.group(0),
+            vat_grossed=("factor", "base"),
         )
     return SupplierSnapshot(
         supplier="octaplus",

@@ -57,6 +57,7 @@ from custom_components.be_gas_prices import (
     providers,
     snapshot_codec,
     tarbel,
+    vat_rates,
 )
 from custom_components.be_gas_prices.compare import IndexCache, Quote, quote_contract
 from custom_components.be_gas_prices.const import (
@@ -101,6 +102,7 @@ from custom_components.be_gas_prices.const import (
     SUPPLIER_SOCIAL,
     TIER_T1,
     TIER_T2,
+    VAT_RATE_REDUCED,
 )
 from custom_components.be_gas_prices.contract_periods import record_switch, remove_last_switch
 from custom_components.be_gas_prices.coordinator import GasCoordinator
@@ -374,7 +376,9 @@ async def test_a_card_stored_before_a_schema_bump_still_prices(
             "fetched_at": "2026-09-14T08:00:00+00:00",
         },
     }
-    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", 2)
+    monkeypatch.setattr(
+        snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", snapshot_codec.SNAPSHOT_SCHEMA_VERSION + 1
+    )
     fetch.side_effect = ExtractorError("network error fetching https://x: timeout")
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -2934,7 +2938,9 @@ async def test_a_card_reissued_within_its_month_prices_the_day_signed(
     coordinator = entry.runtime_data
     assert asked == [date(2026, 3, 21)]
     assert "2026-03-21" in coordinator._months_needed(date(2026, 9, 15))
-    assert coordinator._energy_for(fetch.return_value).price == pytest.approx(0.0754)
+    assert coordinator._energy_for(fetch.return_value, VAT_RATE_REDUCED).price == pytest.approx(
+        0.0754
+    )
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -3023,6 +3029,7 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
     assert contribution
     tarbel._HELD.clear()
     tarbel._CONTRIBUTION_HELD.clear()
+    vat = {"residential": {"2026-09": {"rate": 0.06}}}
     entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
     store = f"{DOMAIN}.{entry.entry_id}"
     hass_storage[store] = {
@@ -3033,6 +3040,7 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
             "fetched_at": "2026-09-14T08:00:00+00:00",
             "tarbel": stored,
             "tarbel_contribution": contribution,
+            "vat_rates": vat,
         },
     }
     entry.add_to_hass(hass)
@@ -3040,17 +3048,24 @@ async def test_the_excise_tariff_is_read_by_the_tick_and_kept_in_the_store(
     await hass.async_block_till_done(wait_background_tasks=True)
     assert tarbel.held_table() == stored
     assert tarbel.contribution_held_table() == contribution
+    assert vat_rates.held_table() == vat
     ensure: Any = tarbel.ensure_tariff
     ensure.assert_awaited()
     coordinator = entry.runtime_data
     await coordinator.async_save()
     assert hass_storage[store]["data"]["tarbel"] == stored
     assert hass_storage[store]["data"]["tarbel_contribution"] == contribution
+    assert hass_storage[store]["data"]["vat_rates"] == vat
+    reads: Any = vat_rates.ensure_vat_rates
+    reads.assert_awaited()
     before = coordinator.card_months_signature()
     tarbel.hold(((date(2027, 1, 1), date(2027, 3, 31), 0.01139, 0.01139),))
     assert coordinator.card_months_signature() != before
     before = coordinator.card_months_signature()
     tarbel.hold_contribution(((date(2027, 1, 1), date(2027, 3, 31), 0.0005),))
+    assert coordinator.card_months_signature() != before
+    before = coordinator.card_months_signature()
+    vat_rates.hold({"residential": {"2027-01": {"rate": 0.21}}})
     assert coordinator.card_months_signature() != before
 
 

@@ -197,6 +197,20 @@ def _excise_tariff_as_published(
     tarbel._CONTRIBUTION_HELD.clear()
 
 
+@pytest.fixture(autouse=True)
+def _vat_table_unread() -> Iterator[None]:
+    """The tick reads the card archive's VAT table. Tests start with none
+    held, the residential rate of const.py, and never reach the network."""
+    from custom_components.be_gas_prices import vat_rates
+
+    vat_rates._RESIDENTIAL.clear()
+    vat_rates._fetched_at = None
+    vat_rates._failed_at = None
+    with patch.object(vat_rates, "ensure_vat_rates", AsyncMock()):
+        yield
+    vat_rates._RESIDENTIAL.clear()
+
+
 # The data management fee each year's Fluvius gas tariff sheet prints, EUR/year
 # excluding VAT.
 FLUVIUS_FEES = {2025: 17.51, 2026: 17.85}

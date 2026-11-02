@@ -42,7 +42,7 @@ from typing import Any
 
 import aiohttp
 
-from .bill import contract_leg, merged_index, month_key
+from .bill import LegFor, contract_leg, merged_index, month_key
 from .const import (
     CONF_CALIBER,
     CONF_CONTRACT,
@@ -498,10 +498,11 @@ class PeriodBilling:
 
             def energy_for(
                 card: SupplierSnapshot,
+                vat_rate: float,
                 _signed: EnergyRates | None = None if signed is None else signed.energy,
                 _data: dict[str, Any] = period,
             ) -> EnergyRates:
-                return contract_leg(card.energy, _signed, _data)
+                return contract_leg(card.energy, _signed, _data, vat_rate)
 
             household = Household(
                 dso=str(period[CONF_DSO]),
@@ -515,7 +516,7 @@ class PeriodBilling:
                 _end: date = end,
                 _household: Household = household,
                 _month_card: Callable[[str], SupplierSnapshot | None] = month_card,
-                _energy_for: Callable[[SupplierSnapshot], EnergyRates] = energy_for,
+                _energy_for: LegFor = energy_for,
                 _table: IndexTable | None = table,
             ) -> RunningCosts:
                 return running_costs(

@@ -51,7 +51,7 @@ from datetime import date, timedelta
 
 import aiohttp
 
-from .bill import bill_month, month_key
+from .bill import bill_month, card_leg, month_key
 from .const import SUPPLIER_CUSTOM, SUPPLIER_SOCIAL
 from .month_cards import current_card
 from .pricing import PricingError
@@ -176,7 +176,7 @@ async def quote_contract(
         bill = bill_month(
             month=month,
             card=card,
-            energy=card.energy,
+            energy_for=card_leg,
             table=current,
             dso=household.dso,
             annual_kwh=household.annual_kwh,

@@ -136,6 +136,17 @@ all or has gone stale. The request names the supplier, the contract,
 the region and the month and nothing else; the *Read the project's card
 archive* option switches it off.
 
+Beside the cards, the workflow writes `gas/vat.json`: per card month, the
+residential VAT rate three suppliers or more state and none contradicts.
+`vat_rates.py` reads it once a day
+(`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json`,
+a failure waiting six hours) and keeps it in each entry's Store. A month is
+billed on its own entry, or on the last month before it that agreed; before
+the table has been read, or for a month before the first it holds, on the
+law's 6 % in `const.py`. That rate grosses the law's figures on a card that
+states none, a formula a parser grossed by 6 % for want of a stated rate,
+and the figures a household typed from its contract.
+
 ## The recorder
 
 `gas_meter.py` reads the gas meter's long-term statistics, daily `change` in

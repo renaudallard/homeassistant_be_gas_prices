@@ -80,6 +80,7 @@ from custom_components.be_gas_prices.const import (
     REGION_WALLONIA,
     SUPPLIER_CUSTOM,
     TIER_T2,
+    VAT_RATE_REDUCED,
 )
 from custom_components.be_gas_prices.contract_periods import (
     PeriodBilling,
@@ -604,24 +605,26 @@ def test_malformed_periods_are_left_out() -> None:
 
 def test_manual_rate_replaces_a_fixed_price_and_fee() -> None:
     leg = FixedRates(price=0.08, yearly_fixed_fee=60.0)
-    typed = manual_leg(leg, {CONF_MANUAL_PRICE: 7.5, CONF_MANUAL_FEE: 45.0})
+    typed = manual_leg(leg, {CONF_MANUAL_PRICE: 7.5, CONF_MANUAL_FEE: 45.0}, VAT_RATE_REDUCED)
     assert typed == FixedRates(price=approx(0.075 * 1.06), yearly_fixed_fee=45.0)
-    assert manual_leg(leg, {}) is leg
+    assert manual_leg(leg, {}, VAT_RATE_REDUCED) is leg
 
 
 def test_manual_rate_replaces_an_indexed_formula() -> None:
     leg = IndexedRates(factor=0.001, base=0.01, index="ZTPDAM", price=0.07, yearly_fixed_fee=50.0)
-    typed = manual_leg(leg, {CONF_MANUAL_FACTOR: 0.1020, CONF_MANUAL_BASE: 0.9335})
+    typed = manual_leg(
+        leg, {CONF_MANUAL_FACTOR: 0.1020, CONF_MANUAL_BASE: 0.9335}, VAT_RATE_REDUCED
+    )
     assert isinstance(typed, IndexedRates)
     assert typed.factor == pytest.approx(0.001020 * 1.06)
     assert typed.base == pytest.approx(0.009335 * 1.06)
     assert typed.index == "ZTPDAM"
     assert typed.yearly_fixed_fee == 50.0
     # A figure typed alone replaces the card's own and keeps the other.
-    base_only = manual_leg(leg, {CONF_MANUAL_BASE: 0.9335})
+    base_only = manual_leg(leg, {CONF_MANUAL_BASE: 0.9335}, VAT_RATE_REDUCED)
     assert isinstance(base_only, IndexedRates)
     assert (base_only.factor, base_only.base) == (0.001, pytest.approx(0.009335 * 1.06))
-    factor_only = manual_leg(leg, {CONF_MANUAL_FACTOR: 0.1020})
+    factor_only = manual_leg(leg, {CONF_MANUAL_FACTOR: 0.1020}, VAT_RATE_REDUCED)
     assert isinstance(factor_only, IndexedRates)
     assert (factor_only.factor, factor_only.base) == (pytest.approx(0.001020 * 1.06), 0.01)
 
@@ -635,7 +638,9 @@ def test_a_typed_factor_past_the_cap_leaves_the_card_s(
     counts, and the log says so once, not on every month billed."""
     leg = IndexedRates(factor=0.001, base=0.01, index="ZTP", price=0.07)
     for _ in range(3):
-        typed = manual_leg(leg, {CONF_MANUAL_FACTOR: printed, CONF_MANUAL_BASE: 1.15})
+        typed = manual_leg(
+            leg, {CONF_MANUAL_FACTOR: printed, CONF_MANUAL_BASE: 1.15}, VAT_RATE_REDUCED
+        )
     assert isinstance(typed, IndexedRates)
     assert (typed.factor, typed.base) == (0.001, pytest.approx(0.0115 * 1.06))
     assert sum(f"Typed index factor {printed}" in r.getMessage() for r in caplog.records) == 1
@@ -1130,14 +1135,15 @@ def test_a_schema_bump_still_reads_older_cards(monkeypatch: pytest.MonkeyPatch) 
     newer schema than this release knows is never read."""
     card = _flow_card()
     blob = snapshot_to_json(card)
-    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", 2)
+    version = snapshot_codec.SNAPSHOT_SCHEMA_VERSION
+    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", version + 1)
     assert snapshot_from_json(blob) == card
-    assert snapshot_to_json(card)["schema"] == 2
-    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_FLOOR", 2)
+    assert snapshot_to_json(card)["schema"] == version + 1
+    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_FLOOR", version + 1)
     with pytest.raises(SnapshotDecodeError):
         snapshot_from_json(blob)
     with pytest.raises(SnapshotDecodeError):
-        snapshot_from_json({**blob, "schema": 3})
+        snapshot_from_json({**blob, "schema": version + 2})
 
 
 def test_month_cards_of_an_older_schema_are_kept(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1149,7 +1155,9 @@ def test_month_cards_of_an_older_schema_are_kept(monkeypatch: pytest.MonkeyPatch
             "fetched_at": "2026-08-01T00:00:00+00:00",
         }
     }
-    monkeypatch.setattr(snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", 2)
+    monkeypatch.setattr(
+        snapshot_codec, "SNAPSHOT_SCHEMA_VERSION", snapshot_codec.SNAPSHOT_SCHEMA_VERSION + 1
+    )
     cache = MonthCardCache()
     cache.load_json(stored, reread=True)
     held = cache.get("engie", "engie_flow", "wallonia", "2026-07")

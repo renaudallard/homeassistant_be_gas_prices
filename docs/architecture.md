@@ -36,14 +36,17 @@ A Belgian gas bill fuses three sources:
    the annual volume, transport and metering.
 3. The federal and regional levies: the special excise (billed per slice of
    the annual volume), the energy contribution, the Walloon connection fee
-   and the Brussels per-meter levy. VAT is 6% on all of it except the Walloon
+   and the Brussels per-meter levy. VAT, the residential rate the cards of
+   the month agree on (6%), is on all of it except the Walloon
    connection fee.
 
 The rule that shapes the codebase comes from the electricity integration: no
 supplier price is ever typed into Python source. Every figure comes from a
 live card. The excise and the energy contribution are read from FPS Finance's
-excise tariff (`tarbel.py`) and the law itself (`excise_law.py`), and the
-Fluvius data management fee from Fluvius's tariff sheet (`fluvius.py`). The few regulated figures in
+excise tariff (`tarbel.py`) and the law itself (`excise_law.py`), the
+Fluvius data management fee from Fluvius's tariff sheet (`fluvius.py`), and
+the residential VAT rate from the card archive's table of the rate the cards
+of each month agree on (`vat_rates.py`). The few regulated figures in
 `const.py` are set by law or by the regulator for everyone they apply to and
 carry the months they are known to cover.
 
@@ -65,6 +68,7 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store. |
 | `tarbel.py` | The residential special excise by quarter, the notices of article 420 included, and the energy contribution, read daily from FPS Finance's excise tariff (XLSX) and kept in the Store. |
 | `xlsx.py` | The cells of a workbook as text, for the two readers above. |
+| `vat_rates.py` | The residential VAT rate by delivery month, read daily from the card archive's `vat.json` (the rate the cards of each month agree on) and kept in the Store; `const.py`'s rate before it is read. |
 | `month_cards.py` | The card of a past month: the card archive in be_price_cards, then the supplier's archive. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
 | `contract_periods.py` | Contracts the household held earlier in the year, recorded at a switch, billed on their own suppliers' cards. |
 | `manual_rate.py` | Figures the household typed from its own contract, laid over the signing card. |
@@ -118,6 +122,7 @@ async_setup_entry                       __init__.py
         calorific: Atrias GCV of the reception station daily  calorific.py
         excise:    article 419 from Justel daily              excise_law.py
                    FPS Finance's excise tariff daily          tarbel.py
+        vat:       the card archive's VAT table daily         vat_rates.py
         fluvius:   this year's gas tariff sheet, once         fluvius.py
                    (an entry billing a Flemish contract)
         months:    past months' cards, supplier archive then card archive
