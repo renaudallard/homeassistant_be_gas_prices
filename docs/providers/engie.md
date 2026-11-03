@@ -14,6 +14,18 @@ Tests: `tests/test_engie.py`, fixtures in `tests/fixtures/engie/`.
   region. The term differs by region for some products (EASY is 12 months
   in Flanders and Wallonia, 36 in Brussels), so each contract carries its
   term per region.
+- The code follows the term, and the endpoint files a card under the code
+  of its own month only. Empty House became a three-year product in
+  November 2026 ("durée de 3 ans") and moved from `00` to `36`: on 3
+  November 2026 the `36` code answered November at offset 0 and 404 at
+  offset 1, the `00` code 404 at offset 0 and October at 1. The contract
+  carries `renumbered`, the first month under the new code and the code
+  each region had before, and every card is asked under its own month's:
+  `fetch` takes Home Assistant's date, which is also the day the card
+  archive replays a card at, and `fetch_for_month` the month asked.
+- Engie's prices page (`/fr/energie/electricite-gaz/prix-conditions/`)
+  links every residential card through the endpoint, so it names every
+  current code; the extractor builds the codes itself.
 - There is no probe: the card is fetched on the coordinator's time-based
   schedule.
 
@@ -129,3 +141,7 @@ Billed as printed:
 - The index page, contract regions, and `fetch_for_month` (the offset in
   Brussels time, a card for another month, a transient failure, a future
   month).
+- Empty House's renumbered code, on the October 2026 card under `00` and
+  the November 2026 card under `36`: the current card, a past month on
+  each side of the change, and a card read in October asked again where
+  it was read.

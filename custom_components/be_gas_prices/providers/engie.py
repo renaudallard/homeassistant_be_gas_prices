@@ -120,6 +120,10 @@ class _ContractDef:
     family: str
     rate: str  # F (fixed) or I (indexed) in the code
     months_per_region: dict[str, str]
+    # A term Engie renumbered: the first month under the code above, and the
+    # code each region's cards carried before it. The endpoint files a card
+    # under the code of its own month only.
+    renumbered: tuple[date, dict[str, str]] | None = None
 
 
 # Every residential gas product on Engie's conditions page. Dynamic has no gas
@@ -183,15 +187,23 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
         "indexed",
         "EMPTYHOUSE",
         "I",
-        {"V": "00", "W": "00", "B": "00"},
+        {"V": "36", "W": "36", "B": "36"},
+        # A three-year product since November 2026 and open-ended before:
+        # October's card and every one before it are served under "00" only.
+        renumbered=(date(2026, 11, 1), {"V": "00", "W": "00", "B": "00"}),
     ),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 _CODE_TO_REGION = {code: region for region, code in _REGION_TO_CODE.items()}
 
 
-def _document_url(contract: _ContractDef, region_code: str, month_offset: int = 0) -> str:
+def _document_url(contract: _ContractDef, region_code: str, month: date, month_offset: int) -> str:
+    """The address of ``contract``'s card for ``month``, ``month_offset``
+    months before the month the endpoint is in. The month picks the code,
+    since a renumbered term moves it."""
     months = contract.months_per_region[region_code]
+    if contract.renumbered is not None and month < contract.renumbered[0]:
+        months = contract.renumbered[1][region_code]
     code = f"G_{contract.family}_R_GREY_C_{contract.rate}_{months}_{region_code}_F"
     return f"{_API_URL}?document={code}&monthOffset={month_offset}&segment=R&language=F"
 
@@ -206,9 +218,12 @@ def _region_code(contract: _ContractDef, region: str) -> str:
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
     """The configured region's current card for ``contract_id``."""
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Engie")
-    return await _read(
-        session, contract_id, region, _document_url(contract, _region_code(contract, region))
-    )
+    # Home Assistant's date, as in fetch_for_month: the card archive replays a
+    # card with the clock on the day it was read, so a card read before a term
+    # was renumbered is asked under its old code again.
+    code = _region_code(contract, region)
+    url = _document_url(contract, code, dt_util.now().date(), 0)
+    return await _read(session, contract_id, region, url)
 
 
 async def _read(
@@ -241,7 +256,7 @@ async def fetch_for_month(
     offset = (today.year - year_month.year) * 12 + (today.month - year_month.month)
     if offset < 0:
         return None
-    url = _document_url(contract, code, offset)
+    url = _document_url(contract, code, year_month, offset)
     return await month_card(_read(session, contract_id, region, url), year_month)
 
 

@@ -349,17 +349,19 @@ settings stay; an end date it had is entered again in the settings).
 Suppliers do not all publish on the 1st. A new month's card can arrive days
 later, a product's card can go missing for a while, and index values come out
 weeks after the month they belong to. On 1 November 2026 TotalEnergies' cards
-were still October's, Engie had put up no Empty House card for November, and
-Luminus's BasicFlex Online card was only in its tariff archive; TotalEnergies'
-index table still ended with August.
+were still October's and Luminus's BasicFlex Online card was only in its
+tariff archive; TotalEnergies' index table still ended with August.
 
 The integration expects this. The last card read keeps pricing until the new
 one is out, a month whose index is not published yet is priced at the latest
 one and marked provisional, and a Luminus card missing from its address is
 read from Luminus's archive. A `card_missing` Repairs card in the first days
 of a month usually means the supplier is late rather than that anything is
-broken, and it clears once the card is fetched. What happens when a card stays
-missing is under [Failure mode](#failure-mode).
+broken, and it clears once the card is fetched. A card missing for more than
+a few days may have moved instead: Engie's Empty House card went to a new
+address on 1 November 2026, when the product became a three-year contract,
+and only an update of the integration could follow it. What happens when a
+card stays missing is under [Failure mode](#failure-mode).
 
 ## Failure mode
 

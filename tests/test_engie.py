@@ -352,3 +352,73 @@ async def test_fetch_for_month_does_not_ask_for_the_future() -> None:
             )
             is None
         )
+
+
+async def test_empty_house_cards_are_asked_under_the_code_of_their_month() -> None:
+    """Empty House became a three-year product in November 2026 and its code
+    moved from 00 to 36. The new code serves November's card and nothing
+    before it, the old one every month up to October, so each card is asked
+    under the code of its own month. Asked under 00, the current card
+    answered 404 from 1 November."""
+    october = _card("G_EMPTYHOUSE_R_GREY_C_I_00_W_F_202610.pdf")
+    november = _card("G_EMPTYHOUSE_R_GREY_C_I_36_W_F_202611.pdf")
+    served = {
+        "G_EMPTYHOUSE_R_GREY_C_I_36_W_F&monthOffset=0": november,
+        "G_EMPTYHOUSE_R_GREY_C_I_00_W_F&monthOffset=1": october,
+    }
+    asked: list[str] = []
+
+    async def _fake_pdf(session: object, url: str, **kwargs: object) -> str:
+        key = url.split("document=")[1].split("&segment=")[0]
+        asked.append(key)
+        if key in served:
+            return served[key]
+        raise ExtractorError(f"HTTP 404 fetching {url}")
+
+    with (
+        freeze_time(datetime(2026, 11, 3, 11)),
+        patch.object(engie, "fetch_pdf_text", _fake_pdf),
+    ):
+        current = await engie.fetch(AsyncMock(), "engie_empty_house", REGION_WALLONIA)
+        closed = await engie.fetch_for_month(
+            AsyncMock(), "engie_empty_house", REGION_WALLONIA, date(2026, 10, 1)
+        )
+    assert asked == [
+        "G_EMPTYHOUSE_R_GREY_C_I_36_W_F&monthOffset=0",
+        "G_EMPTYHOUSE_R_GREY_C_I_00_W_F&monthOffset=1",
+    ]
+    assert current.publication_label == "2026-11"
+    assert closed is not None and closed.publication_label == "2026-10"
+    # The formula did not move with the term: 1,7540 + 0,2000 x ZTPDAM.
+    for snap in (current, closed):
+        energy = snap.energy
+        assert isinstance(energy, IndexedRates)
+        assert energy.factor == pytest.approx(0.002 * 1.06)
+        assert energy.base == pytest.approx(0.01754 * 1.06)
+
+    # The card archive replays a card with the clock on the day it was read,
+    # so one read in October is asked where it was read.
+    served.clear()
+    served["G_EMPTYHOUSE_R_GREY_C_I_00_W_F&monthOffset=0"] = october
+    asked.clear()
+    with (
+        freeze_time(datetime(2026, 10, 29, 11)),
+        patch.object(engie, "fetch_pdf_text", _fake_pdf),
+    ):
+        replayed = await engie.fetch(AsyncMock(), "engie_empty_house", REGION_WALLONIA)
+    assert asked == ["G_EMPTYHOUSE_R_GREY_C_I_00_W_F&monthOffset=0"]
+    assert replayed.publication_label == "2026-10"
+
+    # A month on, November is a past month and stays under the new code.
+    served.clear()
+    served["G_EMPTYHOUSE_R_GREY_C_I_36_W_F&monthOffset=1"] = november
+    asked.clear()
+    with (
+        freeze_time(datetime(2026, 12, 2, 11)),
+        patch.object(engie, "fetch_pdf_text", _fake_pdf),
+    ):
+        past = await engie.fetch_for_month(
+            AsyncMock(), "engie_empty_house", REGION_WALLONIA, date(2026, 11, 1)
+        )
+    assert asked == ["G_EMPTYHOUSE_R_GREY_C_I_36_W_F&monthOffset=1"]
+    assert past is not None and past.publication_label == "2026-11"
