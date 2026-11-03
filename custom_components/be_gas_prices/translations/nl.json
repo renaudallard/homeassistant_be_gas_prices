@@ -444,11 +444,11 @@
     },
     "extractor_failed": {
       "title": "Tariefkaart van {supplier} kon niet gelezen worden",
-      "description": "De kaart voor {entry} kon twee keer na elkaar niet gelezen worden: {error}. De laatste goede kaart, als er een is, blijft rekenen. Als dit aanhoudt heeft de leverancier waarschijnlijk zijn opmaak gewijzigd; open een issue met de diagnostiek."
+      "description": "De kaart voor {entry} kon twee keer na elkaar niet gelezen worden: {error}. De laatste goede kaart, als er een is, blijft rekenen. Als dit aanhoudt heeft de leverancier waarschijnlijk zijn opmaak gewijzigd. Werk eerst de integratie bij: een nieuwere versie leest de nieuwe kaart misschien al. Toont de nieuwste versie deze melding nog, kijk dan eerst bij de open issues op GitHub voor je er een opent met de diagnostiek."
     },
     "card_missing": {
       "title": "Tariefkaart van {supplier} is niet beschikbaar",
-      "description": "De kaart voor {entry} kon twee keer na elkaar niet gelezen worden, de laatste keer omdat de site van de leverancier geen kaart heeft op het adres dat de integratie leest: {error}. Mogelijk heeft de leverancier de kaart van deze maand nog niet gepubliceerd, het product stopgezet of zijn kaarten verplaatst. De laatste goede kaart, als er een is, blijft rekenen. Deze melding verdwijnt vanzelf zodra de kaart weer opgehaald kan worden; duurt het langer dan enkele dagen terwijl de leverancier het product nog aanbiedt, open dan een issue met de diagnostiek."
+      "description": "De kaart voor {entry} kon twee keer na elkaar niet gelezen worden, de laatste keer omdat de site van de leverancier geen kaart heeft op het adres dat de integratie leest: {error}. Mogelijk heeft de leverancier de kaart van deze maand nog niet gepubliceerd, het product stopgezet of zijn kaarten verplaatst. De laatste goede kaart, als er een is, blijft rekenen. Deze melding verdwijnt vanzelf zodra de kaart weer opgehaald kan worden. Duurt het langer dan enkele dagen terwijl de leverancier het product nog aanbiedt, werk dan eerst de integratie bij: een nieuwere versie vindt de kaart misschien al. Toont de nieuwste versie deze melding nog, kijk dan eerst bij de open issues op GitHub voor je er een opent met de diagnostiek."
     },
     "card_unreadable": {
       "title": "{supplier} publiceert zijn kaart als afbeeldingen",

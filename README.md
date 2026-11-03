@@ -525,7 +525,10 @@ attached to an issue as it is.
   A card that fails, and the traceback of an error no parser expected, are
   logged as warnings without it.
 - **An issue report**: attach the diagnostics and, for a card that fails,
-  the log lines of a refresh with debug logging on.
+  the log lines of a refresh with debug logging on. A card that fails is
+  worth a report only on the latest version, since a newer one may already
+  read it, and only when no open issue covers it yet; its Repairs card says
+  the same.
 
 ## Known limitations
 
