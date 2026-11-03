@@ -11,8 +11,13 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
 - Card: `https://www.belvus.be/public/tariefkaarten/<YYYY-MM>/Tariefkaart_<Product>_GAS.pdf`,
   the folder named by the price month. A folder not uploaded yet answers 404.
 - Listing: https://www.belvus.be/historische-tariefkaarten links every
-  month since January 2026 for every product, newest first. `fetch` takes
-  the newest month the listing links for the product (`listed_months`).
+  month since January 2026 for every product, newest first, and
+  https://www.belvus.be/diensten links each product's current card. The
+  history page can lag: on 3 November 2026 it still ended with October
+  while /diensten linked the November cards, uploaded the day before.
+  `fetch` and `fetch_index` take the months both pages link
+  (`_listed`, `listed_months` on each); /diensten failing leaves the
+  history page's months.
 - No probe: the current card's URL is only known from the listing.
 
 ## Products and regions
@@ -96,7 +101,9 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
 check, the card month, both layouts mapping the labels alike (and giving the
 same table), the levies as printed, the January card refused, product and
 region refusals, `index_value` (September, August, January, a wrong month),
-the listing, `fetch`, `fetch_for_month` (folder URL, other month, 404,
-transient, future, Brussels time) and `fetch_index` (the cards from
-January of last year on and none older, a dead card link skipped, a site
-down failing).
+the listing, `fetch` (the newest month of either page, /diensten failing),
+`fetch_for_month` (folder URL, other month, 404, transient, future,
+Brussels time) and `fetch_index` (the cards from January of last year on
+and none older, a dead card link skipped, a site down failing, October's
+value off the November card /diensten links). The November 2026 card's
+transport line in its new unit.

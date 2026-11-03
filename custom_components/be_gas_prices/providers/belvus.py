@@ -32,9 +32,11 @@ the price month:
 
 and lists every month since January 2026 on /historische-tariefkaarten,
 newest first, which is how the current month's folder is found: the new
-folder answers 404 until Belvus uploads it. The same path pattern is the
-archive. Both residential gas products are Flanders only and indexed monthly
-on TTF_RLP; the Pro twins are professional cards and are not read.
+folder answers 404 until Belvus uploads it. /diensten links each
+product's current card and can be days ahead of the history page, so the
+months of both are read. The same path pattern is the archive. Both
+residential gas products are Flanders only and indexed monthly on
+TTF_RLP; the Pro twins are professional cards and are not read.
 
 Up to August 2026 the card was a copy of the Energy Together template; from
 September it has a layout of its own with the same wording and figures,
@@ -71,6 +73,10 @@ from .base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapsho
 
 _HOST = "https://www.belvus.be"
 _LISTING_URL = f"{_HOST}/historische-tariefkaarten"
+# Every product's current card. On 3 November 2026 it linked the November
+# cards, uploaded the day before, while the history page still ended with
+# October.
+_CURRENT_URL = f"{_HOST}/diensten"
 
 
 @dataclass(frozen=True)
@@ -102,6 +108,19 @@ def listed_months(page: str, contract: _ContractDef) -> list[date]:
             months.add(date(int(year), int(month), 1))
         except ValueError:
             continue
+    return sorted(months, reverse=True)
+
+
+async def _listed(session: aiohttp.ClientSession, contract: _ContractDef) -> list[date]:
+    """Every month the history page or the current cards page links a card
+    of ``contract`` for, newest first. A current cards page that cannot be
+    read leaves the history page's months, which is what was read before."""
+    months = set(listed_months(await fetch_text(session, _LISTING_URL), contract))
+    try:
+        current = await fetch_text(session, _CURRENT_URL)
+    except ExtractorError:
+        current = ""
+    months.update(listed_months(current, contract))
     return sorted(months, reverse=True)
 
 
@@ -138,9 +157,9 @@ async def _read(
 
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
-    """The newest card the listing links for ``contract_id``."""
+    """The newest card either page links for ``contract_id``."""
     contract = _contract(contract_id, region)
-    months = listed_months(await fetch_text(session, _LISTING_URL), contract)
+    months = await _listed(session, contract)
     if not months:
         raise ExtractorError(f"Belvus: no {contract.file} gas card listed")
     return await _read(session, contract, months[0])
@@ -179,7 +198,7 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     on, the first month the price history can be backfilled from: each card
     names the month before's value."""
     contract = _CONTRACTS[0]
-    months = listed_months(await fetch_text(session, _LISTING_URL), contract)
+    months = await _listed(session, contract)
     first = earliest_priced_month(dt_util.now().date())
     values: dict[str, float] = {}
     for month in (month for month in months if month >= first):

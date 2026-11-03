@@ -376,6 +376,69 @@ async def test_fetch_index_passes_over_a_dead_card_link(error: str, kept: bool) 
     assert set(table["TTF_RLP"]) == {"2026-08", "2026-07"}
 
 
+def _pages(current: str | None) -> AsyncMock:
+    """``fetch_text`` answering the history page fixture, and for the current
+    cards page the fixture ``current``, or a 503 for None."""
+    history = fixture_page("belvus", "historische-tariefkaarten.html")
+
+    async def page(_session: object, url: str, **_kw: object) -> str:
+        if url != belvus._CURRENT_URL:
+            return history
+        if current is None:
+            raise ExtractorError(f"HTTP 503 fetching {url}")
+        return fixture_page("belvus", current)
+
+    return AsyncMock(side_effect=page)
+
+
+async def test_fetch_reads_the_card_the_current_cards_page_links() -> None:
+    """On 3 November 2026 /diensten linked the November cards while the
+    history page still ended with October, and the fetch, reading the
+    history page alone, served October's card. The newest month either page
+    links is read. The history fixture ends with September."""
+    with (
+        patch.object(belvus, "fetch_text", _pages("diensten.html")),
+        patch.object(belvus, "fetch_pdf_text", AsyncMock(return_value=_card(NOVEMBER))) as card,
+    ):
+        snap = await belvus.fetch(AsyncMock(), "belvus_flex_online", REGION_FLANDERS)
+    assert card.call_args.args[1] == (
+        "https://www.belvus.be/public/tariefkaarten/2026-11/Tariefkaart_FlexOnline_GAS.pdf"
+    )
+    assert snap.publication_label == "2026-11"
+
+
+async def test_a_current_cards_page_that_fails_leaves_the_history() -> None:
+    with (
+        patch.object(belvus, "fetch_text", _pages(None)),
+        patch.object(belvus, "fetch_pdf_text", AsyncMock(return_value=_card(SEPTEMBER))) as card,
+    ):
+        await belvus.fetch(AsyncMock(), "belvus_flex_online", REGION_FLANDERS)
+    assert card.call_args.args[1] == (
+        "https://www.belvus.be/public/tariefkaarten/2026-09/Tariefkaart_FlexOnline_GAS.pdf"
+    )
+
+
+async def test_fetch_index_reads_the_value_the_current_card_names() -> None:
+    """The November card names October's TTF_RLP, which no card on the
+    history page names while it ends before November."""
+
+    async def pdf(_session: object, url: str) -> str:
+        if "/2026-11/" in url:
+            return _card(NOVEMBER)
+        if "/2026-09/" in url:
+            return _card(SEPTEMBER)
+        raise ExtractorError("HTTP 404 fetching x")
+
+    with (
+        freeze_time(datetime(2026, 11, 3, 12)),
+        patch.object(belvus, "fetch_text", _pages("diensten.html")),
+        patch.object(belvus, "fetch_pdf_text", AsyncMock(side_effect=pdf)),
+    ):
+        table = await belvus.fetch_index(AsyncMock())
+    assert table["TTF_RLP"]["2026-10"] == pytest.approx(88.059)
+    assert table["TTF_RLP"]["2026-08"] == pytest.approx(61.729)
+
+
 def test_extractor() -> None:
     extractor = belvus.EXTRACTOR
     assert extractor.id == "belvus"
