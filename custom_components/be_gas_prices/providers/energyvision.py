@@ -37,7 +37,11 @@ filed as
 listing, https://www.energyvision.be/nl-be/tariefkaart, links no card: its
 script (``/sites/default/files/ftp/tariefkaarten.min.js``) builds these
 names for the month and shows the newest upload that answers, else last
-month's card, and the current card is found the same way here.
+month's card, and the current card is found the same way here. From its
+version of 2 November 2026 the script asks Drupal's upload folders first,
+the delivery month's and then the month before's, and ``inline-files``
+last, taking the first that holds an upload; the cards are asked in the
+same order from November 2026 (``_UPLOAD_FOLDERS_FROM``).
 
 In Brussels the company sells as Brusol, on brusol.be, and only GSG,
 alongside its "Goedkope Stroom" electricity, which is "exclusief
@@ -175,7 +179,8 @@ class _Card:
     # by its name, as EnergyVision's own listing finds it.
     page: str | None = None
     # Brusol files a card under the month it uploaded it; EnergyVision keeps
-    # every month in one folder.
+    # every month in one folder, asked after the upload folders from
+    # November 2026.
     upload_folders: bool = False
 
 
@@ -333,16 +338,27 @@ async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -
     return f"{url} {modified}"
 
 
+# EnergyVision's listing has asked the upload folders before inline-files
+# since its script of 2 November 2026, when the corrected Flemish 1.800 kWh
+# electricity card sat in 2026-11 alone. The folders also hold drafts of
+# earlier months, which were sold off inline-files, so those stay there.
+_UPLOAD_FOLDERS_FROM = date(2026, 11, 1)
+
+
 def _month_urls(contract: _ContractDef, card: _Card, month: date) -> tuple[str, ...]:
     """Where the card for ``month`` (a first of the month) can sit, in the
-    order to try them."""
+    order to try them: the delivery month's upload folder, the month
+    before's, then for EnergyVision ``inline-files``, which alone is asked
+    for EnergyVision before ``_UPLOAD_FOLDERS_FROM``."""
     name = f"EV-{month:%m%y}-{contract.code}-{card.token}.pdf"
-    if not card.upload_folders:
-        return (f"{card.site}/sites/default/files/inline-files/{name}",)
+    inline = f"{card.site}/sites/default/files/inline-files/{name}"
+    if not card.upload_folders and month < _UPLOAD_FOLDERS_FROM:
+        return (inline,)
     previous = month - timedelta(days=1)
-    return tuple(
+    folders = tuple(
         f"{card.site}/sites/default/files/{folder:%Y-%m}/{name}" for folder in (month, previous)
     )
+    return folders if card.upload_folders else (*folders, inline)
 
 
 async def fetch_for_month(

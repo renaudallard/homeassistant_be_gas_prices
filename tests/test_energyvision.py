@@ -320,13 +320,14 @@ async def test_fetch_reads_the_card_brusols_page_links(
     assert snap.publication_label == month
 
 
-def _uploads(*names: str, down: str = "") -> AsyncMock:
+def _uploads(*names: str, down: str = "", root: str = _EV_FILES) -> AsyncMock:
     """A HEAD answering for the EnergyVision files ``names``, each with a
     Last-Modified of its own, failing for ``down`` as a site that is down
-    fails, and 404 for any other."""
+    fails, and 404 for any other. A name is the part of the URL after
+    ``root``."""
 
     def head(_session: object, url: str) -> str:
-        name = url.removeprefix(_EV_FILES)
+        name = url.removeprefix(root)
         if name == down:
             raise ExtractorError(f"network error fetching {url}: reset")
         if name not in names:
@@ -510,6 +511,55 @@ async def test_fetch_for_month_tries_both_brusol_upload_folders() -> None:
         "https://www.brusol.be/sites/default/files/2026-08/EV-0826-GSG-BXL-nl.pdf",
         "https://www.brusol.be/sites/default/files/2026-07/EV-0826-GSG-BXL-nl.pdf",
     ]
+
+
+def test_from_november_2026_a_card_is_asked_in_the_upload_folders_first() -> None:
+    """EnergyVision's listing has asked the delivery month's upload folder,
+    then the month before's, then inline-files since its script of 2
+    November 2026. The months before were sold off inline-files, and the
+    folders also hold their drafts, so they are asked there alone."""
+    contract = energyvision._CONTRACTS_BY_ID[_GSG]
+    card = contract.cards[REGION_FLANDERS]
+    files = "https://www.energyvision.be/sites/default/files/"
+    assert energyvision._month_urls(contract, card, date(2026, 11, 1)) == (
+        f"{files}2026-11/EV-1126-GSG-nl.pdf",
+        f"{files}2026-10/EV-1126-GSG-nl.pdf",
+        f"{files}inline-files/EV-1126-GSG-nl.pdf",
+    )
+    assert energyvision._month_urls(contract, card, date(2026, 10, 1)) == (
+        f"{files}inline-files/EV-1026-GSG-nl.pdf",
+    )
+
+
+async def test_a_november_card_in_an_upload_folder_alone_is_read() -> None:
+    """The November cards sit in the upload folders as well as in
+    inline-files, and on 3 November 2026 the inline copy of one of them, the
+    Flemish 1.800 kWh electricity card, was gone. A card filed in its upload
+    folder alone is still found, now and once its month is past."""
+    files = "https://www.energyvision.be/sites/default/files/"
+    folder = "2026-10/EV-1126-GSG-nl.pdf"
+    head = _uploads(folder, root=files)
+    read: list[str] = []
+
+    async def text(_session: object, url: str) -> str:
+        if url != files + folder:
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        read.append(url)
+        return _card("EV-1126-GSG-nl.pdf")
+
+    with (
+        patch.object(energyvision, "head_or_raise", head),
+        patch.object(energyvision, "fetch_pdf_text_layout", text),
+    ):
+        with freeze_time(datetime(2026, 11, 3, 11)):
+            current = await energyvision.fetch(AsyncMock(), _GSG, REGION_FLANDERS)
+        with freeze_time(datetime(2026, 12, 10, 11)):
+            past = await energyvision.fetch_for_month(
+                AsyncMock(), _GSG, REGION_FLANDERS, date(2026, 11, 1)
+            )
+    assert current.publication_label == "2026-11"
+    assert past is not None and past.publication_label == "2026-11"
+    assert read == [files + folder, files + folder]
 
 
 async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:

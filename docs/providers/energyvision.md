@@ -20,7 +20,15 @@ Tests: `tests/test_energyvision.py`, fixtures in
   fetch fails. The month is Home Assistant's, where the script takes
   Brussels'. A HEAD failing for another reason than a 404 or a 410 fails
   the fetch as transient. Probe: the current card's URL and Last-Modified,
-  which a new month and a card uploaded again both move.
+  which a new month and a card uploaded again both move. Since the
+  script's version of 2 November 2026 it asks Drupal's upload folders
+  first, the delivery month's and then the month before's, and
+  `inline-files` last, taking the first folder that holds an upload: on 3
+  November the inline copy of the Flemish 1.800 kWh electricity card was
+  gone and its corrected card sat in `2026-11` alone. The fetch and the
+  archive ask the same folders in the same order from November 2026
+  (`_UPLOAD_FOLDERS_FROM`); the November GSG cards sit in `2026-10` and in
+  `inline-files`, byte for byte the same.
 - Brusol (Brussels): https://www.brusol.be/nl/elektriciteit-en-gas/schrijf-je-in-voor-goedkope-stroom-van-brusol
   links `https://www.brusol.be/sites/default/files/<upload YYYY-MM>/EV-<MMYY>-GSG-BXL-nl.pdf`,
   from October 2026 with a space before the closing quote. The page sends no ETag or Last-Modified, so Brussels has no probe key.
@@ -107,7 +115,9 @@ the layout reader is used here too. Index name: `ZTP-RLP-M`.
 
 - EnergyVision: the plain name `inline-files/EV-<MMYY>-<CODE>-<token>.pdf`
   resolves for every month from November 2025 except January 2026 for
-  GSG.
+  GSG. From November 2026 the delivery month's upload folder and the month
+  before's are tried first, as the listing tries them; the upload folders
+  also hold drafts of the earlier months, which stay on `inline-files`.
   Where a month was uploaded again the plain name is the first upload.
 - Brusol: the delivery-month folder is tried first, then the month before.
   August 2026 is in both, and the later upload (2026-08) carries the new
@@ -197,6 +207,9 @@ Not modelled: the one-off welcome credit the Flemish cards print
   in Home Assistant's zone, no card, a site that does not answer.
 - `probe`: the key moving with a card uploaded again, None when the site
   does not answer, Brusol's page headed for Brussels.
+- From November 2026 the upload folders before `inline-files`, and the
+  November GSG card (`EV-1126-GSG-nl.pdf`, the real one) read from its
+  upload folder alone, current and archived.
 - `fetch_for_month`: the plain name, both Brusol folders in order, another
   month, a transient failure, no Brussels GS1JVG.
 - The index document table and `fetch_index` following the page link.
