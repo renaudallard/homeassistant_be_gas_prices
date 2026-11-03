@@ -214,6 +214,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._stand_in = False
         self._force_refresh = False
         self._failures = 0
+        # The day the run of failures _failures counts began.
+        self._failing_since: date | None = None
         self.last_error = ""
         # The last error was the card failing to price the household.
         self._pricing_error = ""
@@ -374,6 +376,11 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         if restored or blob.get("failures_for") == self._card_key():
             failures = blob.get("failures")
             self._failures = failures if isinstance(failures, int) else 0
+            since = blob.get("failing_since")
+            try:
+                self._failing_since = date.fromisoformat(since) if since else None
+            except (TypeError, ValueError):
+                self._failing_since = None
             self.card_unreadable = blob.get("unreadable") is True
             self.card_missing = blob.get("missing") is True
         # A price is only resolved against its own supplier's publication:
@@ -420,11 +427,13 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     async def _save_persistent(self) -> None:
         if not self._set_up():
             return
+        since = self.failing_since
         payload: dict[str, Any] = {
             "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
             "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
             "read_by_ocr": self.card_read_by_ocr,
             "failures": self._failures,
+            "failing_since": None if since is None else since.isoformat(),
             "unreadable": self.card_unreadable,
             "missing": self.card_missing,
             "failures_for": self._card_key(),
@@ -648,6 +657,8 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def _fetch_failed(self, message: str, *, transient: bool) -> None:
         self.last_error = message
         if not transient:
+            if not self._failures:
+                self._failing_since = dt_util.now().date()
             self._failures += 1
         _LOGGER.warning("%s: tariff card not refreshed: %s", self.extractor.label, message)
 
@@ -991,6 +1002,16 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
     def failures(self) -> int:
         """Consecutive fetches that failed for a reason a retry will not fix."""
         return self._failures
+
+    @property
+    def failing_since(self) -> date | None:
+        """The day those failures began, or None without any."""
+        return self._failing_since if self._failures else None
+
+    @property
+    def card_held(self) -> bool:
+        """Whether a card prices the entry, fetched, kept or stood in."""
+        return self._snapshot is not None
 
     async def _async_update_data(self) -> CoordinatorData:
         try:

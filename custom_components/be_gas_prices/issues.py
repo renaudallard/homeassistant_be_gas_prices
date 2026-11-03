@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .gas_meter import recorder_loaded
@@ -45,6 +46,15 @@ if TYPE_CHECKING:
 # A failed fetch is usually a transient outage the next tick recovers; the
 # card saying the layout may have changed waits for this many in a row.
 EXTRACTOR_ISSUE_THRESHOLD = 2
+
+# From the 1st to the 5th of a month a card that is missing or does not
+# parse raises no Repairs card while the entry still prices on a card, if
+# its run of failures began that month. Suppliers are often late then and
+# change their cards then, and the daily live check files such a failure
+# on its next run, so a fix can be out before the 6th. A run that began
+# earlier keeps its card, and an entry with no card raises it at once,
+# since nothing prices it.
+MONTH_START_HOLD_DAYS = 5
 
 ISSUES = (
     "snapshot_stale",
@@ -88,6 +98,17 @@ def _sync(
     )
 
 
+def _held_at_month_start(coordinator: GasCoordinator) -> bool:
+    since = coordinator.failing_since
+    today = dt_util.now().date()
+    return (
+        coordinator.card_held
+        and since is not None
+        and since >= today.replace(day=1)
+        and today.day <= MONTH_START_HOLD_DAYS
+    )
+
+
 def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
     """Raise or clear every card of the coordinator's entry."""
     entry = coordinator.entry
@@ -101,7 +122,11 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
         {**base, "error": coordinator.last_error or "-"},
         fixable=True,
     )
-    failed = coordinator.failures >= EXTRACTOR_ISSUE_THRESHOLD and not coordinator.card_unreadable
+    failed = (
+        coordinator.failures >= EXTRACTOR_ISSUE_THRESHOLD
+        and not coordinator.card_unreadable
+        and not _held_at_month_start(coordinator)
+    )
     # No card at the address is a card not published yet, a product
     # withdrawn or a card moved, which a layout report fits none of.
     _sync(

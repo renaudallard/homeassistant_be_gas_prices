@@ -355,13 +355,18 @@ tariff archive; TotalEnergies' index table still ended with August.
 The integration expects this. The last card read keeps pricing until the new
 one is out, a month whose index is not published yet is priced at the latest
 one and marked provisional, and a Luminus card missing from its address is
-read from Luminus's archive. A `card_missing` Repairs card in the first days
-of a month usually means the supplier is late rather than that anything is
-broken, and it clears once the card is fetched. A card missing for more than
-a few days may have moved instead: Engie's Empty House card went to a new
-address on 1 November 2026, when the product became a three-year contract,
-and only an update of the integration could follow it. What happens when a
-card stays missing is under [Failure mode](#failure-mode).
+read from Luminus's archive. From the 1st to the 5th of a month, a card that
+is missing or does not parse raises no Repairs card while the entry still
+prices on a card, if its failures began that month: suppliers are often late
+then, or change their cards, and the project's daily checks flag such a
+failure on their next run, so a fix can be out before the 6th. From the 6th
+the `card_missing` or `extractor_failed` card appears as below, and it clears
+once the card is fetched. An entry with no card at all raises it at once,
+since nothing prices it. A card missing for more than a few days may have
+moved instead: Engie's Empty House card went to a new address on 1 November
+2026, when the product became a three-year contract, and only an update of
+the integration could follow it. What happens when a card stays missing is
+under [Failure mode](#failure-mode).
 
 ## Failure mode
 
@@ -373,12 +378,15 @@ Repairs card fetches the card again; `extractor_failed` appears after two
 failures in a row that a retry will not fix, and `card_missing` in its place
 when the last of them found no card at the address (a 404 or 410, or a web
 page served instead), which is a card not published yet or moved rather than
-a layout change. A contract its supplier withdrew keeps pricing on the last
-card held for it, from storage, the card archive or the supplier's own
-archive, and the `contract_withdrawn` Repairs card suggests recording the
-change of contract once the supplier moves you. The setup still lists it,
-marked †, for a household whose contract runs on it, and with a contract
-start date it is priced on the card of the month signed.
+a layout change. From the 1st to the 5th of a month both are held back while
+a card still prices the entry, as told under
+[Suppliers are often late](#suppliers-are-often-late). A contract its
+supplier withdrew keeps pricing on the last card held for it, from storage,
+the card archive or the supplier's own archive, and the `contract_withdrawn`
+Repairs card suggests recording the change of contract once the supplier
+moves you. The setup still lists it, marked †, for a household whose
+contract runs on it, and with a contract start date it is priced on the
+card of the month signed.
 
 ## How often the integration polls
 

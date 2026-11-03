@@ -31,7 +31,10 @@ cards (`issues.sync_issues`).
    network failure.
    A failure keeps the card in hand and records `last_error`; a failure a
    retry will not fix counts towards the `extractor_failed` card, or the
-   `card_missing` card when it found no card at the address. An error
+   `card_missing` card when it found no card at the address. The first of
+   a run records its day (`failing_since`): from the 1st to the 5th of a
+   month a run that began that month raises neither card while a card
+   prices the entry (`issues.MONTH_START_HOLD_DAYS`). An error
    no extractor raises on purpose (a parser meeting a page it does not
    expect) is failed the same way, through `providers._pdf.guarded`, with
    its traceback logged; a probe raising one is no signal. With no
@@ -131,11 +134,12 @@ when it was fetched, how many fetches of it failed in a row and whether it
 was found unreadable or missing, the index table, the calorific values of the
 configured station, the past months' cards, the price-history stamp, the last
 daily ranking and the figures the last meter read gave, with the meter,
-settings, year and month they were read and priced for. The failure count
-and the unreadable and missing marks, kept for the supplier, contract and
-region the card is fetched for, carry the `extractor_failed`,
-`card_missing` and `card_unreadable` Repairs cards across a restart, so one the user ignored stays ignored, and
-across setup retries with no card, so `extractor_failed` is raised there
+settings, year and month they were read and priced for. The failure count,
+the day the run began and the unreadable and missing marks, kept for the
+supplier, contract and region the card is fetched for, carry the
+`extractor_failed`, `card_missing` and `card_unreadable` Repairs cards
+across a restart, so one the user ignored stays ignored, and across setup
+retries with no card, so `extractor_failed` is raised there
 too. A blob of an older snapshot schema, down to `SNAPSHOT_SCHEMA_FLOOR`,
 is read as it is, so a bump that adds a field keeps the stored cards and the
 archive's rows not yet rewritten: the card is asked for again at once and

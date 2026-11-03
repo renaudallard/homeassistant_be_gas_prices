@@ -32,6 +32,7 @@ import json
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date, timedelta
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -54,6 +55,7 @@ from custom_components.be_gas_prices import (
     diagnostics,
     excise_law,
     fluvius,
+    issues,
     law_archive,
     providers,
     snapshot_codec,
@@ -2438,6 +2440,99 @@ async def test_an_unreadable_card_stays_marked_through_a_restart(
     issues = ir.async_get(hass)
     assert issues.async_get_issue(DOMAIN, f"card_unreadable_{entry.entry_id}") is not None
     assert issues.async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}") is None
+
+
+def _failing_coordinator(**values: Any) -> SimpleNamespace:
+    """A coordinator as sync_issues reads it, two fetches in a row failed."""
+    base: dict[str, Any] = {
+        "entry": SimpleNamespace(title="Engie Flow", entry_id="e1"),
+        "extractor": SimpleNamespace(label="Engie", contract_label=lambda _c: "Engie Flow"),
+        "contract": "engie_flow",
+        "failures": 2,
+        "failing_since": date(2026, 11, 2),
+        "card_held": True,
+        "last_error": "Engie: variable price block or formula not found",
+        "card_missing": False,
+        "card_unreadable": False,
+        "card_read_by_ocr": False,
+        "withdrawn": False,
+        "meter_reads_pending": True,
+        "meter_count": None,
+        "meter_error": None,
+        "snapshot_stale": lambda: False,
+    }
+    return SimpleNamespace(**{**base, **values})
+
+
+@pytest.mark.parametrize("missing", [False, True])
+@pytest.mark.parametrize(
+    ("moment", "since", "held", "shown"),
+    [
+        # A run begun on the 2nd while a card prices: held back to the 6th.
+        ("2026-11-03 14:00:00+01:00", date(2026, 11, 2), True, False),
+        ("2026-11-05 23:30:00+01:00", date(2026, 11, 2), True, False),
+        ("2026-11-06 00:30:00+01:00", date(2026, 11, 2), True, True),
+        # A run begun before the 1st keeps its card.
+        ("2026-11-03 14:00:00+01:00", date(2026, 10, 30), True, True),
+        # No card at all: shown at once, since nothing prices the entry.
+        ("2026-11-03 14:00:00+01:00", date(2026, 11, 2), False, True),
+        # A run stored by an older version, with no day: shown as before.
+        ("2026-11-03 14:00:00+01:00", None, True, True),
+    ],
+)
+async def test_a_month_start_failure_holds_its_card_while_a_card_prices(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    missing: bool,
+    moment: str,
+    since: date | None,
+    held: bool,
+    shown: bool,
+) -> None:
+    """From the 1st to the 5th a card that is missing or does not parse
+    raises no Repairs card while the entry still prices on a card, so the
+    daily live check files the failure first and a fix can be out before the
+    6th. Electricity's energie.be cards of 3 November 2026 reached a user 33
+    minutes after they went up."""
+    await hass.config.async_set_time_zone("Europe/Brussels")
+    freezer.move_to(moment)
+    coordinator = _failing_coordinator(failing_since=since, card_held=held, card_missing=missing)
+    issues.sync_issues(hass, coordinator)  # type: ignore[arg-type]
+    name = "card_missing" if missing else "extractor_failed"
+    assert (ir.async_get(hass).async_get_issue(DOMAIN, f"{name}_e1") is not None) is shown
+
+
+@pytest.mark.freeze_time("2026-11-02 10:00:00+01:00")
+async def test_a_run_of_failures_keeps_the_day_it_began(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+    hass_storage: dict[str, Any],
+) -> None:
+    """The first failure of a run stores its day and a later one in the same
+    run keeps it, through the setup retries' new coordinators too, which is
+    what the month-start hold asks. A fetch that succeeds ends the run and
+    its day."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    store = f"{DOMAIN}.{entry.entry_id}"
+    entry.add_to_hass(hass)
+    fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
+    assert not await hass.config_entries.async_setup(entry.entry_id)
+    assert hass_storage[store]["data"]["failing_since"] == "2026-11-02"
+    freezer.move_to("2026-11-03 10:00:00+01:00")
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass_storage[store]["data"]["failures"] == 2
+    assert hass_storage[store]["data"]["failing_since"] == "2026-11-02"
+    fetch.side_effect = None
+    freezer.move_to("2026-11-04 10:00:00+01:00")
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert entry.state is ConfigEntryState.LOADED
+    await entry.runtime_data.async_save()
+    assert hass_storage[store]["data"]["failures"] == 0
+    assert hass_storage[store]["data"]["failing_since"] is None
+    await hass.config_entries.async_unload(entry.entry_id)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
