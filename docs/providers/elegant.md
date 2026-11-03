@@ -9,9 +9,11 @@ There is no electricity counterpart for Elegant.
 - Listing: https://www.elegant.be/tariefkaarten, server-rendered Next.js.
   Since 1 October 2026 it links the current residential cards at a stable
   address, overwritten in place:
-  `https://cdn.elegant.be/Pricing/TariffCharts/Current/<Product>Gas_Residential.pdf`,
-  with `FlexGas`, `ComfortFlexGas` and `ZekerVastGas` as the archive names
-  them. Before, it linked DatoCMS assets,
+  `https://cdn.elegant.be/Pricing/TariffCharts/Current/<file>_Residential.pdf`.
+  Since 2 November 2026 the file names the product with spaces (the card
+  file below), percent-encoded when fetched, and the page's JSON writes the
+  `&` as `\u0026`; before, the name ran together, as the archive still
+  names the offers. Before October, it linked DatoCMS assets,
   `https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential[-<MMYY>].pdf`,
   still understood when the stable address is not linked: the upload id is
   the upload's Unix time, so the listing is read, and where a product is
@@ -22,11 +24,11 @@ There is no electricity counterpart for Elegant.
 
 Flanders only ("Sinds 2012 voor iedereen in Vlaanderen").
 
-| Contract id | Label | Kind | File token | Archive key |
-|---|---|---|---|---|
-| `elegant_flex` | Elegant Flex | indexed (monthly TTFDAM) | `flexgas` | `FlexGas` |
-| `elegant_comfortflex` | Elegant ComfortFlex | indexed (monthly TTFDAM) | `comfortflexgas` | `ComfortFlexGas` |
-| `elegant_zeker_vast` | Elegant Zeker & Vast | fixed, one year | `zekervastgas` | `ZekerVastGas` |
+| Contract id | Label | Kind | DatoCMS token | Archive key | Card file |
+|---|---|---|---|---|---|
+| `elegant_flex` | Elegant Flex | indexed (monthly TTFDAM) | `flexgas` | `FlexGas` | `Flex Gas` |
+| `elegant_comfortflex` | Elegant ComfortFlex | indexed (monthly TTFDAM) | `comfortflexgas` | `ComfortFlexGas` | `ComfortFlex Gas` |
+| `elegant_zeker_vast` | Elegant Zeker & Vast | fixed, one year | `zekervastgas` | `ZekerVastGas` | `Zeker & Vast Gas` |
 
 ## How each figure is read
 

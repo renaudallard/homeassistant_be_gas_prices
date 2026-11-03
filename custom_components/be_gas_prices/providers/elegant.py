@@ -28,11 +28,15 @@
 Elegant sells in Flanders only ("Sinds 2012 voor iedereen in Vlaanderen").
 Its listing page, https://www.elegant.be/tariefkaarten, is server-rendered
 Next.js. Since 1 October 2026 it links the current residential cards at a
-stable address, overwritten in place:
+stable address, overwritten in place. Since 2 November 2026 the file names
+the product with spaces ("Zeker & Vast Gas"), the "&" written "\\u0026" in
+the page's JSON:
 
-    https://cdn.elegant.be/Pricing/TariffCharts/Current/<Product>Gas_Residential.pdf
+    https://cdn.elegant.be/Pricing/TariffCharts/Current/<Product> Gas_Residential.pdf
 
-Before, it linked them as DatoCMS assets, which is still understood:
+Before, the name ran together ("ZekerVastGas"), as the archive's offer keys
+still do. Before October, it linked the cards as DatoCMS assets, which is
+still understood:
 
     https://www.datocms-assets.com/198110/<upload id>-<product>gas_residential[-<MMYY>].pdf
 
@@ -128,13 +132,15 @@ class _ContractDef:
     name: str
     # The DatoCMS file name token, "<token>gas_residential".
     token: str
-    # The archive's product offer key, "<key>_<YYYYMMDD>", and the current
-    # card's file name, "<key>_Residential.pdf".
+    # The archive's product offer key, "<key>_<YYYYMMDD>".
     archive_key: str
+    # The current card's file name as the listing links it,
+    # "<file>_Residential.pdf".
+    file: str
 
 
 _CONTRACTS: tuple[_ContractDef, ...] = (
-    _ContractDef("elegant_flex", "Elegant Flex", "indexed", "Flex", "flex", "FlexGas"),
+    _ContractDef("elegant_flex", "Elegant Flex", "indexed", "Flex", "flex", "FlexGas", "Flex Gas"),
     _ContractDef(
         "elegant_comfortflex",
         "Elegant ComfortFlex",
@@ -142,6 +148,7 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
         "ComfortFlex",
         "comfortflex",
         "ComfortFlexGas",
+        "ComfortFlex Gas",
     ),
     _ContractDef(
         "elegant_zeker_vast",
@@ -150,6 +157,7 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
         "Zeker & Vast",
         "zekervast",
         "ZekerVastGas",
+        "Zeker & Vast Gas",
     ),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
@@ -163,7 +171,7 @@ def _contract(contract_id: str, region: str) -> _ContractDef:
 
 
 def _current_url(contract: _ContractDef) -> str:
-    return f"{_CURRENT_URL}/{contract.archive_key}_Residential.pdf"
+    return f"{_CURRENT_URL}/{quote(contract.file)}_Residential.pdf"
 
 
 def _card_url(html: str, contract: _ContractDef) -> str:
@@ -171,11 +179,13 @@ def _card_url(html: str, contract: _ContractDef) -> str:
     stable address, or else the DatoCMS asset uploaded last.
 
     The address and the upload id are directly followed by the product, so
-    "Flex" cannot pick up the ComfortFlex card.
+    "Flex" cannot pick up the ComfortFlex card. The page carries the links
+    in its JSON, where "&" is "\\u0026", or in its markup, where it is
+    "&amp;".
     """
-    current = _current_url(contract)
-    if current in html:
-        return current
+    listed = html.replace("\\u0026", "&").replace("&amp;", "&")
+    if f"{_CURRENT_URL}/{contract.file}_Residential.pdf" in listed:
+        return _current_url(contract)
     pattern = re.compile(
         rf"(https://www\.datocms-assets\.com/198110/(\d+)-{contract.token}"
         r"gas_residential(?:-\d{4})?\.pdf)"

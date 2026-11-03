@@ -196,24 +196,39 @@ def test_listing_without_the_month_suffix(contract: str, name: str) -> None:
 @pytest.mark.parametrize(
     ("contract", "name"),
     [
-        ("elegant_flex", "FlexGas"),
-        ("elegant_comfortflex", "ComfortFlexGas"),
-        ("elegant_zeker_vast", "ZekerVastGas"),
+        ("elegant_flex", "Flex%20Gas"),
+        ("elegant_comfortflex", "ComfortFlex%20Gas"),
+        ("elegant_zeker_vast", "Zeker%20%26%20Vast%20Gas"),
     ],
 )
 def test_listing_with_the_stable_addresses(contract: str, name: str) -> None:
-    """Later on 1 October 2026 the listing moved to fixed addresses."""
-    html = fixture_page("elegant", "tariefkaarten_cdn.html")
+    """Since 1 October 2026 the listing links fixed addresses, which name
+    the product with spaces since 2 November, the "&" written "\\u0026" in
+    the page's JSON."""
+    html = fixture_page("elegant", "tariefkaarten_2026-11.html")
     assert "datocms-assets.com/198110/1790833226-flexgas" not in html
+    assert "Current/Zeker \\u0026 Vast Gas_Residential.pdf" in html
     assert elegant._card_url(html, elegant._CONTRACTS_BY_ID[contract]) == (
         f"https://cdn.elegant.be/Pricing/TariffCharts/Current/{name}_Residential.pdf"
+    )
+
+
+def test_a_stable_address_in_markup_is_read_too() -> None:
+    """In the page's markup rather than its JSON the "&" is "&amp;"."""
+    html = (
+        '<a href="https://cdn.elegant.be/Pricing/TariffCharts/Current/'
+        'Zeker &amp; Vast Gas_Residential.pdf">card</a>'
+    )
+    assert elegant._card_url(html, elegant._CONTRACTS_BY_ID["elegant_zeker_vast"]) == (
+        "https://cdn.elegant.be/Pricing/TariffCharts/Current/"
+        "Zeker%20%26%20Vast%20Gas_Residential.pdf"
     )
 
 
 async def test_probe_follows_the_listing_and_the_card() -> None:
     keys = {
         "https://www.elegant.be/tariefkaarten": "listing-1",
-        "https://cdn.elegant.be/Pricing/TariffCharts/Current/FlexGas_Residential.pdf": "card-1",
+        "https://cdn.elegant.be/Pricing/TariffCharts/Current/Flex%20Gas_Residential.pdf": "card-1",
     }
 
     async def head(_session: Any, url: str, **_kwargs: Any) -> str | None:
