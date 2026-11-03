@@ -47,8 +47,9 @@ reads, with pypdf:
   - the excise bands and the energy contribution, VAT inclusive.
   - databeheer and transport, printed once for every Fluvius area: a lone
     "18,92 0,165" line out of a merged cell on the template, "€ 18,92/jaar"
-    and "€ c 0,165/kW jaar" on the Belvus layout. The transport unit reads
-    "€c/kW jaar"; the figure is the national Fluxys rate in c EUR/kWh.
+    and "€ c 0,165/kW jaar" on the Belvus layout, "€ c 0,165/kWh" from its
+    November 2026 cards. The template's transport unit reads "€c/kW jaar";
+    the figure is the national Fluxys rate in c EUR/kWh.
   - the distribution table, "Variabel (€c/kWh) Vast (€/jaar)" for the tier up
     to 5 000 kWh and then for the one up to 150 000 kWh.
 
@@ -206,7 +207,7 @@ def _taxes(text: str, label: str) -> TaxOverlay:
 
 _NETWORK_FEES_RE = re.compile(
     r"^[ \t]*(\d+,\d+)[ \t]+(\d+,\d+)[ \t]*$"
-    r"|€\s*(\d+,\d+)\s*/jaar[ \t]*\n[^\n]*\n\s*€\s*c\s*(\d+,\d+)\s*/kW jaar",
+    r"|€\s*(\d+,\d+)\s*/jaar[ \t]*\n[^\n]*\n\s*€\s*c\s*(\d+,\d+)\s*/kW(?: jaar|h)",
     re.MULTILINE,
 )
 

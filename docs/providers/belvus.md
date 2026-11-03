@@ -40,7 +40,9 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
   "6,77" "**"), the formula reads "(TTF_RLP × 1,04) + € 3,5/MWh", the fee
   "Jaarlijkse abonnementskost * (incl. btw) € 50/jaar", databeheer "€
   18,92/jaar" and transport "€ c 0,165/kW jaar" on their own lines, and the
-  distribution rows "Fluvius Antwerpen 2,26 15,68 0,91 83,22".
+  distribution rows "Fluvius Antwerpen 2,26 15,68 0,91 83,22". The November
+  2026 cards print the transport unit as "€ c 0,165/kWh", the same figure,
+  and both units are read.
 - Both print the same misassigned Fluvius labels as the template; the rows
   are mapped by position (energy_together.md).
 - The card names its product ("FLEX ONLINE GAS", "FlexOnline"), checked

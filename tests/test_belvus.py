@@ -50,6 +50,7 @@ from tests import fixture_page, fixture_text
 VAT = 1.06
 SEPTEMBER = "Tariefkaart_FlexOnline_GAS_2026-09.pdf"
 OCTOBER = "Tariefkaart_FlexOnline_GAS_2026-10.pdf"
+NOVEMBER = "Tariefkaart_FlexOnline_GAS_2026-11.pdf"
 AUGUST = "Tariefkaart_FlexOnline_GAS_2026-08.pdf"
 JANUARY = "Tariefkaart_FlexOnline_GAS_2026-01.pdf"
 
@@ -78,6 +79,8 @@ def _parse(name: str, contract: str = "belvus_flex_online") -> SupplierSnapshot:
         ),
         # The August layout is the Energy Together template: "**€c 5,87/kWh".
         (AUGUST, "belvus_flex_online", 5.87, 50.0, 1.04, 3.5, 53.075),
+        # "9,63 * / 9,51 **", the formula at October's 88,059.
+        (NOVEMBER, "belvus_flex_online", 9.51, 50.0, 1.04, 3.5, 88.059),
     ],
 )
 def test_energy_leg_in_both_layouts(
@@ -123,6 +126,19 @@ def test_both_layouts_map_the_misassigned_labels_alike() -> None:
     for overlay in september.dsos.values():
         assert overlay.metering_per_year == pytest.approx(18.92)
         assert overlay.transport == pytest.approx(0.00165)
+
+
+def test_the_november_transport_unit_is_read() -> None:
+    """The November 2026 cards print transport as "€ c 0,165/kWh" where the
+    cards before printed "€ c 0,165/kW jaar", the same figure, and were
+    refused for want of the old unit."""
+    november = _parse(NOVEMBER)
+    assert november.publication_label == "2026-11"
+    assert set(november.dsos) == FLUVIUS_KEYS
+    for overlay in november.dsos.values():
+        assert overlay.metering_per_year == pytest.approx(18.92)
+        assert overlay.transport == pytest.approx(0.00165)
+    assert november.dsos == _parse(OCTOBER).dsos
 
 
 def test_levies_are_read_as_printed() -> None:
