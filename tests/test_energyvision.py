@@ -310,6 +310,7 @@ async def test_fetch_reads_the_card_brusols_page_links(
     listing = AsyncMock(return_value=fixture_page("energyvision", page))
     fetched = AsyncMock(return_value=_card(card))
     with (
+        freeze_time(f"{month}-15 10:00:00"),
         patch.object(energyvision, "fetch_text", listing),
         patch.object(energyvision, "fetch_pdf_text_layout", fetched),
     ):
@@ -317,6 +318,59 @@ async def test_fetch_reads_the_card_brusols_page_links(
     assert listing.call_args.args[1] == _BRUSOL_PAGE
     assert fetched.call_args.args[1] == url
     assert snap.source_url == url
+    assert snap.publication_label == month
+
+
+@pytest.mark.parametrize(
+    ("uploaded", "read", "month"),
+    [
+        # November's card had sat in the 2026-10 folder since 30 October.
+        (
+            "https://www.brusol.be/sites/default/files/2026-10/EV-1126-GSG-BXL-nl.pdf",
+            "https://www.brusol.be/sites/default/files/2026-10/EV-1126-GSG-BXL-nl.pdf",
+            "2026-11",
+        ),
+        # Not uploaded yet: the card the page links.
+        (
+            None,
+            "https://www.brusol.be/sites/default/files/2026-09/EV-1026-GSG-BXL-nl.pdf",
+            "2026-10",
+        ),
+    ],
+)
+async def test_a_brusol_page_lagging_the_upload_is_read_past(
+    uploaded: str | None, read: str, month: str
+) -> None:
+    """On 3 November 2026 Brusol's page still linked October's card, filed
+    in 2026-09, while November's was in the 2026-10 folder. The fetch looks
+    where this month's card would be filed before it takes the linked one."""
+    cards = {
+        "https://www.brusol.be/sites/default/files/2026-09/EV-1026-GSG-BXL-nl.pdf": (
+            "brusol/EV-1026-GSG-BXL-nl.pdf"
+        ),
+    }
+    if uploaded is not None:
+        cards[uploaded] = "brusol/EV-1126-GSG-BXL-nl.pdf"
+    asked: list[str] = []
+
+    async def text(_session: object, url: str) -> str:
+        asked.append(url)
+        if url not in cards:
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        return _card(cards[url])
+
+    listing = AsyncMock(
+        return_value=fixture_page("energyvision", "brusol/signup-goedkope-stroom-nl-2026-10.html")
+    )
+    with (
+        freeze_time(datetime(2026, 11, 3, 8)),
+        patch.object(energyvision, "fetch_text", listing),
+        patch.object(energyvision, "fetch_pdf_text_layout", text),
+    ):
+        snap = await energyvision.fetch(AsyncMock(), _GSG, REGION_BRUSSELS)
+    assert asked[0] == "https://www.brusol.be/sites/default/files/2026-11/EV-1126-GSG-BXL-nl.pdf"
+    assert asked[-1] == read
+    assert snap.source_url == read
     assert snap.publication_label == month
 
 
@@ -560,6 +614,29 @@ async def test_a_november_card_in_an_upload_folder_alone_is_read() -> None:
     assert current.publication_label == "2026-11"
     assert past is not None and past.publication_label == "2026-11"
     assert read == [files + folder, files + folder]
+
+
+async def test_a_brusol_lookup_that_fails_falls_back_to_the_linked_card() -> None:
+    """A site that does not answer for this month's folder is no reason to
+    lose the card the page links."""
+    linked = "https://www.brusol.be/sites/default/files/2026-09/EV-1026-GSG-BXL-nl.pdf"
+
+    async def text(_session: object, url: str) -> str:
+        if url != linked:
+            raise ExtractorError(f"network error fetching {url}: timeout")
+        return _card("brusol/EV-1026-GSG-BXL-nl.pdf")
+
+    listing = AsyncMock(
+        return_value=fixture_page("energyvision", "brusol/signup-goedkope-stroom-nl-2026-10.html")
+    )
+    with (
+        freeze_time(datetime(2026, 11, 3, 8)),
+        patch.object(energyvision, "fetch_text", listing),
+        patch.object(energyvision, "fetch_pdf_text_layout", text),
+    ):
+        snap = await energyvision.fetch(AsyncMock(), _GSG, REGION_BRUSSELS)
+    assert snap.source_url == linked
+    assert snap.publication_label == "2026-10"
 
 
 async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:

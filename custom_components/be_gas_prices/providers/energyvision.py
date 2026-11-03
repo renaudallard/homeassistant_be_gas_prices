@@ -231,23 +231,27 @@ def _contract(contract_id: str, region: str) -> tuple[_ContractDef, _Card]:
     return contract, card
 
 
-def _card_url(html: str, contract: _ContractDef, token: str, page: str) -> str:
+def _linked_card(html: str, contract: _ContractDef, token: str, page: str) -> tuple[str, date]:
     """The newest card of ``contract`` with ``token`` that ``html``, the
-    page at ``page``, links.
+    page at ``page``, links, and the month its file name prices.
 
     Brusol's page links it by an absolute href, which has ended in a space
-    ("EV-1026-GSG-BXL-nl.pdf ").
+    ("EV-1026-GSG-BXL-nl.pdf "). A name whose month is no month is passed
+    over.
     """
     pattern = re.compile(
         r'href="((?:https?://[^"/]+)?/sites/default/files/[^"]*?'
         rf'EV-(\d{{2}})(\d{{2}})-{contract.code}-{re.escape(token)}[^"/]*\.pdf)\s*"'
     )
-    found: dict[tuple[int, int], str] = {
-        (int(year), int(month)): href for href, month, year in pattern.findall(html)
+    found: dict[date, str] = {
+        date(2000 + int(year), int(month), 1): href
+        for href, month, year in pattern.findall(html)
+        if 1 <= int(month) <= 12
     }
     if not found:
         raise ExtractorError(f"EnergyVision: no {contract.code} {token} card linked from {page}")
-    return urljoin(page, found[max(found)])
+    month = max(found)
+    return urljoin(page, found[month]), month
 
 
 # The last re-upload the listing's script asks for ("maxSuffix": 9).
@@ -309,8 +313,22 @@ async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -
     contract, card = _contract(contract_id, region)
     if card.page is None:
         url, _ = await _current_upload(session, contract, card)
-    else:
-        url = _card_url(await fetch_text(session, card.page), contract, card.token, card.page)
+        return await _read(session, contract_id, region, url)
+    html = await fetch_text(session, card.page)
+    url, linked = _linked_card(html, contract, card.token, card.page)
+    # The page can lag the upload: on 3 November 2026 Brusol's still linked
+    # October's card while November's had sat in its 2026-10 folder since 30
+    # October. A card for a month before this one sends the fetch to where
+    # this month's card would be filed, and back to the linked card when
+    # nothing is there yet or the lookup fails.
+    running = dt_util.now().date().replace(day=1)
+    if linked < running:
+        try:
+            newer = await fetch_for_month(session, contract_id, region, running)
+        except ExtractorError:
+            newer = None
+        if newer is not None:
+            return newer
     return await _read(session, contract_id, region, url)
 
 
