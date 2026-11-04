@@ -10,10 +10,12 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   `https://8navd656.api.sanity.io/v2023-01-01/data/query/production-be` with
   `*[_type=="sanity.fileAsset" && originalFilename match "*Gas*"]`, projected
   to `{originalFilename,url,_createdAt}`.
-- The terms page https://www.frankenergie.be/nl/voorwaarden links the five
-  current cards ("Actuele Tariefkaart Gas Variabel (ZTP)", "(ZTP) HV", "VT",
-  "JN", "Slim"). `fetch` does not read it, but the five cards it picks from
-  Sanity are those five links.
+- The terms page https://www.frankenergie.be/nl/voorwaarden links the current
+  cards: "Actuele Tariefkaart Gas Variabel (ZTP)", "(ZTP) HV", "JN", "Plus"
+  and "Slim" on 4 November 2026, VT's until October. Its JN link pointed to
+  the "Gas ZTP JN Pro November 2026" file, which carries a card titled "JN
+  Pro, oktober 2026". `fetch` does not read the page, and picks the tier's
+  own uploads from Sanity: a "JN Pro" file is no JN card.
 - File names: `Frank Energie Tariefkaart Gas[ ZTP][ <tier>] <Maand> <jaar>.pdf`.
   The tiers' September 2026 files drop the ZTP ("Gas HV September 2026"),
   the other months carry it ("Gas ZTP HV Augustus 2026", sometimes with a
@@ -39,6 +41,7 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 | `frank_variable_hv` | Frank Energie Gas Variabel HV | HV | HV | indexed, monthly | flanders |
 | `frank_variable_jn` | Frank Energie Gas Variabel JN | JN, June | JN, June | indexed, monthly | flanders |
 | `frank_variable_slim` | Frank Energie Gas Variabel Slim | Slim, SL | SL, Slim | indexed, monthly | flanders |
+| `frank_variable_plus` | Frank Energie Gas Variabel Plus | Plus | Plus | indexed, monthly | flanders |
 | `frank_variable_korting` | Frank Energie Gas Variabel Korting | Korting, VT | VT | indexed, monthly | flanders |
 
 - All open-ended ("contracten van onbepaalde duur"); the DSO table is Fluvius
@@ -53,6 +56,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - HV, JN and Korting printed a cashback in September 2026 ("Korting 115 EUR
   (incl. btw)", 35 and 110); from October 2026 only JN does (35). A snapshot
   has no field for it, so it is not read.
+- Plus, from November 2026, prints the standard tier's formula and 2,92 a
+  month. Its card and HV's charge six months of subscription for a contract
+  ended in its first six, which is not read.
 - The November 2026 JN card prints its subscription as "0,00*": "Gedurende
   de eerste 12 maanden van het contract ontvang je een maandelijkse korting
   op de abonnementskosten", after which "gelden de abonnementskosten
@@ -76,9 +82,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - Title, the first line, its parts set apart by dashes: "Tariefkaart gas
   variabel contract" ("Tariefkaart gas variabel" from 1 October 2026,
   "Frank Energie Variabel" on the card re-uploaded on 2 October) and the
-  month (standard), or "Frank Energie Variabel", the tier and the month. The tier reads "HV ZTP", "JN", "Slim" or "Korting
-  ZTP" ("VT ZTP" from October 2026), and "SL" or "Slim ZTP" on older Slim
-  cards. The tier word must be the
+  month (standard), or "Frank Energie Variabel", the tier and the month. The tier reads "HV ZTP", "JN", "Slim", "Plus
+  ZTP" or "Korting ZTP" ("VT ZTP" from October 2026), and "SL" or "Slim
+  ZTP" on older Slim cards. The tier word must be the
   contract's and nothing but "ZTP" may follow it, which keeps out the January
   2025 product whose title names both Korting and Slim. The card month comes from the title, not from the sentence
   below it: the Slim cards of January and February 2026 say "getekend in
@@ -176,6 +182,7 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - JN's waiver: `test_the_november_jn_card_bills_the_subscription_it_waives`
   (the October card's fee, read once, and the waiver stored),
   `test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused`.
+- `test_the_plus_card_reads_as_the_standard_tier_from_november_2026`.
 - `fetch` (newest month of the tier), `fetch_for_month` (the misnamed
   January upload skipped, the query's month and year, month refusal, the
   clipped card, transient raise), `probe` and `fetch_index`, with the fetch

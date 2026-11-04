@@ -67,9 +67,11 @@ JANUARY = _PREFIX + "Gas ZTP Januari 2026.pdf"
 JANUARY_V2 = _PREFIX + "Gas ZTP Januari 2026 v2.pdf"
 JANUARY_SL = _PREFIX + "Elektriciteit Gas ZTP SL Januari 2026.pdf"
 # The November 2026 JN card Frank uploaded last on 30 October and the October
-# card its waiver names, both listed in the Sanity answer of 4 November 2026.
+# card its waiver names, both listed in the Sanity answer of 4 November 2026,
+# and Frank's first gas Plus card.
 JN_NOVEMBER = _PREFIX + "Gas ZTP JN November 2026.pdf"
 JN_OCTOBER = _PREFIX + "Gas ZTP JN Oktober 2026.pdf"
+PLUS_NOVEMBER = _PREFIX + "Gas ZTP Plus November 2026.pdf"
 
 SEPTEMBER_CARDS = {
     "frank_variable": STANDARD,
@@ -398,6 +400,26 @@ async def test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused(
     ):
         await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
     assert queried.await_count == 1
+
+
+def test_the_plus_card_reads_as_the_standard_tier_from_november_2026() -> None:
+    """Frank's first gas Plus card, its tier titled "Plus ZTP" for November
+    2026: the standard tier's formula and 2,92 a month, read for Plus
+    alone."""
+    assert "frank_variable_plus" in {c.id for c in frank.EXTRACTOR.contracts}
+    snap = frank.parse_snapshot("frank_variable_plus", REGION_FLANDERS, _card(PLUS_NOVEMBER))
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(0.1 / 100.0 * 1.06)
+    assert energy.base == pytest.approx(0.46 / 100.0 * 1.06)
+    assert energy.yearly_fixed_fee == pytest.approx(2.92 * 12)
+    assert snap.valid_until == date(2026, 11, 30)
+    assert snap.fee_waived_months == 0
+    assert set(snap.dsos) == set(FLUVIUS_KEYS)
+    with pytest.raises(ExtractorError):
+        frank.parse_snapshot("frank_variable", REGION_FLANDERS, _card(PLUS_NOVEMBER))
+    with pytest.raises(ExtractorError):
+        frank.parse_snapshot("frank_variable_plus", REGION_FLANDERS, _card(STANDARD))
 
 
 async def test_fetch_for_month_skips_an_upload_carrying_another_tier() -> None:

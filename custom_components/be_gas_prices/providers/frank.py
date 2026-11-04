@@ -27,9 +27,9 @@
 
 Frank Energie sells one variable gas contract in Flanders in tiers, each
 with its own monthly card. Read here: the standard one, HV, JN, Slim (only
-beside a Slim electricity contract) and Korting, withdrawn from November
-2026. The cards are file assets of the Sanity CMS behind the site, found
-with the query the electricity cards use:
+beside a Slim electricity contract), Plus from November 2026 and Korting,
+withdrawn from November 2026. The cards are file assets of the Sanity CMS
+behind the site, found with the query the electricity cards use:
 
     https://8navd656.api.sanity.io/v2023-01-01/data/query/production-be
         *[_type=="sanity.fileAsset" && originalFilename match "*Gas*"]
@@ -150,6 +150,9 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
     _ContractDef(
         "frank_variable_slim", "Frank Energie Gas Variabel Slim", ("Slim", "SL"), ("SL", "Slim")
     ),
+    # From November 2026: the standard tier's formula and subscription, and
+    # HV's six months' subscription for a contract ended in its first six.
+    _ContractDef("frank_variable_plus", "Frank Energie Gas Variabel Plus", ("Plus",), ("Plus",)),
     # Titled "Korting ZTP" until September 2026, "VT ZTP" from October, as
     # its file was named all along. Withdrawn from November 2026: Frank
     # uploaded no November card for it while the other tiers had theirs on
