@@ -187,6 +187,16 @@ class ExtractorError(Exception):
     """Raised when a supplier's source cannot be fetched or parsed."""
 
 
+class CardNotListedError(ExtractorError):
+    """The supplier's own listing names no card for the product.
+
+    No card's layout changed: the listing has none under the name or month
+    the extractor looks for, which is a card not published yet or one that
+    moved. ``providers/_moved.py`` looks for a moved card on this as on a
+    404.
+    """
+
+
 class CardNotReadableError(ExtractorError):
     """The card downloaded fine but carries no text layer to read.
 

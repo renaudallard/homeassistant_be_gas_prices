@@ -44,12 +44,13 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import yaml  # type: ignore[import-untyped]
 
 from custom_components.be_gas_prices import excise_law, fluvius, tarbel
+from custom_components.be_gas_prices.providers import _moved
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers._resolve import law_contribution, law_excise
@@ -1012,6 +1013,23 @@ async def test_a_supplier_that_does_not_answer_is_given_up_on_for_the_run() -> N
     assert checks[3].detail == "not fetched: gave up on acme after 3 network failures in a row"
     assert lc.exit_code(checks) == 2
     assert lc.render_fingerprint(checks) == ""
+
+
+async def test_a_card_the_registry_reads_where_it_moved_still_fails_here() -> None:
+    """The registry reads a card that moved where its supplier lists it; the
+    check asks the supplier's own fetch, which still finds no card at the
+    usual address, so the move is reported until the extractor follows it."""
+
+    async def missing(_session: Any, _contract: str, _region: str) -> SupplierSnapshot:
+        raise ExtractorError("HTTP 404 fetching https://dots.test/card.pdf")
+
+    own = _extractor("dots", missing)
+    registered = replace(own, fetch=_moved._with_moved_fallback("dots", own.fetch))
+    with patch.object(_moved, "read_moved", AsyncMock(return_value=_snapshot("dots"))):
+        read = await registered.fetch(None, "dots_fix", "flanders")  # type: ignore[arg-type]
+        assert read.supplier == "dots"
+        checks = await lc.check_fleet(None, [registered], TODAY, sleep=_no_sleep)
+    assert [(c.label, c.status) for c in checks] == [("dots/dots_fix/flanders: fetch", "fail")]
 
 
 async def test_a_card_published_as_images_without_a_reading_is_a_notice() -> None:

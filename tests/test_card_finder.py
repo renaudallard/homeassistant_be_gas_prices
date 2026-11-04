@@ -39,7 +39,7 @@ from typing import Any
 
 import pytest
 
-from custom_components.be_gas_prices.providers import _pdf, engie, luminus
+from custom_components.be_gas_prices.providers import _moved, _pdf, engie, luminus
 from custom_components.be_gas_prices.providers.base import ExtractorError
 from tests import FIXTURES
 
@@ -73,7 +73,8 @@ def _serve(monkeypatch: pytest.MonkeyPatch, pages: dict[str, str], cards: dict[s
             raise ExtractorError(f"expected a PDF at {url}, payload starts with {payload[:80]!r}")
         return _pdf.extract_pdf_text(_pdf.strip_pdf_prefix(payload))
 
-    monkeypatch.setattr(cf, "fetch_text", fetch_text)
+    # The candidates read their pages through their own import of it.
+    monkeypatch.setattr(_moved, "fetch_text", fetch_text)
     monkeypatch.setattr(cf, "fetch_pdf_text", fetch_pdf_text)
     # Luminus reads its product list through its own import of the helper.
     monkeypatch.setattr(luminus, "fetch_text", fetch_text)

@@ -105,6 +105,7 @@ from ._pdf import (
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, month_card
 from .base import (
+    CardNotListedError,
     DsoOverlay,
     ExtractorError,
     IndexTable,
@@ -192,7 +193,7 @@ def _card_url(html: str, contract: _ContractDef) -> str:
     )
     found: dict[int, str] = {int(upload): url for url, upload in pattern.findall(html)}
     if not found:
-        raise ExtractorError(f"Elegant: no {contract.name} gas card on the listing")
+        raise CardNotListedError(f"Elegant: no {contract.name} gas card on the listing")
     return found[max(found)]
 
 

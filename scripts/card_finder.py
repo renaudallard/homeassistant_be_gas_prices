@@ -38,17 +38,22 @@ product id, Belvus linked its cards from its services page alone and Dots
 moved its card to a new site, and each new address stood on the supplier's
 own pages before any extractor read it.
 
-Each supplier publishes its own way, so each has a short function naming
-its candidates, with where each came from:
+For Elegant, Engie and Dots the candidates are the integration's own
+(``providers/_moved.py``), which it reads a moved card from by itself: its
+listing links every product's card by name, its prices page names every
+residential document code, its product page links or embeds the card. This
+reports every one of them, with where it came from, including an Engie
+sibling product, which the integration never reads. The others are searched
+here alone:
 
-* Elegant's listing links every product's card by name;
-* Engie's prices page names every residential document code;
 * EnergyVision's tariefkaart page links its files, and its uploads sit in
   the month's folder, the month before's or ``inline-files``;
 * Luminus's price-list archive gives each month's product id, so the
   month's id and the month before's are asked for the month's card;
-* Belvus links each month's cards from its services page and its history;
-* Dots's product page links or embeds the card.
+* Belvus links each month's cards from its services page and its history.
+
+The live check asks each supplier's own ``fetch``, so it keeps failing at
+the usual address until the extractor reads the card there.
 
 Usage: python scripts/card_finder.py <supplier> <contract> <region> [YYYY-MM]
 """
@@ -62,10 +67,9 @@ import sys
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 from datetime import date, datetime, timedelta
-from html import unescape
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, urljoin
+from urllib.parse import urljoin
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -81,11 +85,17 @@ from custom_components.be_gas_prices.providers import (  # noqa: E402
     engie,
     luminus,
 )
+from custom_components.be_gas_prices.providers._moved import (  # noqa: E402
+    _HREF_RE,
+    FALLBACKS,
+    Candidate,
+    _page,
+    _squash,
+)
 from custom_components.be_gas_prices.providers._parse import fold_accents  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     MONTH_NAMES,
     fetch_pdf_text,
-    fetch_text,
 )
 from custom_components.be_gas_prices.providers.base import ExtractorError  # noqa: E402
 
@@ -97,21 +107,6 @@ _MAX_TRIED = 4
 # One card's whole search, pages and downloads.
 _SEARCH_TIMEOUT_S = 120.0
 
-# A link as markup carries it.
-_HREF_RE = re.compile(r"""(?:href|src)\s*=\s*["']([^"'<>]+)["']""", re.IGNORECASE)
-
-# Elegant's listing spells each card "/Current/<product> Gas_Residential.pdf",
-# with its electricity cards beside them.
-_ELEGANT_LISTED_RE = re.compile(r"/Current/([^\"'<>/]+?)_Residential\.pdf")
-
-# Engie's residential prices pages, which name every document code the
-# document API serves, "G_EMPTYHOUSE_R_GREY_C_I_36_V_F".
-_ENGIE_PAGES = (
-    "https://www.engie.be/fr/energie/electricite-gaz/prix-conditions/",
-    "https://www.engie.be/nl/energie/elektriciteit-gas/prijzen-voorwaarden/",
-)
-_ENGIE_CODE_RE = re.compile(r"\bG_([A-Z0-9]+)_R_GREY_C_([A-Z])_(\d{2})_([VWB])_F\b")
-
 # EnergyVision's page that links its files, where the tariefkaart listing
 # builds them in a script.
 _ENERGYVISION_PAGE = "/nl-be/tariefkaart-2"
@@ -121,74 +116,16 @@ _BELVUS_CARD_RE = re.compile(
     r"/public/tariefkaarten/(\d{4})-(\d{2})/Tariefkaart_([A-Za-z0-9]+)_GAS\.pdf"
 )
 
-# Dots's product page, at its new address first; the old one redirects.
-_DOTS_PAGES = ("/nl/tariefkaarten/dots-connect-gas-digital", "/dots-connect-gas-digital")
-# What Dots has linked its card as: an Odoo attachment, then its card API.
-_DOTS_CARD_RE = re.compile(r"/(?:web/content/\d+|api/tariefkaarten/[\w-]+)")
-
-Candidates = list[tuple[str, str]]
-Finder = Callable[[aiohttp.ClientSession, str, str, date], Awaitable[Candidates]]
-
-
-def _squash(name: str) -> str:
-    """A product name with its spaces, signs and case taken out."""
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+Finder = Callable[[aiohttp.ClientSession, str, str, date], Awaitable[list[Candidate]]]
 
 
 def _previous(month: date) -> date:
     return (month.replace(day=1) - timedelta(days=1)).replace(day=1)
 
 
-async def _page(session: aiohttp.ClientSession, url: str) -> str:
-    """A page's text, or nothing when it cannot be read: the search goes on
-    with the supplier's other pages."""
-    try:
-        return unescape(await fetch_text(session, url))
-    except ExtractorError:
-        return ""
-
-
-async def _elegant(
-    session: aiohttp.ClientSession, contract_id: str, region: str, month: date
-) -> Candidates:
-    contract = elegant._CONTRACTS_BY_ID[contract_id]
-    page = (await fetch_text(session, elegant._LISTING_URL)).replace("\\u0026", "&")
-    # The archive key is the listed name with its spaces and "&" taken out.
-    wanted = _squash(contract.archive_key)
-    return [
-        (f"{elegant._CURRENT_URL}/{quote(name)}_Residential.pdf", "Elegant's listing")
-        for name in dict.fromkeys(_ELEGANT_LISTED_RE.findall(unescape(page)))
-        if _squash(name) == wanted
-    ]
-
-
-async def _engie(
-    session: aiohttp.ClientSession, contract_id: str, region: str, month: date
-) -> Candidates:
-    contract = engie._CONTRACTS_BY_ID[contract_id]
-    area = engie._REGION_TO_CODE[region]
-    exact: dict[str, None] = {}
-    family: dict[str, None] = {}
-    for url in _ENGIE_PAGES:
-        for m in _ENGIE_CODE_RE.finditer(await _page(session, url)):
-            name, rate, _months, where = m.groups()
-            if (name, where) != (contract.family, area):
-                continue
-            # The same rate is the same product under a new term; another is
-            # a sibling product, offered only when nothing closer is.
-            (exact if rate == contract.rate else family)[m.group(0)] = None
-    return [
-        (
-            f"{engie._API_URL}?document={code}&monthOffset=0&segment=R&language=F",
-            "Engie's prices page",
-        )
-        for code in exact or family
-    ]
-
-
 async def _energyvision(
     session: aiohttp.ClientSession, contract_id: str, region: str, month: date
-) -> Candidates:
+) -> list[Candidate]:
     contract = energyvision._CONTRACTS_BY_ID[contract_id]
     card = contract.cards[region]
     named = re.compile(
@@ -205,12 +142,12 @@ async def _energyvision(
     # Where its listing's script looks for the month's name.
     for url in energyvision._month_urls(contract, card, month):
         found.setdefault(url, "its upload folders")
-    return list(found.items())
+    return [(url, where, True) for url, where in found.items()]
 
 
 async def _luminus(
     session: aiohttp.ClientSession, contract_id: str, region: str, month: date
-) -> Candidates:
+) -> list[Candidate]:
     contract = luminus._CONTRACTS_BY_ID[contract_id]
     tab = luminus._REGION_TO_TAB[region]
     found: dict[str, str] = {}
@@ -224,12 +161,12 @@ async def _luminus(
         if product_id is not None:
             url = luminus._archive_card_url(product_id, month, tab)
             found.setdefault(url, f"the product id of {signing:%Y-%m}")
-    return list(found.items())
+    return [(url, where, True) for url, where in found.items()]
 
 
 async def _belvus(
     session: aiohttp.ClientSession, contract_id: str, region: str, month: date
-) -> Candidates:
+) -> list[Candidate]:
     contract = belvus._CONTRACTS_BY_ID[contract_id]
     found: dict[str, str] = {}
     for page_url, where in (
@@ -242,32 +179,14 @@ async def _belvus(
                 continue
             if _squash(product) == _squash(contract.file):
                 found.setdefault(urljoin(page_url, m.group(0)), where)
-    return list(found.items())
-
-
-async def _dots(
-    session: aiohttp.ClientSession, contract_id: str, region: str, month: date
-) -> Candidates:
-    found: dict[str, str] = {}
-    for path in _DOTS_PAGES:
-        page_url = f"{dots._HOST}{path}"
-        for link in _HREF_RE.findall(await _page(session, page_url)):
-            card = _DOTS_CARD_RE.search(urljoin(page_url, link))
-            if card is not None:
-                found.setdefault(urljoin(page_url, link), "Dots's product page")
-    # One card under its plain address and its download one is one card.
-    plain = {url.split("?")[0]: where for url, where in found.items() if "/api/" in url}
-    rest = {url: where for url, where in found.items() if "/api/" not in url}
-    return list({**plain, **rest}.items())
+    return [(url, where, True) for url, where in found.items()]
 
 
 FINDERS: dict[str, Finder] = {
-    "elegant": _elegant,
-    "engie": _engie,
+    **{supplier: candidates for supplier, (_read, candidates) in FALLBACKS.items()},
     "energyvision": _energyvision,
     "luminus": _luminus,
     "belvus": _belvus,
-    "dots": _dots,
 }
 
 _CONTRACTS: dict[str, Mapping[str, Any]] = {
@@ -321,7 +240,12 @@ async def find(
     why it is not that card, None when it is, best first."""
     candidates = await FINDERS[supplier](session, contract_id, region, month)
     return [
-        (url, where, await _reason(session, url, month)) for url, where in candidates[:_MAX_TRIED]
+        (
+            url,
+            where if exact else f"{where}, not the product's own card",
+            await _reason(session, url, month),
+        )
+        for url, where, exact in candidates[:_MAX_TRIED]
     ]
 
 

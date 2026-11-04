@@ -74,6 +74,38 @@ card the parser refuses and the held card keeps pricing.
 | `_validity.py` | `end_of_month`; for `fetch_for_month`, `future_month` (Home Assistant's clock) and `month_card`, which wraps the month's load: a transient failure raises, any other failure or a card naming another month is None. |
 | `_resolve.py` | Per household and delivery month: `tier_for`, `effective_excise`, `resolve_for_delivery`, `brussels_levy`. |
 
+## A card that moved (providers/_moved.py)
+
+`EXTRACTORS` wraps the `fetch` of Elegant, Engie and Dots
+(`with_moved_fallbacks`). When the usual address answers that it has no card
+(`is_missing_card_error`: a 404 or 410, or a web page in its place), when its
+listing names none (`CardNotListedError`, which Elegant raises when its
+listing links no card for the product), or with a card of a month before the
+running one, the wrapper asks the supplier's own pages for the product's card
+of the running month (`FALLBACKS`: Elegant's listing by the archive key,
+Engie's prices pages by family, rate and region, Dots's product page) and
+reads each address with the module's `_read`, the read step its `fetch`
+uses. The first card whose `valid_until` is the running month's end is kept
+and the address logged; with none the usual answer stands, the error or the
+older card. A parse error or a network failure is no sign of a move and is
+never searched for. An Engie sibling under the same family code is offered
+by the candidates but marked, and the wrapper skips it.
+
+Luminus, Belvus and EnergyVision are not wrapped. Luminus's `fetch` reads its
+archive's card of the running month when the usual address has none,
+Belvus's reads both pages that list its cards, and EnergyVision's asks every
+folder its listing's script asks, newest upload first, where its card page
+linked the first edition of a card a corrected upload had replaced in
+November 2026.
+
+The wrapper keeps the module's own `fetch` as `__wrapped__`, with its name
+and module (`functools.wraps`): the live check asks
+`inspect.unwrap(ex.fetch)`, so it keeps failing at the usual address until
+the extractor reads the card there, and counts each supplier's figures once
+by its module. `scripts/card_finder.py` reports from the same candidates
+where the card went, the marked ones included. The card archive reads the
+registry, so it files a moved card at the month it names.
+
 ## Tests
 
 Real cards only, under `tests/fixtures/<supplier>/`. A provider's tests pin

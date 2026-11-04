@@ -75,6 +75,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import functools
+import inspect
 import itertools
 import json
 import re
@@ -384,8 +385,11 @@ async def _check_supplier(
             checks.append(Check(f"{label}: fetch", "transient", skipped))
             continue
         try:
+            # The supplier's own fetch, not the registry's: a card read where
+            # it moved still fails here until the extractor reads it there.
             snapshot = await fetch_with_retry(
-                functools.partial(ex.fetch, session, contract, region), sleep=sleep
+                functools.partial(inspect.unwrap(ex.fetch), session, contract, region),
+                sleep=sleep,
             )
         except Exception as err:  # one card must not stop the check
             checks.append(_failure(f"{label}: fetch", err))

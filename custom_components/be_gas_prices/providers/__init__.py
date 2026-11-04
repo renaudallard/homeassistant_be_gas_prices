@@ -31,6 +31,7 @@ means adding its module and one line below.
 
 from __future__ import annotations
 
+from ._moved import with_moved_fallbacks
 from .base import ExtractorError, SupplierExtractor
 from .belvus import EXTRACTOR as _BELVUS
 from .bolt import EXTRACTOR as _BOLT
@@ -53,33 +54,37 @@ from .sparki import EXTRACTOR as _SPARKI
 from .totalenergies import EXTRACTOR as _TOTALENERGIES
 from .trevion import EXTRACTOR as _TREVION
 
-EXTRACTORS: dict[str, SupplierExtractor] = {
-    _ENECO.id: _ENECO,
-    _ENGIE.id: _ENGIE,
-    _LUMINUS.id: _LUMINUS,
-    _MEGA.id: _MEGA,
-    _TOTALENERGIES.id: _TOTALENERGIES,
-    _OCTAPLUS.id: _OCTAPLUS,
-    _BOLT.id: _BOLT,
-    _ENERGYVISION.id: _ENERGYVISION,
-    _ELEGANT.id: _ELEGANT,
-    _TREVION.id: _TREVION,
-    # One card template, six brands, each a supplier of its own to a household.
-    **{extractor.id: extractor for extractor in _ENERGY_TOGETHER},
-    _BELVUS.id: _BELVUS,
-    _SPARKI.id: _SPARKI,
-    _DOTS.id: _DOTS,
-    _ENERGIEBE.id: _ENERGIEBE,
-    _EBEM.id: _EBEM,
-    _FRANK.id: _FRANK,
-    # Its cards are page images: an entry prices on the card archive's OCR
-    # reading of them.
-    _ECOFIX.id: _ECOFIX,
-    # Whoever supplies a protected household; never ranked.
-    _SOCIAL.id: _SOCIAL,
-    # The expert escape hatch, last so it sorts to the end of the list.
-    _CUSTOM.id: _CUSTOM,
-}
+# A card that left its usual address is read where its supplier lists it
+# (providers/_moved.py); each module's own fetch stays as it is.
+EXTRACTORS: dict[str, SupplierExtractor] = with_moved_fallbacks(
+    {
+        _ENECO.id: _ENECO,
+        _ENGIE.id: _ENGIE,
+        _LUMINUS.id: _LUMINUS,
+        _MEGA.id: _MEGA,
+        _TOTALENERGIES.id: _TOTALENERGIES,
+        _OCTAPLUS.id: _OCTAPLUS,
+        _BOLT.id: _BOLT,
+        _ENERGYVISION.id: _ENERGYVISION,
+        _ELEGANT.id: _ELEGANT,
+        _TREVION.id: _TREVION,
+        # One card template, six brands, each a supplier of its own to a household.
+        **{extractor.id: extractor for extractor in _ENERGY_TOGETHER},
+        _BELVUS.id: _BELVUS,
+        _SPARKI.id: _SPARKI,
+        _DOTS.id: _DOTS,
+        _ENERGIEBE.id: _ENERGIEBE,
+        _EBEM.id: _EBEM,
+        _FRANK.id: _FRANK,
+        # Its cards are page images: an entry prices on the card archive's OCR
+        # reading of them.
+        _ECOFIX.id: _ECOFIX,
+        # Whoever supplies a protected household; never ranked.
+        _SOCIAL.id: _SOCIAL,
+        # The expert escape hatch, last so it sorts to the end of the list.
+        _CUSTOM.id: _CUSTOM,
+    }
+)
 
 
 def get(supplier_id: str) -> SupplierExtractor:

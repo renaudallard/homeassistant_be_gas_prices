@@ -48,6 +48,8 @@ cache and 54 seconds with a full one.
   those to the tokens it may see.
 - `test_card_finder.py`: the live check's search for a card that moved,
   replayed on November 2026's moves with the real pages and cards.
+- `test_moved.py`: `providers/_moved.py`, the registry reading a moved card
+  where its supplier lists it, on the same moves.
 - `test_file_ci_issue.py`: `scripts/file_ci_issue.sh` against a fake `gh`
   that answers from files and logs its calls.
 - `test_autorelease.py`: the release job of `autorelease.yml`, its own
@@ -254,9 +256,14 @@ label, for a supplier the finder covers (`card_finder.annotate`). The finder
 reads the pages the supplier itself lists its cards on, keeps the addresses
 that name the product, downloads up to four and adds to the row's detail which
 of them names the running month and where each came from. It only reports: no
-row's status changes, the fingerprint is the failing labels and so does not
-move, and nothing it finds is read by the integration until a person adopts
-the address in the extractor.
+row's status changes, and the fingerprint is the failing labels and so does
+not move. The integration reads a moved card by itself only for Elegant,
+Engie and Dots, and only the product's own card for the month
+(`providers/_moved.py`, see [provider-framework.md](provider-framework.md)),
+whose candidates the finder reports for those three; anything else it finds
+waits for a person to adopt the address in the extractor. The live check
+asks each supplier's own `fetch` (`inspect.unwrap`), so a card the
+integration reads where it moved still fails here.
 
 | Supplier | Where it looks | November 2026 |
 | --- | --- | --- |

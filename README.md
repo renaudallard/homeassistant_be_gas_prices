@@ -364,8 +364,14 @@ the `card_missing` or `extractor_failed` card appears as below, and it clears
 once the card is fetched. An entry with no card at all raises it at once,
 since nothing prices it. A card missing for more than a few days may have
 moved instead: Engie's Empty House card went to a new address on 1 November
-2026, when the product became a three-year contract, and only an update of
-the integration could follow it. What happens when a card stays missing is
+2026, when the product became a three-year contract, Elegant renamed its
+files the next day and Dots moved its card to a rebuilt site by the 4th. For
+Elegant, Engie and Dots the integration follows such a move by itself: when
+the usual address has no card, or only one of a month before, it looks where
+the supplier's own pages list the product's card and reads it there, as long
+as that card is the running month's, and logs where it found it. It never
+reads another product's card. Other suppliers still need an update of the
+integration to follow a move. What happens when a card stays missing is
 under [Failure mode](#failure-mode).
 
 ## Failure mode

@@ -98,7 +98,13 @@ _CONTRACTS = {_CONTRACT_ID: "Dots Connect - Digital"}
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
     """The card served today."""
     _check(contract_id, region)
-    return parse_snapshot(contract_id, region, await fetch_pdf_text(session, _CARD_URL), _CARD_URL)
+    return await _read(session, contract_id, region, _CARD_URL)
+
+
+async def _read(
+    session: aiohttp.ClientSession, contract_id: str, region: str, url: str
+) -> SupplierSnapshot:
+    return parse_snapshot(contract_id, region, await fetch_pdf_text(session, url), url)
 
 
 def _check(contract_id: str, region: str) -> None:
