@@ -46,6 +46,8 @@ cache and 54 seconds with a full one.
 - `test_live_check.py`, `test_archive_cards.py`: the two daily scripts, with
   no network. Both also run steps of their workflows and hold each job of
   those to the tokens it may see.
+- `test_card_finder.py`: the live check's search for a card that moved,
+  replayed on November 2026's moves with the real pages and cards.
 - `test_file_ci_issue.py`: `scripts/file_ci_issue.sh` against a fake `gh`
   that answers from files and logs its calls.
 - `test_autorelease.py`: the release job of `autorelease.yml`, its own
@@ -243,6 +245,34 @@ Exit codes: 0 all passed, 1 a persistent failure, 2 only transient ones, 3
 the check itself crashed. A crash before the check runs (an import that
 fails) exits 1 without writing the fingerprint, and the workflow reads that
 as 3.
+
+### Where a moved card went (`scripts/card_finder.py`)
+
+Last of all, the live check asks the card finder about every row that failed
+on a `fetch` or a `card month` check, on a `<supplier>/<contract>/<region>`
+label, for a supplier the finder covers (`card_finder.annotate`). The finder
+reads the pages the supplier itself lists its cards on, keeps the addresses
+that name the product, downloads up to four and adds to the row's detail which
+of them names the running month and where each came from. It only reports: no
+row's status changes, the fingerprint is the failing labels and so does not
+move, and nothing it finds is read by the integration until a person adopts
+the address in the extractor.
+
+| Supplier | Where it looks | November 2026 |
+| --- | --- | --- |
+| Elegant | the listing's `/Current/<product>_Residential.pdf` links, matched on the archive key | the renamed `Flex Gas` files |
+| Engie | the residential prices pages, French and Dutch, which name every document code; the same product under any term, else a sibling of its family | Empty House's `_36_` code for `_00_` |
+| EnergyVision | the files its `tariefkaart-2` page links, then where its listing's script looks (`_month_urls`) | nothing for the one-year fixed card, which was late, not moved |
+| Luminus | the price-list archive's product id for the month and for the month before, each asked for the month's card | the old id's early copy, titled November, reported as coming from October's id |
+| Belvus | the cards its services page and its history page link for the month | the services page's November cards, the history page still ending earlier |
+| Dots | the card its product page links or embeds, at its new address then its old one | `/api/tariefkaarten/dots-connect-gas-digital` on the rebuilt site |
+
+A card naming the month is not necessarily the month's card, as Luminus's
+early copy showed, which is why it only reports. The tests replay each case
+on the real page and card of that month (`tests/test_card_finder.py`), and the
+search is a command of its own: `python scripts/card_finder.py <supplier>
+<contract> <region> [YYYY-MM]` prints each candidate, where it came from and
+whether it names the month, and exits 0 when one does.
 
 ## scripts/archive_cards.py
 

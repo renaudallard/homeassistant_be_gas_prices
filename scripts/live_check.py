@@ -96,6 +96,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 # scripts/ is not a package, so it is put on sys.path above rather than
 # imported by dotted path; mypy cannot follow that.
+import card_finder  # type: ignore[import-not-found]  # noqa: E402
 from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
@@ -1131,6 +1132,13 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             checks += await check_fleet(
                 session, all_extractors(), today, sheet_unread=sheet.status == "transient"
             )
+            # Report only, last: where a covered card failed to fetch or is
+            # still the month before's, say where the supplier's own pages
+            # put this month's card, if anywhere (scripts/card_finder.py).
+            try:
+                checks = await card_finder.annotate(checks, session, today)
+            except Exception as err:
+                print(f"card finder: {type(err).__name__}: {err}", file=sys.stderr)
     print(render_report(checks))
     if cache is not None:
         print(
