@@ -39,8 +39,6 @@ Repairs cards say when either happens.
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import logging
 import ssl
 from collections.abc import Callable
@@ -54,11 +52,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import calorific, excise_law, fluvius, law_archive, tarbel, vat_rates
-from .bill import IndexValue, bill_month, contract_leg, fee_waiver, merged_index, month_key
+from . import excise_law, fluvius, law_archive, tarbel, vat_rates
+from .bill import IndexValue, bill_month, month_key
 from .compare import OwnContract, rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -66,38 +63,32 @@ from .const import (
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
     CONF_CONTRACT_START_DATE,
-    CONF_CONVERSION_FACTOR,
-    CONF_CONVERSION_MODE,
     CONF_DAILY_COMPARE,
     CONF_DSO,
     CONF_GAS_METER,
     CONF_REGION,
-    CONF_STATION,
     CONF_SUPPLIER,
     CONF_YTD_FROM_CONTRACT_START,
-    CONVERSION_MANUAL,
     DEFAULT_ANNUAL_CONSUMPTION_KWH,
     DEFAULT_CALIBER,
     DEFAULT_CARD_ARCHIVE,
-    DEFAULT_CONVERSION_MODE,
     DEFAULT_DAILY_COMPARE,
     DOMAIN,
     REGION_FLANDERS,
     STORAGE_VERSION,
-    SUPPLIER_CUSTOM,
     UPDATE_INTERVAL_MINUTES,
 )
 from .contract_periods import (
     PeriodBilling,
-    card_key_due,
     current_period_start,
-    last_month_sold,
     parse_date,
     periods_this_year,
-    signing_keys,
     switch_day,
 )
-from .coordinator_data import Conversion, CoordinatorData
+from .coordinator_card import _CardMixin
+from .coordinator_data import CoordinatorData
+from .coordinator_inputs import _InputsMixin
+from .coordinator_store import _StoreMixin
 from .daily_ranking import DailyRanking, ranking_minute
 from .gas_meter import (
     MeterKind,
@@ -108,29 +99,16 @@ from .gas_meter import (
 )
 from .issues import sync_issues
 from .month_cards import (
-    ArchiveUnavailable,
     MonthCardCache,
-    current_card,
-    fetch_archived_row,
 )
-from .pricing import PriceBreakdown, PricingError, fixed_costs
+from .pricing import PricingError, fixed_costs
 from .providers import get as get_extractor
-from .providers._pdf import (
-    guarded,
-    is_missing_card_error,
-    is_transient_fetch_error,
-    memoise_text_fetches,
-)
-from .providers._rates import EnergyRates
-from .providers._resolve import LAW_FIGURES, resolve_for_delivery, tier_for
+from .providers._resolve import resolve_for_delivery, tier_for
 from .providers.base import (
-    CardNotReadableError,
-    ExtractorError,
     IndexTable,
     SupplierExtractor,
     SupplierSnapshot,
 )
-from .providers.custom import build_snapshot as build_custom_snapshot
 from .running_costs import (
     Household,
     RunningCosts,
@@ -139,51 +117,11 @@ from .running_costs import (
     running_costs,
     to_kwh,
 )
-from .snapshot_codec import SnapshotDecodeError, snapshot_from_json, snapshot_to_json
 
 _LOGGER = logging.getLogger(__name__)
 
-# A card is fetched again after this long when the supplier offers no probe.
-SNAPSHOT_TTL = timedelta(hours=24)
-# The index values and the calorific values move monthly; once a day catches
-# a publication within a day.
-INDEX_TTL = timedelta(hours=12)
-CALORIFIC_TTL = timedelta(hours=24)
-# A card this old, or this long past the last day it prices, is stale: the
-# supplier has not been readable for a week, or has not published a new month.
-SNAPSHOT_STALE_AGE = timedelta(days=7)
-SNAPSHOT_STALE_AFTER_VALIDITY = timedelta(days=7)
-# What the card fetch of one tick may take. The slowest path measured on a
-# Raspberry Pi 4 under load is Bolt's: its current card in 38 s, and a
-# month's card, which walks back through the versions of a variable card,
-# in up to 54 s more. Twice that, so a slow day still finishes, while a
-# supplier that never finishes answering cannot hold the tick for good.
-CARD_FETCH_BUDGET_S = 180
-# The card archive is asked back this many months for a card to stand in.
-_ARCHIVE_MONTHS_BACK = 12
 
-
-def _digest(value: Any) -> str:
-    """A short digest of what JSON makes of value."""
-    blob = json.dumps(value, sort_keys=True, default=str)
-    return hashlib.sha256(blob.encode()).hexdigest()[:16]
-
-
-def _card_digest(card: SupplierSnapshot) -> str:
-    """A card's figures, digested."""
-    return _digest(snapshot_to_json(card))
-
-
-def _newer(card: SupplierSnapshot, held: SupplierSnapshot) -> bool:
-    """Whether ``card`` is a later card than ``held``: by its end date, or by
-    the month it names where a card has none, being in force until the next
-    one (Bolt's variable cards)."""
-    if card.valid_until is None or held.valid_until is None:
-        return card.publication_label > held.publication_label
-    return card.valid_until > held.valid_until
-
-
-class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
+class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinator[CoordinatorData]):
     """Fetches the card, reads the meter and prices one household."""
 
     def __init__(
@@ -336,625 +274,6 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         """The day the current contract took over from the last one recorded
         at a switch, whatever its year, None when none is recorded."""
         return switch_day(self._data)
-
-    # ---- persistence ------------------------------------------------------
-
-    async def async_load_persistent(self) -> None:
-        """Restore the last card and the caches, so a restart while the
-        supplier is down still prices on something real."""
-        self._release = str((await async_get_integration(self.hass, DOMAIN)).version)
-        blob = await self._store.async_load()
-        if not isinstance(blob, dict):
-            return
-        try:
-            snapshot = snapshot_from_json(blob.get("snapshot"))
-            fetched_at = datetime.fromisoformat(blob["fetched_at"])
-        except (SnapshotDecodeError, KeyError, TypeError, ValueError):
-            snapshot = None
-            fetched_at = None
-        # Only a card for this contract that prices this household's DSO: a
-        # move to another region keeps the supplier and the contract, and a
-        # card of the old region would stand in for the new one's.
-        restored = (
-            snapshot is not None
-            and (snapshot.supplier, snapshot.contract) == (self.extractor.id, self.contract)
-            and str(self._data.get(CONF_DSO)) in snapshot.dsos
-        )
-        if restored:
-            self._snapshot = snapshot
-            self._fetched_at = fetched_at
-            self._card_source = "cache"
-            self._stand_in = True
-            # The archive's OCR reading, as the store says: stored as such
-            # again whatever the next check finds, and waited on like one.
-            self.card_read_by_ocr = blob.get("read_by_ocr") is True
-        # The fetches of this card that failed in a row, and whether it was
-        # found unreadable, with or without a card in hand: counted on from
-        # there, the first tick after a restart does not delete a Repairs
-        # card the user ignored for the next to raise it afresh, and setup
-        # retries with no card raise it at all.
-        if restored or blob.get("failures_for") == self._card_key():
-            failures = blob.get("failures")
-            self._failures = failures if isinstance(failures, int) else 0
-            since = blob.get("failing_since")
-            try:
-                self._failing_since = date.fromisoformat(since) if since else None
-            except (TypeError, ValueError):
-                self._failing_since = None
-            self.card_unreadable = blob.get("unreadable") is True
-            self.card_missing = blob.get("missing") is True
-        # A price is only resolved against its own supplier's publication:
-        # a table another supplier published, before a change of supplier,
-        # is not restored, even under an index name the two share.
-        table = blob.get("index")
-        if isinstance(table, dict) and blob.get("index_supplier") == self.extractor.id:
-            self._index_table = {
-                str(name): {str(k): float(v) for k, v in values.items()}
-                for name, values in table.items()
-                if isinstance(values, dict)
-            }
-        excise_law.restore(blob.get("excise_law"))
-        excise_law.restore_protected(blob.get("excise_law_protected"))
-        excise_law.restore_contribution(blob.get("excise_law_contribution"))
-        tarbel.restore(blob.get("tarbel"))
-        tarbel.restore_protected(blob.get("tarbel_protected"))
-        tarbel.restore_contribution(blob.get("tarbel_contribution"))
-        fluvius.restore(blob.get("fluvius"))
-        vat_rates.restore(blob.get("vat_rates"))
-        law_archive.restore(blob.get("law_archive"))
-        gcv = blob.get("gcv")
-        if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
-            self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
-        self._months.load_json(blob.get("months"), reread=blob.get("release") != self._release)
-        stamp = blob.get("backfill")
-        self.backfill_stamp = stamp if isinstance(stamp, str) else None
-        stamp = blob.get("cost_backfill")
-        self.cost_backfill_stamp = stamp if isinstance(stamp, str) else None
-        held = blob.get("held")
-        self._held = held if isinstance(held, dict) else None
-        ranking = DailyRanking.from_json(blob.get("ranking"))
-        # A ranking made for another contract prices a saving against a
-        # contract the household left, and one made under other settings
-        # (volume, DSO, caliber, typed figures) for another household: the
-        # day is ranked again instead.
-        if (
-            ranking is not None
-            and ranking.own == (self.extractor.id, self.contract)
-            and blob.get("ranking_for") == self._settings_digest()
-        ):
-            self.daily_ranking = ranking
-
-    async def _save_persistent(self) -> None:
-        if not self._set_up():
-            return
-        since = self.failing_since
-        payload: dict[str, Any] = {
-            "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
-            "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
-            "read_by_ocr": self.card_read_by_ocr,
-            "failures": self._failures,
-            "failing_since": None if since is None else since.isoformat(),
-            "unreadable": self.card_unreadable,
-            "missing": self.card_missing,
-            "failures_for": self._card_key(),
-            "index": self._index_table,
-            "index_supplier": self.extractor.id,
-            "gcv": {"station": self._data.get(CONF_STATION), "values": self._gcv},
-            "excise_law": excise_law.held_table(),
-            "excise_law_protected": excise_law.protected_held_table(),
-            "excise_law_contribution": excise_law.contribution_held_table(),
-            "tarbel": tarbel.held_table(),
-            "tarbel_protected": tarbel.protected_held_table(),
-            "tarbel_contribution": tarbel.contribution_held_table(),
-            "fluvius": fluvius.held_table(),
-            "vat_rates": vat_rates.held_table(),
-            "law_archive": law_archive.held_table(),
-            "months": self._months.to_json(),
-            "release": self._release,
-            "backfill": self.backfill_stamp,
-            "cost_backfill": self.cost_backfill_stamp,
-            "ranking": None if self.daily_ranking is None else self.daily_ranking.to_json(),
-            "ranking_for": self._settings_digest(),
-            "held": self._held,
-        }
-        await self._store.async_save(payload)
-
-    def _card_key(self) -> list[str]:
-        """The supplier, contract and region the card is fetched for: what
-        the stored count of failed fetches belongs to."""
-        return [self.extractor.id, self.contract, self.region]
-
-    def _settings_digest(self) -> str:
-        """The entry's settings, digested: what a stored ranking was made
-        under."""
-        return _digest(self._data)
-
-    async def async_save(self) -> None:
-        """Write the store now, outside a tick."""
-        await self._save_persistent()
-
-    def card_months_signature(self) -> str:
-        """What the year's past months are priced from: the entry's
-        settings, each past month's own card and the card in hand as read,
-        the index values, the calorific values, the figures of the law and
-        the tier the measured volume falls in. It moves when any of them
-        changes or lands, a card read again after an update or the value of
-        an index that lags the others included, which is when the price
-        history is worth drawing again. The excise blend within a tier,
-        which moves the price a few hundredths of a cent, does not move it."""
-        today = dt_util.now().date()
-        own = [
-            f"{month}:{_card_digest(card)}"
-            for month in self._months_needed(today)
-            if (card := self._month_card(month)) is not None
-        ]
-        index = _digest(self._index_table)
-        gcv = _digest(self._gcv)
-        current = "" if self._snapshot is None else _card_digest(self._snapshot)
-        law = _digest(
-            [
-                LAW_FIGURES,
-                excise_law.held_table(),
-                excise_law.protected_held_table(),
-                excise_law.contribution_held_table(),
-                tarbel.held_table(),
-                tarbel.protected_held_table(),
-                tarbel.contribution_held_table(),
-                fluvius.held_table(),
-                vat_rates.held_table(),
-                law_archive.held_table(),
-            ]
-        )
-        tier = "" if self.household is None else tier_for(self.household.annual_kwh)
-        return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}|{tier}"
-
-    # ---- the card ---------------------------------------------------------
-
-    def snapshot_age(self) -> timedelta | None:
-        if self._fetched_at is None:
-            return None
-        return dt_util.utcnow() - self._fetched_at
-
-    def snapshot_stale(self) -> bool:
-        age = self.snapshot_age()
-        if self._snapshot is None or age is None or self.withdrawn:
-            # A withdrawn contract's last card will not change again.
-            return False
-        if age > SNAPSHOT_STALE_AGE:
-            return True
-        valid_until = self._snapshot.valid_until
-        return (
-            valid_until is not None
-            and dt_util.now().date() > valid_until + SNAPSHOT_STALE_AFTER_VALIDITY
-        )
-
-    async def _card_is_due(self) -> tuple[bool, str | None]:
-        """Whether the card must be fetched, and the probe key seen.
-
-        A card from the Store or a stand-in from the card archive is due at
-        once; the archive's reading of an unreadable card is the card of the
-        month, and is asked for again when the supplier's card changes and
-        once a day besides, since the archive reads a card reissued in the
-        month a day after the key moved. The probe is asked either way, so
-        a card fetched for another reason is kept against the key it was
-        fetched under rather than fetched again on the next tick.
-        """
-        key = None
-        if self.extractor.probe is not None:
-            try:
-                key = await self.extractor.probe(self._session, self.contract, self.region)
-            except Exception:
-                # A probe answers None on any failure it expects: one it
-                # does not is no signal either, and the card's age decides.
-                _LOGGER.warning("%s: probe failed", self.extractor.label, exc_info=True)
-        # Read past the probe, which can take seconds: every fetch forced by
-        # now is made by this tick, a press during the probe included, and
-        # the press's own tick has nothing left to fetch.
-        self._force_made = self._force_asked
-        if self._snapshot is None or self._force_refresh or self._stand_in:
-            return True, key
-        # A card whose month is over is asked for again on every tick until
-        # its successor is out, probe or not: the successor may have gone up
-        # before its month began, under the key the card in hand is kept
-        # against, and no later change of key would ever come for it.
-        valid_until = self._snapshot.valid_until
-        if valid_until is not None and dt_util.now().date() > valid_until:
-            return True, key
-        if key is not None and (key != self._probe_key or not self.card_read_by_ocr):
-            return key != self._probe_key, key
-        age = self.snapshot_age()
-        return age is None or age >= SNAPSHOT_TTL, key
-
-    async def _refresh_snapshot(self) -> None:
-        if self.extractor.id == SUPPLIER_CUSTOM:
-            # The household's typed card: nothing to fetch, never stale.
-            self._snapshot = build_custom_snapshot(self._data)
-            self._fetched_at = dt_util.utcnow()
-            self._card_source = "live"
-            self._stand_in = False
-            self.last_error = ""
-            self._force_made = self._force_asked
-            return
-        if self.withdrawn:
-            # Nothing to fetch: the last card held, from the store, else the
-            # card of the last month it was sold, keeps pricing the contract.
-            self._force_made = self._force_asked
-            self._failures = 0
-            self.card_unreadable = self.card_missing = False
-            if self._snapshot is None:
-                await self._adopt_last_card()
-            self.last_error = (
-                ""
-                if self._snapshot is not None
-                else f"{self.extractor.label} withdrew this contract and no card of it is held"
-            )
-            return
-        due, key = await self._card_is_due()
-        if not due:
-            if key is not None and not self.card_read_by_ocr:
-                # The supplier still serves the card in hand: as good as a
-                # fetch, and what keeps a month's card from ageing into
-                # staleness between two publications.
-                self._fetched_at = dt_util.utcnow()
-            return
-        try:
-            async with asyncio.timeout(CARD_FETCH_BUDGET_S):
-                snapshot, source = await current_card(
-                    self._session,
-                    self.extractor,
-                    self.contract,
-                    self.region,
-                    f"{dt_util.now().date():%Y-%m}",
-                    use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
-                )
-        except CardNotReadableError as err:
-            self.card_missing = False
-            if self.card_read_by_ocr and self._snapshot is not None:
-                # The card archive's reading of last month's card is in hand,
-                # read here, restored from the store or taken as a stand-in,
-                # and the archive has not read the new month's yet: it reads
-                # once a day, so this is a wait, not an unreadable card.
-                self.card_unreadable = False
-                self.card_read_by_ocr = True
-                self._fetch_failed(str(err), transient=True)
-            else:
-                self.card_unreadable = True
-                self.card_read_by_ocr = False
-                self._fetch_failed(str(err), transient=False)
-        except ExtractorError as err:
-            transient = is_transient_fetch_error(str(err))
-            # A network failure says nothing about the card: one known to be
-            # unreadable or missing stays so, rather than its count of
-            # failures being read as a layout change.
-            if not transient:
-                self.card_unreadable = False
-                self.card_missing = is_missing_card_error(str(err))
-            self._fetch_failed(str(err), transient=transient)
-        except TimeoutError:
-            # Like a network failure: it says nothing about the card, and
-            # the next tick may well finish.
-            self._fetch_failed(
-                f"{self.extractor.label}: the card fetch did not finish within "
-                f"{CARD_FETCH_BUDGET_S} s",
-                transient=True,
-            )
-        else:
-            self._snapshot = snapshot
-            self._fetched_at = dt_util.utcnow()
-            self._probe_key = key
-            self._card_source = source
-            self._stand_in = False
-            self._force_refresh = False
-            self._failures = 0
-            self.card_unreadable = False
-            self.card_missing = False
-            self.card_read_by_ocr = source == "ocr"
-            self.last_error = ""
-            return
-        if self._snapshot is None or self.snapshot_stale():
-            await self._adopt_archived_card()
-
-    def _fetch_failed(self, message: str, *, transient: bool) -> None:
-        self.last_error = message
-        if not transient:
-            if not self._failures:
-                self._failing_since = dt_util.now().date()
-            self._failures += 1
-        _LOGGER.warning("%s: tariff card not refreshed: %s", self.extractor.label, message)
-
-    async def _adopt_last_card(self) -> None:
-        """Stand a withdrawn contract's last card in when none is held: the
-        card of the last month it was sold, from the card archive where the
-        entry reads it, else from the supplier's own archive."""
-        month = last_month_sold(self.extractor, self.contract)
-        if month is None:
-            return
-        try:
-            row = await self._months.card(
-                self._session,
-                self.extractor,
-                self.contract,
-                self.region,
-                month,
-                use_archive=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
-            )
-        except (ExtractorError, ArchiveUnavailable) as err:
-            _LOGGER.debug("%s card for %s not read: %s", self.extractor.label, month, err)
-            return
-        if row.snapshot is None:
-            return
-        year, number = (int(part) for part in month.split("-"))
-        self._snapshot = row.snapshot
-        self._card_source = "archive" if row.source == "archive" else "live"
-        self._stand_in = True
-        self.card_read_by_ocr = False
-        self._fetched_at = dt_util.as_utc(dt_util.start_of_local_day(date(year, number, 1)))
-
-    async def _adopt_archived_card(self) -> None:
-        """Stand the card archive's latest row in for a card we cannot read.
-
-        This month's row first, then back a month at a time, stopping at the
-        first one that holds a card and as soon as GitHub fails to answer,
-        since a month it could not read may still hold one. Taken only if it
-        is newer than what is held.
-        """
-        if not self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE):
-            return
-        today = dt_util.now().date()
-        year, month = today.year, today.month
-        for _ in range(_ARCHIVE_MONTHS_BACK):
-            key = f"{year}-{month:02d}"
-            try:
-                row = await fetch_archived_row(
-                    self._session, self.extractor.id, self.contract, self.region, key
-                )
-            except ArchiveUnavailable as err:
-                _LOGGER.debug("card archive unavailable: %s", err)
-                return
-            if row is not None:
-                card, read_by_ocr = row
-                held = self._snapshot
-                if held is None or _newer(card, held):
-                    self._snapshot = card
-                    self._card_source = "archive"
-                    self._stand_in = True
-                    self.card_read_by_ocr = read_by_ocr
-                    if read_by_ocr:
-                        # The archive's reading of a card published as
-                        # images: what such a card is priced on, as good as
-                        # a fetch, so the card found unreadable is no
-                        # failure while the archive has not read the newest.
-                        self._fetched_at = dt_util.utcnow()
-                        if self.card_unreadable:
-                            self._failures = 0
-                            self.card_unreadable = False
-                    else:
-                        self._fetched_at = dt_util.as_utc(
-                            dt_util.start_of_local_day(date(year, month, 1))
-                        )
-                return
-            year, month = (year - 1, 12) if month == 1 else (year, month - 1)
-
-    # ---- index values and calorific values ---------------------------------
-
-    async def _refresh_index(self) -> None:
-        fetch = self.extractor.fetch_index
-        if fetch is None:
-            return
-        now = dt_util.utcnow()
-        if self._index_fetched_at is not None and now - self._index_fetched_at < INDEX_TTL:
-            return
-        try:
-            fetched = await guarded(self.extractor.label, fetch(self._session))
-        except ExtractorError as err:
-            _LOGGER.warning("%s: index values not refreshed: %s", self.extractor.label, err)
-            if self._index_table is None and is_transient_fetch_error(str(err)):
-                # Nothing held: every indexed month waits on it at the card's
-                # printed price, so a source that may answer the next time is
-                # asked again next tick.
-                return
-            # A held table keeps pricing, and a source that refuses the
-            # read will refuse it next hour too: not worth an hourly retry.
-        else:
-            self._index_table = merged_index(
-                self._index_table, fetched, month_key(dt_util.now().date())
-            )
-        self._index_fetched_at = now
-
-    async def _refresh_calorific(self) -> None:
-        station = self._data.get(CONF_STATION)
-        if self._conversion_mode() == CONVERSION_MANUAL or not station:
-            return
-        now = dt_util.utcnow()
-        if self._gcv_fetched_at is not None and now - self._gcv_fetched_at < CALORIFIC_TTL:
-            return
-        try:
-            if self._gcv_context is None:
-                self._gcv_context = await self.hass.async_add_executor_job(
-                    calorific.build_ssl_context
-                )
-            key = await calorific.subscription_key(self._session)
-            months = await calorific.list_months(self._session, self._gcv_context, key)
-            wanted = [m for m in sorted(months) if m >= f"{dt_util.now().year - 1}-01"]
-        except calorific.CalorificError as err:
-            # Asked again next tick: with no value held for the station,
-            # every running cost waits on it.
-            _LOGGER.warning("calorific values not refreshed: %s", err)
-            return
-        failed = False
-        for month in wanted:
-            if month in self._gcv:
-                continue
-            # Each month on its own: one file that cannot be read must not
-            # keep every later month from being read.
-            try:
-                values = await calorific.fetch_month(
-                    self._session, self._gcv_context, key, months[month]
-                )
-            except calorific.CalorificError as err:
-                _LOGGER.warning("calorific values of %s not read: %s", month, err)
-                failed = failed or is_transient_fetch_error(str(err))
-                continue
-            for held_station, value in values.items():
-                if held_station.ean == station:
-                    self._gcv[month] = value
-        if failed and not self._gcv:
-            # Still nothing for the station, and a file a retry may cure:
-            # asked again next tick. One the parser refuses waits a day.
-            return
-        self._gcv_fetched_at = now
-
-    def _conversion_mode(self) -> str:
-        return str(self._data.get(CONF_CONVERSION_MODE, DEFAULT_CONVERSION_MODE))
-
-    def _factor_for(self, kind: MeterKind | None) -> Any:
-        """The kWh one meter unit is worth in a month, as a function."""
-
-        def factor(month: str) -> float | None:
-            if kind == "energy":
-                return 1.0
-            return self._m3_factor(month)[0]
-
-        return factor
-
-    def _m3_factor(self, month: str) -> tuple[float | None, str | None]:
-        """The kWh one cubic metre is worth in ``month``, and the month the
-        value belongs to (the latest published before it while ``month``
-        itself is not)."""
-        if self._conversion_mode() == CONVERSION_MANUAL:
-            value = self._data.get(CONF_CONVERSION_FACTOR)
-            return (float(value), None) if value else (None, None)
-        if month in self._gcv:
-            return self._gcv[month], month
-        earlier = [key for key in self._gcv if key < month]
-        if not earlier:
-            return None, None
-        latest = max(earlier)
-        return self._gcv[latest], latest
-
-    def _conversion(self, month: str) -> Conversion:
-        factor, published = self._m3_factor(month)
-        if factor is None:
-            return Conversion(factor=None, source="none")
-        source = "manual" if self._conversion_mode() == CONVERSION_MANUAL else "station"
-        return Conversion(factor=factor, source=source, month=published)
-
-    # ---- month cards --------------------------------------------------------
-
-    def _months_needed(self, today: date) -> list[str]:
-        if self.extractor.id == SUPPLIER_CUSTOM:
-            # Every month bills on the typed card.
-            return []
-        start = self.period_start(today)
-        current = month_key(today)
-        months: list[str] = []
-        year, month = start.year, start.month
-        while f"{year}-{month:02d}" < current:
-            months.append(f"{year}-{month:02d}")
-            year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-        months += [
-            key
-            for key in signing_keys(self._data, self.extractor)
-            if card_key_due(key, today) and key not in months
-        ]
-        return months
-
-    async def async_fill_month_cards(self, months: list[str]) -> None:
-        if self.extractor.id == SUPPLIER_CUSTOM:
-            # Nothing to fetch: the typed card is every month's.
-            return
-        use_archive = bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE))
-        # One fill reads a page or card once for all its months: Bolt's
-        # variable months each walk down the same versions of its card.
-        with memoise_text_fetches({}):
-            for month in months:
-                # The cache answers a held month at once, and asks again for
-                # one it holds as absent once that answer has aged.
-                try:
-                    await self._months.card(
-                        self._session,
-                        self.extractor,
-                        self.contract,
-                        self.region,
-                        month,
-                        use_archive=use_archive,
-                    )
-                except (ExtractorError, ArchiveUnavailable) as err:
-                    _LOGGER.debug("%s card for %s not read: %s", self.extractor.label, month, err)
-
-    def _month_card(self, month: str) -> SupplierSnapshot | None:
-        if self.extractor.id == SUPPLIER_CUSTOM:
-            # The typed card is every month's own.
-            return self._snapshot
-        row = self._months.get(self.extractor.id, self.contract, self.region, month)
-        return None if row is None else row.snapshot
-
-    def _signing_card(self) -> SupplierSnapshot | None:
-        """The card the contract was signed on, when the entry names a
-        signing month the archive can serve: the one of the day signed where
-        the supplier reissues within a month and serves it."""
-        keys = signing_keys(self._data, self.extractor)
-        signed = self._month_card(keys[0]) if len(keys) > 1 else None
-        if signed is None and keys:
-            today_month = month_key(dt_util.now().date())
-            signing = keys[-1]
-            signed = self._snapshot if signing == today_month else self._month_card(signing)
-        return signed
-
-    def _energy_for(self, card: SupplierSnapshot, vat_rate: float) -> EnergyRates:
-        """The energy leg a card bills this household on at ``vat_rate``, the
-        residential rate of the month billed: the signing card's where it is
-        held and the contract holds its figures, with the figures the
-        household typed from its contract laid over it."""
-        signed = self._signing_card()
-        return contract_leg(
-            card.energy, None if signed is None else signed.energy, self._data, vat_rate
-        )
-
-    def _fee_waived(self) -> tuple[date, date] | None:
-        """The days the contract pays no supplier fee: the first months the
-        card it was signed on waives it for, from its start."""
-        return fee_waiver(
-            self._signing_card(), parse_date(self._data.get(CONF_CONTRACT_START_DATE))
-        )
-
-    def month_price(
-        self, month: str, *, own_card: bool = False
-    ) -> tuple[PriceBreakdown, float | None] | None:
-        """The all-in price of ``month`` and the kWh a cubic metre was worth
-        in it, priced the way the running costs price it: the month's own
-        card where one is held and prices the household, the current card
-        otherwise, or with ``own_card`` not at all. None before the first
-        tick has priced the household."""
-        snapshot = self._snapshot
-        household = self.household
-        if snapshot is None or household is None:
-            return None
-        cards = [snapshot]
-        # The custom supplier's typed card prices every month.
-        if month != month_key(dt_util.now().date()) and self.extractor.id != SUPPLIER_CUSTOM:
-            held = self._month_card(month)
-            cards = ([] if held is None else [held]) + ([] if own_card else [snapshot])
-        for card in cards:
-            try:
-                bill = bill_month(
-                    month=month,
-                    card=card,
-                    energy_for=self._energy_for,
-                    table=self._index_table,
-                    dso=household.dso,
-                    annual_kwh=household.annual_kwh,
-                    caliber=household.caliber,
-                    kwh=0.0,
-                    days=0,
-                    days_in_year=365,
-                )
-            except PricingError:
-                # A month's own card missing the household's DSO or tier is
-                # no better than none, as in the running costs.
-                continue
-            return bill.breakdown, self._m3_factor(month)[0]
-        return None
 
     # ---- the tick -------------------------------------------------------------
 

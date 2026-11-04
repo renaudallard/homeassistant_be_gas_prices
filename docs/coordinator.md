@@ -2,7 +2,9 @@
 
 `GasCoordinator` (`coordinator.py`) is a `DataUpdateCoordinator` ticking
 hourly (`UPDATE_INTERVAL_MINUTES`). This page follows one tick and what the
-coordinator keeps between them.
+coordinator keeps between them. The card, the inputs it is priced with and
+the store are mixins of it (`coordinator_card.py`, `coordinator_inputs.py`,
+`coordinator_store.py`).
 
 ## One tick
 

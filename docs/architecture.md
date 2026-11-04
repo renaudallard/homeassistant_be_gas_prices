@@ -57,8 +57,11 @@ Paths relative to `custom_components/be_gas_prices/`.
 | Module | Responsibility |
 | --- | --- |
 | `__init__.py` | Entry setup and teardown, the `refresh` and `backfill_statistics` services, the automatic price and cost history backfills. |
-| `coordinator.py` | `GasCoordinator`: one tick fetches or keeps the card, refreshes index and calorific values, reads the meter and builds `CoordinatorData`. Persists its state in a Store. |
+| `coordinator.py` | `GasCoordinator`: one tick fetches or keeps the card, refreshes index and calorific values, reads the meter and builds `CoordinatorData`. Persists its state in a Store. Three mixins hold the rest of it: |
+| `coordinator_card.py` | `_CardMixin`: when the card is due, fetching it, and the stand-ins while it cannot be read (a withdrawn contract's last card, the card archive's). |
 | `coordinator_data.py` | `CoordinatorData`, the record every entity reads, and `Conversion`. |
+| `coordinator_inputs.py` | `_InputsMixin`: the index and calorific values, the past months' cards and the energy leg a contract is billed on. |
+| `coordinator_store.py` | `_StoreMixin`: the entry's Store, read at setup and written after a tick, and the digests saying whether a held figure still stands. |
 | `bill.py` | One month billed: the card, the energy leg (the month's card, the signing card or typed figures), the index value of the month, the volume and the days. Pure. |
 | `running_costs.py` | The year walked month by month on each month's card, the rolling year and the year-end projection. Pure. |
 | `pricing.py` | The per-kWh breakdown and the yearly fixed costs of one household on one card. Pure. |

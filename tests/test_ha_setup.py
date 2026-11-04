@@ -142,7 +142,7 @@ def _no_card_archive_rows() -> Iterator[None]:
             AsyncMock(return_value=None),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):
@@ -406,7 +406,9 @@ async def test_a_card_fetch_past_its_budget_keeps_the_last_card(
         await asyncio.sleep(3600)
         return card
 
-    monkeypatch.setattr("custom_components.be_gas_prices.coordinator.CARD_FETCH_BUDGET_S", 0.05)
+    monkeypatch.setattr(
+        "custom_components.be_gas_prices.coordinator_card.CARD_FETCH_BUDGET_S", 0.05
+    )
     fetch.side_effect = hangs
     for _ in range(2):
         await coordinator.async_force_refresh(wait=True)
@@ -438,7 +440,7 @@ async def test_the_archive_stands_in_after_an_unexpected_error(
     card = fetch.return_value
     fetch.side_effect = IndexError("list index out of range")
     with patch(
-        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
         AsyncMock(return_value=(card, False)),
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
@@ -1522,7 +1524,7 @@ async def test_the_meter_read_after_setup_asks_no_supplier_again(
     card = fetch.return_value
     fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
     with patch(
-        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
         AsyncMock(return_value=(card, False)),
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
@@ -2003,7 +2005,7 @@ async def test_the_month_cards_landing_after_setup_ask_no_supplier_again(
 
     with (
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
             AsyncMock(return_value=(card, False)),
         ),
         patch("custom_components.be_gas_prices.month_cards.fetch_archived_card", slow_archive),
@@ -3140,7 +3142,7 @@ async def test_the_price_history_stamp_moves_with_the_law(
     entry = await _setup(hass)
     coordinator = entry.runtime_data
     before = coordinator.card_months_signature()
-    with patch("custom_components.be_gas_prices.coordinator.LAW_FIGURES", ((2024, 1),)):
+    with patch("custom_components.be_gas_prices.coordinator_store.LAW_FIGURES", ((2024, 1),)):
         assert coordinator.card_months_signature() != before
 
 
@@ -3378,7 +3380,7 @@ async def test_a_stored_card_of_another_region_is_not_restored(
     walloon = fetch.return_value
     flemish = replace(walloon, dsos={DSO_FLUVIUS_IMEWO: walloon.dsos[DSO_ORES]})
     archived = AsyncMock(return_value=(flemish, False))
-    with patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", archived):
+    with patch("custom_components.be_gas_prices.coordinator_card.fetch_archived_row", archived):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         await entry.runtime_data.async_save()
         archived.reset_mock()
@@ -3667,7 +3669,7 @@ async def test_a_stand_in_from_the_archive_is_asked_for_again_at_once(
     card = fetch.return_value
     fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
     with patch(
-        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
         AsyncMock(return_value=(card, False)),
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
@@ -3688,7 +3690,7 @@ async def test_the_archive_stands_in_for_a_stale_card_with_no_end_date(
     october = replace(september, publication_label="2026-10")
     fetch.return_value = september
     row = AsyncMock(return_value=(october, False))
-    with patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", row):
+    with patch("custom_components.be_gas_prices.coordinator_card.fetch_archived_row", row):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         fetch.side_effect = ExtractorError("Engie: variable price block or formula not found")
         freezer.tick(timedelta(days=18))
@@ -3762,7 +3764,7 @@ async def test_waiting_for_the_archive_to_read_a_new_month_is_no_unreadable_card
         patch.dict(providers.EXTRACTORS, {"engie": stub}),
         patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):
@@ -3832,7 +3834,7 @@ async def test_a_new_entry_on_last_month_s_ocr_reading_waits_for_the_archive(
 
     with (
         patch("custom_components.be_gas_prices.month_cards.fetch_archived_row", row),
-        patch("custom_components.be_gas_prices.coordinator.fetch_archived_row", row),
+        patch("custom_components.be_gas_prices.coordinator_card.fetch_archived_row", row),
     ):
         entry = await _setup(hass, {**DATA, CONF_CARD_ARCHIVE: True})
         coordinator = entry.runtime_data
@@ -3879,7 +3881,7 @@ async def test_the_wait_for_the_archive_survives_a_restart(
             AsyncMock(return_value=None),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):
@@ -3917,7 +3919,7 @@ async def test_a_restored_reading_stays_marked_through_a_network_failure(
         },
     }
     with patch(
-        "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+        "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
         AsyncMock(return_value=None),
     ):
         entry.add_to_hass(hass)
@@ -3938,7 +3940,7 @@ async def test_a_card_published_as_images_without_a_reading_is_unreadable(
             AsyncMock(return_value=None),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.fetch_archived_row",
+            "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
             AsyncMock(return_value=None),
         ),
     ):
