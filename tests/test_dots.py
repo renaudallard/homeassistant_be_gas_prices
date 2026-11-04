@@ -47,9 +47,10 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.providers import dots
 from custom_components.be_gas_prices.providers._rates import VariableRates
 from custom_components.be_gas_prices.providers.base import ExtractorError, SupplierSnapshot
-from tests import approx, fixture_page, fixture_text
+from tests import approx, fixture_text
 
 CARD = "Tariefkaart NG Dots Connect - Digital 09_2026.pdf"
+NOVEMBER = "Tariefkaart NG Dots Connect - Digital 11_2026.pdf"
 
 
 def _parse() -> SupplierSnapshot:
@@ -156,33 +157,34 @@ def test_a_price_wrapped_off_the_formula_line_is_refused() -> None:
         dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, text, "url")
 
 
-def test_product_page_links_the_card() -> None:
-    page = fixture_page("dots", "dots_dots-connect-gas-digital.html")
-    assert dots.card_path(page) == (
-        "/web/content/98918?unique=adb0e23a7ee37894023a0016f9738428b50941fb&download=true"
+def test_the_november_2026_card_is_read() -> None:
+    """The card the rebuilt site serves: "Gas 1,05 * M ZTP rek. gem. EGSI EEX +
+    0,9 10,881" and "€5,3/maand/EAN"."""
+    snap = dots.parse_snapshot(
+        "dots_connect_digital", REGION_FLANDERS, fixture_text("dots", NOVEMBER), "url"
     )
+    assert snap.energy == VariableRates(
+        price=approx(0.10881),
+        yearly_fixed_fee=approx(63.6),
+        formula="1,05 * M ZTP rek. gem. EGSI EEX + 0,9",
+    )
+    assert snap.publication_label == "2026-11"
+    assert set(snap.dsos) == FLUVIUS_KEYS
 
 
-async def test_fetch_reads_the_linked_card() -> None:
-    with (
-        patch.object(
-            dots,
-            "fetch_text",
-            AsyncMock(return_value=fixture_page("dots", "dots_dots-connect-gas-digital.html")),
-        ) as page,
-        patch.object(
-            dots, "fetch_pdf_text", AsyncMock(return_value=fixture_text("dots", CARD))
-        ) as card,
-    ):
+async def test_fetch_reads_the_card_at_its_address() -> None:
+    """Since November 2026 the card is served at one address the product page
+    embeds; the Odoo attachment links it used to carry now lead to the home
+    page."""
+    with patch.object(
+        dots, "fetch_pdf_text", AsyncMock(return_value=fixture_text("dots", NOVEMBER))
+    ) as card:
         snap = await dots.fetch(AsyncMock(), "dots_connect_digital", REGION_FLANDERS)
-    assert page.call_args.args[1] == "https://www.dotsenergy.be/dots-connect-gas-digital"
-    url = (
-        "https://www.dotsenergy.be/web/content/98918"
-        "?unique=adb0e23a7ee37894023a0016f9738428b50941fb&download=true"
-    )
+    url = "https://www.dotsenergy.be/api/tariefkaarten/dots-connect-gas-digital"
     assert card.call_args.args[1] == url
     assert snap.source_url == url
     assert snap.supplier == "dots"
+    assert snap.publication_label == "2026-11"
 
 
 def test_extractor_has_no_archive_or_index() -> None:

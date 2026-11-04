@@ -5,20 +5,21 @@ Module: `custom_components/be_gas_prices/providers/dots.py`. Tests:
 
 ## Where the card is
 
-- Product page: https://www.dotsenergy.be/dots-connect-gas-digital links the
-  current card as an Odoo attachment,
-  `/web/content/<id>?unique=<checksum>&download=true`. Each month's card
-  gets a new id (98918 for September 2026, "Tariefkaart NG Dots Connect -
-  Digital 09_2026.pdf"; 110896 for October 2026, "... 10_2026.pdf") and the
-  superseded id keeps serving its old card. `card_path` requires exactly one
-  attachment link.
-- The home page is not an equivalent source: in October 2026 it linked six
-  attachments, both months' gas cards and the Dots Dynamic and Dots Dynamic
-  Insights electricity cards for September and October. Only the product
-  page names the current card.
+- Since Dots rebuilt its site in November 2026 (seen on the 4th), the current
+  card is served at one address,
+  https://www.dotsenergy.be/api/tariefkaarten/dots-connect-gas-digital
+  (`_CARD_URL`), inline or as an attachment with `?download=1`, the same
+  bytes either way ("Tariefkaart NG Dots Connect - Digital 11_2026.pdf").
+  The product page, now /nl/tariefkaarten/dots-connect-gas-digital (the old
+  /dots-connect-gas-digital answers a 301 to it), embeds that address, and
+  `fetch` reads the card there.
+- Until then the product page linked the current card as an Odoo
+  attachment, `/web/content/<id>?unique=<checksum>&download=true`, with a new
+  id each month (98918 for September 2026, 110896 for October 2026). Those
+  links now answer a 307 to /nl.
 - No archive of past cards was found, so there is no `fetch_for_month`.
-- No probe: the id changes every month, so a HEAD on a known id never sees a
-  new card.
+- No probe: the card's address answers without an ETag or a Last-Modified,
+  so a HEAD cannot tell a new card from the last.
 
 ## Products and regions
 
@@ -108,5 +109,5 @@ is provisional, and its comparison rows carry the dagger.
 `tests/test_dots.py`: the price kept as printed, the levies, the Antwerpen
 row, the wrong cells dropping their tier, the Internal card refused, region and
 contract refusals, a lost price line, a price wrapped off the formula line,
-the product page link, `fetch`, and the
-extractor having neither archive nor index.
+the November 2026 card, `fetch` at the card's address, and the extractor
+having neither archive nor index.

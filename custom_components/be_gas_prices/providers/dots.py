@@ -26,12 +26,14 @@
 """Dots Energy gas card extractor.
 
 Dots Energy sells one residential gas product, Connect - Digital, in
-Flanders. Its product page https://www.dotsenergy.be/dots-connect-gas-digital
-links the current card as an Odoo attachment,
-``/web/content/<id>?unique=<checksum>&download=true``. No archive of past
-cards was found. The "Dots Internal" card is reserved for Dots's own staff
-and needs Dots's approval, so it is not a product a household can choose and
-is not read.
+Flanders. Since its site was rebuilt in November 2026 the current card is
+served at one address,
+https://www.dotsenergy.be/api/tariefkaarten/dots-connect-gas-digital, which
+the product page /nl/tariefkaarten/dots-connect-gas-digital embeds. Before,
+the product page linked each month's card as an Odoo attachment with an id
+of its own. No archive of past cards was found. The "Dots Internal" card is
+reserved for Dots's own staff and needs Dots's approval, so it is not a
+product a household can choose and is not read.
 
 The energy price is VariableRates, not IndexedRates, because the card does
 not say which index it is on. The formula line reads "Gas 1,05 * M ZTP rek.
@@ -59,7 +61,6 @@ tier with those above it.
 
 from __future__ import annotations
 
-import html
 import re
 from datetime import date
 
@@ -82,33 +83,22 @@ from ._network import (
     require_region,
 )
 from ._parse import require_contract, to_float
-from ._pdf import NL_MONTHS, fetch_pdf_text, fetch_text, printed_vat_rate
+from ._pdf import NL_MONTHS, fetch_pdf_text, printed_vat_rate
 from ._rates import Contract, VariableRates
 from ._validity import end_of_month
 from .base import ExtractorError, SupplierExtractor, SupplierSnapshot, TaxOverlay
 
 _HOST = "https://www.dotsenergy.be"
-_PRODUCT_PAGE = f"{_HOST}/dots-connect-gas-digital"
+_CARD_URL = f"{_HOST}/api/tariefkaarten/dots-connect-gas-digital"
 
 _CONTRACT_ID = "dots_connect_digital"
 _CONTRACTS = {_CONTRACT_ID: "Dots Connect - Digital"}
 
-_CARD_LINK_RE = re.compile(r'href="(/web/content/\d+\?[^"]*)"')
-
-
-def card_path(page: str) -> str:
-    """The one attachment the product page links."""
-    paths = {html.unescape(path) for path in _CARD_LINK_RE.findall(page)}
-    if len(paths) != 1:
-        raise ExtractorError(f"Dots Energy: product page links {len(paths)} cards")
-    return paths.pop()
-
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
-    """The card the product page links today."""
+    """The card served today."""
     _check(contract_id, region)
-    url = _HOST + card_path(await fetch_text(session, _PRODUCT_PAGE))
-    return parse_snapshot(contract_id, region, await fetch_pdf_text(session, url), url)
+    return parse_snapshot(contract_id, region, await fetch_pdf_text(session, _CARD_URL), _CARD_URL)
 
 
 def _check(contract_id: str, region: str) -> None:
