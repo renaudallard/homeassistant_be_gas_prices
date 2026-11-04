@@ -25,10 +25,11 @@
 
 """Frank Energie gas tariff card extractor.
 
-Frank Energie sells one variable gas contract in Flanders in five tiers,
-each with its own monthly card: the standard one, HV, JN, Slim (only beside
-a Slim electricity contract) and Korting. The cards are file assets of the
-Sanity CMS behind the site, found with the query the electricity cards use:
+Frank Energie sells one variable gas contract in Flanders in tiers, each
+with its own monthly card. Read here: the standard one, HV, JN, Slim (only
+beside a Slim electricity contract) and Korting, withdrawn from November
+2026. The cards are file assets of the Sanity CMS behind the site, found
+with the query the electricity cards use:
 
     https://8navd656.api.sanity.io/v2023-01-01/data/query/production-be
         *[_type=="sanity.fileAsset" && originalFilename match "*Gas*"]
@@ -128,6 +129,8 @@ class _ContractDef:
     # standard tier, which names none.
     titles: tuple[str, ...]
     files: tuple[str, ...]
+    # The first day Frank no longer sold the tier (``Contract.withdrawn``).
+    withdrawn: date | None = None
 
 
 _CONTRACTS: tuple[_ContractDef, ...] = (
@@ -142,9 +145,16 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
         "frank_variable_slim", "Frank Energie Gas Variabel Slim", ("Slim", "SL"), ("SL", "Slim")
     ),
     # Titled "Korting ZTP" until September 2026, "VT ZTP" from October, as
-    # its file was named all along.
+    # its file was named all along. Withdrawn from November 2026: Frank
+    # uploaded no November card for it while the other tiers had theirs on
+    # 30 October, and its conditions page lists the gas cards of the
+    # standard, HV, JN, Plus and Slim tiers alone on 4 November.
     _ContractDef(
-        "frank_variable_korting", "Frank Energie Gas Variabel Korting", ("Korting", "VT"), ("VT",)
+        "frank_variable_korting",
+        "Frank Energie Gas Variabel Korting",
+        ("Korting", "VT"),
+        ("VT",),
+        withdrawn=date(2026, 11, 1),
     ),
 )
 _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
@@ -225,6 +235,11 @@ async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -
     """The card of the newest month ``contract_id``'s tier has one for."""
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Frank Energie")
     _region(region)
+    if contract.withdrawn is not None:
+        raise ExtractorError(
+            f"Frank Energie withdrew {contract.label} on {contract.withdrawn:%Y-%m-%d}: "
+            "only its past cards are read"
+        )
     # Five tiers a month: the last 40 uploads reach back further than any
     # re-upload has lagged.
     rows = await _query(
@@ -485,7 +500,13 @@ EXTRACTOR = SupplierExtractor(
     id="frank",
     label="Frank Energie",
     contracts=tuple(
-        Contract(id=c.contract_id, label=c.label, kind="indexed", regions=_REGIONS)
+        Contract(
+            id=c.contract_id,
+            label=c.label,
+            kind="indexed",
+            regions=_REGIONS,
+            withdrawn=c.withdrawn,
+        )
         for c in _CONTRACTS
     ),
     fetch=fetch,

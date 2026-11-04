@@ -39,7 +39,7 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 | `frank_variable_hv` | Frank Energie Gas Variabel HV | HV | HV | indexed, monthly | flanders |
 | `frank_variable_jn` | Frank Energie Gas Variabel JN | JN, June | JN, June | indexed, monthly | flanders |
 | `frank_variable_slim` | Frank Energie Gas Variabel Slim | Slim, SL | SL, Slim | indexed, monthly | flanders |
-| `frank_variable_korting` | Frank Energie Gas Variabel Korting | Korting | VT | indexed, monthly | flanders |
+| `frank_variable_korting` | Frank Energie Gas Variabel Korting | Korting, VT | VT | indexed, monthly | flanders |
 
 - All open-ended ("contracten van onbepaalde duur"); the DSO table is Fluvius
   only. Slim "kan alleen afgesloten worden in combinatie met een 'SL'
@@ -53,6 +53,13 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - HV, JN and Korting printed a cashback in September 2026 ("Korting 115 EUR
   (incl. btw)", 35 and 110); from October 2026 only JN does (35). A snapshot
   has no field for it, so it is not read.
+- Korting is withdrawn from 1 November 2026 (`withdrawn`): Frank uploaded no
+  November card for it while the other tiers had theirs on 30 October, and
+  its conditions page lists the gas cards of the standard, HV, JN, Plus and
+  Slim tiers alone on 4 November. Households on it keep their last card and
+  get the `contract_withdrawn` Repairs card, the setup marks it †, `fetch`
+  refuses it and the live check no longer asks it; its past months are
+  still read.
 
 ## How each figure is read (pdfplumber layout text)
 
@@ -153,6 +160,8 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - `test_slim_title_as_sl_and_the_title_wins_over_the_sentence`,
   `test_the_clipped_march_2026_cards_are_refused`, `test_only_flanders`.
 - `test_index_page`.
+- Withdrawn: `test_the_korting_tier_is_withdrawn_in_november_2026`,
+  `test_a_withdrawn_tier_is_not_fetched_but_its_past_months_are`.
 - `fetch` (newest month of the tier), `fetch_for_month` (the misnamed
   January upload skipped, the query's month and year, month refusal, the
   clipped card, transient raise), `probe` and `fetch_index`, with the fetch

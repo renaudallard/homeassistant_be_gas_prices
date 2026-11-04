@@ -298,6 +298,37 @@ async def test_fetch_keeps_the_running_month_until_the_next_one_begins() -> None
     assert fetched.call_args.args[1] == _url(august)
 
 
+def test_the_korting_tier_is_withdrawn_in_november_2026() -> None:
+    """Frank uploaded no November 2026 card for Korting (VT) while its other
+    tiers had theirs on 30 October, and its conditions page lists theirs
+    alone on 4 November."""
+    withdrawn = {c.id: c.withdrawn for c in frank.EXTRACTOR.contracts if c.withdrawn is not None}
+    assert withdrawn == {"frank_variable_korting": date(2026, 11, 1)}
+
+
+async def test_a_withdrawn_tier_is_not_fetched_but_its_past_months_are() -> None:
+    """Households on Korting keep its last card: nothing asks Sanity for a
+    current one, and a past month is still read off its own upload."""
+    queried = AsyncMock(return_value=_assets())
+    fetched = AsyncMock(return_value=_card(KORTING))
+    with (
+        patch.object(frank, "fetch_text", queried),
+        patch.object(frank, "fetch_pdf_text_layout", fetched),
+    ):
+        with pytest.raises(
+            ExtractorError,
+            match="Frank Energie withdrew Frank Energie Gas Variabel Korting on 2026-11-01",
+        ):
+            await frank.fetch(AsyncMock(), "frank_variable_korting", REGION_FLANDERS)
+        queried.assert_not_called()
+        snap = await frank.fetch_for_month(
+            AsyncMock(), "frank_variable_korting", REGION_FLANDERS, date(2026, 9, 1)
+        )
+    assert snap is not None
+    assert snap.publication_label == "2026-09"
+    assert fetched.call_args.args[1] == _url(KORTING)
+
+
 async def test_fetch_for_month_skips_an_upload_carrying_another_tier() -> None:
     """ "Gas ZTP Januari 2026 v2.pdf" is the Korting card, uploaded after the
     standard tier's own January card."""
