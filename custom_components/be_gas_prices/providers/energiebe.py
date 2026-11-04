@@ -62,6 +62,12 @@ Every figure on the card is VAT inclusive ("Alle prijzen zijn inclusief btw
 tenzij anders vermeld") except the formula, and the card never states the
 rate. The formula is grossed by the residential rate the law sets, which is
 what reproduces the price the card prints.
+
+From November 2026 the cards come in a new template: the month on a title
+line of its own, the price and the standing charge in one row, which the
+layout reading runs together out of order, and two network labels away
+from their figures. Such a card is read off its plain text, a second
+download.
 """
 
 from __future__ import annotations
@@ -191,9 +197,9 @@ async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -
 async def _read(
     session: aiohttp.ClientSession, contract_id: str, region: str, url: str
 ) -> SupplierSnapshot:
-    return parse_snapshot(
-        contract_id, region, await fetch_pdf_text_layout(session, url), source_url=url
-    )
+    text = await fetch_pdf_text_layout(session, url)
+    plain = await fetch_pdf_text(session, url) if _TEMPLATE_RE.search(text) else None
+    return parse_snapshot(contract_id, region, text, source_url=url, plain=plain)
 
 
 async def _read_month(
@@ -225,11 +231,22 @@ async def fetch_for_month(
 
 
 def parse_snapshot(
-    contract_id: str, region: str, text: str, *, source_url: str = _CONTRACTS_URL
+    contract_id: str,
+    region: str,
+    text: str,
+    *,
+    source_url: str = _CONTRACTS_URL,
+    plain: str | None = None,
 ) -> SupplierSnapshot:
-    """Parse one card's text as pdfplumber lays it out."""
+    """Parse one card's text as pdfplumber lays it out. A card of the
+    November 2026 template is read off ``plain``, its plain reading,
+    instead."""
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "energie.be")
     _region(region)
+    if _TEMPLATE_RE.search(text):
+        if plain is None:
+            raise ExtractorError("energie.be: card read without its plain text")
+        text = _WRAPPED_LABEL_RE.sub(r"\1", plain)
     card_month = _card_month(text, contract)
     energy = _fixed(text) if contract.kind == "fixed" else _indexed(text)
     return SupplierSnapshot(
@@ -258,23 +275,47 @@ _TITLE_RE = re.compile(
     + r"]\s*([a-z]+)\s+(\d{4})\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
+# From November 2026 the month has a title line of its own, the product the
+# line under it: "Tariefkaart november 2026 - Particulier", then "Gas vast
+# online" or "Gas online".
+_TEMPLATE_RE = re.compile(
+    r"^Tariefkaart\s+([a-z]+)\s+(\d{4})\s*["
+    + SIGN_CHARS
+    + r"]\s*Particulier[ \t]*\n[ \t]*Gas\s+(vast\s+)?online[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+# Their plain reading wraps the label of Fluvius (Midden-Vlaanderen) after
+# its hyphen, two lines above its figures, where the table reader looks
+# one line up only: the label is joined back first.
+_WRAPPED_LABEL_RE = re.compile(r"^(Fluvius \([^()\n]*-)[ \t]*\n(?=[^()\n]*\)[ \t]*$)", re.MULTILINE)
 
 
 def _card_month(text: str, contract: _ContractDef) -> date:
-    match = _TITLE_RE.search(text)
-    month = MONTH_NAMES.get(fold_accents(match.group(2))) if match else None
-    if match is None or month is None:
+    if (match := _TITLE_RE.search(text)) is not None:
+        vast, name, year = match.groups()
+    elif (match := _TEMPLATE_RE.search(text)) is not None:
+        name, year, vast = match.groups()
+    else:
         raise ExtractorError("energie.be: card title not found")
-    if bool(match.group(1)) != (contract.kind == "fixed"):
-        raise ExtractorError(f"energie.be: card {match.group(0).strip()!r} is not {contract.label}")
-    return month_date(match.group(3), month, "energie.be")
+    month = MONTH_NAMES.get(fold_accents(name))
+    if month is None:
+        raise ExtractorError("energie.be: card title not found")
+    if bool(vast) != (contract.kind == "fixed"):
+        title = " ".join(match.group(0).split())
+        raise ExtractorError(f"energie.be: card {title!r} is not {contract.label}")
+    return month_date(year, month, "energie.be")
 
 
 # The price sits alone at the start of the line under the "Energieprijs"
-# heading, before the formula (variable) or the fixed-price sentence.
+# heading, before the formula (variable) or the fixed-price sentence, or
+# before its unit on the plain reading of the November 2026 cards.
 _PRICE_RE = re.compile(r"^Energieprijs[ \t]*\n[ \t]*(\d+,\d+)\s", re.MULTILINE)
+# The fee's unit is on its own line under it, or beside it on the plain
+# reading of the November 2026 cards: "35 €/jaar".
 _FEE_RE = re.compile(
-    r"^Vaste vergoeding[ \t]*\n[ \t]*(\d+(?:,\d+)?)[ \t]*\n[ \t]*\(€/jaar\)", re.MULTILINE
+    r"^Vaste vergoeding[ \t]*\n[ \t]*(\d+(?:,\d+)?)"
+    r"(?:[ \t]*\n[ \t]*\(€/jaar\)|[ \t]*€/jaar)",
+    re.MULTILINE,
 )
 _FORMULA_RE = re.compile(
     r"formule\s*\(excl\.\s*btw\)\s*:\s*\(\s*(\d+,\d+)\s*x\s*TTF_RLP\s*"

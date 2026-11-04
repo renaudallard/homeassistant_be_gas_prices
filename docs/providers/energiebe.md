@@ -14,8 +14,9 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 - There is no gas document key. The Dynamic contract has no gas card: the
   site says a gas contract beside it "is standaard variabel".
 - No probe: the contracts endpoint answers HEAD with a 405, and the blob's
-  Last-Modified is only reachable after reading it. Whether the blob name
-  changes with each new card was not checked.
+  Last-Modified is only reachable after reading it. The blob name stays from
+  card to card: the September, October and November 2026 cards were served
+  at the same two addresses, each replacing the last.
 
 ## Products and regions
 
@@ -60,6 +61,35 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
   before August 2026 print "0, 1058" with a stray space, which reads as
   0,1058, and one of them without the row is refused; from August 2026, the
   month the law zeroed the levy, a missing row reads as zero.
+
+## The November 2026 template
+
+On 3 November 2026 energie.be replaced both cards with a new template, the
+variable one at 15:05 UTC and the fixed one at 17:18 UTC, as it had its
+electricity cards that day.
+
+- The month has a title line of its own, "Tariefkaart november 2026 -
+  Particulier", and the product the line under it, "Gas vast online" or
+  "Gas online" (`_TEMPLATE_RE`); that line is what names the product.
+- The price and the standing charge share a row under "Energieprijs Vaste
+  vergoeding", which the layout reading prints out of order on the fixed
+  card: "35", "10,44", "€/jaar", "c€/kWh" on four lines. The
+  Midden-Vlaanderen label wraps around its figures there and the West label
+  sits under them.
+- So such a card is read off pypdf's plain text, a second download when the
+  layout reading shows the title (`_read`). There each figure keeps its
+  label: "Energieprijs" over "10,44 c€/kWh", "Vaste vergoeding" over "35
+  €/jaar" (`_FEE_RE` takes the unit beside the figure), the formula and the
+  levies as before. Only the Midden-Vlaanderen label still wraps, over two
+  lines above its figures, and is joined back (`_WRAPPED_LABEL_RE`), since
+  the table reader looks one line up only.
+- "Taksen en heffingen" now comes before "Nettarieven", so the DSO table
+  runs to the end of the text.
+- The fixed price went from 8,57 to 10,44 c EUR/kWh. The variable card kept
+  its formula, (1,014 x TTF_RLP + 0,16), and its fee of 35, printing 9,76 at
+  an estimate of 8,92.
+- The project's card archive holds 22 energie.be rows, all of the older
+  template; they replay identically through this code.
 
 ## Index
 
@@ -113,7 +143,8 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 - Fluvius West T2 proportional prints 1,05 where EBEM and Frank print 1,06
   and Fluvius's 2026 tariff is 1,05500: a rounding difference.
 - pypdf breaks the card's figures across lines ("6,\n88", "1,0\n14"), so the
-  cards are read with pdfplumber's layout text.
+  cards are read with pdfplumber's layout text. On the November 2026
+  template it is the other way round (see above).
 
 ## Tests
 
@@ -134,3 +165,9 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 - `fetch`, `fetch_for_month` (row URL and query, month refusal, missing row,
   page-image card, transient raise) and `fetch_index` on the October 2026
   document, with the fetch helpers mocked.
+- The November 2026 template: `test_the_november_2026_fixed_card_is_read`,
+  `test_the_november_2026_variable_card_is_read`,
+  `test_the_november_2026_network_rows_are_read` (Midden-Vlaanderen and
+  West on both cards), `test_a_november_2026_card_of_the_other_product_is_refused`,
+  `test_a_november_2026_card_without_its_plain_text_is_refused` and
+  `test_the_plain_text_is_fetched_for_the_november_2026_template_only`.

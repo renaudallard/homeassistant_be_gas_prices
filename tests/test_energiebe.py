@@ -35,6 +35,7 @@ import pytest
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
     DSO_FLUVIUS_KEMPEN,
+    DSO_FLUVIUS_MIDDEN_VLAANDEREN,
     DSO_FLUVIUS_WEST,
     FLUVIUS_KEYS,
     REGION_FLANDERS,
@@ -45,7 +46,11 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.providers import energiebe
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
-from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
+from custom_components.be_gas_prices.providers.base import (
+    CardNotReadableError,
+    ExtractorError,
+    SupplierSnapshot,
+)
 from tests import approx, fixture_page, fixture_text
 
 VARIABLE = "Energie_be_Gas_Particulier_18ddc53692.pdf"
@@ -54,6 +59,8 @@ OCTOBER = "Oktober_Energie_be_Gas_Particulier_18ddc53692.pdf"
 AUGUST = "Augustus_Tariefkaart_Energie_be_Variabel_NG_RES_3aa9f66512.pdf"
 DECEMBER_2025 = "December_Tariefkaart_Energie_be_Variabel_NG_Res_632ae083c5.pdf"
 NOVEMBER_2023 = "November_Tariefkaart_Variabel_Energie_be_GAS_RES_5108a3762e.pdf"
+NOVEMBER_VARIABLE = "November_Energie_be_Gas_Particulier_18ddc53692.pdf"
+NOVEMBER_FIXED = "November_VAST_Energie_be_RES_GAS_pdf_276e3f8ac3.pdf"
 
 
 def _card(name: str) -> str:
@@ -341,3 +348,96 @@ async def test_fetch_index_reads_the_indexation_document() -> None:
         table = await energiebe.fetch_index(AsyncMock())
     assert fetched.call_args.args[1].endswith("?key=Indexation")
     assert table["TTF_RLP"]["2026-09"] == pytest.approx(75.3)
+
+
+def _november(contract: str, name: str) -> SupplierSnapshot:
+    """A card of the November 2026 template, read as fetch reads it."""
+    return energiebe.parse_snapshot(
+        contract, REGION_FLANDERS, _card(name), plain=fixture_text("energiebe", name, "plain")
+    )
+
+
+def test_the_november_2026_fixed_card_is_read() -> None:
+    """From November 2026 the month has a title line of its own ("Tariefkaart
+    november 2026 - Particulier", "Gas vast online") and the price and the
+    standing charge share a row, which the layout reading prints as "35",
+    "10,44", "€/jaar", "c€/kWh" on four lines. Such a card is read off its
+    plain text, where each figure keeps its label."""
+    snap = _november("energiebe_fixed", NOVEMBER_FIXED)
+    assert snap.energy == FixedRates(price=approx(0.1044), yearly_fixed_fee=35.0)
+    assert snap.publication_label == "2026-11"
+    assert snap.valid_until == date(2026, 11, 30)
+    assert snap.taxes.excise_bands == (
+        (12000.0, pytest.approx(0.010929)),
+        (None, pytest.approx(0.01183)),
+    )
+    assert snap.taxes.energy_contribution == 0.0
+
+
+def test_the_november_2026_variable_card_is_read() -> None:
+    snap = _november("energiebe_variable", NOVEMBER_VARIABLE)
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    # "9,76" printed at "(1,014 x TTF_RLP+ 0,16) c€/kWh" excl. btw, fee 35.
+    assert energy.price == pytest.approx(0.0976)
+    assert energy.factor == pytest.approx(1.014 / 1000.0 * 1.06)
+    assert energy.base == pytest.approx(0.0016 * 1.06)
+    assert energy.yearly_fixed_fee == pytest.approx(35.0)
+    assert snap.publication_label == "2026-11"
+
+
+@pytest.mark.parametrize("name", [NOVEMBER_FIXED, NOVEMBER_VARIABLE])
+def test_the_november_2026_network_rows_are_read(name: str) -> None:
+    """The plain reading wraps "Fluvius (Midden-" and "Vlaanderen)" over two
+    lines above the row's figures, and the layout one prints "Fluvius
+    (West)" under them."""
+    contract = "energiebe_fixed" if name == NOVEMBER_FIXED else "energiebe_variable"
+    snap = _november(contract, name)
+    assert set(snap.dsos) == FLUVIUS_KEYS
+    # "Fluvius (Midden-Vlaanderen) 2,32 16,33 0,91 86,71 0,1654 18,92"
+    midden = snap.dsos[DSO_FLUVIUS_MIDDEN_VLAANDEREN]
+    assert midden.tiers[TIER_T1].proportional == pytest.approx(0.0232)
+    assert midden.tiers[TIER_T1].fixed_per_year == pytest.approx(16.33)
+    assert midden.tiers[TIER_T2].fixed_per_year == pytest.approx(86.71)
+    # "Fluvius (West) 2,69 19,03 1,05 101,02 0,1654 18,92"
+    west = snap.dsos[DSO_FLUVIUS_WEST]
+    assert west.tiers[TIER_T1].proportional == pytest.approx(0.0269)
+    assert west.tiers[TIER_T2].fixed_per_year == pytest.approx(101.02)
+    assert west.transport == pytest.approx(0.001654)
+    assert west.metering_per_year == pytest.approx(18.92)
+
+
+@pytest.mark.parametrize(
+    ("contract", "name"),
+    [("energiebe_fixed", NOVEMBER_VARIABLE), ("energiebe_variable", NOVEMBER_FIXED)],
+)
+def test_a_november_2026_card_of_the_other_product_is_refused(contract: str, name: str) -> None:
+    """The product line under the title is what names the product."""
+    with pytest.raises(ExtractorError, match=r"is not energie\.be"):
+        _november(contract, name)
+
+
+def test_a_november_2026_card_without_its_plain_text_is_refused() -> None:
+    with pytest.raises(ExtractorError, match="plain text"):
+        energiebe.parse_snapshot("energiebe_fixed", REGION_FLANDERS, _card(NOVEMBER_FIXED))
+
+
+@pytest.mark.parametrize(("name", "plain_read"), [(NOVEMBER_FIXED, True), (FIXED, False)])
+async def test_the_plain_text_is_fetched_for_the_november_2026_template_only(
+    name: str, plain_read: bool
+) -> None:
+    """The plain reading is a second download of the card, so it is asked
+    for only when the layout reading shows the November 2026 title."""
+    plain = AsyncMock(return_value=fixture_text("energiebe", name, "plain"))
+    with (
+        patch.object(
+            energiebe,
+            "fetch_text",
+            AsyncMock(return_value=fixture_page("energiebe", "contracts.json")),
+        ),
+        patch.object(energiebe, "fetch_pdf_text_layout", AsyncMock(return_value=_card(name))),
+        patch.object(energiebe, "fetch_pdf_text", plain),
+    ):
+        snap = await energiebe.fetch(AsyncMock(), "energiebe_fixed", REGION_FLANDERS)
+    assert plain.called is plain_read
+    assert snap.publication_label == ("2026-11" if plain_read else "2026-09")
