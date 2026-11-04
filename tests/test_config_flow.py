@@ -44,7 +44,7 @@ from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.be_gas_prices import calorific, config_flow, postcodes
-from custom_components.be_gas_prices.compare import Quote
+from custom_components.be_gas_prices.compare import OwnContract, Quote
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CALIBER,
@@ -91,6 +91,8 @@ from custom_components.be_gas_prices.const import (
 )
 from custom_components.be_gas_prices.contract_periods import record_switch
 from custom_components.be_gas_prices.daily_ranking import DailyRanking
+from custom_components.be_gas_prices.providers import engie
+from tests import fixture_text
 
 STATIONS = [
     calorific.Station(ean="541460900000000030", name="RESA LIEGE (GOS)"),
@@ -1126,6 +1128,37 @@ async def test_options_compare_the_own_contract_quotes_it_once(hass: HomeAssista
     assert placeholders is not None
     rows = [line for line in placeholders["table"].splitlines() if "Engie Flow" in line]
     assert rows == ["| 1 | **Engie Flow †** | 1,500.00 | +0.00 | 0.0800 |"]
+
+
+async def test_options_compare_quotes_the_own_contract_on_its_own_waiver(
+    hass: HomeAssistant,
+) -> None:
+    """The household's contract is quoted on the card the entry holds and on
+    the days its own contract pays no supplier fee, not as a new customer
+    signing on that card."""
+    entry = _entry(hass)
+    card = engie.parse_snapshot(
+        "engie_flow", REGION_WALLONIA, fixture_text("engie", "G_FLOW_R_GREY_C_I_24_W_F_202609.pdf")
+    )
+    window = (date(2026, 9, 10), date(2027, 9, 10))
+    held = OwnContract(engie.EXTRACTOR, "engie_flow", card, fee_waived=window)
+    entry.runtime_data = SimpleNamespace(own_contract=lambda: held)
+    own = Quote("engie", "engie_flow", "Engie Flow", 1500.0, 0.08, 140.93, True, True)
+    quoted = AsyncMock(return_value=own)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "compare"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_SUPPLIER: "engie"}
+    )
+    with patch("custom_components.be_gas_prices.config_flow.quote_contract", quoted):
+        await hass.config_entries.options.async_configure(
+            result["flow_id"], {CONF_CONTRACT: "engie_flow"}
+        )
+    assert quoted.await_count == 1
+    assert quoted.call_args.kwargs["card"] is card
+    assert quoted.call_args.kwargs["fee_waived"] == window
 
 
 async def test_compare_all_ranks_a_custom_household_s_own_card(hass: HomeAssistant) -> None:

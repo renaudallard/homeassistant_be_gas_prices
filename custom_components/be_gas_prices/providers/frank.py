@@ -57,12 +57,18 @@ september 2026"). Frank publishes the realised index month by month in the
 The subscription is printed per month. The cashback a tier prints (JN's,
 and HV's and Korting's up to September 2026) is not read: a snapshot has no
 field for it.
+
+The November 2026 JN card prints its subscription as 0,00 and waives it for
+a contract's first twelve months, after which "gelden de abonnementskosten
+volgens de tariefkaart Gas ZTP - JN - Oktober 2026". The subscription is
+billed at the one the named card prints and waived for those months of a
+contract signed on the card; see ``_with_waived_fee``.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
 
@@ -225,9 +231,10 @@ async def _read_month(
     for asset in sorted(assets, reverse=True):
         text = await fetch_pdf_text_layout(session, asset.url)
         try:
-            return parse_snapshot(contract.contract_id, region, text, source_url=asset.url)
+            snap = parse_snapshot(contract.contract_id, region, text, source_url=asset.url)
         except _OtherTierError:
             continue
+        return await _with_waived_fee(session, contract, region, text, snap)
     raise ExtractorError(f"Frank Energie: no {contract.label} card among the uploads")
 
 
@@ -370,6 +377,75 @@ def _card_month(text: str, contract: _ContractDef) -> date:
     if (match.group(1) or "") not in contract.titles:
         raise _OtherTierError(f"Frank Energie: card {title!r} is not {contract.label}")
     return month_date(match.group(3), month, "Frank Energie")
+
+
+# "Gedurende de eerste 12 maanden van het contract ontvang je een maandelijkse
+# korting op de abonnementskosten, waardoor deze worden verlaagd naar € 0,00
+# per maand. Na afloop van deze periode gelden de abonnementskosten volgens
+# de tariefkaart Gas ZTP - JN - Oktober 2026", under the JN card's "0,00*".
+_FEE_WAIVER_RE = re.compile(
+    r"eerste\s+(\d+)\s+maanden\s+van\s+het\s+contract\s+ontvang\s+je\s+een\s+"
+    r"maandelijkse\s+korting\s+op\s+de\s+abonnementskosten"
+)
+_FEE_CARD_RE = re.compile(
+    r"abonnementskosten\s+volgens\s+de\s+tariefkaart\s+Gas\s+ZTP\s*"
+    + _DASH
+    + r"\s*(\S+)\s*"
+    + _DASH
+    + r"\s*([A-Za-z]+)\s+(\d{4})"
+)
+
+# The yearly subscription of the cards a waiver names, by (contract, month):
+# a published card's subscription does not change, and reading one takes
+# half a minute of rendering on a Raspberry Pi.
+_NAMED_FEES: dict[tuple[str, date], float] = {}
+
+
+async def _with_waived_fee(
+    session: aiohttp.ClientSession,
+    contract: _ContractDef,
+    region: str,
+    text: str,
+    snap: SupplierSnapshot,
+) -> SupplierSnapshot:
+    """``snap`` with the subscription its card waives for a contract's
+    first months: billed at the one the earlier card it names prints, and
+    waived for those months of a contract signed on it. A card waiving none
+    is returned as it is; one naming no earlier card of its own tier fails,
+    since the subscription billed after the waiver would be a guess."""
+    waiver = _FEE_WAIVER_RE.search(text)
+    if waiver is None:
+        return snap
+    named = _FEE_CARD_RE.search(text)
+    month = None if named is None else MONTH_NAMES.get(named.group(2).lower())
+    when = None if named is None or month is None else date(int(named.group(3)), month, 1)
+    if (
+        named is None
+        or when is None
+        or named.group(1) not in contract.files
+        or snap.valid_until is None
+        or when > snap.valid_until.replace(day=1)
+        or when == snap.valid_until.replace(day=1)
+    ):
+        raise ExtractorError(
+            f"Frank Energie: the {contract.label} card waives its subscription "
+            "in a way not priced here"
+        )
+    yearly = _NAMED_FEES.get((contract.contract_id, when))
+    if yearly is None:
+        card = await fetch_for_month(session, contract.contract_id, region, when)
+        if card is None:
+            raise ExtractorError(
+                f"Frank Energie: the {when:%m/%Y} {contract.label} card a waiver names "
+                "is not published"
+            )
+        yearly = card.energy.yearly_fixed_fee
+        _NAMED_FEES[(contract.contract_id, when)] = yearly
+    return replace(
+        snap,
+        energy=replace(snap.energy, yearly_fixed_fee=yearly),
+        fee_waived_months=int(waiver.group(1)),
+    )
 
 
 _VAT_RE = re.compile(r"incl\.\s*(\d+)\s*%\s*btw")

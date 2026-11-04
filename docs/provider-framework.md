@@ -44,6 +44,10 @@ card the parser refuses and the held card keeps pricing.
 - `publication_label` ("YYYY-MM", the card's month), `valid_until` (the last
   day of it, or None for a card in force until the supplier replaces it, as
   Bolt's variable cards are) and `source_url`.
+- `fee_waived_months`: the months from its start a contract signed on the
+  card pays no supplier fee for, 0 for most cards; the energy leg's
+  `yearly_fixed_fee` is the fee billed after them. Frank's November 2026 JN
+  card waives twelve.
 
 ## Conventions
 

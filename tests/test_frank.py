@@ -48,6 +48,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.providers import frank
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import ExtractorError
+from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json, snapshot_to_json
 from tests import fixture_page, fixture_text
 
 # pdfplumber takes 25 to 30 seconds over one of these cards on a Raspberry
@@ -65,6 +66,10 @@ MARCH = _PREFIX + "Gas ZTP Maart 2026.pdf"
 JANUARY = _PREFIX + "Gas ZTP Januari 2026.pdf"
 JANUARY_V2 = _PREFIX + "Gas ZTP Januari 2026 v2.pdf"
 JANUARY_SL = _PREFIX + "Elektriciteit Gas ZTP SL Januari 2026.pdf"
+# The November 2026 JN card Frank uploaded last on 30 October and the October
+# card its waiver names, both listed in the Sanity answer of 4 November 2026.
+JN_NOVEMBER = _PREFIX + "Gas ZTP JN November 2026.pdf"
+JN_OCTOBER = _PREFIX + "Gas ZTP JN Oktober 2026.pdf"
 
 SEPTEMBER_CARDS = {
     "frank_variable": STANDARD,
@@ -91,6 +96,16 @@ def _assets() -> str:
 
 def _url(name: str) -> str:
     rows = json.loads(_assets())["result"]
+    return str(next(r["url"] for r in rows if r["originalFilename"] == name))
+
+
+def _assets_nov() -> str:
+    return fixture_page("frank", "sanity_gas_assets_nov.json")
+
+
+def _url_nov(name: str) -> str:
+    """The newest upload of ``name``: the answer is newest first."""
+    rows = json.loads(_assets_nov())["result"]
     return str(next(r["url"] for r in rows if r["originalFilename"] == name))
 
 
@@ -327,6 +342,62 @@ async def test_a_withdrawn_tier_is_not_fetched_but_its_past_months_are() -> None
     assert snap is not None
     assert snap.publication_label == "2026-09"
     assert fetched.call_args.args[1] == _url(KORTING)
+
+
+@freeze_time("2026-11-04 12:00:00+01:00")
+async def test_the_november_jn_card_bills_the_subscription_it_waives(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The November 2026 JN card prints its subscription as 0,00 and waives
+    it for a contract's first twelve months, after which the October card's
+    applies: its 2,17 a month is billed, twelve months of it waived for a
+    contract signed on the card, and the October card is read once."""
+    monkeypatch.setattr(frank, "_NAMED_FEES", {})
+    texts = {_url_nov(JN_NOVEMBER): _card(JN_NOVEMBER), _url_nov(JN_OCTOBER): _card(JN_OCTOBER)}
+    fetched = AsyncMock(side_effect=lambda _s, url: texts[url])
+    with (
+        patch.object(frank, "fetch_text", AsyncMock(return_value=_assets_nov())),
+        patch.object(frank, "fetch_pdf_text_layout", fetched),
+    ):
+        snap = await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
+        again = await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
+    assert snap.publication_label == "2026-11"
+    assert snap.energy.yearly_fixed_fee == pytest.approx(2.17 * 12)
+    assert snap.fee_waived_months == 12
+    assert again == snap
+    assert [call.args[1] for call in fetched.call_args_list] == [
+        _url_nov(JN_NOVEMBER),
+        _url_nov(JN_OCTOBER),
+        _url_nov(JN_NOVEMBER),
+    ]
+    # Stored with its waiver, which a card waiving nothing does not carry.
+    blob = snapshot_to_json(snap)
+    assert blob["fee_waived_months"] == 12
+    assert snapshot_from_json(blob) == snap
+    older = {key: value for key, value in blob.items() if key != "fee_waived_months"}
+    assert snapshot_from_json({**older, "schema": 2}).fee_waived_months == 0
+
+
+@pytest.mark.parametrize(
+    "named", ["Gas ZTP - HV - Oktober 2026", "Gas ZTP - JN - November 2026", "Gas ZTP - JN"]
+)
+@freeze_time("2026-11-04 12:00:00+01:00")
+async def test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused(
+    monkeypatch: pytest.MonkeyPatch, named: str
+) -> None:
+    """Another tier's card, the card itself or no month: the subscription
+    billed after the waiver would be a guess, and naming its own month the
+    card would be asked for itself."""
+    monkeypatch.setattr(frank, "_NAMED_FEES", {})
+    text = _card(JN_NOVEMBER).replace("Gas ZTP - JN - Oktober 2026", named)
+    queried = AsyncMock(return_value=_assets_nov())
+    with (
+        patch.object(frank, "fetch_text", queried),
+        patch.object(frank, "fetch_pdf_text_layout", AsyncMock(return_value=text)),
+        pytest.raises(ExtractorError, match="waives its subscription in a way not priced"),
+    ):
+        await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
+    assert queried.await_count == 1
 
 
 async def test_fetch_for_month_skips_an_upload_carrying_another_tier() -> None:

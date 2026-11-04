@@ -42,7 +42,7 @@ from typing import Any
 
 import aiohttp
 
-from .bill import LegFor, contract_leg, merged_index, month_key
+from .bill import LegFor, contract_leg, fee_waiver, merged_index, month_key
 from .const import (
     CONF_CALIBER,
     CONF_CONTRACT,
@@ -509,6 +509,7 @@ class PeriodBilling:
                 caliber=str(period.get(CONF_CALIBER, DEFAULT_CALIBER)),
                 annual_kwh=annual_kwh,
             )
+            waived = fee_waiver(signed, parse_date(period.get(CONF_CONTRACT_START_DATE)))
 
             def cost_on(
                 card: SupplierSnapshot,
@@ -518,6 +519,7 @@ class PeriodBilling:
                 _month_card: Callable[[str], SupplierSnapshot | None] = month_card,
                 _energy_for: LegFor = energy_for,
                 _table: IndexTable | None = table,
+                _waived: tuple[date, date] | None = waived,
             ) -> RunningCosts:
                 return running_costs(
                     kwh_days=kwh_days,
@@ -528,6 +530,7 @@ class PeriodBilling:
                     month_card=_month_card,
                     energy_for=_energy_for,
                     table=_table,
+                    fee_waived=_waived,
                 )
 
             cost: RunningCosts | None = None

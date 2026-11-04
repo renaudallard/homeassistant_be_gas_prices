@@ -167,6 +167,7 @@ def running_costs(
     month_card: Callable[[str], SupplierSnapshot | None],
     energy_for: LegFor,
     table: IndexTable | None,
+    fee_waived: tuple[date, date] | None = None,
 ) -> RunningCosts:
     """Bill every month from ``window_start`` to ``today`` on its own card.
 
@@ -174,6 +175,8 @@ def running_costs(
     read; that month is then billed on ``current_card`` and named in
     ``months_on_current_card``. ``energy_for`` picks the energy leg a card
     bills this household on: its own, or the signing card's.
+    ``fee_waived`` is the days the contract pays no supplier fee
+    (``bill.fee_waiver``).
     """
     year_days = days_in_year(today.year)
     bills: list[MonthBill] = []
@@ -205,6 +208,7 @@ def running_costs(
                 days=days,
                 days_in_year=year_days,
                 first=first,
+                fee_waived=fee_waived,
             )
 
         bill: MonthBill | None = None
@@ -234,6 +238,8 @@ def running_costs(
             kwh=remaining,
             days=(end_of_year - today).days,
             days_in_year=year_days,
+            first=today + timedelta(days=1),
+            fee_waived=fee_waived,
         )
         year_end = sum(bill.total for bill in bills) + rest.total
     return RunningCosts(

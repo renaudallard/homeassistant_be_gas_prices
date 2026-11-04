@@ -791,6 +791,37 @@ async def test_the_month_cost_attributes_cover_a_switch_month_whole(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_earlier_contract_signed_on_a_waiving_card_pays_no_fee_from_its_start(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Both contracts of September were signed on a card waiving FLOW's 50 a
+    year: the one left on the 9th from its own start on the 1st, the current
+    one from the 10th, so neither bill of the month pays any of it."""
+    fetch.return_value = replace(fetch.return_value, fee_waived_months=12)
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_flow",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        CONF_CONTRACT_START_DATE: "2026-09-01",
+        "until": "2026-09-09",
+    }
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    data = {**DATA, CONF_CONTRACT_START_DATE: "2026-09-10", CONF_PREVIOUS_CONTRACTS: [earlier]}
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        entry = await _setup(hass, data)
+    september = sorted(
+        (b for b in entry.runtime_data.data.months if b.month == "2026-09"), key=lambda b: b.first
+    )
+    assert [(b.first, b.days) for b in september] == [(date(2026, 9, 1), 9), (date(2026, 9, 10), 6)]
+    assert september[0].fixed_cost == pytest.approx(140.93 * 9 / 365)
+    assert september[1].fixed_cost == pytest.approx(140.93 * 6 / 365)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_months_on_the_current_card_name_every_contract_s(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
@@ -1266,6 +1297,49 @@ async def test_the_ranking_quotes_the_household_at_what_it_pays(
     energy = own.card.energy
     assert isinstance(energy, IndexedRates)
     assert energy.factor == pytest.approx(0.2 / 100 * 1.06)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_contract_signed_on_a_card_waiving_its_fee_pays_none_from_its_start(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Signed on 10 September on a card waiving its subscription for twelve
+    months: September's bill pays FLOW's 50 a year only before the 10th, the
+    yearly fixed costs read without it and a comparison quotes the household
+    on its own waiver."""
+    fetch.return_value = replace(fetch.return_value, fee_waived_months=12)
+    days = {date(2026, 1, 1) + timedelta(days=n): 10.0 for n in range(258)}
+    with patch(
+        "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter",
+        AsyncMock(return_value=("energy", days)),
+    ):
+        entry = await _setup(hass, {**DATA, CONF_CONTRACT_START_DATE: "2026-09-10"})
+    coordinator = entry.runtime_data
+    months = {bill.month: bill for bill in coordinator.data.months}
+    assert months["2026-08"].fixed_cost == pytest.approx((50.0 + 140.93) * 31 / 365)
+    assert months["2026-09"].fixed_cost == pytest.approx(
+        (50.0 + 140.93) * 15 / 365 - 50.0 * 6 / 365
+    )
+    fixed = hass.states.get("sensor.engie_flow_fixed_costs_per_year")
+    assert fixed is not None and float(fixed.state) == pytest.approx(140.93)
+    supplier = hass.states.get("sensor.engie_flow_supplier_fixed_fee_per_year")
+    assert supplier is not None and float(supplier.state) == pytest.approx(0.0)
+    own = coordinator.own_contract()
+    assert own is not None and own.fee_waived == (date(2026, 9, 10), date(2027, 9, 10))
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_contract_signed_before_the_waiving_card_pays_its_fee(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The card in hand waives its subscription for contracts signed on it;
+    one signed in March, on a card not held, pays it."""
+    fetch.return_value = replace(fetch.return_value, fee_waived_months=12)
+    entry = await _setup(hass, {**DATA, CONF_CONTRACT_START_DATE: "2026-03-01"})
+    fixed = hass.states.get("sensor.engie_flow_fixed_costs_per_year")
+    assert fixed is not None and float(fixed.state) == pytest.approx(50.0 + 140.93)
+    own = entry.runtime_data.own_contract()
+    assert own is not None and own.fee_waived is None
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

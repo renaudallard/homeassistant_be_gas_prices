@@ -45,7 +45,9 @@ from .providers.base import DsoOverlay, DsoTier, SupplierSnapshot, TaxOverlay
 # Bumped whenever a field is added, removed or changes meaning. A field added
 # is read with a default from an older blob, which still prices: the card it
 # holds is fetched again at once and kept only while no fetch succeeds.
-SNAPSHOT_SCHEMA_VERSION = 2
+# 3: fee_waived_months, the supplier fee a card waives for a contract's
+# first months, which Frank's November 2026 JN card read as no fee at all.
+SNAPSHOT_SCHEMA_VERSION = 3
 # The oldest schema still read. Raised to the version only by a bump that
 # changes what a stored field means, or that refuses a card an older release
 # misread: those blobs are then dropped, as every other one was before.
@@ -165,7 +167,7 @@ def _taxes_from_json(blob: dict[str, Any]) -> TaxOverlay:
 
 def snapshot_to_json(snapshot: SupplierSnapshot) -> dict[str, Any]:
     """A JSON-safe dict for ``snapshot``, stamped with the schema version."""
-    return {
+    out: dict[str, Any] = {
         "schema": SNAPSHOT_SCHEMA_VERSION,
         "supplier": snapshot.supplier,
         "contract": snapshot.contract,
@@ -176,6 +178,10 @@ def snapshot_to_json(snapshot: SupplierSnapshot) -> dict[str, Any]:
         "publication_label": snapshot.publication_label,
         "valid_until": None if snapshot.valid_until is None else snapshot.valid_until.isoformat(),
     }
+    if snapshot.fee_waived_months:
+        # Only a card that waives its fee carries it.
+        out["fee_waived_months"] = snapshot.fee_waived_months
+    return out
 
 
 def snapshot_from_json(blob: Any) -> SupplierSnapshot:
@@ -197,6 +203,7 @@ def snapshot_from_json(blob: Any) -> SupplierSnapshot:
             source_url=str(blob["source_url"]),
             publication_label=str(blob.get("publication_label", "")),
             valid_until=None if valid_until is None else date.fromisoformat(valid_until),
+            fee_waived_months=int(blob.get("fee_waived_months", 0)),
         )
     except (KeyError, IndexError, TypeError, ValueError, AttributeError) as err:
         raise SnapshotDecodeError(f"malformed snapshot: {err}") from err

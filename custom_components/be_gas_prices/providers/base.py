@@ -118,6 +118,9 @@ class SupplierSnapshot:
     # of its month. None for a card with no end date: the custom supplier's
     # typed card, or one in force until the supplier replaces it.
     valid_until: date | None = None
+    # The months from its start a contract signed on this card pays no
+    # supplier fee for; the energy leg's fee is the one billed after them.
+    fee_waived_months: int = 0
 
 
 # The values of the indices a supplier resolves its variable prices against,

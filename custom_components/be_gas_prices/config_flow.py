@@ -829,6 +829,7 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                 use_archive=use_archive,
                 card=None if held is None else held.card,
                 read_by_ocr=held is not None and held.read_by_ocr,
+                fee_waived=None if held is None else held.fee_waived,
             )
             if (supplier, user_input[CONF_CONTRACT]) == (data[CONF_SUPPLIER], data[CONF_CONTRACT]):
                 # The household's own contract: one quote, on the card it holds.

@@ -37,6 +37,7 @@ from custom_components.be_gas_prices.bill import (
     bill_month,
     card_leg,
     contract_leg,
+    fee_waiver,
     index_for,
     merged_index,
     resolve_energy_price,
@@ -64,6 +65,7 @@ from custom_components.be_gas_prices.providers._rates import (
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
 from custom_components.be_gas_prices.running_costs import (
     Household,
+    RunningCosts,
     _remaining_days_last_year,
     meter_start,
     rolling_year_kwh,
@@ -373,6 +375,91 @@ def test_bill_month_accrues_the_fixed_costs_by_the_day() -> None:
     assert bill.energy_cost == pytest.approx(500.0 * card.energy.at(53.116))  # type: ignore[union-attr]
     assert bill.total == pytest.approx(
         bill.energy_cost + bill.network_cost + bill.taxes_cost + bill.fixed_cost
+    )
+
+
+def _july(fee_waived: tuple[date, date] | None) -> MonthBill:
+    return bill_month(
+        month="2026-07",
+        card=_flow(),
+        energy_for=card_leg,
+        table=TABLE,
+        dso=DSO_ORES,
+        annual_kwh=17_000.0,
+        caliber=CALIBER_Q10,
+        kwh=500.0,
+        days=31,
+        days_in_year=365,
+        fee_waived=fee_waived,
+    )
+
+
+def test_the_waived_days_bill_no_supplier_fee() -> None:
+    """Only the billed days in the waiver pay none of the supplier's fee,
+    FLOW's 50,00 a year: the 22 from a contract started on 10 July, the 9
+    before a waiver ending on it, none of a waiver starting in August."""
+    plain = _july(None)
+    started = _july((date(2026, 7, 10), date(2027, 7, 10)))
+    assert plain.fixed_cost - started.fixed_cost == pytest.approx(50.0 * 22 / 365)
+    assert started.energy_cost == plain.energy_cost
+    assert started.network_cost == plain.network_cost
+    ended = _july((date(2025, 7, 10), date(2026, 7, 10)))
+    assert plain.fixed_cost - ended.fixed_cost == pytest.approx(50.0 * 9 / 365)
+    assert _july((date(2026, 8, 1), date(2027, 8, 1))).fixed_cost == plain.fixed_cost
+
+
+def test_a_contract_signed_on_a_waiving_card_pays_no_fee_for_its_first_months() -> None:
+    """From the contract's start, and only where the card it was signed on
+    waives the fee and the start is known: a contract whose card is not
+    known pays the fee."""
+    card = replace(_flow(), fee_waived_months=12)
+    start = date(2026, 11, 10)
+    assert fee_waiver(card, start) == (start, date(2027, 11, 10))
+    assert fee_waiver(card, None) is None
+    assert fee_waiver(None, start) is None
+    assert fee_waiver(_flow(), start) is None
+    # A month on from the 31st of January is the last of February.
+    month = replace(card, fee_waived_months=1)
+    assert fee_waiver(month, date(2027, 1, 31)) == (date(2027, 1, 31), date(2027, 2, 28))
+
+
+def test_the_year_and_its_projection_bill_no_fee_over_the_waived_days() -> None:
+    """Signed on 10 November: 41 days of the year to 20 December pay none of
+    the supplier's fee, and the 11 left of the year none either."""
+    today = date(2026, 12, 20)
+    days = {
+        date(2025, 1, 1) + timedelta(days=n): 30.0
+        for n in range((today - date(2025, 1, 1)).days + 1)
+    }
+
+    def year(fee_waived: tuple[date, date] | None) -> RunningCosts:
+        return running_costs(
+            kwh_days=days,
+            today=today,
+            window_start=date(2026, 1, 1),
+            household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
+            current_card=_flow(),
+            month_card=lambda month: None,
+            energy_for=card_leg,
+            table=TABLE,
+            fee_waived=fee_waived,
+        )
+
+    plain = year(None)
+    waived = year((date(2026, 11, 10), date(2027, 11, 10)))
+    assert plain.current_year_cost - waived.current_year_cost == pytest.approx(50.0 * 41 / 365)
+    assert plain.projected_year_end_cost is not None
+    assert waived.projected_year_end_cost is not None
+    assert plain.projected_year_end_cost - waived.projected_year_end_cost == pytest.approx(
+        50.0 * 52 / 365
+    )
+    # A waiver over by 15 December leaves the rest of the year to pay: the
+    # days projected are those after today, not the first of the month's.
+    ended = year((date(2025, 12, 15), date(2026, 12, 15)))
+    assert ended.projected_year_end_cost is not None
+    assert plain.current_year_cost - ended.current_year_cost == pytest.approx(50.0 * 348 / 365)
+    assert plain.projected_year_end_cost - ended.projected_year_end_cost == pytest.approx(
+        50.0 * 348 / 365
     )
 
 

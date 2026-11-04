@@ -156,7 +156,7 @@ and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_wate
 | **Energy Together brands** | HOA Energy Nova · Prime · APEX Online · Servolt Control · Comfort · Solar · Evident Energie Flexi · Power2You Variabel · Flex · Prijspunten Energie Marktflex · Smappee Smiles Variabel *(all monthly TTF_RLP, one card template)* | Flanders only · [`energy_together.py`](./custom_components/be_gas_prices/providers/energy_together.py) · [notes](./docs/providers/energy_together.md) |
 | **EnergyVision** | Goedkope stroom - Gas *(monthly ZTP-RLP-M)* · Goedkope stroom 1 jaar vast - Gas | All three regions, the fixed card Flanders + Wallonia · [`energyvision.py`](./custom_components/be_gas_prices/providers/energyvision.py) · [notes](./docs/providers/energyvision.md) |
 | **Engie** | Easy Fixe · Empower Fixe · Easy Variable *(ZTP101, set before the month)* · Flow · Direct Online · Basic Online · Empower Variable · Empty House *(monthly ZTPDAM)* | All three regions, Basic Online Flanders + Wallonia · [`engie.py`](./custom_components/be_gas_prices/providers/engie.py) · [notes](./docs/providers/engie.md) |
-| **Frank Energie** | Gas Variabel · HV · JN · Slim *(monthly M ZTP RLP0N EOD EEX)* · *withdrawn on 2026-11-01, marked † for households still on it:* Korting | Flanders only · [`frank.py`](./custom_components/be_gas_prices/providers/frank.py) · [notes](./docs/providers/frank.md) |
+| **Frank Energie** | Gas Variabel · HV · JN *(its November 2026 card waives the subscription for a contract's first year: billed at the October card's 26,04 EUR a year, and none of it over that year for a contract signed on it)* · Slim *(monthly M ZTP RLP0N EOD EEX)* · *withdrawn on 2026-11-01, marked † for households still on it:* Korting | Flanders only · [`frank.py`](./custom_components/be_gas_prices/providers/frank.py) · [notes](./docs/providers/frank.md) |
 | **Luminus** | Comfy · Comfy+ · MaxxFix · BasicFix Online · ComfyFlex · ComfyFlex+ *(quarterly TTF DAHW)* · MaxxFlex *(monthly TTF DAH M)* · BasicFlex Online *(monthly TTF DAH RLP M)* · a card missing from Luminus's current address is read from its tariff archive instead, as BasicFlex Online's was in November 2026 | Flanders + Wallonia · [`luminus.py`](./custom_components/be_gas_prices/providers/luminus.py) · [notes](./docs/providers/luminus.md) |
 | **Mega** | Smart · Cosy · Online Flex *(monthly ZTP)* · Off-peak Impact *(monthly TTF, Wallonia only)* · Smart · Cosy · Online · Zen Fixed · *withdrawn on 2026-10-30, marked † for households still on them:* Prepaid Flex *(monthly ZTP)* · Off-peak Flex *(monthly TTF)* · Prepaid Fixed · Off-peak Fixed | All three regions · [`mega.py`](./custom_components/be_gas_prices/providers/mega.py) · [notes](./docs/providers/mega.md) |
 | **OCTA+** | Basic Online · Boost Flex · Eco Boost Flex · Smart Variable *(monthly ZTP RLP M)* · Boost Fix · Eco Boost Fix · *withdrawn on 2026-10-01, marked † for households still on them:* Flux · Eco Flux · Fixed · Eco Fixed | Flanders + Wallonia · [`octaplus.py`](./custom_components/be_gas_prices/providers/octaplus.py) · [notes](./docs/providers/octaplus.md) |
@@ -206,7 +206,11 @@ all_in = (energy + tier_proportional + transport + excise + energy_contribution)
 
 Per year: the supplier's fixed fee, the tier's fixed term, the metering fee
 (Flanders and Brussels) and in Brussels the per-meter levy, accrued by the
-day. VAT is the residential rate the cards of the month agree on, read daily
+day. A card that waives its fee for a contract's first months (Frank JN's
+November 2026 card, for twelve) bills none of it over those months of a
+contract signed on it, counted from the contract start date, so set that
+date for such a contract: without it the fee is billed. VAT is the
+residential rate the cards of the month agree on, read daily
 from the project's card archive while its option is on (6% in every month so
 far, and until the table is read), on everything but the Walloon connection
 fee; the levies the law sets are put on the rate the
@@ -225,8 +229,8 @@ All sensors share one device per entry, named after the contract.
 | `current_price` | All-in EUR/kWh this month. Attributes: the tier, the annual volume and whether it was measured, the index value and its month, whether the price is provisional, the card's month, its validity, source and URL, its age, whether it is stale and any error. |
 | `current_price_m3` | The same per cubic metre, for an Energy dashboard gas source in m³. |
 | `energy_component`, `network_component`, `taxes_component` | The three parts of `current_price`, VAT inclusive. |
-| `fixed_costs_eur_per_year` | Supplier fee, distribution fixed term, metering and Brussels levy for a year. |
-| `supplier_fixed_fee_eur_per_year` | The supplier's part alone. |
+| `fixed_costs_eur_per_year` | Supplier fee, distribution fixed term, metering and Brussels levy for a year, as billed today: without a supplier fee the card your contract was signed on still waives. |
+| `supplier_fixed_fee_eur_per_year` | The supplier's part alone, 0 while the fee is waived. |
 | `conversion_factor` | The kWh a cubic metre is worth this month, and where it comes from. |
 | `current_year_cost` | The year's running bill, each month on its own card, fixed costs accrued by the day from 1 January (or the contract start when the year counts from it), with a per-month breakdown attribute and the earlier contracts of the year that could not be priced, which leave it unknown until they are. `TOTAL` and monetary, so the Energy dashboard can use it. |
 | `current_month_cost` | The running month's bill, unknown while an earlier contract that supplied part of the month cannot be priced, which it names. |

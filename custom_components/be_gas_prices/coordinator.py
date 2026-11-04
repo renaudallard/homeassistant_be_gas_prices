@@ -58,7 +58,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from . import calorific, excise_law, fluvius, law_archive, tarbel, vat_rates
-from .bill import IndexValue, bill_month, contract_leg, merged_index, month_key
+from .bill import IndexValue, bill_month, contract_leg, fee_waiver, merged_index, month_key
 from .compare import OwnContract, rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -889,21 +889,33 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
         row = self._months.get(self.extractor.id, self.contract, self.region, month)
         return None if row is None else row.snapshot
 
-    def _energy_for(self, card: SupplierSnapshot, vat_rate: float) -> EnergyRates:
-        """The energy leg a card bills this household on at ``vat_rate``, the
-        residential rate of the month billed: the signing card's
-        when the entry names a signing month the archive can serve and the
-        contract holds its figures, with the figures the household typed
-        from its contract laid over it. The signing card is the one of the
-        day signed where the supplier reissues within a month and serves it."""
+    def _signing_card(self) -> SupplierSnapshot | None:
+        """The card the contract was signed on, when the entry names a
+        signing month the archive can serve: the one of the day signed where
+        the supplier reissues within a month and serves it."""
         keys = signing_keys(self._data, self.extractor)
         signed = self._month_card(keys[0]) if len(keys) > 1 else None
         if signed is None and keys:
             today_month = month_key(dt_util.now().date())
             signing = keys[-1]
             signed = self._snapshot if signing == today_month else self._month_card(signing)
+        return signed
+
+    def _energy_for(self, card: SupplierSnapshot, vat_rate: float) -> EnergyRates:
+        """The energy leg a card bills this household on at ``vat_rate``, the
+        residential rate of the month billed: the signing card's where it is
+        held and the contract holds its figures, with the figures the
+        household typed from its contract laid over it."""
+        signed = self._signing_card()
         return contract_leg(
             card.energy, None if signed is None else signed.energy, self._data, vat_rate
+        )
+
+    def _fee_waived(self) -> tuple[date, date] | None:
+        """The days the contract pays no supplier fee: the first months the
+        card it was signed on waives it for, from its start."""
+        return fee_waiver(
+            self._signing_card(), parse_date(self._data.get(CONF_CONTRACT_START_DATE))
         )
 
     def month_price(
@@ -1215,6 +1227,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             ),
             read_by_ocr=self.card_read_by_ocr,
             table=self._index_table,
+            fee_waived=self._fee_waived(),
         )
 
     def _filling(self) -> bool:
@@ -1353,6 +1366,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 if meter_days
                 else None
             )
+        waived = self._fee_waived()
         if kwh_days is not None:
             # A measured year picks the tier and the excise slices; the typed
             # estimate stands in until the meter has one.
@@ -1371,6 +1385,7 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 month_card=self._month_card,
                 energy_for=self._energy_for,
                 table=self._index_table,
+                fee_waived=waived,
             )
             periods = periods_this_year(self._data, today)
             earlier_kwh = sum(
@@ -1414,6 +1429,10 @@ class GasCoordinator(DataUpdateCoordinator[CoordinatorData]):
             household.annual_kwh,
             household.caliber,
         )
+        if waived is not None and waived[0] <= today < waived[1]:
+            # A year's fixed costs as billed today: none of the fee the
+            # signing card waives.
+            fixed = replace(fixed, supplier=0.0)
         self.household = household
         index: IndexValue | None = now_bill.index
         age = self.snapshot_age()

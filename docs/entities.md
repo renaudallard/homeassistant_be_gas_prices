@@ -11,8 +11,8 @@ the contract end date keep their device class's icon.
 | `current_price` | EUR/kWh | The all-in price of one kWh this month. Attributes: `tier`, `annual_kwh`, `annual_kwh_measured`, `index_value`, `index_month`, `price_provisional`, `card_month`, `valid_until`, `card_source` (`live`, `cache` from the Store, `archive` for a row of the card archive, either standing in while the supplier cannot be read or its reading of a card no reader here reads, `ocr` for the card archive's reading of a card published as images), `source_url`, `snapshot_age_hours`, `snapshot_stale`, `last_error`. |
 | `current_price_m3` | EUR/m³ | The same per cubic metre at this month's conversion factor. For an Energy dashboard gas source in m³. |
 | `energy_component`, `network_component`, `taxes_component` | EUR/kWh | The three parts of `current_price`, VAT inclusive. |
-| `fixed_costs_eur_per_year` | EUR | Supplier fee, distribution fixed term, metering and Brussels levy for a year, each an attribute. |
-| `supplier_fixed_fee_eur_per_year` | EUR | The supplier's part alone. |
+| `fixed_costs_eur_per_year` | EUR | Supplier fee, distribution fixed term, metering and Brussels levy for a year, each an attribute, as billed today: no supplier fee while the card the contract was signed on waives it (`bill.fee_waiver`). |
+| `supplier_fixed_fee_eur_per_year` | EUR | The supplier's part alone, 0 while it is waived. |
 | `conversion_factor` | kWh/m³ | The factor in use and where it comes from. |
 | `current_year_cost` | EUR, `TOTAL`, monetary | The year's running bill, each month on its own card; `months` attribute with each month's parts, `unpriced_contracts` naming any earlier contract of the year that could not be priced. The state is unknown until it is: short by a whole contract, it would read on the recorder as a drop and then a rise. |
 | `current_month_cost` | EUR, `TOTAL`, monetary | The running month, with `unpriced_contracts` naming an earlier contract that supplied part of it and could not be priced, which leaves the state unknown. |

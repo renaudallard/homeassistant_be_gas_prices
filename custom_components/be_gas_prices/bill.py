@@ -45,13 +45,17 @@ The rules this encodes:
   its own figure at.
 - The distribution tier and the excise slices follow the household's annual
   volume, and the yearly fixed costs accrue by the day.
+- A card may waive its supplier fee for the first months of a contract
+  signed on it (``SupplierSnapshot.fee_waived_months``): those days of the
+  contract accrue no supplier fee, whichever card prices the month.
 """
 
 from __future__ import annotations
 
+import calendar
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from .const import CONF_SUPPLIER, SUPPLIER_CUSTOM
@@ -81,6 +85,23 @@ class IndexValue:
 
 def month_key(day: date) -> str:
     return f"{day.year}-{day.month:02d}"
+
+
+def add_months(day: date, months: int) -> date:
+    """The same day ``months`` months on, or the last of a shorter month."""
+    index = day.month - 1 + months
+    year, month = day.year + index // 12, index % 12 + 1
+    return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
+
+
+def fee_waiver(signed: SupplierSnapshot | None, start: date | None) -> tuple[date, date] | None:
+    """The days ``[since, until)`` a contract started on ``start`` and
+    signed on ``signed`` pays no supplier fee: the first months that card
+    waives it for. None without a start date, a signing card or a waiver,
+    so a contract whose card is not known pays the fee."""
+    if signed is None or start is None or signed.fee_waived_months <= 0:
+        return None
+    return start, add_months(start, signed.fee_waived_months)
 
 
 def index_for(table: IndexTable | None, index: str, month: str) -> IndexValue | None:
@@ -217,6 +238,7 @@ def bill_month(
     days: int,
     days_in_year: int,
     first: date | None = None,
+    fee_waived: tuple[date, date] | None = None,
 ) -> MonthBill:
     """Bill ``kwh`` used over ``days`` days of ``month``, from ``first`` on,
     the 1st when not given.
@@ -225,20 +247,27 @@ def bill_month(
     leg the household is billed on, the card's own or the signing card's,
     at the residential VAT rate of ``month`` (vat_rates.py). The supplier's
     fixed fee follows the energy leg, since it is part of the offer the
-    household signed.
+    household signed. The billed days that fall in ``fee_waived``
+    (:func:`fee_waiver`) accrue none of it.
     """
     year, number = (int(part) for part in month.split("-"))
     start = date(year, number, 1)
+    begin = start if first is None else first
     energy = energy_for(card, residential_vat(start))
     priced = replace(resolve_for_delivery(card, start), energy=energy)
     price, index = resolve_energy_price(energy, table, month)
     breakdown = compute_breakdown(priced, dso, annual_kwh, price)
-    fixed = fixed_costs(priced, dso, annual_kwh, caliber).total * days / days_in_year
+    costs = fixed_costs(priced, dso, annual_kwh, caliber)
+    fixed = costs.total * days / days_in_year
+    if fee_waived is not None:
+        since, until = fee_waived
+        waived = (min(begin + timedelta(days=days), until) - max(begin, since)).days
+        fixed -= costs.supplier * max(waived, 0) / days_in_year
     return MonthBill(
         month=month,
         kwh=kwh,
         days=days,
-        first=start if first is None else first,
+        first=begin,
         breakdown=breakdown,
         energy_cost=kwh * breakdown.energy,
         network_cost=kwh * breakdown.network,

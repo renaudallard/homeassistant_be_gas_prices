@@ -53,6 +53,16 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - HV, JN and Korting printed a cashback in September 2026 ("Korting 115 EUR
   (incl. btw)", 35 and 110); from October 2026 only JN does (35). A snapshot
   has no field for it, so it is not read.
+- The November 2026 JN card prints its subscription as "0,00*": "Gedurende
+  de eerste 12 maanden van het contract ontvang je een maandelijkse korting
+  op de abonnementskosten", after which "gelden de abonnementskosten
+  volgens de tariefkaart Gas ZTP - JN - Oktober 2026". `_with_waived_fee`
+  bills the fee that card prints, 2,17 a month, read once per process, and
+  sets `fee_waived_months` to 12, so a contract signed on the card pays none
+  of it over its first twelve months (`bill.fee_waiver`). A waiver naming
+  another tier's card, the card's own month or a later one, or no month,
+  fails the fetch. Frank uploaded the month's JN card twice on 30 October;
+  the earlier upload printed 2,17 and no waiver, and the later one is read.
 - Korting is withdrawn from 1 November 2026 (`withdrawn`): Frank uploaded no
   November card for it while the other tiers had theirs on 30 October, and
   its conditions page lists the gas cards of the standard, HV, JN, Plus and
@@ -84,7 +94,8 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   every Frank tier's price comes out of it to the fourth decimal, on every
   card from January 2025 but June 2025 (Frank's prices there imply 37,58,
   EBEM prints 37,74522).
-- Fee: "Abonnementskost (EUR/maand) 2,92", times 12.
+- Fee: "Abonnementskost (EUR/maand) 2,92", times 12; a fee the card waives
+  is billed at the one the card it names prints (see above).
 - VAT: "De tarieven (incl. 6% btw, tenzij anders vermeld)" into
   `card_vat_rate`.
 - DSO table, "N ettarieven" (the heading's first letter is set apart) to
@@ -162,6 +173,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - `test_index_page`.
 - Withdrawn: `test_the_korting_tier_is_withdrawn_in_november_2026`,
   `test_a_withdrawn_tier_is_not_fetched_but_its_past_months_are`.
+- JN's waiver: `test_the_november_jn_card_bills_the_subscription_it_waives`
+  (the October card's fee, read once, and the waiver stored),
+  `test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused`.
 - `fetch` (newest month of the tier), `fetch_for_month` (the misnamed
   January upload skipped, the query's month and year, month refusal, the
   clipped card, transient raise), `probe` and `fetch_index`, with the fetch

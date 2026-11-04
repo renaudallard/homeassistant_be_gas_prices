@@ -184,6 +184,20 @@ residential rate from the card archive's VAT table (`vat_rates.py`, 6 % in
 every month it holds so far): every card read so far states 6 % or nothing,
 and a stated rate outside those three is taken for a misread.
 
+A card may waive its supplier fee for the first months of a contract signed
+on it (`SupplierSnapshot.fee_waived_months`: twelve on Frank's November 2026
+JN card, whose energy leg carries the fee billed after them). `bill.fee_waiver`
+turns the signing card and the contract start date into the days
+`[start, start + N months)`, and `bill_month` bills none of the supplier's
+fee over those of its days, whichever card prices the month. Without a
+contract start date, or with a signing card not held, the fee is billed: a
+contract signed on another card pays it. The running costs of the current
+contract and of each earlier one of the year (on its own signing card and
+start), the yearly fixed-cost sensors (no supplier fee while today is in the
+window) and the comparisons use it; a comparison quotes a card it reads as
+a new customer signing on it this month, and the household's own row on its
+own window.
+
 ## The running costs
 
 `running_costs` walks the window (1 January, or the contract start when the

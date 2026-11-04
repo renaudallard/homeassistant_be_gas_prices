@@ -51,7 +51,7 @@ from datetime import date, timedelta
 
 import aiohttp
 
-from .bill import bill_month, card_leg, month_key
+from .bill import bill_month, card_leg, fee_waiver, month_key
 from .const import SUPPLIER_CUSTOM, SUPPLIER_SOCIAL
 from .month_cards import current_card
 from .pricing import PricingError
@@ -101,6 +101,8 @@ class OwnContract:
     # prices the contract on them too, for the month quoted or the month
     # before as any other row.
     table: IndexTable | None = None
+    # The days the contract pays no supplier fee (``bill.fee_waiver``).
+    fee_waived: tuple[date, date] | None = None
 
 
 class IndexCache:
@@ -141,13 +143,22 @@ async def quote_contract(
     use_archive: bool,
     card: SupplierSnapshot | None = None,
     read_by_ocr: bool = False,
+    fee_waived: tuple[date, date] | None = None,
 ) -> Quote:
     """A year of the household's gas on ``contract``'s current card, or on
     ``card`` when the caller holds it already (the household's own, which
     ``read_by_ocr`` says the card archive read off its image).
     ``use_archive`` lets a card published as page images be priced on the
-    card archive's reading of it, as the entry itself is."""
+    card archive's reading of it, as the entry itself is.
+
+    A card read here is quoted as a new customer signs on it this month,
+    with none of the supplier fee it waives for a contract's first months.
+    A held card's contract pays none only on its own ``fee_waived`` days.
+    """
     label = extractor.contract_label(contract) or contract
+    year, number = (int(part) for part in month.split("-"))
+    first = date(year, number, 1)
+    waived = fee_waived
     source = "ocr" if read_by_ocr else "live"
     if card is None:
         try:
@@ -156,6 +167,7 @@ async def quote_contract(
             )
         except ExtractorError as err:
             return Quote(extractor.id, contract, label, None, None, None, False, False, str(err))
+        waived = fee_waiver(card, first)
     table = await indices.table(session, extractor)
     # The quoted month's index value or, for an index known only after
     # delivery, the month before it, which most cards print at. An older
@@ -163,8 +175,7 @@ async def quote_contract(
     # supplier has published neither stays on its card's price.
     months = {month}
     if isinstance(card.energy, IndexedRates) and not card.energy.settled:
-        year, number = (int(part) for part in month.split("-"))
-        months.add(month_key(date(year, number, 1) - timedelta(days=1)))
+        months.add(month_key(first - timedelta(days=1)))
     current = {
         index: {key: values[key] for key in months if key in values}
         for index, values in (table or {}).items()
@@ -184,6 +195,7 @@ async def quote_contract(
             kwh=household.annual_kwh,
             days=365,
             days_in_year=365,
+            fee_waived=waived,
         )
     except PricingError as err:
         return Quote(extractor.id, contract, label, None, None, None, False, False, str(err))
@@ -294,6 +306,7 @@ async def rank(
                 use_archive=False,
                 card=own.card,
                 read_by_ocr=own.read_by_ocr,
+                fee_waived=own.fee_waived,
             )
         )
     quotes.sort(key=lambda q: (q.annual_cost is None, q.annual_cost or 0.0, q.label))

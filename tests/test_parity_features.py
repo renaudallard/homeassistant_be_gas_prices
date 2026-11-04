@@ -782,6 +782,83 @@ async def test_a_quote_bills_the_data_management_fee_a_card_leaves_out() -> None
     assert quote.annual_cost == pytest.approx(17_000.0 * quote.all_in + quote.fixed)
 
 
+async def test_a_ranking_quotes_the_household_on_its_own_waiver() -> None:
+    """The own row is the household's contract, not a new customer's: of the
+    twelve months its card waives Engie's 55 a year for, from its start on 1
+    March 2026, it has the 181 days after 1 September to quote."""
+    card = replace(
+        engie.parse_snapshot(
+            "engie_easy_variable",
+            REGION_FLANDERS,
+            fixture_text("engie", "G_EASY_R_GREY_C_I_12_V_F_202609.pdf"),
+        ),
+        fee_waived_months=12,
+    )
+    extractor = replace(
+        engie.EXTRACTOR, fetch_index=AsyncMock(return_value={"ZTP101": {"2026-09": 61.768}})
+    )
+
+    async def own_row(fee_waived: tuple[date, date] | None) -> Quote:
+        own = OwnContract(extractor, "engie_easy_variable", card, fee_waived=fee_waived)
+        with patch("custom_components.be_gas_prices.compare.all_extractors", return_value=()):
+            quotes, _ = await rank(
+                AsyncMock(),
+                REGION_FLANDERS,
+                Household(DSO_FLUVIUS_KEMPEN, CALIBER_Q10, 17_000.0),
+                "2026-09",
+                use_archive=False,
+                own=own,
+            )
+        return quotes[0]
+
+    plain = await own_row(None)
+    signed = await own_row((date(2026, 3, 1), date(2027, 3, 1)))
+    assert plain.fixed is not None and signed.fixed is not None
+    assert plain.fixed - signed.fixed == pytest.approx(55.0 * 181 / 365)
+
+
+async def test_a_card_waiving_its_fee_is_quoted_as_a_new_customer_signs_on_it() -> None:
+    """A card read for the quote is signed on this month, so the twelve months
+    it waives Engie's 55 a year for cover the year quoted. A card the caller
+    holds pays it outside its own contract's waiver: none, or from 1 March
+    2026 the 181 days of it left after 1 September."""
+    card = replace(
+        engie.parse_snapshot(
+            "engie_easy_variable",
+            REGION_FLANDERS,
+            fixture_text("engie", "G_EASY_R_GREY_C_I_12_V_F_202609.pdf"),
+        ),
+        fee_waived_months=12,
+    )
+    extractor = replace(
+        engie.EXTRACTOR, fetch_index=AsyncMock(return_value={"ZTP101": {"2026-09": 61.768}})
+    )
+
+    async def quote(**kwargs: Any) -> Quote:
+        return await quote_contract(
+            AsyncMock(),
+            extractor,
+            "engie_easy_variable",
+            REGION_FLANDERS,
+            Household(DSO_FLUVIUS_KEMPEN, CALIBER_Q10, 17_000.0),
+            "2026-09",
+            IndexCache(),
+            use_archive=False,
+            **kwargs,
+        )
+
+    with patch(
+        "custom_components.be_gas_prices.compare.current_card",
+        AsyncMock(return_value=(card, "live")),
+    ):
+        new = await quote()
+    held = await quote(card=card)
+    signed = await quote(card=card, fee_waived=(date(2026, 3, 1), date(2027, 3, 1)))
+    assert new.fixed is not None and held.fixed is not None and signed.fixed is not None
+    assert held.fixed - new.fixed == pytest.approx(55.0)
+    assert held.fixed - signed.fixed == pytest.approx(55.0 * 181 / 365)
+
+
 async def test_a_card_published_as_images_is_quoted_on_the_archive_reading() -> None:
     card = engie.parse_snapshot(
         "engie_easy_variable",
