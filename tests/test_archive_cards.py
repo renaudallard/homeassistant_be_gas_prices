@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -55,7 +56,7 @@ from homeassistant.util import dt as dt_util
 from custom_components.be_gas_prices import excise_law, tarbel
 from custom_components.be_gas_prices.const import CARD_ARCHIVE_URL, EXCISE_LAW_URL
 from custom_components.be_gas_prices.month_cards import fetch_archived_card, fetch_archived_row
-from custom_components.be_gas_prices.providers import _pdf
+from custom_components.be_gas_prices.providers import _pdf, _pdf_render
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates
 from custom_components.be_gas_prices.providers._validity import end_of_month
@@ -1522,6 +1523,40 @@ def test_the_engine_moves_with_the_libraries_it_reads_with(
     assert card_texts.engine_version() != before
 
 
+def test_the_render_stamp_covers_every_reader_and_no_download_code() -> None:
+    """A stored text is served again only to the render code that made it
+    (``card_texts._RENDER_CODE``): every reader must live in the module the
+    stamp hashes, and the download code must not, or a change to how a card
+    is fetched would render the whole archive again."""
+    hashed = Path(card_texts._RENDER_CODE).resolve()
+    readers = (
+        _pdf_render.extract_pdf_text,
+        _pdf_render.extract_pdf_text_layout,
+        _pdf_render.extract_pdf_text_rows,
+    )
+    for reader in readers:
+        source = inspect.getsourcefile(reader)
+        assert source is not None and Path(source).resolve() == hashed, reader.__name__
+    source = inspect.getsourcefile(_pdf.fetch_pdf_text)
+    assert source is not None and Path(source).resolve() != hashed
+
+
+def test_the_ci_text_cache_key_moves_with_the_render_code() -> None:
+    """The tests key the texts they read on the render code
+    (``card_texts.render_digest``), so the CI cache key must name it: under a
+    key that did not move, a render change restores texts none of which are
+    of use and saves none of the new ones."""
+    root = Path(__file__).resolve().parent.parent
+    workflow = yaml.safe_load((root / ".github" / "workflows" / "test.yml").read_text())
+    (key,) = (
+        step["with"]["key"]
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+        if step.get("with", {}).get("path") == "tmp/fixture_text"
+    )
+    assert str(Path(card_texts._RENDER_CODE).resolve().relative_to(root)) in key
+
+
 async def test_a_render_fix_renders_the_card_again(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1529,7 +1564,7 @@ async def test_a_render_fix_renders_the_card_again(
     fix to how a card is rendered reaches a card whose bytes the archive
     already holds, and the next run serves what the fix rendered."""
     out = tmp_path / "gas"
-    code = tmp_path / "_pdf.py"
+    code = tmp_path / "_pdf_render.py"
     code.write_text("one render\n", encoding="utf-8")
     monkeypatch.setattr(card_texts, "_RENDER_CODE", code)
     await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
@@ -1546,7 +1581,7 @@ async def test_a_render_fix_reaches_a_month_no_longer_downloaded(
     """A replay renders a closed month's card again from its kept bytes
     when other render code made its text, and parses what the fix reads."""
     out = tmp_path / "gas"
-    code = tmp_path / "_pdf.py"
+    code = tmp_path / "_pdf_render.py"
     code.write_text("one render\n", encoding="utf-8")
     monkeypatch.setattr(card_texts, "_RENDER_CODE", code)
     await ac.archive(
@@ -1584,7 +1619,7 @@ async def test_a_card_rendered_again_for_a_sibling_row_names_the_current_code(
         regions = frozenset({"wallonia", "flanders"})
 
     out = tmp_path / "gas"
-    code = tmp_path / "_pdf.py"
+    code = tmp_path / "_pdf_render.py"
     code.write_text("one render\n", encoding="utf-8")
     monkeypatch.setattr(card_texts, "_RENDER_CODE", code)
     await ac.archive(

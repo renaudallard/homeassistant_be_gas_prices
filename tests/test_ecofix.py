@@ -45,7 +45,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T3,
 )
 from custom_components.be_gas_prices.providers import ecofix
-from custom_components.be_gas_prices.providers._pdf import extract_pdf_text_layout
+from custom_components.be_gas_prices.providers._pdf_render import extract_pdf_text_layout
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import (
     CardNotReadableError,

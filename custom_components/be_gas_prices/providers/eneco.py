@@ -106,8 +106,10 @@ from ._pdf import (
     fetch_pdf_rendered,
     fetch_pdf_text,
     fetch_text,
-    pdfplumber_text,
     printed_vat_rate,
+)
+from ._pdf_render import (
+    pdfplumber_text,
     word_centre,
     word_rows,
 )

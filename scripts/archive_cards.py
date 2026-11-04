@@ -144,13 +144,15 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
 from custom_components.be_gas_prices.const import GAS_EXCISE_KNOWN_FROM  # noqa: E402
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
+    fetch_pdf_bytes,
+    memoise_text_fetches,
+    render_through,
+)
+from custom_components.be_gas_prices.providers._pdf_render import (  # noqa: E402
     MIN_TEXT_LAYER_CHARS,
     extract_pdf_text,
     extract_pdf_text_layout,
     extract_pdf_text_rows,
-    fetch_pdf_bytes,
-    memoise_text_fetches,
-    render_through,
 )
 from custom_components.be_gas_prices.providers._resolve import (  # noqa: E402
     law_contribution,

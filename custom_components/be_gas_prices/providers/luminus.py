@@ -123,8 +123,10 @@ from ._pdf import (
     head_freshness_key,
     is_missing_card_error,
     parse_json,
-    pdfplumber_text,
     printed_vat_rate,
+)
+from ._pdf_render import (
+    pdfplumber_text,
     word_centre,
     word_rows,
 )

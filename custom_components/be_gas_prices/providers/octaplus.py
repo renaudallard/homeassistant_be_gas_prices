@@ -89,8 +89,6 @@ from ._network import (
 from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
-    extract_pdf_text_layout,
-    extract_pdf_text_rows,
     fetch_pdf_text_layout,
     fetch_text,
     head_freshness_key,
@@ -98,6 +96,10 @@ from ._pdf import (
     parse_json,
     render_pdf,
     strip_pdf_prefix,
+)
+from ._pdf_render import (
+    extract_pdf_text_layout,
+    extract_pdf_text_rows,
 )
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, month_card

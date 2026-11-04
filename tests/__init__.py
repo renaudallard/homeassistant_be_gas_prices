@@ -35,7 +35,7 @@ from typing import Any, cast
 
 import pytest
 
-from custom_components.be_gas_prices.providers._pdf import (
+from custom_components.be_gas_prices.providers._pdf_render import (
     extract_pdf_text,
     extract_pdf_text_layout,
     extract_pdf_text_rows,
@@ -57,7 +57,7 @@ def _text_cache_dir() -> Path:
 
     One directory per reader code, named by the digest the card archive
     keys its stored texts on (``card_texts.render_digest``): it covers
-    ``providers/_pdf.py`` and the pypdf and pdfplumber versions, so a change
+    ``providers/_pdf_render.py`` and the pypdf and pdfplumber versions, so a change
     to either reads every card afresh instead of serving text the current
     code would not produce.
     Under ``tmp/`` by default, which git ignores; ``BE_FIXTURE_TEXT_CACHE``

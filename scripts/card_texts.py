@@ -59,15 +59,17 @@ PARSER_STAMP = "parser.txt"
 # they rendered, like the OCR engine's.
 _READERS = ("pypdf", "pdfplumber")
 # The code that drives them: every text a row stores was rendered by
-# extract_pdf_text, extract_pdf_text_layout or extract_pdf_text_rows. The
-# extractors' own renderers (Eneco's and Luminus's index tables) feed only
-# the index publications, which keep no text.
+# extract_pdf_text, extract_pdf_text_layout or extract_pdf_text_rows, which
+# live in a module of their own, so that a change to how a card is
+# downloaded (_pdf.py) renders nothing again. The extractors' own renderers
+# (Eneco's and Luminus's index tables) feed only the index publications,
+# which keep no text.
 _RENDER_CODE = (
     Path(__file__).resolve().parent.parent
     / "custom_components"
     / "be_gas_prices"
     / "providers"
-    / "_pdf.py"
+    / "_pdf_render.py"
 )
 # The engine that reads a card published as page images. Its version is
 # recorded on each source it read, so a new engine reads those cards again
