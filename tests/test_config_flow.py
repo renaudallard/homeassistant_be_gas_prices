@@ -43,7 +43,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.be_gas_prices import calorific, config_flow, postcodes
+from custom_components.be_gas_prices import calorific, flow_steps, postcodes
 from custom_components.be_gas_prices.compare import OwnContract, Quote
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -163,7 +163,7 @@ async def test_postcode_resolves_the_region_and_the_dso(hass: HomeAssistant) -> 
     # flag one off a round step.
     assert schema.schema[CONF_ANNUAL_CONSUMPTION_KWH].config["step"] == "any"
     with patch(
-        "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
+        "custom_components.be_gas_prices.flow_steps._stations", AsyncMock(return_value=STATIONS)
     ):
         result = await _household(hass, result["flow_id"], None)
         assert result["step_id"] == "station"
@@ -741,7 +741,7 @@ async def test_atrias_down_falls_back_to_the_factor(hass: HomeAssistant) -> None
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
     with patch(
-        "custom_components.be_gas_prices.config_flow._stations",
+        "custom_components.be_gas_prices.flow_steps._stations",
         AsyncMock(side_effect=calorific.CalorificError("HTTP 503")),
     ):
         result = await _household(hass, result["flow_id"], None)
@@ -779,20 +779,20 @@ async def test_the_station_list_covers_atrias_two_latest_months(hass: HomeAssist
         ),
         patch.object(calorific, "fetch_month", fetch_month),
     ):
-        stations = await config_flow._stations(hass)
+        stations = await flow_steps._stations(hass)
         assert {station.ean for station in stations} == {july.ean, august.ean}
         # Either month unreadable: the other's list all the same.
         files["GCV202607.txt"] = None
-        stations = await config_flow._stations(hass)
+        stations = await flow_steps._stations(hass)
         assert {station.ean for station in stations} == {august.ean}
         files["GCV202607.txt"] = {july: 11.5, august: 11.4}
         files["GCV202608.txt"] = None
-        stations = await config_flow._stations(hass)
+        stations = await flow_steps._stations(hass)
         assert {station.ean for station in stations} == {july.ean, august.ean}
         # Neither: Atrias cannot be read.
         files["GCV202607.txt"] = None
         with pytest.raises(calorific.CalorificError):
-            await config_flow._stations(hass)
+            await flow_steps._stations(hass)
 
 
 async def test_a_station_out_of_the_list_is_kept_on_offer(hass: HomeAssistant) -> None:
@@ -805,7 +805,7 @@ async def test_a_station_out_of_the_list_is_kept_on_offer(hass: HomeAssistant) -
     )
     result = await hass.config_entries.options.async_init(entry.entry_id)
     with patch(
-        "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
+        "custom_components.be_gas_prices.flow_steps._stations", AsyncMock(return_value=STATIONS)
     ):
         for user_input in (
             {"next_step_id": "settings"},
@@ -845,7 +845,7 @@ async def test_atrias_down_keeps_the_station_an_entry_names(hass: HomeAssistant)
     )
     result = await hass.config_entries.options.async_init(entry.entry_id)
     with patch(
-        "custom_components.be_gas_prices.config_flow._stations",
+        "custom_components.be_gas_prices.flow_steps._stations",
         AsyncMock(side_effect=calorific.CalorificError("HTTP 503")),
     ):
         for user_input in (
@@ -891,7 +891,7 @@ async def test_an_empty_factor_picks_the_station_instead(hass: HomeAssistant) ->
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
     with patch(
-        "custom_components.be_gas_prices.config_flow._stations", AsyncMock(return_value=STATIONS)
+        "custom_components.be_gas_prices.flow_steps._stations", AsyncMock(return_value=STATIONS)
     ):
         result = await _household(hass, result["flow_id"], None)
         assert result["step_id"] == "station"
@@ -920,7 +920,7 @@ async def test_a_cleared_factor_is_not_offered_again(hass: HomeAssistant) -> Non
     ):
         result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
     with patch(
-        "custom_components.be_gas_prices.config_flow._stations",
+        "custom_components.be_gas_prices.flow_steps._stations",
         AsyncMock(side_effect=calorific.CalorificError("HTTP 503")),
     ):
         result = await hass.config_entries.options.async_configure(

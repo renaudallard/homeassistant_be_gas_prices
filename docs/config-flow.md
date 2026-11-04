@@ -2,7 +2,7 @@
 
 `config_flow.py` holds the setup wizard (`BeGasPricesConfigFlow`) and the
 options flow (`BeGasPricesOptionsFlow`). Both walk the same steps, defined
-once in `_FlowSteps` over `self._data`.
+once in `_FlowSteps` (`flow_steps.py`) over `self._data`.
 
 ## Setup steps
 

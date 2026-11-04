@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import date, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import (
@@ -20,97 +20,50 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import section
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
     DateSelector,
-    EntitySelector,
-    EntitySelectorConfig,
-    NumberSelector,
-    NumberSelectorConfig,
-    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
-    TextSelector,
 )
 from homeassistant.util import dt as dt_util
 
-from . import calorific, postcodes
+from . import postcodes
 from .bill import month_key
 from .compare import IndexCache, OwnContract, Quote, quote_contract, rank
 from .compare_table import quote_table
 from .const import (
-    CALIBERS,
     CONF_ANNUAL_CONSUMPTION_KWH,
     CONF_CALIBER,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
-    CONF_CONTRACT_END_DATE,
     CONF_CONTRACT_START_DATE,
-    CONF_CONVERSION_FACTOR,
-    CONF_CONVERSION_MODE,
-    CONF_CUSTOM_EXCISE_HIGH,
-    CONF_CUSTOM_EXCISE_LOW,
-    CONF_CUSTOM_FEE,
-    CONF_CUSTOM_LEVY,
-    CONF_CUSTOM_METERING,
-    CONF_CUSTOM_PRICE,
-    CONF_CUSTOM_T1_FIXED,
-    CONF_CUSTOM_T1_PROP,
-    CONF_CUSTOM_T2_FIXED,
-    CONF_CUSTOM_T2_PROP,
-    CONF_CUSTOM_TRANSPORT,
-    CONF_DAILY_COMPARE,
     CONF_DSO,
-    CONF_GAS_METER,
-    CONF_MANUAL_BASE,
-    CONF_MANUAL_FACTOR,
-    CONF_MANUAL_FEE,
-    CONF_MANUAL_PRICE,
     CONF_POSTCODE,
     CONF_REGION,
-    CONF_STATION,
     CONF_SUPPLIER,
     CONF_SWITCH_DATE,
-    CONF_TARIFF_CARD_DATE,
-    CONF_YTD_FROM_CONTRACT_START,
-    CONVERSION_MANUAL,
-    CONVERSION_STATION,
-    CUSTOM_KEYS,
     DEFAULT_ANNUAL_CONSUMPTION_KWH,
     DEFAULT_CALIBER,
     DEFAULT_CARD_ARCHIVE,
-    DEFAULT_DAILY_COMPARE,
     DOMAIN,
-    DSO_CHOICES,
-    MANUAL_FACTOR_MAX,
-    MANUAL_RATE_KEYS,
-    REGION_BRUSSELS,
-    REGIONS,
     SUPPLIER_CUSTOM,
     SUPPLIER_SOCIAL,
-    TIER_BOUNDS_KWH,
-    TIER_T2,
-    TIER_T3,
 )
 from .contract_periods import (
-    drop_contract_terms,
     parse_date,
-    periods_this_year,
     previous_contracts,
     record_switch,
     removable_switch,
     remove_last_switch,
 )
 from .daily_ranking import DailyRanking
-from .providers import all_extractors
+from .flow_steps import _contracts_for, _FlowSteps, _select, _suppliers_for
 from .providers import get as get_extractor
-from .providers._rates import Contract
 from .providers.base import ExtractorError
 from .providers.custom import build_snapshot as build_custom_snapshot
 from .running_costs import Household
@@ -118,567 +71,8 @@ from .running_costs import Household
 # How long the ranked comparison spends fetching before it shows what it has.
 COMPARE_BUDGET_S = 120.0
 
-# The date fields a household may blank to remove.
-_DATE_FIELDS = (CONF_CONTRACT_START_DATE, CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE)
-
-# The contract form's folded section, what it stores, and its choice to
-# type the contract's figures, which is not stored.
-_ADVANCED = "advanced"
-_ADVANCED_KEYS = (CONF_TARIFF_CARD_DATE, CONF_CONTRACT_END_DATE, CONF_YTD_FROM_CONTRACT_START)
-_SIGNED_RATE = "signed_rate"
 # The box on the stored ranking that quotes every contract again.
 _PRICE_AGAIN = "price_again"
-
-
-def _suppliers_for(region: str) -> list[SelectOptionDict]:
-    return sorted(
-        (
-            SelectOptionDict(value=extractor.id, label=extractor.label)
-            for extractor in all_extractors()
-            if region in extractor.regions() and extractor.deprecated_until is None
-        ),
-        # The expert escape hatch goes last whatever its label.
-        key=lambda option: (option["value"] == SUPPLIER_CUSTOM, option["label"].lower()),
-    )
-
-
-def _contracts_for(supplier: str, region: str, *, withdrawn: bool = False) -> list[Contract]:
-    """The contracts sold in ``region``, and with ``withdrawn`` those the
-    supplier no longer sells too: a household still under contract on one
-    sets it up, while nobody can be quoted into one."""
-    return [
-        c
-        for c in get_extractor(supplier).contracts
-        if region in c.regions and (withdrawn or c.withdrawn is None)
-    ]
-
-
-def _needs_archive(data: dict[str, Any]) -> bool:
-    """Whether the current contract or an earlier one of this year is with a
-    supplier whose cards are page images, which only the archive reads."""
-    images = {extractor.id for extractor in all_extractors() if extractor.images_only}
-    periods = periods_this_year(data, dt_util.now().date())
-    return data[CONF_SUPPLIER] in images or any(
-        period[CONF_SUPPLIER] in images for period, _, _ in periods
-    )
-
-
-def _dso_options(region: str, candidates: tuple[str, ...]) -> list[SelectOptionDict]:
-    choices = DSO_CHOICES[region]
-    if candidates:
-        choices = tuple(choice for choice in choices if choice[0] in candidates) or choices
-    return [SelectOptionDict(value=key, label=label) for key, label in choices]
-
-
-def _select(
-    options: list[SelectOptionDict] | list[str], translation_key: str | None = None
-) -> SelectSelector:
-    config = SelectSelectorConfig(options=options, mode=SelectSelectorMode.DROPDOWN)
-    if translation_key is not None:
-        config["translation_key"] = translation_key
-    return SelectSelector(config)
-
-
-def _factor_selector() -> NumberSelector:
-    return NumberSelector(
-        NumberSelectorConfig(
-            min=9.0, max=13.0, step="any", mode=NumberSelectorMode.BOX, unit_of_measurement="kWh/m³"
-        )
-    )
-
-
-def _default(data: dict[str, Any], key: str, fallback: Any = vol.UNDEFINED) -> Any:
-    return data.get(key, fallback)
-
-
-async def _stations(hass: HomeAssistant) -> list[calorific.Station]:
-    """The reception stations Atrias published a value for in either of its
-    two latest months, by name: a station listed at 0 for a month is out of
-    use for it only."""
-    session = async_get_clientsession(hass)
-    context = await hass.async_add_executor_job(calorific.build_ssl_context)
-    key = await calorific.subscription_key(session)
-    months = await calorific.list_months(session, context, key)
-    stations: dict[str, calorific.Station] = {}
-    failure: calorific.CalorificError | None = None
-    for month in sorted(months)[-2:]:
-        # Each month on its own: a file that cannot be read must not hide
-        # the other's stations.
-        try:
-            values = await calorific.fetch_month(session, context, key, months[month])
-        except calorific.CalorificError as err:
-            failure = err
-            continue
-        for station in values:
-            stations[station.ean] = station
-    if failure is not None and not stations:
-        raise failure
-    return sorted(stations.values(), key=lambda station: station.name)
-
-
-class _FlowSteps:
-    """The steps both flows walk, over ``self._data``."""
-
-    _data: dict[str, Any]
-    _candidates: tuple[str, ...]
-    _stations_cache: list[calorific.Station] | None
-
-    if TYPE_CHECKING:
-        hass: HomeAssistant
-
-        def async_show_form(self, **kwargs: Any) -> ConfigFlowResult: ...
-        def add_suggested_values_to_schema(
-            self, data_schema: vol.Schema, suggested_values: Any
-        ) -> vol.Schema: ...
-        async def _async_finish(self) -> ConfigFlowResult: ...
-
-    async def async_step_postcode(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            code = str(user_input.get(CONF_POSTCODE, "")).strip()
-            if not code:
-                self._data.pop(CONF_POSTCODE, None)
-                self._candidates = ()
-                return await self.async_step_region()
-            match = postcodes.resolve(code)
-            if match is None:
-                errors[CONF_POSTCODE] = "unknown_postcode"
-            elif not match.dsos:
-                errors[CONF_POSTCODE] = "no_gas_network"
-            else:
-                self._data[CONF_POSTCODE] = code
-                if match.region != self._data.get(CONF_REGION):
-                    drop_contract_terms(self._data, dt_util.now().date())
-                self._data[CONF_REGION] = match.region
-                self._candidates = match.dsos
-                if match.unpriced:
-                    return await self.async_step_unpriced_network()
-                return await self.async_step_supplier()
-        # Suggested rather than a default, so a cleared field reaches here
-        # empty and leads to the region instead of coming back as the old
-        # postcode. A refused one is shown as typed and is not kept.
-        schema = self.add_suggested_values_to_schema(
-            vol.Schema({vol.Optional(CONF_POSTCODE): TextSelector()}),
-            {CONF_POSTCODE: self._data.get(CONF_POSTCODE)} if user_input is None else user_input,
-        )
-        return self.async_show_form(step_id="postcode", data_schema=schema, errors=errors)
-
-    async def async_step_unpriced_network(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Part of the postcode is on a network no card prices (Baarle-Hertog's
-        Enexis): say so before going on with its Belgian operator."""
-        if user_input is not None:
-            return await self.async_step_supplier()
-        code = str(self._data[CONF_POSTCODE])
-        match = postcodes.resolve(code)
-        assert match is not None
-        labels = dict(DSO_CHOICES[match.region])
-        return self.async_show_form(
-            step_id="unpriced_network",
-            data_schema=vol.Schema({}),
-            description_placeholders={
-                "postcode": code,
-                "operators": ", ".join(match.unpriced),
-                "dsos": ", ".join(labels[dso] for dso in match.dsos),
-            },
-        )
-
-    async def async_step_region(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        if user_input is not None:
-            if user_input[CONF_REGION] != self._data.get(CONF_REGION):
-                self._data.pop(CONF_DSO, None)
-                drop_contract_terms(self._data, dt_util.now().date())
-            self._data[CONF_REGION] = user_input[CONF_REGION]
-            return await self.async_step_supplier()
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_REGION, default=_default(self._data, CONF_REGION)): _select(
-                    list(REGIONS), translation_key="region"
-                )
-            }
-        )
-        return self.async_show_form(step_id="region", data_schema=schema)
-
-    async def async_step_supplier(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        region = self._data[CONF_REGION]
-        options = _suppliers_for(region)
-        if user_input is not None:
-            if user_input[CONF_SUPPLIER] != self._data.get(CONF_SUPPLIER):
-                self._data.pop(CONF_CONTRACT, None)
-                # Another supplier's contract was not signed on this one's
-                # card or figures: left in, they would price it on them.
-                drop_contract_terms(self._data, dt_util.now().date())
-            self._data[CONF_SUPPLIER] = user_input[CONF_SUPPLIER]
-            return await self.async_step_contract()
-        current = self._data.get(CONF_SUPPLIER)
-        default = current if any(o["value"] == current for o in options) else vol.UNDEFINED
-        schema = vol.Schema({vol.Required(CONF_SUPPLIER, default=default): _select(options)})
-        return self.async_show_form(step_id="supplier", data_schema=schema)
-
-    async def async_step_contract(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        contracts = _contracts_for(
-            self._data[CONF_SUPPLIER], self._data[CONF_REGION], withdrawn=True
-        )
-        # The custom card is the household's own figures already, and the
-        # social tariff has none to type: it is the CREG's for everyone.
-        no_figures = self._data[CONF_SUPPLIER] in (SUPPLIER_CUSTOM, SUPPLIER_SOCIAL)
-        errors: dict[str, str] = {}
-        # With a change of contract recorded this year, the year's cost starts
-        # with the earlier contract: counting from this one's start would
-        # leave its days out, so the choice is not offered.
-        switched = bool(periods_this_year(self._data, dt_util.now().date()))
-        if user_input is not None:
-            # The folded fields are stored with the others.
-            given = {k: v for k, v in user_input.items() if k != _ADVANCED}
-            given.update(user_input.get(_ADVANCED, {}))
-            signed = bool(given.pop(_SIGNED_RATE, False))
-            stale = self._old_contract_terms(given)
-            for key in stale:
-                given.pop(key, None)
-            start = parse_date(given.get(CONF_CONTRACT_START_DATE))
-            card = parse_date(given.get(CONF_TARIFF_CARD_DATE))
-            end = given.get(CONF_CONTRACT_END_DATE)
-            earlier = previous_contracts(self._data)
-            # The last day the contract left by the last switch supplied.
-            left = date.fromisoformat(earlier[-1]["until"]) if earlier else date.min
-            if start is not None and start > dt_util.now().date():
-                errors[CONF_CONTRACT_START_DATE] = "start_date_in_future"
-            elif start is not None and start <= left:
-                # The contract set up supplies from the last switch on: an
-                # earlier start would look its signing card up too early.
-                errors[CONF_CONTRACT_START_DATE] = "start_date_before_switch"
-            elif card is not None and card > dt_util.now().date():
-                # A card to come prices nothing until its day, and then every
-                # month from the start at once.
-                errors["base"] = "tariff_card_date_in_future"
-            elif start and end and str(end) <= str(start):
-                errors["base"] = "end_before_start"
-            else:
-                for key in _DATE_FIELDS:
-                    if not given.get(key):
-                        self._data.pop(key, None)
-                for key in stale:
-                    self._data.pop(key, None)
-                self._data.update({k: v for k, v in given.items() if v not in (None, "")})
-                if not self._data.get(CONF_CONTRACT_START_DATE) or switched:
-                    self._data.pop(CONF_YTD_FROM_CONTRACT_START, None)
-                if signed and not no_figures:
-                    return await self.async_step_signed_rate()
-                for key in MANUAL_RATE_KEYS:
-                    self._data.pop(key, None)
-                return await self.async_step_dso()
-        current = self._data.get(CONF_CONTRACT)
-        default = current if any(c.id == current for c in contracts) else vol.UNDEFINED
-        advanced: dict[Any, Any] = {
-            vol.Optional(CONF_TARIFF_CARD_DATE): DateSelector(),
-            vol.Optional(CONF_CONTRACT_END_DATE): DateSelector(),
-        }
-        if not switched:
-            advanced[
-                vol.Optional(
-                    CONF_YTD_FROM_CONTRACT_START,
-                    default=bool(self._data.get(CONF_YTD_FROM_CONTRACT_START, False)),
-                )
-            ] = BooleanSelector()
-        has_figures = not no_figures and any(key in self._data for key in MANUAL_RATE_KEYS)
-        if not no_figures:
-            advanced[vol.Optional(_SIGNED_RATE, default=has_figures)] = BooleanSelector()
-        # Folded unless the entry already uses one of them.
-        folded = not has_figures and not any(self._data.get(key) for key in _ADVANCED_KEYS)
-        fields: dict[Any, Any] = {
-            vol.Required(CONF_CONTRACT, default=default): SelectSelector(
-                SelectSelectorConfig(
-                    # A product no longer sold carries a dagger, which the
-                    # step's description explains in the user's language.
-                    options=[
-                        SelectOptionDict(
-                            value=c.id, label=c.label if c.withdrawn is None else f"{c.label} †"
-                        )
-                        for c in contracts
-                    ],
-                    mode=SelectSelectorMode.LIST,
-                )
-            ),
-            vol.Optional(CONF_CONTRACT_START_DATE): DateSelector(),
-            vol.Optional(_ADVANCED, default=dict): section(
-                vol.Schema(advanced), {"collapsed": folded}
-            ),
-        }
-        suggested = user_input or {
-            CONF_CONTRACT_START_DATE: self._data.get(CONF_CONTRACT_START_DATE),
-            _ADVANCED: {key: self._data.get(key) for key in _DATE_FIELDS[1:]},
-        }
-        schema = self.add_suggested_values_to_schema(vol.Schema(fields), suggested)
-        return self.async_show_form(step_id="contract", data_schema=schema, errors=errors)
-
-    def _old_contract_terms(self, given: dict[str, Any]) -> tuple[str, ...]:
-        """What the contract form showed of the contract held, submitted
-        unchanged with another product picked, and the figures typed for
-        it. They are the old contract's, signed on its own day and card; a
-        value typed anew is the new one's. A start date on this year's
-        switch day stays, as on a change of supplier, and the box counting
-        the year from the start goes with the start date: a ticked box
-        cannot be changed to keep it."""
-        held = self._data.get(CONF_CONTRACT)
-        if held is None or given.get(CONF_CONTRACT) == held:
-            return ()
-        kept = dict(self._data)
-        drop_contract_terms(kept, dt_util.now().date())
-        stale = {
-            key
-            for key in self._data.keys() - kept.keys()
-            if key not in _DATE_FIELDS or given.get(key) == self._data[key]
-        }
-        if CONF_CONTRACT_START_DATE not in stale:
-            stale.discard(CONF_YTD_FROM_CONTRACT_START)
-        return tuple(stale)
-
-    async def async_step_signed_rate(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """The figures the household signed at, for when the signing card
-        cannot be read or the offer had figures of its own. All optional:
-        left blank, the signing month's card gives them."""
-        contract = next(
-            (
-                c
-                for c in _contracts_for(
-                    self._data[CONF_SUPPLIER], self._data[CONF_REGION], withdrawn=True
-                )
-                if c.id == self._data.get(CONF_CONTRACT)
-            ),
-            None,
-        )
-        if user_input is not None:
-            for key in MANUAL_RATE_KEYS:
-                if user_input.get(key) is None:
-                    self._data.pop(key, None)
-                else:
-                    self._data[key] = float(user_input[key])
-            return await self.async_step_dso()
-        number = NumberSelector(
-            NumberSelectorConfig(min=0, max=1000, step="any", mode=NumberSelectorMode.BOX)
-        )
-        factor = NumberSelector(
-            NumberSelectorConfig(
-                min=0, max=MANUAL_FACTOR_MAX, step="any", mode=NumberSelectorMode.BOX
-            )
-        )
-        keys: tuple[str, ...] = (CONF_MANUAL_FEE,)
-        if contract is not None and contract.kind == "fixed":
-            keys = (CONF_MANUAL_PRICE, CONF_MANUAL_FEE)
-        elif contract is not None and contract.kind == "indexed":
-            keys = (CONF_MANUAL_FACTOR, CONF_MANUAL_BASE, CONF_MANUAL_FEE)
-        schema = self.add_suggested_values_to_schema(
-            vol.Schema(
-                {vol.Optional(key): factor if key == CONF_MANUAL_FACTOR else number for key in keys}
-            ),
-            {key: self._data.get(key) for key in keys},
-        )
-        return self.async_show_form(step_id="signed_rate", data_schema=schema)
-
-    async def async_step_dso(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        region = self._data[CONF_REGION]
-        options = _dso_options(region, getattr(self, "_candidates", ()))
-        if user_input is None and len(options) == 1:
-            # The postcode names the operator: there is nothing to pick.
-            user_input = {CONF_DSO: options[0]["value"]}
-        if user_input is not None:
-            self._data[CONF_DSO] = user_input[CONF_DSO]
-            if self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM:
-                return await self.async_step_custom_energy()
-            for key in CUSTOM_KEYS:
-                self._data.pop(key, None)
-            return await self.async_step_household()
-        current = self._data.get(CONF_DSO)
-        default = current if any(o["value"] == current for o in options) else vol.UNDEFINED
-        schema = vol.Schema({vol.Required(CONF_DSO, default=default): _select(options)})
-        return self.async_show_form(step_id="dso", data_schema=schema)
-
-    def _custom_form(self, step_id: str, keys: tuple[str, ...]) -> ConfigFlowResult:
-        number = NumberSelector(
-            NumberSelectorConfig(min=0, max=10_000, step="any", mode=NumberSelectorMode.BOX)
-        )
-        schema = self.add_suggested_values_to_schema(
-            vol.Schema({vol.Required(key): number for key in keys}),
-            {key: self._data.get(key) for key in keys},
-        )
-        return self.async_show_form(step_id=step_id, data_schema=schema)
-
-    async def async_step_custom_energy(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        if user_input is not None:
-            self._data.update({k: float(v) for k, v in user_input.items()})
-            return await self.async_step_custom_network()
-        return self._custom_form("custom_energy", (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE))
-
-    async def async_step_custom_network(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        region = self._data[CONF_REGION]
-        keys: tuple[str, ...] = (
-            CONF_CUSTOM_T1_FIXED,
-            CONF_CUSTOM_T1_PROP,
-            CONF_CUSTOM_T2_FIXED,
-            CONF_CUSTOM_T2_PROP,
-            CONF_CUSTOM_TRANSPORT,
-            CONF_CUSTOM_METERING,
-            CONF_CUSTOM_EXCISE_LOW,
-            CONF_CUSTOM_EXCISE_HIGH,
-        )
-        if region == REGION_BRUSSELS:
-            keys += (CONF_CUSTOM_LEVY,)
-        if user_input is not None:
-            for key in CUSTOM_KEYS:
-                if key in (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE):
-                    continue
-                if key in user_input:
-                    self._data[key] = float(user_input[key])
-                else:
-                    self._data.pop(key, None)
-            return await self.async_step_household()
-        return self._custom_form("custom_network", keys)
-
-    async def async_step_household(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        brussels = self._data[CONF_REGION] == REGION_BRUSSELS
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            for key in (CONF_GAS_METER, CONF_CONVERSION_FACTOR):
-                if user_input.get(key) is None:
-                    self._data.pop(key, None)
-            self._data.update(user_input)
-        if (
-            user_input is not None
-            and not user_input.get(CONF_CARD_ARCHIVE)
-            and _needs_archive(self._data)
-        ):
-            # Cards published as page images: the archive's reading is the
-            # only card those days can be priced on. The form comes back
-            # with the rest as entered.
-            errors[CONF_CARD_ARCHIVE] = "card_archive_needed"
-        elif user_input is not None:
-            if not brussels:
-                self._data.pop(CONF_CALIBER, None)
-            # The factor step stores the factor, or leads to the station list
-            # when it was left empty.
-            return await self.async_step_factor(
-                {CONF_CONVERSION_FACTOR: self._data.get(CONF_CONVERSION_FACTOR)}
-            )
-        # The custom card types the two lower tiers only, and a volume above
-        # them falls in the third.
-        top = TIER_T2 if self._data[CONF_SUPPLIER] == SUPPLIER_CUSTOM else TIER_T3
-        fields: dict[Any, Any] = {
-            vol.Required(
-                CONF_ANNUAL_CONSUMPTION_KWH,
-                default=float(
-                    self._data.get(CONF_ANNUAL_CONSUMPTION_KWH, DEFAULT_ANNUAL_CONSUMPTION_KWH)
-                ),
-            ): NumberSelector(
-                NumberSelectorConfig(
-                    min=0,
-                    max=dict(TIER_BOUNDS_KWH)[top],
-                    step="any",
-                    mode=NumberSelectorMode.BOX,
-                    unit_of_measurement="kWh",
-                )
-            ),
-        }
-        if brussels:
-            fields[
-                vol.Required(CONF_CALIBER, default=self._data.get(CONF_CALIBER, DEFAULT_CALIBER))
-            ] = _select(list(CALIBERS), translation_key="caliber")
-        fields[vol.Optional(CONF_GAS_METER)] = EntitySelector(
-            EntitySelectorConfig(domain=Platform.SENSOR, device_class=["gas", "energy"])
-        )
-        fields[vol.Optional(CONF_CONVERSION_FACTOR)] = _factor_selector()
-        fields[
-            vol.Required(
-                CONF_CARD_ARCHIVE,
-                default=bool(self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE)),
-            )
-        ] = BooleanSelector()
-        fields[
-            vol.Required(
-                CONF_DAILY_COMPARE,
-                default=bool(self._data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE)),
-            )
-        ] = BooleanSelector()
-        # Suggested rather than defaults, so a cleared field reaches here empty.
-        schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields),
-            {key: self._data.get(key) for key in (CONF_GAS_METER, CONF_CONVERSION_FACTOR)},
-        )
-        return self.async_show_form(step_id="household", data_schema=schema, errors=errors)
-
-    async def async_step_station(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            self._data[CONF_STATION] = user_input[CONF_STATION]
-            self._data.pop(CONF_CONVERSION_FACTOR, None)
-            return await self._async_finish()
-        if getattr(self, "_stations_cache", None) is None:
-            try:
-                async with asyncio.timeout(60):
-                    self._stations_cache = await _stations(self.hass)
-            except (calorific.CalorificError, TimeoutError):
-                self._stations_cache = None
-                errors["base"] = "stations_unavailable"
-        if not self._stations_cache and self._data.get(CONF_STATION):
-            # Atrias could not be read, but the entry names its station
-            # already: the list is only needed to pick another, so its
-            # settings save with the one it has.
-            self._data.pop(CONF_CONVERSION_FACTOR, None)
-            return await self._async_finish()
-        if not self._stations_cache:
-            # Atrias could not be read: a factor from the bill still works.
-            self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
-            return await self.async_step_factor(errors=errors or {"base": "stations_unavailable"})
-        options = [
-            SelectOptionDict(value=station.ean, label=station.name)
-            for station in self._stations_cache
-        ]
-        current = self._data.get(CONF_STATION)
-        if current and not any(o["value"] == current for o in options):
-            # Out of use lately: still the entry's, priced on its last value,
-            # and kept on offer so its settings save without another pick.
-            options.append(SelectOptionDict(value=current, label=current))
-        default = current or vol.UNDEFINED
-        schema = vol.Schema({vol.Required(CONF_STATION, default=default): _select(options)})
-        return self.async_show_form(step_id="station", data_schema=schema, errors=errors)
-
-    async def async_step_factor(
-        self,
-        user_input: dict[str, Any] | None = None,
-        errors: dict[str, str] | None = None,
-    ) -> ConfigFlowResult:
-        if user_input is not None:
-            if user_input.get(CONF_CONVERSION_FACTOR) is None:
-                # No bill at hand: the station list.
-                self._data[CONF_CONVERSION_MODE] = CONVERSION_STATION
-                return await self.async_step_station()
-            self._data[CONF_CONVERSION_FACTOR] = float(user_input[CONF_CONVERSION_FACTOR])
-            self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
-            self._data.pop(CONF_STATION, None)
-            return await self._async_finish()
-        schema = vol.Schema({vol.Optional(CONF_CONVERSION_FACTOR): _factor_selector()})
-        # Suggested rather than a default, so a cleared field reaches here
-        # empty instead of coming back as the old factor.
-        schema = self.add_suggested_values_to_schema(
-            schema, {CONF_CONVERSION_FACTOR: self._data.get(CONF_CONVERSION_FACTOR)}
-        )
-        return self.async_show_form(step_id="factor", data_schema=schema, errors=errors or {})
 
 
 def _title(data: dict[str, Any]) -> str:
