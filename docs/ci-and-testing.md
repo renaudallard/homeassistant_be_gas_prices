@@ -43,6 +43,9 @@ cache and 54 seconds with a full one.
   and the tariff as published for every other test.
 - `test_fetch.py`: the shared HTTP helpers against a local server
   (`socket_enabled`, since the harness blocks sockets otherwise).
+- `test_module_size.py`: every integration module under 1000 lines, the
+  generated postcode table aside; a module past it is split along a seam it
+  already has.
 - `test_live_check.py`, `test_archive_cards.py`: the two daily scripts, with
   no network. Both also run steps of their workflows and hold each job of
   those to the tokens it may see.
