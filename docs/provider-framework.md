@@ -16,6 +16,7 @@ A supplier module exposes `EXTRACTOR: SupplierExtractor` (`providers/base.py`):
 | `probe(session, contract, region)` | Optional. A cheap freshness key; the same key means the card is unchanged. |
 | `fetch_for_month(session, contract, region, month)` | Optional. The card published for a past month, None where the supplier serves none, `ExtractorError` only on a failure that may recover (`is_transient_fetch_error`). Refuses a card that names another month, except a card in force until the next one (Bolt's variable cards, `valid_until` None), which names the month it was first published for. Uses Home Assistant's clock. `_validity.month_card` does all but the lookup. |
 | `fetch_index(session)` | Optional. The supplier's own index publication as `{index name: {"YYYY-MM": EUR/MWh}}`. |
+| `discover(session)` | Optional. The products the supplier lists as sold today, a registered contract by its id and anything else by an id naming it, which the live check holds against `contracts`. Frank's reads its terms page. |
 | `deprecated_until`, `deprecated_successor` | A supplier leaving the market. |
 | `sweep_cost_s` | Roughly what one card costs to fetch and parse, for the comparison's scheduling. |
 | `images_only` | The supplier publishes its cards as page images, which only the card archive's reading prices: the flow requires the archive, and an entry without it stops at setup. |

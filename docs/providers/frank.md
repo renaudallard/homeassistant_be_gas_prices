@@ -16,6 +16,11 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   the "Gas ZTP JN Pro November 2026" file, which carries a card titled "JN
   Pro, oktober 2026". `fetch` does not read the page, and picks the tier's
   own uploads from Sanity: a "JN Pro" file is no JN card.
+- `discover` reads those links for the live check's catalog rows: each
+  link's tier word is the title word of a contract, so the page of 29
+  September 2026 reads as Korting listed and no Plus, and November's as the
+  five tiers sold. A tier word no contract has is `frank_variable_<word>`,
+  any other gas card `frank_gas_<words>`.
 - File names: `Frank Energie Tariefkaart Gas[ ZTP][ <tier>] <Maand> <jaar>.pdf`.
   The tiers' September 2026 files drop the ZTP ("Gas HV September 2026"),
   the other months carry it ("Gas ZTP HV Augustus 2026", sometimes with a
@@ -183,6 +188,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   (the October card's fee, read once, and the waiver stored),
   `test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused`.
 - `test_the_plus_card_reads_as_the_standard_tier_from_november_2026`.
+- The catalog: `test_the_terms_page_links_the_gas_tiers_sold` (the pages of
+  September and November 2026), `test_a_gas_card_no_contract_reads_is_named`,
+  `test_discover_reads_the_terms_page`.
 - `fetch` (newest month of the tier), `fetch_for_month` (the misnamed
   January upload skipped, the query's month and year, month refusal, the
   clipped card, transient raise), `probe` and `fetch_index`, with the fetch

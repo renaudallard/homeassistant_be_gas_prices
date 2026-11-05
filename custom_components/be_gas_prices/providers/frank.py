@@ -53,6 +53,8 @@ The formula carries its VAT, so it is not grossed again. The card only
 prints the formula at a VNR estimate ("Verwacht volgens methode VNR voor
 september 2026"). Frank publishes the realised index month by month in the
 "Index waarden" table of its terms page, which is what fetch_index reads.
+The same page links the card of every tier sold today, which is what
+discover reads for the live check.
 
 The subscription is printed per month. The cashback a tier prints (JN's,
 and HV's and Korting's up to September 2026) is not read: a snapshot has no
@@ -575,6 +577,41 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     return parse_index_page(await fetch_text(session, _TERMS_URL))
 
 
+# The terms page links the card of every product Frank sells today, the gas
+# ones as "Actuele Tariefkaart Gas Variabel (ZTP)" followed by the tier's
+# word but for the standard tier. On 5 November 2026 they were the standard,
+# HV, JN, Slim and Plus tiers: Korting's "VT" link left the page with the
+# tier, and Plus's came with its first card. A link's text stands in the
+# HTML, ended by "<", and in the page's script payload, ended by an escaped
+# quote.
+_CATALOG_RE = re.compile(r"Actuele Tariefkaart Gas\b([^<\\\"]*)")
+_CATALOG_TIER_RE = re.compile(r"Variabel \(ZTP\)(?: (\w+))?")
+_TIER_IDS = {title.casefold(): c.contract_id for c in _CONTRACTS for title in c.titles}
+
+
+def parse_catalog(page: str) -> set[str]:
+    """The products the terms page links a gas card for, by contract id.
+
+    A tier no contract reads is ``frank_variable_<word>`` and any other gas
+    card ``frank_gas_<words>``, so the live check names what it found.
+    """
+    out: set[str] = set()
+    for match in _CATALOG_RE.finditer(page):
+        name = " ".join(match.group(1).split())
+        tier = _CATALOG_TIER_RE.fullmatch(name)
+        if tier is None:
+            out.add("frank_gas_" + "_".join(re.findall(r"\w+", name.casefold())))
+            continue
+        word = (tier.group(1) or "").casefold()
+        out.add(_TIER_IDS.get(word, f"frank_variable_{word}"))
+    return out
+
+
+async def discover(session: aiohttp.ClientSession) -> set[str]:
+    """The gas products Frank sells today, as its terms page links them."""
+    return parse_catalog(await fetch_text(session, _TERMS_URL))
+
+
 EXTRACTOR = SupplierExtractor(
     id="frank",
     label="Frank Energie",
@@ -592,5 +629,6 @@ EXTRACTOR = SupplierExtractor(
     probe=probe,
     fetch_for_month=fetch_for_month,
     fetch_index=fetch_index,
+    discover=discover,
     sweep_cost_s=29.0,
 )

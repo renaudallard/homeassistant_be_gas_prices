@@ -33,6 +33,8 @@ says nothing about the card, and checks what came back:
   - the card is for the current month, unless it has no end date;
   - every supplier's index publication (its ``fetch_index``) reads, lists
     every index its cards are priced on, and has a recent value for each;
+  - every supplier's list of the products it sells (its ``discover``) names
+    the contracts registered for it, no more and no fewer;
   - the regulated figures agree across the fleet: per DSO the T1 and T2
     terms, transport and metering, and the federal excise, the energy
     contribution, the VAT rate a card states, the Walloon connection fee and
@@ -410,6 +412,48 @@ async def _check_supplier(
         else:
             checks.extend(_index_checks(ex, table, cards, today))
     return checks, cards
+
+
+async def check_catalogs(
+    session: aiohttp.ClientSession,
+    extractors: Iterable[SupplierExtractor],
+    *,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> list[Check]:
+    """Each supplier's list of the products it sells (its ``discover``)
+    against the contracts registered for it.
+
+    A product listed that no contract is wants adding, and a contract the
+    list no longer names was withdrawn or renamed. A withdrawn contract does
+    not count as registered, so its product listed again reads as new.
+    Frank's gas Plus tier went unseen for five days after its first card, on
+    30 October 2026, while nothing compared the two.
+    """
+    checks: list[Check] = []
+    for ex in extractors:
+        if ex.discover is None:
+            continue
+        label = f"{ex.id}/catalog"
+        try:
+            listed = await fetch_with_retry(functools.partial(ex.discover, session), sleep=sleep)
+        except Exception as err:  # reported like a card
+            checks.append(_failure(f"{label}: products listed", err))
+            continue
+        if not listed:
+            checks.append(
+                Check(
+                    f"{label}: products listed",
+                    "fail",
+                    "the list names no product: its page changed",
+                )
+            )
+            continue
+        registered = {c.id for c in ex.contracts if c.withdrawn is None}
+        new = ", ".join(sorted(listed - registered))
+        gone = ", ".join(sorted(registered - listed))
+        checks.append(Check(f"{label}: no new products", "fail" if new else "ok", new))
+        checks.append(Check(f"{label}: no products gone", "fail" if gone else "ok", gone))
+    return checks
 
 
 # ---- the regulated figures across the fleet --------------------------------
@@ -1136,6 +1180,7 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             checks += await check_fleet(
                 session, all_extractors(), today, sheet_unread=sheet.status == "transient"
             )
+            checks += await check_catalogs(session, all_extractors())
             # Report only, last: where a covered card failed to fetch or is
             # still the month before's, say where the supplier's own pages
             # put this month's card, if anywhere (scripts/card_finder.py).

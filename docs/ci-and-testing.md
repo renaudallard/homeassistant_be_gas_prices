@@ -150,6 +150,12 @@ integration uses and checks:
   has a recent value for it: the month before, or two months back in the
   first ten days of a month (TotalEnergies' history always two), four
   months back for a quarterly index;
+- every supplier's list of the products it sells (`discover`, Frank's terms
+  page so far) names the contracts registered for it, a withdrawn one left
+  out: a product no contract is fails `<supplier>/catalog: no new products`,
+  a contract the list no longer names `no products gone`, and a list that
+  does not read or names nothing `products listed`. Frank's Plus tier was
+  found by hand five days after its first card, before the list was read;
 - the regulated figures agree across the fleet, month by month: per DSO the
   T1 and T2 terms, transport and metering; the federal excise and energy
   contribution; the VAT rate a card states for its customers; the Walloon

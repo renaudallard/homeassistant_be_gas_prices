@@ -142,6 +142,11 @@ ArchivedSnapshotFetcher = Callable[
 
 IndexFetcher = Callable[[aiohttp.ClientSession], Awaitable[IndexTable]]
 
+# The products the supplier lists as sold today: a registered contract by its
+# id, anything else by an id naming it. Raises ExtractorError when the list
+# cannot be read.
+CatalogFetcher = Callable[[aiohttp.ClientSession], Awaitable[set[str]]]
+
 
 @dataclass(frozen=True, kw_only=True)
 class SupplierExtractor:
@@ -160,6 +165,9 @@ class SupplierExtractor:
     # The supplier's own publication of the index values its indexed prices
     # settle on. None for a supplier selling fixed prices only.
     fetch_index: IndexFetcher | None = None
+    # The supplier's own list of the products it sells, which the live check
+    # holds against ``contracts``. None where it publishes none.
+    discover: CatalogFetcher | None = None
     # Set when the supplier has announced it is leaving the residential
     # market: the config flow stops offering it and the comparisons leave it
     # out. Nothing compares these to the clock, and nothing reads the

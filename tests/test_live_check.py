@@ -63,6 +63,7 @@ from custom_components.be_gas_prices.providers.base import (
     SupplierSnapshot,
     TaxOverlay,
 )
+from tests import fixture_page
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -1073,6 +1074,88 @@ async def test_the_custom_and_withdrawn_suppliers_are_not_checked() -> None:
     assert await lc.check_fleet(None, [withdrawn, custom], TODAY, sleep=_no_sleep) == []
 
 
+def _selling(listed: set[str] | Exception) -> SupplierExtractor:
+    """A supplier with contracts ``shop_a`` and ``shop_b`` and ``shop_old``,
+    withdrawn, whose list of products answers ``listed``."""
+
+    async def discover(_session: Any) -> set[str]:
+        if isinstance(listed, Exception):
+            raise listed
+        return listed
+
+    contracts = tuple(
+        Contract(id=f"shop_{name}", label=name, kind="fixed", regions=frozenset({"flanders"}))
+        for name in ("a", "b")
+    )
+    old = Contract(
+        id="shop_old",
+        label="old",
+        kind="fixed",
+        regions=frozenset({"flanders"}),
+        withdrawn=date(2026, 10, 1),
+    )
+    return replace(_extractor("shop"), contracts=(*contracts, old), discover=discover)
+
+
+async def _catalog(listed: set[str] | Exception) -> list[tuple[str, str, str]]:
+    checks = await lc.check_catalogs(None, [_selling(listed), _extractor("quiet")], sleep=_no_sleep)
+    return [(c.label, c.status, c.detail) for c in checks]
+
+
+async def test_a_supplier_s_list_of_products_is_held_against_its_contracts() -> None:
+    """A product no contract is wants adding, a contract the list no longer
+    names was withdrawn, and a withdrawn one listed again is news. A
+    supplier with no list gets no row."""
+    assert await _catalog({"shop_a", "shop_b"}) == [
+        ("shop/catalog: no new products", "ok", ""),
+        ("shop/catalog: no products gone", "ok", ""),
+    ]
+    assert await _catalog({"shop_a", "shop_b", "shop_old", "shop_plus"}) == [
+        ("shop/catalog: no new products", "fail", "shop_old, shop_plus"),
+        ("shop/catalog: no products gone", "ok", ""),
+    ]
+    assert await _catalog({"shop_a"}) == [
+        ("shop/catalog: no new products", "ok", ""),
+        ("shop/catalog: no products gone", "fail", "shop_b"),
+    ]
+
+
+async def test_a_list_that_does_not_read_is_reported_like_a_card() -> None:
+    assert await _catalog(ExtractorError("HTTP 503 Service Unavailable")) == [
+        (
+            "shop/catalog: products listed",
+            "transient",
+            "ExtractorError: HTTP 503 Service Unavailable",
+        )
+    ]
+    assert await _catalog(ExtractorError("HTTP 404 Not Found")) == [
+        ("shop/catalog: products listed", "fail", "ExtractorError: HTTP 404 Not Found")
+    ]
+    assert await _catalog(set()) == [
+        ("shop/catalog: products listed", "fail", "the list names no product: its page changed")
+    ]
+
+
+@pytest.mark.parametrize(
+    ("page", "new", "gone"),
+    [
+        ("voorwaarden_nl.html", "frank_variable_korting", "frank_variable_plus"),
+        ("voorwaarden_nl_2026-11.html", "", ""),
+    ],
+)
+async def test_frank_s_terms_page_is_its_list_of_products(page: str, new: str, gone: str) -> None:
+    """On 29 September 2026 the page still linked Korting's VT card and had
+    no Plus yet, both of which the registry now says otherwise."""
+    from custom_components.be_gas_prices.providers import frank
+
+    with patch.object(frank, "fetch_text", AsyncMock(return_value=fixture_page("frank", page))):
+        checks = await lc.check_catalogs(None, [frank.EXTRACTOR], sleep=_no_sleep)
+    assert [(c.label, c.detail) for c in checks] == [
+        ("frank/catalog: no new products", new),
+        ("frank/catalog: no products gone", gone),
+    ]
+
+
 def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
     """The law, the tariff and the sheet read, without the network."""
 
@@ -1093,6 +1176,12 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
         assert kwargs == {"law_read": True, "tariff_read": True}
         return [lc.Check("federal: household excise, the law against FPS Finance's tariff", "ok")]
 
+    async def check_catalogs(_session: Any, extractors: Any) -> list[Any]:
+        # Asked of the registry, whose Frank lists its products.
+        assert any(ex.discover is not None for ex in extractors)
+        return [lc.Check("frank/catalog: no new products", "ok")]
+
+    monkeypatch.setattr(lc, "check_catalogs", check_catalogs)
     monkeypatch.setattr(lc, "check_excise_law", check_excise_law)
     monkeypatch.setattr(lc, "check_excise_tariff", check_excise_tariff)
     monkeypatch.setattr(lc, "check_protected_excise", check_protected_excise)
@@ -1116,9 +1205,9 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert lc.main() == 1
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     # Without the archive's checkout there is no VAT table to read.
-    assert capsys.readouterr().out.startswith(
-        "# Live check: 5 pass, 1 fail, 0 transient, 1 notices"
-    )
+    out = capsys.readouterr().out
+    assert out.startswith("# Live check: 6 pass, 1 fail, 0 transient, 1 notices")
+    assert "- [x] frank/catalog: no new products" in out
     assert fleets[-1]["sheet_unread"] is False
 
     async def sheet_down(*_args: Any, **_kwargs: Any) -> Any:

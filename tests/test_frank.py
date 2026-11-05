@@ -498,3 +498,30 @@ async def test_fetch_index_reads_the_terms_page() -> None:
         table = await frank.fetch_index(AsyncMock())
     assert fetched.call_args.args[1] == "https://www.frankenergie.be/nl/voorwaarden"
     assert table["M ZTP RLP0N EOD EEX"]["2026-08"] == pytest.approx(61.9)
+
+
+def test_the_terms_page_links_the_gas_tiers_sold() -> None:
+    """The page of 29 September 2026 links Korting's VT card and no Plus,
+    the page of 5 November links Plus's and no VT."""
+    tiers = {"frank_variable", "frank_variable_hv", "frank_variable_jn", "frank_variable_slim"}
+    september = frank.parse_catalog(fixture_page("frank", "voorwaarden_nl.html"))
+    assert september == tiers | {"frank_variable_korting"}
+    november = frank.parse_catalog(fixture_page("frank", "voorwaarden_nl_2026-11.html"))
+    assert november == tiers | {"frank_variable_plus"}
+
+
+def test_a_gas_card_no_contract_reads_is_named() -> None:
+    page = fixture_page("frank", "voorwaarden_nl_2026-11.html")
+    page = page.replace("(ZTP) Plus", "(ZTP) Flex").replace("Gas Variabel (ZTP) Slim", "Gas Vast")
+    found = frank.parse_catalog(page)
+    assert {"frank_variable_flex", "frank_gas_vast"} <= found
+    assert not found & {"frank_variable_plus", "frank_variable_slim"}
+
+
+async def test_discover_reads_the_terms_page() -> None:
+    assert frank.EXTRACTOR.discover is frank.discover
+    page = fixture_page("frank", "voorwaarden_nl_2026-11.html")
+    with patch.object(frank, "fetch_text", AsyncMock(return_value=page)) as fetched:
+        found = await frank.discover(AsyncMock())
+    assert fetched.call_args.args[1] == "https://www.frankenergie.be/nl/voorwaarden"
+    assert "frank_variable_plus" in found
