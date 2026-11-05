@@ -52,6 +52,9 @@ Aardgas Vast left the listing on 30 October 2026, Fix One being the fixed
 product sold since. A household on Vast is priced on its last card,
 October's, and its past issues are still read off the CDN.
 
+The listing links the card of every gas product sold, which is what discover
+reads for the live check.
+
 Every figure is 6% VAT inclusive, the formula included: it carries its own
 multiplier ("(0,1 X TTFDAW-RLP-M + 1,074) X 1,06"). Both variable products
 index on TTFDAW-RLP-M, the RLP-weighted mean of the ICIS Heren TTF day-ahead
@@ -177,6 +180,26 @@ def card_url(listing: str, contract_id: str) -> str:
     if match is None:
         raise ExtractorError(f"Eneco: the listing links no GAS_{token} card")
     return match.group(0)
+
+
+# Every gas card the listing links, by its token. Looser than card_url, so a
+# product named in an unexpected way still shows up as one.
+_LISTED_RE = re.compile(r"BC_[\d_]+_NL_ENECO_GAS_([A-Z_]+)\.pdf")
+
+
+def parse_catalog(listing: str) -> set[str]:
+    """The gas products the listing links a card for, by contract id; a
+    token no contract has is ``eneco_aardgas_<token>``."""
+    by_token = {c.token: c.contract_id for c in _CONTRACTS}
+    return {
+        by_token.get(token, f"eneco_aardgas_{token.lower()}")
+        for token in _LISTED_RE.findall(listing)
+    }
+
+
+async def discover(session: aiohttp.ClientSession) -> set[str]:
+    """The gas products Eneco sells today, as its listing links them."""
+    return parse_catalog(await fetch_text(session, _LISTING_URL))
 
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
@@ -491,5 +514,6 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     fetch_for_month=fetch_for_month,
     fetch_index=fetch_index,
+    discover=discover,
     sweep_cost_s=0.8,
 )

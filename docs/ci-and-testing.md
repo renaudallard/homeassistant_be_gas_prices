@@ -153,9 +153,9 @@ integration uses and checks:
   runs later still is a notice until its allowance lapses
   (`_KNOWN_INDEX_DELAYS`: TotalEnergies' TTF_M_RLP history, still the 17
   September 2026 upload in November, to 1 December), and fails from then on;
-- every supplier's list of the products it sells (`discover`, Frank's terms
-  page so far) names the contracts registered for it, a withdrawn one left
-  out: a product no contract is fails `<supplier>/catalog: no new products`,
+- every supplier's list of the products it sells (`discover`: Frank's terms
+  page, Eneco's card listing) names the
+  contracts registered for it, a withdrawn one left out: a product no contract is fails `<supplier>/catalog: no new products`,
   a contract the list no longer names `no products gone`, and a list that
   does not read or names nothing `products listed`. Frank's Plus tier was
   found by hand five days after its first card, before the list was read;

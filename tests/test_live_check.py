@@ -32,6 +32,7 @@ one rule each; none of them is a regulator's figure.
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import os
 import re
@@ -1166,22 +1167,28 @@ async def test_a_list_that_does_not_read_is_reported_like_a_card() -> None:
 
 
 @pytest.mark.parametrize(
-    ("page", "new", "gone"),
+    ("supplier", "page", "new", "gone"),
     [
-        ("voorwaarden_nl.html", "frank_variable_korting", "frank_variable_plus"),
-        ("voorwaarden_nl_2026-11.html", "", ""),
+        ("frank", "voorwaarden_nl.html", "frank_variable_korting", "frank_variable_plus"),
+        ("frank", "voorwaarden_nl_2026-11.html", "", ""),
+        ("eneco", "listing_nl.html", "eneco_aardgas_vast", "eneco_aardgas_fix_one"),
+        ("eneco", "listing_nl_2026-11.html", "", ""),
     ],
 )
-async def test_frank_s_terms_page_is_its_list_of_products(page: str, new: str, gone: str) -> None:
-    """On 29 September 2026 the page still linked Korting's VT card and had
-    no Plus yet, both of which the registry now says otherwise."""
-    from custom_components.be_gas_prices.providers import frank
-
-    with patch.object(frank, "fetch_text", AsyncMock(return_value=fixture_page("frank", page))):
-        checks = await lc.check_catalogs(None, [frank.EXTRACTOR], sleep=_no_sleep)
+async def test_a_supplier_s_own_page_is_its_list_of_products(
+    supplier: str, page: str, new: str, gone: str
+) -> None:
+    """In September 2026 Frank's terms page still linked Korting's VT card
+    and had no Plus yet, and Eneco's listing still linked Vast and not yet
+    Fix One, all of which the registry now says otherwise. The pages of
+    November list what is registered."""
+    module = importlib.import_module(f"custom_components.be_gas_prices.providers.{supplier}")
+    fetched = AsyncMock(return_value=fixture_page(supplier, page))
+    with patch.object(module, "fetch_text", fetched):
+        checks = await lc.check_catalogs(None, [module.EXTRACTOR], sleep=_no_sleep)
     assert [(c.label, c.detail) for c in checks] == [
-        ("frank/catalog: no new products", new),
-        ("frank/catalog: no products gone", gone),
+        (f"{supplier}/catalog: no new products", new),
+        (f"{supplier}/catalog: no products gone", gone),
     ]
 
 

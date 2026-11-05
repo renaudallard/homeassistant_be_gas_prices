@@ -494,3 +494,35 @@ async def test_fetch_index_reads_the_indexation_pdf() -> None:
     )
     assert fetched.call_args.kwargs["render"] is eneco.index_table_text
     assert table["TTFDAW-RLP-M"]["2026-08"] == pytest.approx(61.64)
+
+
+def test_the_listing_names_the_gas_products_sold() -> None:
+    """The listing of 30 September 2026 still linked Vast and not yet Fix
+    One; the one of 5 November links the three products sold. A token no
+    contract has is named after it."""
+    assert eneco.parse_catalog(fixture_page("eneco", "listing_nl.html")) == {
+        "eneco_aardgas_vast",
+        "eneco_aardgas_flex",
+        "eneco_aardgas_flex_one",
+    }
+    november = fixture_page("eneco", "listing_nl_2026-11.html")
+    assert eneco.parse_catalog(november) == {
+        "eneco_aardgas_fix_one",
+        "eneco_aardgas_flex",
+        "eneco_aardgas_flex_one",
+    }
+    renamed = november.replace("ENECO_GAS_FLEX_ONE", "ENECO_GAS_GREEN")
+    assert eneco.parse_catalog(renamed) == {
+        "eneco_aardgas_fix_one",
+        "eneco_aardgas_flex",
+        "eneco_aardgas_green",
+    }
+
+
+async def test_discover_reads_the_listing() -> None:
+    assert eneco.EXTRACTOR.discover is eneco.discover
+    page = fixture_page("eneco", "listing_nl_2026-11.html")
+    with patch.object(eneco, "fetch_text", AsyncMock(return_value=page)) as fetched:
+        found = await eneco.discover(AsyncMock())
+    assert fetched.call_args.args[1] == "https://eneco.be/nl/elektriciteit-gas/tariefkaarten/"
+    assert "eneco_aardgas_fix_one" in found

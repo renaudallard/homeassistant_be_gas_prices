@@ -18,6 +18,11 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   `/downloads/fr/` and is not read.
 - No probe: the listing sends `Cache-Control: no-store` and a new ETag on
   every request, and the card URL is only known from the listing.
+- `discover` reads the same listing for the live check's catalog rows: each
+  `GAS_<TOKEN>` link names a product, by the contract with that token
+  (`eneco_aardgas_<token>` for one no contract has). The listing of 30
+  September 2026 linked Vast and not yet Fix One, that of 5 November the
+  three products sold.
 
 ## Products and regions
 
@@ -169,6 +174,8 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Discovery: `test_listing_links_each_product_once`,
   `test_fix_never_takes_the_fix_one_card`,
   `test_fetch_reads_the_card_the_listing_links`.
+- Catalog: `test_the_listing_names_the_gas_products_sold`,
+  `test_discover_reads_the_listing`.
 - Withdrawn: `test_aardgas_vast_is_withdrawn`,
   `test_a_withdrawn_product_is_not_fetched_but_its_past_months_are`.
 - Archive: the `test_fetch_for_month_*` tests (URL, Brussels midnight,
