@@ -149,7 +149,10 @@ integration uses and checks:
 - every `fetch_index` reads, lists each index its cards are priced on, and
   has a recent value for it: the month before, or two months back in the
   first ten days of a month (TotalEnergies' history always two), four
-  months back for a quarterly index;
+  months back for a quarterly index. A publication already looked at that
+  runs later still is a notice until its allowance lapses
+  (`_KNOWN_INDEX_DELAYS`: TotalEnergies' TTF_M_RLP history, still the 17
+  September 2026 upload in November, to 1 December), and fails from then on;
 - every supplier's list of the products it sells (`discover`, Frank's terms
   page so far) names the contracts registered for it, a withdrawn one left
   out: a product no contract is fails `<supplier>/catalog: no new products`,

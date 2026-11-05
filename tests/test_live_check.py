@@ -947,6 +947,35 @@ def test_a_quarterly_index_may_lag_its_quarter() -> None:
     assert [c.status for c in checks] == ["ok", "ok"]
 
 
+def test_an_index_known_to_run_late_is_a_notice_until_its_allowance_lapses() -> None:
+    """TotalEnergies' gas history still ended at August 2026 on 5 November:
+    known, so reported and not filed, until 1 December. Another of its
+    indices as late fails, and so does this one from that day."""
+    extractor = _extractor("totalenergies")
+    cards = [
+        lc.Card(extractor, contract, "flanders", _snapshot("totalenergies", energy=_indexed(index)))
+        for contract, index in (("te_var", "TTF_M_RLP"), ("te_other", "M"))
+    ]
+    table = {"TTF_M_RLP": {"2026-08": 61.662}, "M": {"2026-08": 61.7}}
+
+    def statuses(today: date) -> dict[str, str]:
+        return {c.label: c.status for c in lc._index_checks(extractor, table, cards, today)}
+
+    assert statuses(date(2026, 11, 5)) == {
+        "totalenergies: index publication": "ok",
+        "totalenergies: index M": "fail",
+        "totalenergies: index TTF_M_RLP": "notice",
+    }
+    assert statuses(date(2026, 12, 1))["totalenergies: index TTF_M_RLP"] == "fail"
+    (late,) = [
+        c
+        for c in lc._index_checks(extractor, table, cards, date(2026, 11, 5))
+        if c.status == "notice"
+    ]
+    assert late.detail.startswith("the newest value is for 2026-08, more than 2 months before")
+    assert "17 September 2026" in late.detail
+
+
 async def test_failures_are_told_apart_and_set_the_exit_code(tmp_path: Path) -> None:
     """A card that cannot be read fails the run and is filed; one that did
     not answer is reported and never filed; the fingerprint is the failing

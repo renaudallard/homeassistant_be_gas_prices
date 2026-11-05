@@ -138,6 +138,10 @@ The header is checked, because the columns are read by position. The
 quarterly ZTP_Q_RLP is printed on every month of its quarter and stays empty
 until the quarter is over. A two-figure row is therefore missing the last
 column. On 2026-09-29 the last row was 08/2026.
+It was still the upload of 17 September 2026 on 5 November, last row
+08/2026, so September and October are billed at August's value, marked
+provisional, until TotalEnergies publishes theirs. The live check reports
+that as a notice until 1 December (`_KNOWN_INDEX_DELAYS`).
 
 Every current card indexes on TTF_M_RLP. ZTP_M_RLP and ZTP_Q_RLP are
 published in the same table and returned too. The history of older products

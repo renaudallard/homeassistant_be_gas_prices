@@ -159,6 +159,17 @@ _INDEX_GRACE_DAYS = 10
 # Publications that run further behind by design: TotalEnergies' history
 # ends two months back (docs/providers/totalenergies.md).
 _INDEX_LAG_BY_SUPPLIER = {"totalenergies": 2}
+# Index publications behind even that, already looked at, by supplier and
+# index: the day the allowance lapses and why. Nothing here can make the
+# supplier publish, so until then the row is a notice; a publication still
+# behind on that day is news again and fails.
+_KNOWN_INDEX_DELAYS: dict[tuple[str, str], tuple[date, str]] = {
+    ("totalenergies", "TTF_M_RLP"): (
+        date(2026, 12, 1),
+        "its history is still the upload of 17 September 2026, so the months "
+        "after its last value are billed at that value, marked provisional",
+    ),
+}
 # A supplier whose fetches fail on the network this many times in a row is
 # not answering this runner today, and every further fetch would cost the
 # same retries and pauses: a host that accepts and never answers would run
@@ -359,11 +370,12 @@ def _index_checks(
                 allowed += 1
             allowed = max(allowed, _INDEX_LAG_BY_SUPPLIER.get(ex.id, 0))
         if _lag(today, month) > allowed:
-            yield Check(
-                label,
-                "fail",
-                f"the newest value is for {newest}, more than {allowed} months before {today}",
-            )
+            detail = f"the newest value is for {newest}, more than {allowed} months before {today}"
+            known = _KNOWN_INDEX_DELAYS.get((ex.id, index))
+            if known is not None and today < known[0]:
+                yield Check(label, "notice", f"{detail}; {known[1]}")
+            else:
+                yield Check(label, "fail", detail)
             continue
         yield Check(label, "ok", f"{newest}: {series[newest]:g} EUR/MWh")
 
@@ -1142,8 +1154,9 @@ def render_report(checks: list[Check]) -> str:
         lines,
         "Notices",
         "Figures the integration does not bill as printed, figures the cards "
-        "disagree on with no majority to measure them against, and cards published "
-        "as page images the card archive has not read yet. Reported, never filed.",
+        "disagree on with no majority to measure them against, cards published "
+        "as page images the card archive has not read yet, and index publications "
+        "known to run late. Reported, never filed.",
         by_status["notice"],
     )
     lines += ["## All checks", ""]
