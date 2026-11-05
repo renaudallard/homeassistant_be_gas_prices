@@ -1173,15 +1173,22 @@ async def test_a_list_that_does_not_read_is_reported_like_a_card() -> None:
         ("frank", "voorwaarden_nl_2026-11.html", "", ""),
         ("eneco", "listing_nl.html", "eneco_aardgas_vast", "eneco_aardgas_fix_one"),
         ("eneco", "listing_nl_2026-11.html", "", ""),
+        (
+            "mega",
+            "cartes-tarifaires.html",
+            "mega_offpeak_fixed, mega_offpeak_flex, mega_prepaid_fixed, mega_prepaid_flex",
+            "",
+        ),
+        ("mega", "cartes-tarifaires_2026-11.html", "", ""),
     ],
 )
 async def test_a_supplier_s_own_page_is_its_list_of_products(
     supplier: str, page: str, new: str, gone: str
 ) -> None:
     """In September 2026 Frank's terms page still linked Korting's VT card
-    and had no Plus yet, and Eneco's listing still linked Vast and not yet
-    Fix One, all of which the registry now says otherwise. The pages of
-    November list what is registered."""
+    and had no Plus yet, Eneco's listing still linked Vast and not yet Fix
+    One, and Mega's its off-peak and prepaid cards, all of which the registry
+    now says otherwise. The pages of November list what is registered."""
     module = importlib.import_module(f"custom_components.be_gas_prices.providers.{supplier}")
     fetched = AsyncMock(return_value=fixture_page(supplier, page))
     with patch.object(module, "fetch_text", fetched):

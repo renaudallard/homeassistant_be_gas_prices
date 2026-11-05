@@ -35,7 +35,8 @@ carry no date at all ("Prepaid", "Offpeak-Bi-Var"). It cannot be predicted,
 and gas suffixes are not the electricity ones (Online Flex is "Online0109"
 here, "Online0109-Green" there), so the current card is found on the public
 listing, https://www.mega.be/fr/energie/cartes-tarifaires, where every card
-link carries a ``data-product-element="<Product>"`` attribute.
+link carries a ``data-product-element="<Product>"`` attribute. The same links are
+what discover reads for the live check.
 
 The CDN keeps past months under the same grammar, which is the archive
 (Smart Flex reaches back to January 2024 at least). The listing points at
@@ -212,9 +213,10 @@ _CONTRACTS: tuple[_ContractDef, ...] = (
         withdrawn=_OFFPEAK_PREPAID_WITHDRAWN,
         last_card="102026-Offpeak-Bi0110-Fix",
     ),
-    # Off the listing from the November 2026 cards, in every region, while
-    # the fixed-price page still sells it and the CDN serves its November
-    # card under October's name moved a month.
+    # Off the listing with the first November 2026 cards, in every region,
+    # while the fixed-price page still sold it and the CDN served its November
+    # card under October's name moved a month. Back on it by 5 November; the
+    # last card still stands in should it go again.
     _ContractDef(
         "mega_zen_fixed",
         "Mega Zen Fixed",
@@ -271,6 +273,32 @@ def card_url(listing: str, contract_id: str, region: str) -> str:
     if contract.last_card:
         return archive_url(_last_card_url(contract, code), dt_util.now().date())
     raise ExtractorError(f"Mega {contract_id}: no {code} card on the listing")
+
+
+# Every product whose listing element links a residential gas card; the SME
+# cards are -NG-B2B- and the electricity ones -EL-.
+_LISTED_RE = re.compile(r'data-product-element="([^"]+)"[^>]*?href="' + re.escape(_CARD_BASE))
+
+
+def parse_catalog(listing: str) -> set[str]:
+    """The gas products the listing links a card for, by contract id; a
+    product no contract is gets ``mega_<words>``.
+
+    A product read off its ``last_card`` is counted as long as it is sold:
+    the listing dropped Zen Fixed for the first days of November 2026 while
+    the fixed-price page still sold it, and that is no news.
+    """
+    by_name = {c.listing_name: c.contract_id for c in _CONTRACTS}
+    listed = {
+        by_name.get(name, "mega_" + "_".join(re.findall(r"[a-z0-9]+", name.lower())))
+        for name in _LISTED_RE.findall(listing)
+    }
+    return listed | {c.contract_id for c in _CONTRACTS if c.last_card and c.withdrawn is None}
+
+
+async def discover(session: aiohttp.ClientSession) -> set[str]:
+    """The gas products Mega sells today, as its listing links them."""
+    return parse_catalog(await fetch_text(session, _LISTING_URL))
 
 
 def _last_card_url(contract: _ContractDef, code: str) -> str:
@@ -647,5 +675,6 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     fetch_for_month=fetch_for_month,
     fetch_index=fetch_index,
+    discover=discover,
     sweep_cost_s=2.1,
 )

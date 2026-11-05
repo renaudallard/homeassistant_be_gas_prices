@@ -22,9 +22,17 @@ electricity listing lost Dynamic Wallonia overnight in July 2026), another
 region's URL is rewritten to the region's segment; a card not published
 there fails on the CDN's stub, one for another region on `require_region`.
 A product no region links any more takes its `last_card`, moved to this
-month: Zen Fixed, which the November 2026 listing dropped in every region
-while the fixed-price page still sells it and the CDN serves its November
-card.
+month: Zen Fixed, which the first November 2026 listing dropped in every
+region while the fixed-price page still sold it and the CDN served its
+November card. It was back on the listing by 5 November.
+
+`discover` reads the same anchors for the live check's catalog rows: every
+product with a residential gas card (`-NG-B2C-`) on the listing, by its
+contract (`mega_<words>` for a name no contract has); the SME cards are
+`-NG-B2B-`. A product read off its `last_card` while it is still sold counts
+whether listed or not, so Zen Fixed leaving the listing again is no news.
+The listing of September 2026 linked the off-peak and prepaid products,
+withdrawn since; that of 5 November the eight products sold.
 
 The CDN answers a card it does not have with a 200 HTML page (11721 bytes in
 September 2026). `fetch_pdf_text` refuses it by its magic bytes.
@@ -220,6 +228,9 @@ energy leg a contract signed on it is priced on (Smart Fixed of November
   `test_brussels_card_reads_the_per_meter_levy`: full rows per region,
   transport, metering, connection fee, excise, levy table.
 - `test_july_card_prints_the_old_excise_and_the_energy_contribution`.
+- Catalog: `test_the_listing_names_the_gas_products_sold`,
+  `test_a_product_read_off_its_last_card_is_sold_while_unlisted`,
+  `test_discover_reads_the_listing`.
 - Refusals: another product, another region, unknown contract, and a card
   missing the formula, the index definition, the contribution statement,
   transport or the month. A Walloon card without the connection fee reads:

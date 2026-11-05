@@ -601,3 +601,47 @@ def test_contracts_and_regions() -> None:
     assert {c.kind for c in by_id.values()} == {"fixed", "indexed"}
     assert sum(c.kind == "indexed" for c in by_id.values()) == 6
     assert not any(c.professional for c in by_id.values())
+
+
+_SOLD = {
+    "mega_smart_flex",
+    "mega_cosy_flex",
+    "mega_online_flex",
+    "mega_offpeak_impact",
+    "mega_smart_fixed",
+    "mega_cosy_fixed",
+    "mega_online_fixed",
+    "mega_zen_fixed",
+}
+
+
+def test_the_listing_names_the_gas_products_sold() -> None:
+    """Every product whose element links a residential gas card, the SME
+    cards and the electricity ones left out. The listing of September 2026
+    still linked the off-peak and prepaid products, withdrawn since."""
+    assert mega.parse_catalog(fixture_page("mega", "cartes-tarifaires_2026-11.html")) == _SOLD
+    assert mega.parse_catalog(fixture_page("mega", "cartes-tarifaires.html")) == _SOLD | {
+        "mega_offpeak_flex",
+        "mega_offpeak_fixed",
+        "mega_prepaid_flex",
+        "mega_prepaid_fixed",
+    }
+
+
+def test_a_product_read_off_its_last_card_is_sold_while_unlisted() -> None:
+    """Zen Fixed left the listing for the first days of November 2026 while
+    it was still sold; a name no contract has is named after it."""
+    november = fixture_page("mega", "cartes-tarifaires_2026-11.html")
+    unlisted = november.replace('data-product-element="Zen Fixed"', 'data-x="Zen Fixed"')
+    assert unlisted != november
+    assert mega.parse_catalog(unlisted) == _SOLD
+    renamed = november.replace('data-product-element="Cosy Flex"', 'data-product-element="Cosy Go"')
+    assert mega.parse_catalog(renamed) == _SOLD - {"mega_cosy_flex"} | {"mega_cosy_go"}
+
+
+async def test_discover_reads_the_listing() -> None:
+    assert mega.EXTRACTOR.discover is mega.discover
+    page = fixture_page("mega", "cartes-tarifaires_2026-11.html")
+    with patch.object(mega, "fetch_text", AsyncMock(return_value=page)) as fetched:
+        assert await mega.discover(AsyncMock()) == _SOLD
+    assert fetched.call_args.args[1] == "https://www.mega.be/fr/energie/cartes-tarifaires"
