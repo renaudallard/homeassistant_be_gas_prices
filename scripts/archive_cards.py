@@ -895,6 +895,35 @@ def _parser_digest() -> str:
     return digest.hexdigest()
 
 
+def rerender_due(out: Path) -> bool:
+    """Whether the next run replays the archive and renders kept cards afresh
+    in it, their texts made by other text readers or render code than the
+    installed ones; the workflow sizes that run's budget on the same answer.
+    Only until the replay has run under these readers: a row it could not
+    replay keeps its old texts, and must not hold every later run on the
+    long budget. A card read off its pixels does not count: a new OCR engine
+    reads only those again, a dozen, which the ordinary budget covers. An
+    archive never stamped is not replayed, only stamped."""
+    stamp = read_stamp(out)
+    if stamp is None or stamp == _parser_digest():
+        return False
+    readers = readers_line()
+    for path in out.glob(ROWS_GLOB):
+        try:
+            sources = json.loads(path.read_text(encoding="utf-8")).get("_sources", [])
+        except ValueError:
+            continue
+        for source in sources:
+            if (
+                isinstance(source, dict)
+                and "pdf" in source
+                and "ocr" not in source
+                and source.get("readers") != readers
+            ):
+                return True
+    return False
+
+
 def _upload(url: str) -> tuple[str, int]:
     """A card's address without Drupal's re-upload suffix, and which upload
     it names: -1 for the plain name, n for ``<name>_<n>.pdf``."""

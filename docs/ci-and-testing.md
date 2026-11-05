@@ -386,7 +386,10 @@ render fix renders every card afresh, in the archive and in the live check,
 for as long as it takes. A replay renders such a card again from its kept
 bytes rather than parsing the old text, so a render fix or a reader upgrade,
 both in the replay stamp, also reaches the months the walk no longer
-downloads. The
+downloads. Rendering every kept card takes hours, so the workflow asks
+`rerender_due` first and gives such a run's walk six hours instead of one;
+the run of 5 November 2026, the first after the render digest moved to
+`_pdf_render.py`, stopped at the hour and stored nothing. The
 live check serves the archive's OCR readings as they are: it installs no
 engine and checks the figures the archive read.
 

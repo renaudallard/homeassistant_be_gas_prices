@@ -1445,6 +1445,41 @@ class _NewReadersAcme(_Acme):
         return payload.decode("ascii").replace("price", "p r i c e")
 
 
+async def test_only_a_text_reader_change_is_a_rerender(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The workflow sizes a run's budget on this answer. A card read off its
+    pixels does not count: a new OCR engine reads only those again. Once the
+    replay ran under these readers it is no longer due, and an archive never
+    stamped is only stamped."""
+    out = tmp_path / "gas"
+
+    def readers(line: str) -> None:
+        monkeypatch.setattr(card_texts, "readers_line", lambda: line)
+        monkeypatch.setattr(ac, "readers_line", lambda: line)
+
+    readers("pypdf==1 pdfplumber==1")
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    stamp = out / "parser.txt"
+    assert not ac.rerender_due(out)
+    stamp.write_text("an older parser\n", encoding="utf-8")
+    assert not ac.rerender_due(out)
+    readers("pypdf==2 pdfplumber==1")
+    assert ac.rerender_due(out)
+    stamp.write_text(f"{ac._parser_digest()}\n", encoding="utf-8")
+    assert not ac.rerender_due(out)
+    stamp.unlink()
+    assert not ac.rerender_due(out)
+    stamp.write_text("an older parser\n", encoding="utf-8")
+    path = out / ROW / "2026-09.json"
+    row = json.loads(path.read_text(encoding="utf-8"))
+    for source in row["_sources"]:
+        if "pdf" in source:
+            source["ocr"] = "0.4"
+    path.write_text(json.dumps(row), encoding="utf-8")
+    assert not ac.rerender_due(out)
+
+
 async def test_new_readers_render_the_card_again_on_every_run(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

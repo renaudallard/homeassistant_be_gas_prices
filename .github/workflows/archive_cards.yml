@@ -95,13 +95,23 @@ jobs:
           git clone -q --depth=1 "https://github.com/${CARDS_REPO}.git" tmp/cards
           mkdir -p tmp/cards/gas
 
+      - name: Size the walk's budget
+        id: budget
+        # A kept card whose text other readers or render code made is
+        # rendered afresh, every one after a reader upgrade or a render code
+        # change; the script decides from the same records on the rows.
+        run: |
+          due=$(python -c 'import sys; sys.path.insert(0, "scripts"); from pathlib import Path; import archive_cards; print(str(archive_cards.rerender_due(Path("tmp/cards/gas"))).lower())')
+          echo "rerender=$due" >> "$GITHUB_OUTPUT"
+
       - name: Store today's cards
         id: store
         # A daily walk is a couple of hundred cards; a parse that never
         # returns is bounded per card by the script. A backfill asks one
-        # archived card per supplier, contract, region and month on top, so
-        # it gets six hours.
-        timeout-minutes: ${{ (github.event.inputs.backfill_months != '' && github.event.inputs.backfill_months != '0') && 360 || 60 }}
+        # archived card per supplier, contract, region and month on top, and
+        # a run that renders every kept card again outlasts the hour (5
+        # November 2026 stopped at it), so either gets six hours.
+        timeout-minutes: ${{ (steps.budget.outputs.rerender == 'true' || (github.event.inputs.backfill_months != '' && github.event.inputs.backfill_months != '0')) && 360 || 60 }}
         # The dispatch inputs reach the shell through the environment, not
         # pasted into the command, so what is typed there is only ever an
         # argument.
