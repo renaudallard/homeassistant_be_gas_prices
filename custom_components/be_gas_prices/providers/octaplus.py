@@ -36,6 +36,8 @@ BASICONLINE, BOOSTFLEX, ECOBOOSTFLEX, SMARTVARIABLE, BOOSTFIX and
 ECOBOOSTFIX. Flux, Eco Flux, Fixed and Eco Fixed were withdrawn that month,
 and their past cards are still read from the archive for the households
 still under contract on them.
+The tariff page links every product's cards, which is what discover reads
+for the live check.
 
 Both regional cards print the same energy figures and both regions' DSO
 tables; the Walloon one adds the connection fee column. Every figure is VAT
@@ -118,6 +120,8 @@ _ARCHIVE_SHEET_URL = "https://srv.octaplus.be/websiterest/getTariffSheet"
 # The short link the cards name; it redirects to the parameter PDF, whose file
 # name is not something the cards promise.
 _INDEX_URL = "https://www.octaplus.be/prixgaz"
+# The tariff page, which links the card of every product sold.
+_TARIFS_URL = "https://www.octaplus.be/fr/electricite-gaz-naturel/tarifs"
 
 _REGION_TO_CODE: dict[str, str] = {
     REGION_FLANDERS: "VL",
@@ -185,6 +189,22 @@ async def probe(session: aiohttp.ClientSession, contract_id: str, region: str) -
         return None
     key = await head_freshness_key(session, _card_url(contract, code))
     return None if key is None else f"{key} {dt_util.now().date():%Y-%m}"
+
+
+# Every residential gas card the tariff page links, by its slug.
+_LISTED_RE = re.compile(r"G_OCTA_([A-Z]+)_RE_(?:VL|WL)_FR\.pdf")
+
+
+def parse_catalog(page: str) -> set[str]:
+    """The gas products the tariff page links a card for, by contract id; a
+    slug no contract has is ``octaplus_<slug>``."""
+    by_slug = {c.slug: c.contract_id for c in _CONTRACTS}
+    return {by_slug.get(slug, f"octaplus_{slug.lower()}") for slug in _LISTED_RE.findall(page)}
+
+
+async def discover(session: aiohttp.ClientSession) -> set[str]:
+    """The gas products OCTA+ sells today, as its tariff page links them."""
+    return parse_catalog(await fetch_text(session, _TARIFS_URL))
 
 
 async def fetch(session: aiohttp.ClientSession, contract_id: str, region: str) -> SupplierSnapshot:
@@ -611,5 +631,6 @@ EXTRACTOR = SupplierExtractor(
     probe=probe,
     fetch_for_month=fetch_for_month,
     fetch_index=fetch_index,
+    discover=discover,
     sweep_cost_s=4.5,
 )

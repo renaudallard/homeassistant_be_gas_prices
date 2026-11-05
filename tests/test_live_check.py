@@ -1180,6 +1180,7 @@ async def test_a_list_that_does_not_read_is_reported_like_a_card() -> None:
             "",
         ),
         ("mega", "cartes-tarifaires_2026-11.html", "", ""),
+        ("octaplus", "tarifs_2026-11.html", "", ""),
     ],
 )
 async def test_a_supplier_s_own_page_is_its_list_of_products(

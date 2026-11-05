@@ -757,3 +757,35 @@ async def test_a_withdrawn_product_has_no_current_card() -> None:
     assert await octaplus.probe(session, "octaplus_fixed", REGION_FLANDERS) is None
     session.get.assert_not_called()
     session.head.assert_not_called()
+
+
+def test_the_tariff_page_names_the_gas_products_sold() -> None:
+    """The residential gas cards of 5 November 2026, the Brussels
+    professional ones and the electricity ones left out. Until October the
+    page also linked Flux, withdrawn since; a slug no contract has is named
+    after it."""
+    page = fixture_page("octaplus", "tarifs_2026-11.html")
+    sold = {
+        "octaplus_basiconline",
+        "octaplus_boostflex",
+        "octaplus_ecoboostflex",
+        "octaplus_smartvariable",
+        "octaplus_boostfix",
+        "octaplus_ecoboostfix",
+    }
+    assert octaplus.parse_catalog(page) == sold
+    older = page.replace("G_OCTA_BOOSTFLEX_RE_WL_FR", "G_OCTA_FLUX_RE_WL_FR", 1)
+    assert octaplus.parse_catalog(older) == sold | {"octaplus_flux"}
+    renamed = page.replace("G_OCTA_SMARTVARIABLE_RE", "G_OCTA_SMARTFLEX_RE")
+    assert octaplus.parse_catalog(renamed) == sold - {"octaplus_smartvariable"} | {
+        "octaplus_smartflex"
+    }
+
+
+async def test_discover_reads_the_tariff_page() -> None:
+    assert octaplus.EXTRACTOR.discover is octaplus.discover
+    page = fixture_page("octaplus", "tarifs_2026-11.html")
+    with patch.object(octaplus, "fetch_text", AsyncMock(return_value=page)) as fetched:
+        found = await octaplus.discover(AsyncMock())
+    assert fetched.call_args.args[1] == "https://www.octaplus.be/fr/electricite-gaz-naturel/tarifs"
+    assert "octaplus_boostflex" in found

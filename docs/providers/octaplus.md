@@ -11,7 +11,10 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 - The tariff page https://www.octaplus.be/fr/electricite-gaz-naturel/tarifs
   links every card. Its Brussels gas links are professional cards only
   (`_PR_BR_`); the residential `_RE_BR_` names answer 404. Residential gas is
-  sold in Flanders and Wallonia.
+  sold in Flanders and Wallonia. `discover` reads its residential gas links
+  (`G_OCTA_<SLUG>_RE_<VL|WL>_FR.pdf`) for the live check's catalog rows, by
+  the contract with that slug (`octaplus_<slug>` for one no contract has):
+  the six products sold on 5 November 2026.
 - The next month's card may go up on the last day of the month before (31
   August 2026 13:26 for every product, 30 September 2026 14:13 for Smart
   Variable, Brussels time). `fetch` returns the card as it stands online,
@@ -216,6 +219,8 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
 - Levies on the WL and VL cards; a VL card read for Wallonia, Brussels,
   another product's card and a card without its formula all fail.
 - `parse_index` on `paramètres_gaz_fr.pdf`, and its heading check.
+- Catalog: `test_the_tariff_page_names_the_gas_products_sold`,
+  `test_discover_reads_the_tariff_page`.
 - `fetch` and `probe` URLs, the probe key moving with the month, and
   `current_card` on the last day of a month taking the running month's card
   from the archive.
