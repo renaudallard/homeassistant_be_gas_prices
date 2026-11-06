@@ -72,6 +72,7 @@ from .const import (
     CONF_CUSTOM_FEE,
     CONF_CUSTOM_LEVY,
     CONF_CUSTOM_METERING,
+    CONF_CUSTOM_NETWORK_FROM_SHEET,
     CONF_CUSTOM_PRICE,
     CONF_CUSTOM_T1_FIXED,
     CONF_CUSTOM_T1_PROP,
@@ -501,13 +502,18 @@ class _FlowSteps:
         schema = vol.Schema({vol.Required(CONF_DSO, default=default): _select(options)})
         return self.async_show_form(step_id="dso", data_schema=schema)
 
-    def _custom_form(self, step_id: str, keys: tuple[str, ...]) -> ConfigFlowResult:
+    def _custom_form(
+        self, step_id: str, keys: tuple[str, ...], boxes: tuple[str, ...] = ()
+    ) -> ConfigFlowResult:
         number = NumberSelector(
             NumberSelectorConfig(min=0, max=10_000, step="any", mode=NumberSelectorMode.BOX)
         )
+        fields: dict[Any, Any] = {
+            vol.Optional(box, default=bool(self._data.get(box))): BooleanSelector() for box in boxes
+        }
+        fields.update({vol.Required(key): number for key in keys})
         schema = self.add_suggested_values_to_schema(
-            vol.Schema({vol.Required(key): number for key in keys}),
-            {key: self._data.get(key) for key in keys},
+            vol.Schema(fields), {key: self._data.get(key) for key in keys}
         )
         return self.async_show_form(step_id=step_id, data_schema=schema)
 
@@ -537,14 +543,17 @@ class _FlowSteps:
             keys += (CONF_CUSTOM_LEVY,)
         if user_input is not None:
             for key in CUSTOM_KEYS:
-                if key in (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE):
+                if key in (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE, CONF_CUSTOM_NETWORK_FROM_SHEET):
                     continue
                 if key in user_input:
                     self._data[key] = float(user_input[key])
                 else:
                     self._data.pop(key, None)
+            self._data[CONF_CUSTOM_NETWORK_FROM_SHEET] = bool(
+                user_input.get(CONF_CUSTOM_NETWORK_FROM_SHEET, False)
+            )
             return await self.async_step_household()
-        return self._custom_form("custom_network", keys)
+        return self._custom_form("custom_network", keys, (CONF_CUSTOM_NETWORK_FROM_SHEET,))
 
     async def async_step_household(
         self, user_input: dict[str, Any] | None = None

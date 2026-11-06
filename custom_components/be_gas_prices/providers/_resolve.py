@@ -36,7 +36,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
-from .. import excise_law, fluvius, law_archive, tarbel
+from .. import excise_law, fluvius, law_archive, network_sheet, tarbel
 from ..const import (
     CALIBER_Q10,
     ENERGY_CONTRIBUTION_KNOWN_FROM,
@@ -51,6 +51,8 @@ from ..const import (
     OSP_Q10_SPLIT_KWH,
     SUPPLIER_SOCIAL,
     TIER_BOUNDS_KWH,
+    TIER_T1,
+    TIER_T2,
     VAT_RATE_REDUCED,
     WALLONIA_DSO_KEYS,
     WALLOON_CONNECTION_FEE,
@@ -58,7 +60,7 @@ from ..const import (
 )
 from ..vat_rates import residential_vat
 from ._network import excise_bands
-from .base import DsoOverlay, SupplierSnapshot, TaxOverlay
+from .base import DsoOverlay, DsoTier, SupplierSnapshot, TaxOverlay
 
 # Every figure of the law the resolvers below bill on, and the months they
 # cover: a release that learns more of them prices past months anew, which
@@ -266,6 +268,44 @@ def resolve_network(
     }
 
 
+def resolve_network_sheet(
+    dsos: dict[str, DsoOverlay], taxes: TaxOverlay, delivery: date
+) -> dict[str, DsoOverlay]:
+    """``dsos`` with each DSO's T1 and T2 terms and metering as its tariff
+    sheet held for ``delivery`` gives them (network_sheet.py), for a custom
+    entry taking its network off the sheet.
+
+    The sheets are excluding VAT and the typed card includes it, so they are
+    put on the VAT of the month (:func:`_vat_factor`). The transport stays
+    as typed, since no sheet prints it, and a DSO no sheet is held for keeps
+    every figure typed.
+    """
+    factor = _vat_factor(taxes, delivery) if taxes.vat_rate == 0.0 else 1.0
+    out: dict[str, DsoOverlay] = {}
+    for key, overlay in dsos.items():
+        sheet = network_sheet.held_network(delivery, key)
+        out[key] = (
+            overlay
+            if sheet is None
+            else replace(
+                overlay,
+                tiers={
+                    **overlay.tiers,
+                    TIER_T1: DsoTier(
+                        fixed_per_year=sheet.t1_fixed * factor,
+                        proportional=sheet.t1_proportional * factor,
+                    ),
+                    TIER_T2: DsoTier(
+                        fixed_per_year=sheet.t2_fixed * factor,
+                        proportional=sheet.t2_proportional * factor,
+                    ),
+                },
+                metering_per_year=sheet.metering_per_year * factor,
+            )
+        )
+    return out
+
+
 def resolve_connection_fee(
     taxes: TaxOverlay, dsos: dict[str, DsoOverlay], delivery: date
 ) -> TaxOverlay:
@@ -288,14 +328,17 @@ def resolve_connection_fee(
 def resolve_for_delivery(snapshot: SupplierSnapshot, delivery: date) -> SupplierSnapshot:
     """``snapshot`` as it bills a month delivered on ``delivery``: the levies
     the law sets for that month and the regulated network figures a card
-    leaves out. The social tariff's network part is the CREG's and stands
-    in for the operator's tariffs, the Fluvius data management fee
-    included."""
+    leaves out, or on a custom card ticked for it, the DSO's tariff sheet.
+    The social tariff's network part is the CREG's and stands in for the
+    operator's tariffs, the Fluvius data management fee included."""
     social = snapshot.supplier == SUPPLIER_SOCIAL
     taxes = resolve_federal_levies(snapshot.taxes, delivery, protected=social)
+    dsos = snapshot.dsos if social else resolve_network(snapshot.dsos, snapshot.taxes, delivery)
+    if snapshot.network_from_sheet:
+        dsos = resolve_network_sheet(dsos, snapshot.taxes, delivery)
     return replace(
         snapshot,
-        dsos=snapshot.dsos if social else resolve_network(snapshot.dsos, snapshot.taxes, delivery),
+        dsos=dsos,
         taxes=resolve_connection_fee(taxes, snapshot.dsos, delivery),
     )
 

@@ -29,7 +29,9 @@ No card is fetched. The household types its price, its fixed fee and the
 regulated figures of its DSO as its own card or bill prints them (c EUR/kWh
 and EUR a year, VAT inclusive), and :func:`build_snapshot` turns them into
 the snapshot the coordinator prices on. There is no drift check and no
-archive: the figures are what the household keeps current.
+archive: the figures are what the household keeps current, unless it lets
+the distribution and metering figures come off its DSO's tariff sheet
+(network_sheet.py).
 """
 
 from __future__ import annotations
@@ -46,6 +48,7 @@ from ..const import (
     CONF_CUSTOM_FEE,
     CONF_CUSTOM_LEVY,
     CONF_CUSTOM_METERING,
+    CONF_CUSTOM_NETWORK_FROM_SHEET,
     CONF_CUSTOM_PRICE,
     CONF_CUSTOM_T1_FIXED,
     CONF_CUSTOM_T1_PROP,
@@ -124,6 +127,7 @@ def build_snapshot(data: dict[str, Any]) -> SupplierSnapshot:
         ),
         source_url="",
         publication_label="custom",
+        network_from_sheet=bool(data.get(CONF_CUSTOM_NETWORK_FROM_SHEET)),
     )
 
 

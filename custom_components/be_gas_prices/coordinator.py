@@ -54,7 +54,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from . import excise_law, fluvius, law_archive, tarbel, vat_rates
+from . import excise_law, fluvius, law_archive, network_sheet, tarbel, vat_rates
 from .bill import IndexValue, bill_month, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -417,6 +417,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
                 # this year: the running costs bill no earlier month, and the
                 # price history of one is per kWh.
                 await fluvius.ensure_tariff_sheet(self._session, dt_util.now().year)
+            # The network a custom entry takes off its DSO's tariff sheet, for
+            # this year, as the fee above.
+            await network_sheet.ensure_network_sheet(self._session, self._data, dt_util.now().year)
         today = dt_util.now().date()
         needed = self._months_needed(today)
         if self._first_tick:

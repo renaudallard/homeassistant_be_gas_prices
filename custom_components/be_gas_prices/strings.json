@@ -120,8 +120,9 @@
       },
       "custom_network": {
         "title": "Your network operator's tariff",
-        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise follows the law for the months the integration knows it; what you type for it counts outside those months. The energy contribution and the Walloon connection fee are the law's. On a Fluvius network, metering left at 0 is billed at the regulated data management fee of the delivery year.",
+        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise follows the law for the months the integration knows it; what you type for it counts outside those months. The energy contribution and the Walloon connection fee are the law's. On a Fluvius network, metering left at 0 is billed at the regulated data management fee of the delivery year. Tick the first box to take the T1 and T2 terms and the metering off your operator's published tariff sheet of each delivery year instead, Fluvius's for your area in Flanders, Brugel's in Brussels or the CWaPE's grid for your operator in Wallonia, which bills no metering: they then follow each yearly change by themselves, and the figures typed only stand in until the sheet is read. The transport, which no sheet prints, stays as typed.",
         "data": {
+          "custom_network_from_sheet": "Take them from my operator's published tariff sheet",
           "custom_t1_fixed": "T1 fixed term (€ a year)",
           "custom_t1_prop": "T1 proportional term (c€/kWh)",
           "custom_t2_fixed": "T2 fixed term (€ a year)",
@@ -313,8 +314,9 @@
       },
       "custom_network": {
         "title": "Your network operator's tariff",
-        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise follows the law for the months the integration knows it; what you type for it counts outside those months. The energy contribution and the Walloon connection fee are the law's. On a Fluvius network, metering left at 0 is billed at the regulated data management fee of the delivery year.",
+        "description": "The regulated figures of your network operator and the levies, including VAT, as a card for your region prints them. Distribution tiers: T1 up to 5 000 kWh a year, T2 up to 150 000. The excise follows the law for the months the integration knows it; what you type for it counts outside those months. The energy contribution and the Walloon connection fee are the law's. On a Fluvius network, metering left at 0 is billed at the regulated data management fee of the delivery year. Tick the first box to take the T1 and T2 terms and the metering off your operator's published tariff sheet of each delivery year instead, Fluvius's for your area in Flanders, Brugel's in Brussels or the CWaPE's grid for your operator in Wallonia, which bills no metering: they then follow each yearly change by themselves, and the figures typed only stand in until the sheet is read. The transport, which no sheet prints, stays as typed.",
         "data": {
+          "custom_network_from_sheet": "Take them from my operator's published tariff sheet",
           "custom_t1_fixed": "T1 fixed term (€ a year)",
           "custom_t1_prop": "T1 proportional term (c€/kWh)",
           "custom_t2_fixed": "T2 fixed term (€ a year)",

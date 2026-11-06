@@ -61,6 +61,7 @@ from .const import (
     SUPPLIER_CUSTOM,
 )
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card, fetch_archived_card
+from .network_sheet import ensure_network_sheet
 from .pricing import PricingError
 from .providers._pdf import guarded, is_transient_fetch_error, memoise_text_fetches
 from .providers._rates import EnergyRates
@@ -378,7 +379,9 @@ class PeriodBilling:
                 except ExtractorError:
                     continue
                 if extractor.id == SUPPLIER_CUSTOM:
-                    # The typed card prices every month the contract supplied.
+                    # The typed card prices every month the contract supplied,
+                    # its network off its DSO's sheet where it was ticked so.
+                    await ensure_network_sheet(session, period, today.year)
                     continue
                 contract = str(period[CONF_CONTRACT])
                 region = str(period[CONF_REGION])

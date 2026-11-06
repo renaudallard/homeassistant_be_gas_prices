@@ -68,7 +68,9 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption, or its hourly changes, out of recorder statistics, in m³ or kWh. |
 | `calorific.py` | Atrias's monthly gross calorific value per gas reception station: the kWh one cubic metre is worth. |
 | `excise_law.py` | The residential special excise and its voted steps, and the energy contribution beside it, read daily from article 419 on Justel and kept in the Store. |
-| `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store. |
+| `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store; and an area's whole network off its own sheet, for a custom entry taking it from the sheet. |
+| `brugel.py`, `cwape.py` | Sibelga's gas network off Brugel's yearly sheet (PDF), and ORES's and RESA's off the CWaPE's approved grids (XLSX), for a custom entry taking its network from the sheet. |
+| `network_sheet.py` | Which sheet such an entry reads, by its DSO, and the network held for a delivery month, which `providers/_resolve.py` bills on the month's VAT in place of the T1 and T2 terms and metering typed. |
 | `tarbel.py` | The residential special excise by quarter, the notices of article 420 included, and the energy contribution, read daily from FPS Finance's excise tariff (XLSX) and kept in the Store. |
 | `xlsx.py` | The cells of a workbook as text, for the two readers above. |
 | `vat_rates.py` | The residential VAT rate by delivery month, read daily from the card archive's `vat.json` (the rate the cards of each month agree on) by an entry that lets the archive be read, and kept in the Store; `const.py`'s rate before it is read. |
@@ -133,6 +135,8 @@ async_setup_entry                       __init__.py
                    (both for an entry reading the card archive)
         fluvius:   this year's gas tariff sheet, once         fluvius.py
                    (an entry billing a Flemish contract)
+        network:   this year's sheet of a custom entry's DSO  network_sheet.py
+                   (a custom entry taking its network from it)
         months:    past months' cards, supplier archive then card archive
                    (the first tick's in the background, then async_reprice)
         meter:     recorder daily changes, m³ or kWh           gas_meter.py

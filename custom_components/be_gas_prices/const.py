@@ -348,6 +348,10 @@ CONF_CUSTOM_TRANSPORT: Final = "custom_transport"
 CONF_CUSTOM_METERING: Final = "custom_metering"
 CONF_CUSTOM_EXCISE_LOW: Final = "custom_excise_low"
 CONF_CUSTOM_EXCISE_HIGH: Final = "custom_excise_high"
+# Ticked, the network figures come off the DSO's published tariff sheet of
+# each delivery year instead (network_sheet.py), the typed ones standing in
+# until a sheet is read.
+CONF_CUSTOM_NETWORK_FROM_SHEET: Final = "custom_network_from_sheet"
 # No longer asked, since the law sets both for every month billed: kept
 # among the custom keys so an older entry's figures go when it is saved.
 CONF_CUSTOM_CONTRIBUTION: Final = "custom_contribution"
@@ -364,6 +368,7 @@ CUSTOM_KEYS: Final = (
     CONF_CUSTOM_METERING,
     CONF_CUSTOM_EXCISE_LOW,
     CONF_CUSTOM_EXCISE_HIGH,
+    CONF_CUSTOM_NETWORK_FROM_SHEET,
     CONF_CUSTOM_CONTRIBUTION,
     CONF_CUSTOM_CONNECTION_FEE,
     CONF_CUSTOM_LEVY,

@@ -120,8 +120,9 @@
       },
       "custom_network": {
         "title": "Der Tarif Ihres Netzbetreibers",
-        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer folgt dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. Der Energiebeitrag und die wallonische Anschlussgebühr sind die des Gesetzes. In einem Fluvius-Netz wird eine auf 0 belassene Messung zum regulierten Tarif der Datenverwaltung des Lieferjahres berechnet.",
+        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer folgt dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. Der Energiebeitrag und die wallonische Anschlussgebühr sind die des Gesetzes. In einem Fluvius-Netz wird eine auf 0 belassene Messung zum regulierten Tarif der Datenverwaltung des Lieferjahres berechnet. Kreuzen Sie das erste Feld an, um die Terme von T1 und T2 und die Messung stattdessen aus dem veröffentlichten Tarifblatt Ihres Netzbetreibers für jedes Lieferjahr zu übernehmen, dem von Fluvius für Ihr Gebiet in Flandern, dem von Brugel in Brüssel oder dem Tarifraster der CWaPE für Ihren Netzbetreiber in Wallonien, das keine Messung berechnet: Sie folgen dann von selbst jeder jährlichen Änderung, und die eingegebenen Zahlen gelten nur, bis das Tarifblatt gelesen ist. Der Transport, den kein Tarifblatt nennt, bleibt wie eingegeben.",
         "data": {
+          "custom_network_from_sheet": "Aus dem veröffentlichten Tarifblatt meines Netzbetreibers übernehmen",
           "custom_t1_fixed": "T1 Festbetrag (€ pro Jahr)",
           "custom_t1_prop": "T1 Arbeitspreis (c€/kWh)",
           "custom_t2_fixed": "T2 Festbetrag (€ pro Jahr)",
@@ -313,8 +314,9 @@
       },
       "custom_network": {
         "title": "Der Tarif Ihres Netzbetreibers",
-        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer folgt dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. Der Energiebeitrag und die wallonische Anschlussgebühr sind die des Gesetzes. In einem Fluvius-Netz wird eine auf 0 belassene Messung zum regulierten Tarif der Datenverwaltung des Lieferjahres berechnet.",
+        "description": "Die regulierten Zahlen Ihres Netzbetreibers und die Abgaben, inklusive MwSt., wie eine Karte Ihrer Region sie druckt. Verteilungsstufen: T1 bis 5 000 kWh pro Jahr, T2 bis 150 000. Die Verbrauchsteuer folgt dem Gesetz für die Monate, die die Integration davon kennt; was Sie hier eingeben, gilt außerhalb dieser Monate. Der Energiebeitrag und die wallonische Anschlussgebühr sind die des Gesetzes. In einem Fluvius-Netz wird eine auf 0 belassene Messung zum regulierten Tarif der Datenverwaltung des Lieferjahres berechnet. Kreuzen Sie das erste Feld an, um die Terme von T1 und T2 und die Messung stattdessen aus dem veröffentlichten Tarifblatt Ihres Netzbetreibers für jedes Lieferjahr zu übernehmen, dem von Fluvius für Ihr Gebiet in Flandern, dem von Brugel in Brüssel oder dem Tarifraster der CWaPE für Ihren Netzbetreiber in Wallonien, das keine Messung berechnet: Sie folgen dann von selbst jeder jährlichen Änderung, und die eingegebenen Zahlen gelten nur, bis das Tarifblatt gelesen ist. Der Transport, den kein Tarifblatt nennt, bleibt wie eingegeben.",
         "data": {
+          "custom_network_from_sheet": "Aus dem veröffentlichten Tarifblatt meines Netzbetreibers übernehmen",
           "custom_t1_fixed": "T1 Festbetrag (€ pro Jahr)",
           "custom_t1_prop": "T1 Arbeitspreis (c€/kWh)",
           "custom_t2_fixed": "T2 Festbetrag (€ pro Jahr)",

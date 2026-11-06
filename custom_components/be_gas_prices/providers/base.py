@@ -76,6 +76,21 @@ class DsoOverlay:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SheetNetwork:
+    """A DSO's network for a household on T1 or T2 as its regulator's tariff
+    sheet gives it, excluding VAT: each tier's fixed term a year and its
+    proportional rate per kWh with every charge per kWh the sheet prints
+    below it added, the way the cards print it, and the metering term a
+    year. No sheet prints the transport."""
+
+    t1_fixed: float
+    t1_proportional: float
+    t2_fixed: float
+    t2_proportional: float
+    metering_per_year: float
+
+
+@dataclass(frozen=True, kw_only=True)
 class TaxOverlay:
     """Federal and regional levies, on the card's VAT basis.
 
@@ -121,6 +136,9 @@ class SupplierSnapshot:
     # The months from its start a contract signed on this card pays no
     # supplier fee for; the energy leg's fee is the one billed after them.
     fee_waived_months: int = 0
+    # A custom entry's network taken off its DSO's tariff sheet of each
+    # delivery year rather than the figures typed (network_sheet.py).
+    network_from_sheet: bool = False
 
 
 # The values of the indices a supplier resolves its variable prices against,

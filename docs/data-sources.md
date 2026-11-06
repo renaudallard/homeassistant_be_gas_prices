@@ -120,6 +120,51 @@ year's gas tariff list, or whose fee row holds no single figure between 1
 and 100 EUR, gives nothing. A year once read is kept for the process and in
 each entry's Store; a failure waits six hours.
 
+## The network sheets a custom entry takes its network from
+
+A custom entry that ticks **Take them from my operator's published tariff
+sheet** on its network step takes its T1 and T2 terms and its metering off
+its regulator's sheet of each delivery year (`network_sheet.py`), put on the
+month's VAT, instead of the figures typed, which only stand in while no
+sheet is held. The transport stays as typed: no sheet prints it. Each sheet
+is read in the tick for the current year, the year before's standing in
+until the year's is published, and for an earlier custom contract of the
+year at its DSO; nothing of it is kept over a restart, and a failure waits
+six hours.
+
+Every sheet prints a fixed term a year and a rate per kWh per tier, then the
+public service, pension, levy and regulatory balance rates per kWh, which
+the cards add into each tier's rate. Those are summed whatever each year
+calls them (Fluvius's levy row is "Overige lokale, provinciale, ... en
+retributies" in 2024 and "Retributies en heffingen van publieke overheden"
+in 2026), so a row a sheet stops printing is billed as gone. With 6% VAT each
+gives what every card of October 2026 prints for its DSO, within the cards'
+rounding: eleven DSOs, five figures each.
+
+- **Flanders** (`fluvius.py`, `parse_area_network`): the entry's own area's
+  sheet off the listing above, `fluvius-<area>-distributienettarief-afname-aardgas-0101<year>-3112<year>`;
+  the "Vaste term" and "Proportionele term" of the T1 and T2 columns, every
+  other row in EUR/kWh down to the remarks, and the "Jaaropname" fee. On
+  Antwerpen for 2026: 14,79 and 78,51 EUR a year, 0,0212869 and 0,0085442
+  EUR/kWh, 17,85 EUR a year.
+- **Brussels** (`brugel.py`): Brugel's final sheet,
+  `https://brugel.brussels/publication/document/notype/<year-1>/fr/Tarif-distribution-Gaz-<year>.pdf`,
+  "prix hors TVA": the "X = EUR / an" and "Y = EUR / kWh" rows, every row in
+  EUR / kWh below them, and the "Comptage YMR" term of a yearly-read meter.
+  For 2026: 15,00 and 40,63 EUR a year, 0,0187738 and 0,0136483 EUR/kWh,
+  23,54 EUR a year. Only 2026's was served on 6 November 2026.
+- **Wallonia** (`cwape.py`): the operator's approved grid, found through the
+  CWaPE's documents service, `https://www.cwape.be/rest/documents?_format=json`
+  with `documents_types[]=203` (ORES is operator 453, RESA 225, and each file
+  must be named after its operator), read off its workbook. Rows are keyed on
+  their market code: under `G140` the "Fixe" row and the "gaz acheminé par
+  conduites" rate, then every other row in EUR/kWh (`G145`, `G861`, `G850`,
+  `G860`, `G410`); RESA's "supplément pour gaz porté", billed only where gas
+  comes by road, is left out. Wallonia bills no metering term. Each grid
+  states the days it is valid, and the one valid on the delivery month is
+  billed, else the latest begun. On ORES for 2026: 30,10 and 132,95 EUR a
+  year, 0,0404664 and 0,0208089 EUR/kWh.
+
 ## The card archive
 
 The `archive_cards` workflow stores every card it parses daily in the

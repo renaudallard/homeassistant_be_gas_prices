@@ -327,7 +327,13 @@ manifest.
    Brussels. The expert custom supplier then asks for the figures of your
    card: the energy price and fee, then your network operator's terms, the
    excise and, in Brussels, the per-meter levy. The energy contribution and
-   the Walloon connection fee are the law's. That card has the two lower
+   the Walloon connection fee are the law's. Tick **Take them from my
+   operator's published tariff sheet** to take the T1 and T2 terms and the
+   metering off the regulator's sheet of each delivery year instead,
+   Fluvius's for your area, Brugel's or the CWaPE's grid for ORES or RESA:
+   they follow each 1 January change by themselves, and what you typed only
+   stands in until the sheet is read; the transport, which no sheet prints,
+   stays as typed. That card has the two lower
    tiers only, so its yearly consumption stops at 150 000 kWh, and a
    measured year past it cannot be priced.
 4. **Household**: your yearly consumption in kWh (it picks the tier and the

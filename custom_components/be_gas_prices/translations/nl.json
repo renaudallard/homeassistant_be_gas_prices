@@ -120,8 +120,9 @@
       },
       "custom_network": {
         "title": "Het tarief van je netbeheerder",
-        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns volgt de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. De bijdrage op de energie en de Waalse aansluitingsvergoeding zijn die van de wet. Op een Fluvius-net wordt meting op 0 aangerekend aan de gereguleerde vergoeding voor databeheer van het leveringsjaar.",
+        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns volgt de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. De bijdrage op de energie en de Waalse aansluitingsvergoeding zijn die van de wet. Op een Fluvius-net wordt meting op 0 aangerekend aan de gereguleerde vergoeding voor databeheer van het leveringsjaar. Vink het eerste vak aan om de termen van T1 en T2 en de meting in plaats daarvan van de gepubliceerde tarieflijst van je netbeheerder voor elk leveringsjaar te nemen, die van Fluvius voor je gebied in Vlaanderen, die van Brugel in Brussel of het tariefrooster van de CWaPE voor je netbeheerder in Wallonië, waar geen meting wordt aangerekend: ze volgen dan vanzelf elke jaarlijkse wijziging, en de ingevulde cijfers gelden alleen tot die lijst gelezen is. Het transport, dat geen lijst vermeldt, blijft zoals ingevuld.",
         "data": {
+          "custom_network_from_sheet": "Neem ze over van de gepubliceerde tarieflijst van mijn netbeheerder",
           "custom_t1_fixed": "T1 vaste term (€ per jaar)",
           "custom_t1_prop": "T1 proportionele term (c€/kWh)",
           "custom_t2_fixed": "T2 vaste term (€ per jaar)",
@@ -313,8 +314,9 @@
       },
       "custom_network": {
         "title": "Het tarief van je netbeheerder",
-        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns volgt de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. De bijdrage op de energie en de Waalse aansluitingsvergoeding zijn die van de wet. Op een Fluvius-net wordt meting op 0 aangerekend aan de gereguleerde vergoeding voor databeheer van het leveringsjaar.",
+        "description": "De gereguleerde cijfers van je netbeheerder en de heffingen, inclusief btw, zoals een kaart voor je gewest ze vermeldt. Distributieschijven: T1 tot 5 000 kWh per jaar, T2 tot 150 000. De accijns volgt de wet voor de maanden die de integratie ervan kent; wat je hier invult, telt buiten die maanden. De bijdrage op de energie en de Waalse aansluitingsvergoeding zijn die van de wet. Op een Fluvius-net wordt meting op 0 aangerekend aan de gereguleerde vergoeding voor databeheer van het leveringsjaar. Vink het eerste vak aan om de termen van T1 en T2 en de meting in plaats daarvan van de gepubliceerde tarieflijst van je netbeheerder voor elk leveringsjaar te nemen, die van Fluvius voor je gebied in Vlaanderen, die van Brugel in Brussel of het tariefrooster van de CWaPE voor je netbeheerder in Wallonië, waar geen meting wordt aangerekend: ze volgen dan vanzelf elke jaarlijkse wijziging, en de ingevulde cijfers gelden alleen tot die lijst gelezen is. Het transport, dat geen lijst vermeldt, blijft zoals ingevuld.",
         "data": {
+          "custom_network_from_sheet": "Neem ze over van de gepubliceerde tarieflijst van mijn netbeheerder",
           "custom_t1_fixed": "T1 vaste term (€ per jaar)",
           "custom_t1_prop": "T1 proportionele term (c€/kWh)",
           "custom_t2_fixed": "T2 vaste term (€ per jaar)",

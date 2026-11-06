@@ -197,6 +197,57 @@ async def test_a_body_that_is_not_a_sheet_never_raises(label: str, body: bytes) 
     assert 2026 in fluvius._failed_at
 
 
+def test_an_areas_network_is_read_off_its_sheet() -> None:
+    """The T1 and T2 terms with every charge per kWh below them, and the fee,
+    excluding VAT: with 6% VAT the 15,68 and 83,22 EUR a year, 2,26 and 0,91
+    c/kWh and 18,92 EUR every card of October 2026 prints for Antwerpen. The
+    2024 sheet names its levy row otherwise and reads all the same."""
+    terms = fluvius.parse_area_network(_SHEET_2026, 2026)
+    assert terms is not None
+    assert terms.t1_fixed == 14.79
+    assert terms.t1_proportional == pytest.approx(0.020533 + 0.0003667 + 0.0003405 + 0.0000467)
+    assert terms.t2_fixed == 78.51
+    assert terms.t2_proportional == pytest.approx(0.0077903 + 0.0003667 + 0.0003405 + 0.0000467)
+    assert terms.metering_per_year == 17.85
+    assert round(terms.t1_fixed * 1.06, 2) == 15.68
+    assert round(terms.t2_fixed * 1.06, 2) == 83.22
+    assert round(terms.t1_proportional * 106, 2) == 2.26
+    assert round(terms.t2_proportional * 106, 2) == 0.91
+    older = fluvius.parse_area_network(_SHEET_2024, 2024)
+    assert older is not None
+    assert older.t1_proportional == pytest.approx(0.0210994 + 0.0005831 + 0.0002389 + 0.0000512)
+    assert fluvius.parse_area_network(_SHEET_2026, 2027) is None
+
+
+async def test_a_custom_entry_reads_its_areas_network_and_the_year_before_stands_in() -> None:
+    """Off the area's own sheet, kept; a year Fluvius lists no sheet for yet
+    reads the year before's to stand in, never a later one, and a key that is
+    not a Fluvius area asks for nothing."""
+    session: Any = _Session()
+    await fluvius.ensure_area_network(session, 2026, "fluvius_antwerpen")
+    held = fluvius.cached_area_network(2026, "fluvius_antwerpen")
+    assert held == fluvius.parse_area_network(_SHEET_2026, 2026)
+    session.asked.clear()
+    await fluvius.ensure_area_network(session, 2026, "fluvius_antwerpen")
+    assert session.asked == [], "a held sheet was fetched again"
+    await fluvius.ensure_area_network(session, 2027, "fluvius_antwerpen")
+    assert fluvius.cached_area_network(2027, "fluvius_antwerpen") == held
+    assert fluvius.cached_area_network(2025, "fluvius_antwerpen") is None
+    assert fluvius.cached_area_network(2026, "fluvius_west") is None
+    session.asked.clear()
+    await fluvius.ensure_area_network(session, 2027, "fluvius_antwerpen")
+    assert session.asked == [], "the backoff did not hold"
+    await fluvius.ensure_area_network(session, 2026, "ores")
+    assert session.asked == []
+
+
+async def test_an_areas_sheet_that_does_not_read_never_raises() -> None:
+    session: Any = _Session(b"<html>maintenance</html>")
+    await fluvius.ensure_area_network(session, 2026, "fluvius_antwerpen")
+    assert fluvius.cached_area_network(2026, "fluvius_antwerpen") is None
+    assert (2026, "fluvius_antwerpen") in fluvius._area_failed_at
+
+
 def test_the_store_round_trips_and_never_replaces_a_read() -> None:
     fluvius.hold(2026, 17.85)
     stored = fluvius.held_table()

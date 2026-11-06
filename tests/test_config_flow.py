@@ -57,6 +57,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CUSTOM_CONNECTION_FEE,
     CONF_CUSTOM_CONTRIBUTION,
     CONF_CUSTOM_FEE,
+    CONF_CUSTOM_NETWORK_FROM_SHEET,
     CONF_CUSTOM_PRICE,
     CONF_CUSTOM_T1_FIXED,
     CONF_CUSTOM_T1_PROP,
@@ -287,6 +288,37 @@ async def test_the_custom_network_form_leaves_the_law_s_levies_out(hass: HomeAss
     assert result["step_id"] == "household"
     assert CONF_CUSTOM_CONTRIBUTION not in flow._data
     assert CONF_CUSTOM_CONNECTION_FEE not in flow._data
+
+
+async def test_the_custom_network_form_offers_the_sheet_first(hass: HomeAssistant) -> None:
+    """The box that takes the network off the DSO's tariff sheet comes first,
+    unticked, and is kept as ticked."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    for user_input in (
+        {CONF_POSTCODE: ""},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: SUPPLIER_CUSTOM},
+        {CONF_CONTRACT: CUSTOM_CONTRACT},
+        {CONF_DSO: DSO_ORES},
+        {CONF_CUSTOM_PRICE: 8.0, CONF_CUSTOM_FEE: 60.0},
+    ):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "custom_network"
+    schema = result["data_schema"]
+    assert schema is not None
+    keys = [str(key) for key in schema.schema]
+    assert keys[0] == CONF_CUSTOM_NETWORK_FROM_SHEET
+    assert schema({key: 1.0 for key in keys[1:]})[CONF_CUSTOM_NETWORK_FROM_SHEET] is False
+    flow: Any = hass.config_entries.flow._progress[result["flow_id"]]
+    typed = {key: 1.0 for key in keys[1:]}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**typed, CONF_CUSTOM_NETWORK_FROM_SHEET: True}
+    )
+    assert result["step_id"] == "household"
+    assert flow._data[CONF_CUSTOM_NETWORK_FROM_SHEET] is True
+    assert flow._data[CONF_CUSTOM_T1_FIXED] == 1.0
 
 
 async def test_a_custom_entry_s_volume_stays_within_the_tiers_it_types(

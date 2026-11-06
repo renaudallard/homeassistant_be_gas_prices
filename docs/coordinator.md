@@ -69,7 +69,11 @@ cards (`issues.sync_issues`).
    entry billing a Flemish contract this year, the current one or one it
    left before moving, then reads **Fluvius's gas tariff sheet**
    (`fluvius.ensure_tariff_sheet`) of this year, once for the process,
-   with the same six hour wait after a failure.
+   with the same six hour wait after a failure. A custom entry taking its
+   network off its DSO's tariff sheet reads that sheet of this year
+   (`network_sheet.ensure_network_sheet`), the year before's standing in
+   until the year's is published, and `PeriodBilling.fill` does the same for
+   an earlier custom contract of the year.
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month (and the
    signing day, for a supplier with `fetch_on_day`), and

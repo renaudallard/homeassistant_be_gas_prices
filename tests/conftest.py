@@ -232,6 +232,37 @@ FLUVIUS_FEES = {2025: 17.51, 2026: 17.85}
 
 
 @pytest.fixture(autouse=True)
+def _network_sheets_unread() -> Iterator[None]:
+    """A custom entry taking its network off its DSO's tariff sheet reads it
+    in the tick. Tests read none unless they hold one, and whatever a test
+    holds is gone before the next one."""
+    from custom_components.be_gas_prices import (
+        brugel,
+        contract_periods,
+        cwape,
+        fluvius,
+        network_sheet,
+    )
+
+    def forget() -> None:
+        fluvius._area.clear()
+        fluvius._area_failed_at.clear()
+        brugel._held.clear()
+        brugel._failed_at.clear()
+        cwape._grids.clear()
+        cwape._failed_at.clear()
+        cwape._listing = None
+
+    forget()
+    with (
+        patch.object(network_sheet, "ensure_network_sheet", AsyncMock()),
+        patch.object(contract_periods, "ensure_network_sheet", AsyncMock()),
+    ):
+        yield
+    forget()
+
+
+@pytest.fixture(autouse=True)
 def _fluvius_sheets_as_published() -> Iterator[None]:
     """A Flemish entry's tick reads Fluvius's tariff sheets. Tests see the
     fees as published instead of the network."""

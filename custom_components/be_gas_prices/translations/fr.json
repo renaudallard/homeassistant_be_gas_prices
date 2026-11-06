@@ -120,8 +120,9 @@
       },
       "custom_network": {
         "title": "Le tarif de votre gestionnaire de réseau",
-        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise suit la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. La cotisation sur l'énergie et la redevance de raccordement wallonne sont celles de la loi. Sur un réseau Fluvius, une mesure laissée à 0 est facturée au tarif régulé de la gestion des données de l'année de fourniture.",
+        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise suit la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. La cotisation sur l'énergie et la redevance de raccordement wallonne sont celles de la loi. Sur un réseau Fluvius, une mesure laissée à 0 est facturée au tarif régulé de la gestion des données de l'année de fourniture. Cochez la première case pour reprendre plutôt les termes T1 et T2 et la mesure de la fiche tarifaire publiée par votre gestionnaire pour chaque année de fourniture, celle de Fluvius pour votre zone en Flandre, celle de Brugel à Bruxelles ou la grille de la CWaPE pour votre gestionnaire en Wallonie, qui ne facture pas de mesure : ils suivent alors d'eux-mêmes chaque changement annuel, et les chiffres saisis ne servent que tant que la fiche n'a pas été lue. Le transport, qu'aucune fiche n'indique, reste tel que saisi.",
         "data": {
+          "custom_network_from_sheet": "Les reprendre de la fiche tarifaire publiée par mon gestionnaire",
           "custom_t1_fixed": "Terme fixe T1 (€ par an)",
           "custom_t1_prop": "Terme proportionnel T1 (c€/kWh)",
           "custom_t2_fixed": "Terme fixe T2 (€ par an)",
@@ -313,8 +314,9 @@
       },
       "custom_network": {
         "title": "Le tarif de votre gestionnaire de réseau",
-        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise suit la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. La cotisation sur l'énergie et la redevance de raccordement wallonne sont celles de la loi. Sur un réseau Fluvius, une mesure laissée à 0 est facturée au tarif régulé de la gestion des données de l'année de fourniture.",
+        "description": "Les chiffres régulés de votre gestionnaire de réseau et les prélèvements, TVA comprise, tels qu'une carte de votre région les imprime. Tranches de distribution : T1 jusqu'à 5 000 kWh par an, T2 jusqu'à 150 000. L'accise suit la loi pour les mois que l'intégration en connaît ; ce que vous saisissez ici compte en dehors de ces mois. La cotisation sur l'énergie et la redevance de raccordement wallonne sont celles de la loi. Sur un réseau Fluvius, une mesure laissée à 0 est facturée au tarif régulé de la gestion des données de l'année de fourniture. Cochez la première case pour reprendre plutôt les termes T1 et T2 et la mesure de la fiche tarifaire publiée par votre gestionnaire pour chaque année de fourniture, celle de Fluvius pour votre zone en Flandre, celle de Brugel à Bruxelles ou la grille de la CWaPE pour votre gestionnaire en Wallonie, qui ne facture pas de mesure : ils suivent alors d'eux-mêmes chaque changement annuel, et les chiffres saisis ne servent que tant que la fiche n'a pas été lue. Le transport, qu'aucune fiche n'indique, reste tel que saisi.",
         "data": {
+          "custom_network_from_sheet": "Les reprendre de la fiche tarifaire publiée par mon gestionnaire",
           "custom_t1_fixed": "Terme fixe T1 (€ par an)",
           "custom_t1_prop": "Terme proportionnel T1 (c€/kWh)",
           "custom_t2_fixed": "Terme fixe T2 (€ par an)",

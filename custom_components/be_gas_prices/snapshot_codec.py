@@ -181,6 +181,9 @@ def snapshot_to_json(snapshot: SupplierSnapshot) -> dict[str, Any]:
     if snapshot.fee_waived_months:
         # Only a card that waives its fee carries it.
         out["fee_waived_months"] = snapshot.fee_waived_months
+    if snapshot.network_from_sheet:
+        # Only a custom card taking its network off the sheets does.
+        out["network_from_sheet"] = True
     return out
 
 
@@ -204,6 +207,7 @@ def snapshot_from_json(blob: Any) -> SupplierSnapshot:
             publication_label=str(blob.get("publication_label", "")),
             valid_until=None if valid_until is None else date.fromisoformat(valid_until),
             fee_waived_months=int(blob.get("fee_waived_months", 0)),
+            network_from_sheet=bool(blob.get("network_from_sheet", False)),
         )
     except (KeyError, IndexError, TypeError, ValueError, AttributeError) as err:
         raise SnapshotDecodeError(f"malformed snapshot: {err}") from err
