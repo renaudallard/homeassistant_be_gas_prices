@@ -44,8 +44,9 @@ cache and 54 seconds with a full one.
   and the tariff as published for every other test.
 - `test_fetch.py`: the shared HTTP helpers against a local server
   (`socket_enabled`, since the harness blocks sockets otherwise): the caps,
-  and a redirect refused before its target is asked, or followed over
-  https to another site. `tests/local_https.py` serves a test over https
+  an address off https or on the household's network never asked, and a
+  redirect refused before its target is asked, or followed over https to
+  another site. `tests/local_https.py` serves a test over https
   under names of its own, on a certificate authority made for the run, and
   stands an http server in for an appliance on the household's network,
   logging what it is asked.
@@ -58,7 +59,8 @@ cache and 54 seconds with a full one.
 - `test_card_finder.py`: the live check's search for a card that moved,
   replayed on November 2026's moves with the real pages and cards.
 - `test_moved.py`: `providers/_moved.py`, the registry reading a moved card
-  where its supplier lists it, on the same moves.
+  where its supplier lists it, on the same moves, and never at an address
+  its page links on another host.
 - `test_file_ci_issue.py`: `scripts/file_ci_issue.sh` against a fake `gh`
   that answers from files and logs its calls.
 - `test_autorelease.py`: the release job of `autorelease.yml`, its own

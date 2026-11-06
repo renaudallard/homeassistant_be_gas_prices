@@ -321,6 +321,34 @@ async def test_fetch_reads_the_card_brusols_page_links(
     assert snap.publication_label == month
 
 
+async def test_a_brusol_link_off_its_own_site_is_passed_over() -> None:
+    """Links to a newer card on other hosts, plain http and the household's
+    network among them, as a page someone else wrote could give: the card
+    Brusol links on its own site is the one read."""
+    files = "/sites/default/files/2026-11/EV-1226-GSG-BXL-nl.pdf"
+    elsewhere = "".join(
+        f'<a href="{host}{files}">tariefkaart</a>'
+        for host in (
+            "http://192.168.1.1",
+            "http://www.brusol.be",
+            "https://www.brusol.be.example.com",
+            "https://www.example.com",
+        )
+    )
+    page = fixture_page("energyvision", "brusol/signup-goedkope-stroom-nl.html")
+    fetched = AsyncMock(return_value=_card("brusol/EV-0926-GSG-BXL-nl.pdf"))
+    with (
+        freeze_time("2026-09-15 10:00:00"),
+        patch.object(energyvision, "fetch_text", AsyncMock(return_value=elsewhere + page)),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        snap = await energyvision.fetch(AsyncMock(), _GSG, REGION_BRUSSELS)
+    assert [call.args[1] for call in fetched.call_args_list] == [
+        "https://www.brusol.be/sites/default/files/2026-08/EV-0926-GSG-BXL-nl.pdf"
+    ]
+    assert snap.publication_label == "2026-09"
+
+
 @pytest.mark.parametrize(
     ("uploaded", "read", "month"),
     [
@@ -702,6 +730,36 @@ async def test_fetch_index_follows_the_page_link() -> None:
         "EV-0926-Indexatieparameters-nl.pdf"
     )
     assert table["ZTP-RLP-M"]["2026-08"] == pytest.approx(61.822)
+
+
+_INDEX_ELSEWHERE = (
+    '<a href="http://192.168.1.1/sites/default/files/x/EV-1126-Indexatieparameters-nl.pdf">x</a>'
+    '<a href="https://www.example.com/sites/default/files/EV-1126-Indexatieparameters-nl.pdf">'
+    "x</a>"
+)
+
+
+async def test_fetch_index_reads_only_a_document_on_energyvisions_site() -> None:
+    page = fixture_page("energyvision", "indexatieparameters.html")
+    fetched = AsyncMock(return_value=_card("EV-0926-Indexatieparameters-nl.pdf"))
+    with (
+        patch.object(energyvision, "fetch_text", AsyncMock(return_value=_INDEX_ELSEWHERE + page)),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        table = await energyvision.fetch_index(AsyncMock())
+    assert [call.args[1] for call in fetched.call_args_list] == [
+        "https://www.energyvision.be/sites/default/files/inline-files/"
+        "EV-0926-Indexatieparameters-nl.pdf"
+    ]
+    assert table["ZTP-RLP-M"]["2026-08"] == pytest.approx(61.822)
+    fetched.reset_mock()
+    with (
+        patch.object(energyvision, "fetch_text", AsyncMock(return_value=_INDEX_ELSEWHERE)),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+        pytest.raises(ExtractorError, match="no parameter document linked"),
+    ):
+        await energyvision.fetch_index(AsyncMock())
+    fetched.assert_not_called()
 
 
 def test_regions_follow_the_published_cards() -> None:

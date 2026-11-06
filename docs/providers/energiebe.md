@@ -11,6 +11,8 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
   `Variable` or `Fixed` (`contractTypeElRes` is the electricity card). The URL
   is an opaque blob, e.g.
   `https://energie.blob.core.windows.net/cms/assets/Energie_be_Gas_Particulier_18ddc53692.pdf`.
+  All 154 card links the two endpoints gave on 6 November 2026 were on that
+  storage account, and a link anywhere else is passed over as no card.
 - There is no gas document key. The Dynamic contract has no gas card: the
   site says a gas contract beside it "is standaard variabel".
 - No probe: the contracts endpoint answers HEAD with a 405, and the blob's
@@ -164,7 +166,8 @@ electricity cards that day.
   6,17 against 6,20 printed on the estimate).
 - `fetch`, `fetch_for_month` (row URL and query, month refusal, missing row,
   page-image card, transient raise) and `fetch_index` on the October 2026
-  document, with the fetch helpers mocked.
+  document, with the fetch helpers mocked; a card linked off energie.be's
+  storage is never read (`test_a_card_link_off_energiebes_storage_is_not_read`).
 - The November 2026 template: `test_the_november_2026_fixed_card_is_read`,
   `test_the_november_2026_variable_card_is_read`,
   `test_the_november_2026_network_rows_are_read` (Midden-Vlaanderen and

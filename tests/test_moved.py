@@ -187,6 +187,37 @@ async def test_dots_is_read_where_its_product_page_links_it(
     assert asked == [_DOTS_ODOO, snap.source_url]
 
 
+async def test_dots_reads_only_the_links_on_its_own_site(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A product page that also links card addresses on other hosts, plain
+    http and the household's network among them, as a page someone else
+    wrote could: only the address on Dots's own site is asked."""
+    monkeypatch.setattr(dots, "_CARD_URL", _DOTS_ODOO)
+    elsewhere = (
+        '<a href="https://www.dotsenergy.be.example.com/web/content/1">a</a>'
+        '<a href="https://www.dotsenergy.be@example.com/web/content/2">b</a>'
+        '<a href="http://www.dotsenergy.be/web/content/3">c</a>'
+        '<a href="http://192.168.1.1/cgi-bin/luci/admin?x=/web/content/4">d</a>'
+        '<img src="//10.0.0.1/api/tariefkaarten/dots-connect-gas-digital">'
+    )
+    asked: list[str] = []
+    monkeypatch.setattr(
+        dots,
+        "fetch_pdf_text",
+        _serve(
+            {
+                "/web/content/98918": ExtractorError(f"HTTP 404 fetching {_DOTS_ODOO}"),
+                "/api/tariefkaarten/dots-connect-gas-digital": fixture_text("dots", _DOTS_NOVEMBER),
+            },
+            asked,
+        ),
+    )
+    _pages(monkeypatch, {"dotsenergy.be/": elsewhere + _DOTS_PAGE})
+    with freeze_time(NOVEMBER_3):
+        snap = await EXTRACTORS["dots"].fetch(None, "dots_connect_digital", REGION_FLANDERS)  # type: ignore[arg-type]
+    assert snap.source_url == "https://www.dotsenergy.be/api/tariefkaarten/dots-connect-gas-digital"
+    assert asked == [_DOTS_ODOO, snap.source_url]
+
+
 async def test_a_sibling_product_is_never_read(monkeypatch: pytest.MonkeyPatch) -> None:
     """Engie's prices page lists Easy Fixe beside Easy Variable under one
     family code. With Easy Variable's card missing everywhere, its own code

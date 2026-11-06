@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import date
 from unittest.mock import AsyncMock, patch
@@ -266,6 +267,46 @@ async def test_fetch_reads_the_gas_document_of_the_contract() -> None:
     assert url.endswith("/VAST_Energie_be_RES_GAS_pdf_276e3f8ac3.pdf")
     assert snap.source_url == url
     assert isinstance(snap.energy, FixedRates)
+
+
+_ELSEWHERE = [
+    "https://energie.blob.core.windows.net.example.com/cms/assets/x.pdf",
+    "https://energie.blob.core.windows.net@example.com/cms/assets/x.pdf",
+    "https://www.example.com/cms/assets/x.pdf",
+    "https://192.168.1.1/cms/assets/x.pdf",
+    "http://energie.blob.core.windows.net/cms/assets/x.pdf",
+]
+
+
+@pytest.mark.parametrize("link", _ELSEWHERE)
+async def test_a_card_link_off_energiebes_storage_is_not_read(link: str) -> None:
+    """The endpoints link every card on energie.be's storage account. An
+    answer linking one anywhere else, as a compromised endpoint could, is a
+    contract with no card and a month the archive does not hold."""
+    contracts = json.loads(fixture_page("energiebe", "contracts.json"))
+    for row in contracts["contracts"]:
+        if isinstance(gas := row.get("contractTypeNgRes"), dict):
+            gas["tariffDocument"] = link
+    archive = json.loads(fixture_page("energiebe", "tariff-cards_res_Variable.json"))
+    for row in archive["tariffCards"]:
+        row["gasDocument"] = link
+    with (
+        patch.object(
+            energiebe,
+            "fetch_text",
+            AsyncMock(side_effect=[json.dumps(contracts), json.dumps(archive)]),
+        ),
+        patch.object(energiebe, "fetch_pdf_text_layout", AsyncMock()) as fetched,
+    ):
+        with pytest.raises(ExtractorError, match="no Fixed gas card"):
+            await energiebe.fetch(AsyncMock(), "energiebe_fixed", REGION_FLANDERS)
+        assert (
+            await energiebe.fetch_for_month(
+                AsyncMock(), "energiebe_variable", REGION_FLANDERS, date(2026, 8, 1)
+            )
+            is None
+        )
+    fetched.assert_not_called()
 
 
 async def test_fetch_for_month_reads_the_archive_row() -> None:

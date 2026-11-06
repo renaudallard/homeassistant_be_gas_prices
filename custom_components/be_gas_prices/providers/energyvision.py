@@ -112,6 +112,7 @@ from urllib.parse import urljoin
 
 import aiohttp
 from homeassistant.util import dt as dt_util
+from yarl import URL
 
 from ..const import (
     DSO_ORES,
@@ -145,6 +146,7 @@ from ._pdf import (
     head_freshness_key,
     head_or_raise,
     is_missing_card_error,
+    on_site,
     printed_vat_rate,
 )
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
@@ -237,21 +239,22 @@ def _linked_card(html: str, contract: _ContractDef, token: str, page: str) -> tu
 
     Brusol's page links it by an absolute href, which has ended in a space
     ("EV-1026-GSG-BXL-nl.pdf "). A name whose month is no month is passed
-    over.
+    over, and so is a link off the page's own site.
     """
     pattern = re.compile(
         r'href="((?:https?://[^"/]+)?/sites/default/files/[^"]*?'
         rf'EV-(\d{{2}})(\d{{2}})-{contract.code}-{re.escape(token)}[^"/]*\.pdf)\s*"'
     )
-    found: dict[date, str] = {
-        date(2000 + int(year), int(month), 1): href
-        for href, month, year in pattern.findall(html)
-        if 1 <= int(month) <= 12
-    }
+    site = str(URL(page).origin())
+    found: dict[date, str] = {}
+    for href, month, year in pattern.findall(html):
+        url = urljoin(page, href)
+        if 1 <= int(month) <= 12 and on_site(url, site):
+            found[date(2000 + int(year), int(month), 1)] = url
     if not found:
         raise ExtractorError(f"EnergyVision: no {contract.code} {token} card linked from {page}")
     month = max(found)
-    return urljoin(page, found[month]), month
+    return found[month], month
 
 
 # The last re-upload the listing's script asks for ("maxSuffix": 9).
@@ -409,12 +412,13 @@ _INDEX_PDF_RE = re.compile(
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
-    """ZTP-RLP-M by month, off the parameter document the index page links."""
-    match = _INDEX_PDF_RE.search(await fetch_text(session, _INDEX_PAGE_URL))
-    if match is None:
-        raise ExtractorError("EnergyVision: no parameter document linked")
-    url = urljoin(_INDEX_PAGE_URL, match.group(1))
-    return parse_index_document(await fetch_pdf_text_layout(session, url))
+    """ZTP-RLP-M by month, off the first parameter document the index page
+    links on EnergyVision's own site."""
+    for match in _INDEX_PDF_RE.finditer(await fetch_text(session, _INDEX_PAGE_URL)):
+        url = urljoin(_INDEX_PAGE_URL, match.group(1))
+        if on_site(url, _SITE):
+            return parse_index_document(await fetch_pdf_text_layout(session, url))
+    raise ExtractorError("EnergyVision: no parameter document linked")
 
 
 # One month of the gas table: the realised value, then the VNR estimate.

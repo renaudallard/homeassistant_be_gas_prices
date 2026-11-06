@@ -36,7 +36,10 @@ Tests: `tests/test_energyvision.py`, fixtures in
   card while November's had sat in the 2026-10 folder since 30 October. A
   linked card for a month before Home Assistant's sends the fetch to the
   folders this month's card would be filed in (`fetch_for_month`), and back
-  to the linked card when neither holds it or the lookup fails.
+  to the linked card when neither holds it or the lookup fails. Only a link
+  on https://www.brusol.be is taken, as only one on
+  https://www.energyvision.be is for the parameter document; a link to
+  another host is passed over.
 
 Gas is sold only with an electricity contract ("Fossiel gas mogelijk: in
 combinatie"). Brusol's Goedkope Stroom is "exclusief voorbehouden aan
@@ -208,7 +211,7 @@ Not modelled: the one-off welcome credit the Flemish cards print
 - `fetch` in Brussels off Brusol's page, its October href ending in a space,
   read past when it lags: November's card out of the 2026-10 folder (the
   real one), the linked card when nothing is uploaded yet or the lookup
-  fails.
+  fails, a newer card linked on another host passed over.
 - `fetch` elsewhere by name, for the four product and region pairs: the
   names asked in order, the newest upload, a missing `_0` passed over, a
   missing `_1` ending the walk, the `_9` limit, last month's card on the 1st
@@ -220,4 +223,5 @@ Not modelled: the one-off welcome credit the Flemish cards print
   upload folder alone, current and archived.
 - `fetch_for_month`: the plain name, both Brusol folders in order, another
   month, a transient failure, no Brussels GS1JVG.
-- The index document table and `fetch_index` following the page link.
+- The index document table and `fetch_index` following the page link, the
+  first on EnergyVision's own site, none when every link is elsewhere.

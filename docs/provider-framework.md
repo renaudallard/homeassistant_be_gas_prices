@@ -83,15 +83,21 @@ card the parser refuses and the held card keeps pricing.
 ## Fetching (providers/_pdf.py)
 
 Every request goes through `checked_request`, the card archive's and
-Atrias's included. It follows redirects itself, five in a row at most
-(`MAX_REDIRECTS`: none of the 200 addresses read on 6 November 2026 took
-more than one), and asks a redirect's target only over https and on a public
-host. An IP literal in a private, loopback, link-local, shared, reserved or
+Atrias's included. It asks an address only over https and on a public host:
+an IP literal in a private, loopback, link-local, shared, reserved or
 multicast range, an IPv4 address written as IPv6, or a localhost name is
-refused before any connection is made, and the target goes to the debug log
-only. A target may be on another site: TotalEnergies and energie.be serve
-their index publications from another host. The timeout covers the whole
-exchange, redirects included.
+refused before any connection is made. It follows redirects itself, five in
+a row at most (`MAX_REDIRECTS`: none of the 200 addresses read on 6 November
+2026 took more than one), and holds each target to the same rules before
+asking it, the target going to the debug log only. A target may be on
+another site: TotalEnergies and energie.be serve their index publications
+from another host. The timeout covers the whole exchange, redirects
+included.
+
+A link read off a page is kept to the site it belongs to (`on_site`): Dots's
+on www.dotsenergy.be, Brusol's card on www.brusol.be, EnergyVision's
+parameter document on www.energyvision.be, energie.be's cards on its storage
+account. A link to another host is passed over like a missing one.
 
 `read_capped` and `read_text_capped` hold every body to 64 MiB as it
 streams.

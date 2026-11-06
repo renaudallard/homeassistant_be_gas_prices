@@ -99,6 +99,7 @@ from ._pdf import (
     fetch_pdf_text,
     fetch_pdf_text_layout,
     fetch_text,
+    on_site,
     parse_json,
 )
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
@@ -115,6 +116,8 @@ from .base import (
 _CONTRACTS_URL = "https://www.energie.be/api/v1/data/contracts"
 _ARCHIVE_URL = "https://www.energie.be/api/v1/data/tariff-cards"
 _INDEX_URL = "https://www.energie.be/api/v1/data/document?key=Indexation"
+# The storage account the endpoints link every card on.
+_STORAGE = "https://energie.blob.core.windows.net"
 
 # The index the variable card names, and the name fetch_index files it under.
 _INDEX = "TTF_RLP"
@@ -145,8 +148,15 @@ def _json(body: str, what: str) -> dict[str, Any]:
     return payload
 
 
-def _https(value: object) -> str | None:
-    return value if isinstance(value, str) and value.startswith("https://") else None
+def _card_link(value: object) -> str | None:
+    """A card link the endpoints give, where it is on energie.be's storage.
+
+    All 154 links the two endpoints gave on 6 November 2026, back to
+    November 2023, were on that host, as was every card the card archive
+    read. A link to another host is passed over like a missing one: the
+    endpoint is not to choose where Home Assistant goes.
+    """
+    return value if isinstance(value, str) and on_site(value, _STORAGE) else None
 
 
 async def _current_card_url(session: aiohttp.ClientSession, contract: _ContractDef) -> str:
@@ -156,7 +166,7 @@ async def _current_card_url(session: aiohttp.ClientSession, contract: _ContractD
         if not isinstance(row, dict) or row.get("tariffType") != contract.tariff_type:
             continue
         gas = row.get("contractTypeNgRes")
-        url = _https(gas.get("tariffDocument")) if isinstance(gas, dict) else None
+        url = _card_link(gas.get("tariffDocument")) if isinstance(gas, dict) else None
         if url is not None:
             return url
     raise ExtractorError(f"energie.be: no {contract.tariff_type} gas card in the contracts list")
@@ -178,7 +188,7 @@ async def _archive_card_url(
     wanted = f"{year_month.year:04d}/{year_month.month:02d}"
     for row in rows:
         if isinstance(row, dict) and row.get("date") == wanted:
-            return _https(row.get("gasDocument"))
+            return _card_link(row.get("gasDocument"))
     return None
 
 

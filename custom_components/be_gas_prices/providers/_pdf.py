@@ -301,6 +301,18 @@ def _refusal(url: URL) -> str | None:
     return None
 
 
+def on_site(url: str, site: str) -> bool:
+    """Whether ``url`` is an address on ``site``, an origin such as
+    ``https://www.brusol.be``: its scheme, host and port, and no user.
+
+    For the links an extractor reads off a page, which name a card on the
+    supplier's own site. A link to another host is not that card, and
+    taking it would let whoever wrote the page choose what Home Assistant
+    asks.
+    """
+    return url.startswith(f"{site}/")
+
+
 def _redirect_target(url: str, answer: URL, location: str) -> URL:
     """Where a redirect from ``answer``, on the way from ``url``, points,
     once it is an address the integration requests.
@@ -333,20 +345,32 @@ async def checked_request(
     """GET ``url``, or HEAD it, and hand over the answer once it is not a
     redirect. Every fetch the integration makes goes through here.
 
+    ``url`` is held to https and to a public host before it is asked. Most
+    addresses are links read off a supplier's page, and a page that linked
+    a plain http address, or one only the Home Assistant host can reach,
+    would otherwise send Home Assistant there. Every card, page and API the
+    integration reads is served over https, so this refuses nothing real.
+
     aiohttp follows a redirect before its caller sees the answer, so the
     request to wherever it pointed, an address only the Home Assistant host
     can reach included, with the path and query the redirect wrote, was on
     its way before a check on the answer could refuse it. Redirects are
     followed here instead, at most :data:`MAX_REDIRECTS` in a row, and each
-    target is held to https and to a public host before it is requested. A
-    redirect may leave the site: energie.be's document key answers with its
-    storage on blob.core.windows.net, TotalEnergies' index publication with
-    its CDN.
+    target is held to the same rules before it is requested. A redirect may
+    leave the site: energie.be's document key answers with its storage on
+    blob.core.windows.net, TotalEnergies' index publication with its CDN.
 
     ``timeout`` bounds the whole exchange, every redirect and the read of
     the body included, as aiohttp's total timeout did. ``params`` goes with
     the first request only, and the User-Agent with every one.
     """
+    try:
+        reason = _refusal(URL(url))
+    except ValueError:
+        # Not a URL yarl reads: aiohttp refuses it below with its own error.
+        reason = None
+    if reason is not None:
+        raise ExtractorError(f"refusing {url}: {reason}")
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout
     send = session.head if head else session.get

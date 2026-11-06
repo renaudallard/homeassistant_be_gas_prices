@@ -37,8 +37,9 @@ one, it asks the supplier's pages for the product's card of the running
 month and reads each address with the supplier's own reader, keeping the
 first card that is that month's. Only an address that is the product's card
 by construction is read: the same product under its own name or code, or a
-card its own page links. A sibling product is no such card. When nothing
-qualifies the usual answer stands, the error or the older card.
+card its own page links on the supplier's own site. A sibling product is no
+such card. When nothing qualifies the usual answer stands, the error or the
+older card.
 
 Three suppliers are not among them. Luminus's ``fetch`` asks its archive for
 the running month's card itself when the usual address has none. Belvus's
@@ -69,7 +70,7 @@ import aiohttp
 from homeassistant.util import dt as dt_util
 
 from . import dots, elegant, engie
-from ._pdf import fetch_text, is_missing_card_error
+from ._pdf import fetch_text, is_missing_card_error, on_site
 from ._validity import end_of_month
 from .base import (
     CardNotListedError,
@@ -173,7 +174,8 @@ async def _dots(
         page_url = f"{dots._HOST}{path}"
         for link in _HREF_RE.findall(await _page(session, page_url)):
             url = urljoin(page_url, link)
-            if _DOTS_CARD_RE.search(url) is not None:
+            # Dots's own site only: the card is no other host's.
+            if on_site(url, dots._HOST) and _DOTS_CARD_RE.search(url) is not None:
                 found.setdefault(url, "Dots's product page")
     # One card under its plain address and its download one is one card.
     plain = {url.split("?")[0]: where for url, where in found.items() if "/api/" in url}

@@ -17,6 +17,10 @@ Module: `custom_components/be_gas_prices/providers/dots.py`. Tests:
   attachment, `/web/content/<id>?unique=<checksum>&download=true`, with a new
   id each month (98918 for September 2026, 110896 for October 2026). Those
   links now answer a 307 to /nl.
+- When the card is missing from its address, the moved-card fallback
+  (`providers/_moved.py`) reads the addresses the product page links, and
+  only those on https://www.dotsenergy.be: a link to another host is no
+  card of Dots's.
 - No archive of past cards was found, so there is no `fetch_for_month`.
 - No probe: the card's address answers without an ETag or a Last-Modified,
   so a HEAD cannot tell a new card from the last.
