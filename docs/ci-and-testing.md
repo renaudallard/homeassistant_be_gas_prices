@@ -32,6 +32,9 @@ cache and 54 seconds with a full one.
   supplier, earlier contracts, the comparison and the daily ranking.
 - `test_config_flow.py`, `test_ha_setup.py`: the wizard and options menu, and
   a full setup through Home Assistant's loader with the sensors it creates.
+- `test_markdown_text.py`: `escape_markdown` leaves nothing in a fetch error
+  that markdown could render, and keeps it reading as given; the Repairs cards
+  quoting it are checked in `test_ha_setup.py`.
 - `test_postcodes.py`: the postcode table. `test_refresh_postcodes.py`: the
   script that generates it writes nothing when bpost or Synergrid comes back
   short or keeps failing.

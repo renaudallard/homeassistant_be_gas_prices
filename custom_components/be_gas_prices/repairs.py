@@ -34,6 +34,8 @@ from homeassistant.components.repairs import RepairsFlow
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 
+from .markdown_text import escape_markdown
+
 
 class RetryFetchFlow(RepairsFlow):
     """Ask the entry's coordinator to fetch its card again."""
@@ -53,10 +55,13 @@ class RetryFetchFlow(RepairsFlow):
             await coordinator.async_force_refresh(wait=True)
             if coordinator.snapshot_stale():
                 # Finishing the flow would delete the Repairs card although
-                # nothing was fixed; aborted, it stays.
+                # nothing was fixed; aborted, it stays. The reason is markdown,
+                # and the error quotes what the supplier's server answered.
                 return self.async_abort(
                     reason="still_stale",
-                    description_placeholders={"error": coordinator.last_error or "-"},
+                    description_placeholders={
+                        "error": escape_markdown(coordinator.last_error or "-")
+                    },
                 )
         return self.async_create_entry(data={})
 

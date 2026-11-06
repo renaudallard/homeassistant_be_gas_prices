@@ -70,6 +70,20 @@ keep what they show.
 | `recorder_missing` | Home Assistant runs without its recorder, so no meter can be read and the costs and volumes stay unknown; it goes once the recorder runs. The price sensors are not affected. |
 | `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card of the last month it was sold, from the card archive or the supplier's own archive) keeps pricing and never goes stale, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
 
+Home Assistant renders a card, its fix flow and the reason that flow aborts
+with as markdown, and lets links and images with an https address through.
+The `error` placeholder quotes a fetch error, which can carry what a
+supplier's server answered (aiohttp quotes a piece of a malformed status or
+header line), or the unit another integration gave the meter, so
+`sync_issues` (`issues.py`) and the fix flow's `still_stale` abort
+(`repairs.py`) pass it through `escape_markdown` (`markdown_text.py`): every
+ASCII punctuation character is backslash-escaped and the text put on one line,
+every run of whitespace a single space, so nothing in it forms a link, an
+image or a tag, and it reads as given. The fix flow's form shows the card's
+own placeholders, escaped already. The `last_error` attribute stays plain
+text. The electricity and water integrations escape their Repairs text the
+same way.
+
 ## Diagnostics
 
 The download holds the entry's settings (postcode, meter and station

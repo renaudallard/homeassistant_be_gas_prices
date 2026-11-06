@@ -408,7 +408,9 @@ the card archive or the supplier's own archive, and the `contract_withdrawn`
 Repairs card suggests recording the change of contract once the supplier
 moves you. The setup still lists it, marked †, for a household whose
 contract runs on it, and with a contract start date it is priced on the
-card of the month signed.
+card of the month signed. Where a Repairs card quotes the error of the last
+fetch, it is shown as plain text: whatever a supplier's server answered
+cannot turn into a link or an image there.
 
 ## How often the integration polls
 

@@ -39,6 +39,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .gas_meter import recorder_loaded
+from .markdown_text import escape_markdown
 
 if TYPE_CHECKING:
     from .coordinator import GasCoordinator
@@ -113,13 +114,16 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
     """Raise or clear every card of the coordinator's entry."""
     entry = coordinator.entry
     base = {"entry": entry.title, "supplier": coordinator.extractor.label}
+    # The cards are markdown, and a fetch error quotes what the supplier's
+    # server answered, which may have put a link or an image there.
+    fetch_error = escape_markdown(coordinator.last_error or "-")
     stale = coordinator.snapshot_stale()
     _sync(
         hass,
         entry.entry_id,
         "snapshot_stale",
         stale,
-        {**base, "error": coordinator.last_error or "-"},
+        {**base, "error": fetch_error},
         fixable=True,
     )
     failed = (
@@ -134,14 +138,14 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
         entry.entry_id,
         "extractor_failed",
         failed and not coordinator.card_missing,
-        {**base, "error": coordinator.last_error or "-"},
+        {**base, "error": fetch_error},
     )
     _sync(
         hass,
         entry.entry_id,
         "card_missing",
         failed and coordinator.card_missing,
-        {**base, "error": coordinator.last_error or "-"},
+        {**base, "error": fetch_error},
     )
     _sync(hass, entry.entry_id, "card_unreadable", coordinator.card_unreadable, base)
     _sync(
@@ -168,7 +172,9 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
             entry.entry_id,
             "meter_unit",
             bool(coordinator.meter_error),
-            {**base, "error": coordinator.meter_error or "-"},
+            # Quotes the unit another integration gave the meter, or the
+            # recorder's own error.
+            {**base, "error": escape_markdown(coordinator.meter_error or "-")},
         )
     # Every cost is priced from the meter's history the recorder keeps, so
     # without it they stay unknown for good, which reads like a frozen

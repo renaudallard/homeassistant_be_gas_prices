@@ -113,6 +113,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.contract_periods import record_switch, remove_last_switch
 from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
+from custom_components.be_gas_prices.markdown_text import escape_markdown
 from custom_components.be_gas_prices.month_cards import MonthCard
 from custom_components.be_gas_prices.providers import _pdf, engie, octaplus, social
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
@@ -120,6 +121,7 @@ from custom_components.be_gas_prices.providers.base import CardNotReadableError,
 from custom_components.be_gas_prices.running_costs import Household
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import fixture_text
+from tests.test_markdown_text import BODY, STATUS
 
 TABLE = {"ZTPDAM": {"2026-07": 53.116, "2026-08": 61.537}}
 DATA = {
@@ -3856,6 +3858,73 @@ async def test_the_stale_card_repair_stays_until_a_fetch_works(
     result = await flows.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert issues.async_get_issue(DOMAIN, issue_id) is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("message", [BODY, STATUS])
+async def test_the_failed_card_quotes_the_error_escaped(
+    hass: HomeAssistant, fetch: AsyncMock, message: str
+) -> None:
+    entry = await _setup(hass)
+    fetch.side_effect = ExtractorError(message)
+    for _ in range(2):
+        await entry.runtime_data.async_force_refresh(wait=True)
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"extractor_failed_{entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders is not None
+    assert issue.translation_placeholders["error"] == escape_markdown(message)
+    # The attribute is plain text and keeps the message as it came.
+    state = hass.states.get("sensor.engie_flow_current_price")
+    assert state is not None
+    assert state.attributes["last_error"] == message
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_stale_card_and_its_fix_flow_quote_the_error_escaped(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The fix flow's form takes the card's own placeholders, and the reason
+    it aborts with names the error of the fetch it just made."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    coordinator._fetched_at = dt_util.utcnow() - timedelta(days=10)
+    coordinator.last_error = BODY
+    issues.sync_issues(hass, coordinator)
+    issue_id = f"snapshot_stale_{entry.entry_id}"
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_placeholders is not None
+    assert issue.translation_placeholders["error"] == escape_markdown(BODY)
+    assert await async_setup_component(hass, "repairs", {})
+    flows = repairs_flow_manager(hass)
+    assert flows is not None
+    fetch.side_effect = ExtractorError(STATUS)
+    result = await flows.async_init(DOMAIN, data={"issue_id": issue_id})
+    result = await flows.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "still_stale"
+    assert result["description_placeholders"] == {"error": escape_markdown(STATUS)}
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_meter_card_quotes_its_error_escaped(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """The meter's unit comes from whichever integration made the sensor."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    error = (
+        "sensor.gas records statistics in '[m³](https://evil.example/u)', which Home "
+        "Assistant can convert neither to a volume nor to an energy"
+    )
+    coordinator.meter_error = error
+    coordinator.meter_reads_pending = False
+    coordinator.meter_count = 1
+    issues.sync_issues(hass, coordinator)
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"meter_unit_{entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders is not None
+    assert issue.translation_placeholders["error"] == escape_markdown(error)
 
 
 async def test_setup_retries_when_there_is_no_card_at_all(
