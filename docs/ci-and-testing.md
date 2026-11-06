@@ -280,6 +280,18 @@ a card whose bytes the archive holds is served its stored text instead of
 being rendered, which is most of a run's time. `--fingerprint FILE` receives
 the failing labels.
 
+The report's tables show each detail as one code span (`_code_span`): a
+detail can quote what a supplier serves, an error about its card or an
+address the card finder read off its pages, and the report is posted as an
+issue, where GitHub renders no mention, link, image or issue reference inside
+a code span. The detail loses its backticks, which would close the span, and
+its CRs and LFs, which would end the table row, and its pipes keep their
+escape (`test_a_detail_is_shown_as_one_code_span`). A row's label is shown
+the same way, since it can carry the month a card names itself for, as the
+card prints it (`test_a_label_is_shown_as_one_code_span`), and the failing
+labels the issue leads with lose their backticks and CRs before each is put
+in its span (`test_a_failing_check_is_listed_as_one_code_span`).
+
 Exit codes: 0 all passed, 1 a persistent failure, 2 only transient ones, 3
 the check itself crashed. A crash before the check runs (an import that
 fails) exits 1 without writing the fingerprint, and the workflow reads that
@@ -397,7 +409,10 @@ images still embeds the fonts of the text set over its picture, so a glyph
 the library lacks shows before any card needs it read from pixels. The
 fonts and characters are filed under `archive-cards-glyphs`, naming the
 card to learn them from; a card the tool crashes on fails the step, which
-files nothing and lets the run go on.
+files nothing and lets the run go on. Both lists come from the walk, which
+runs third-party code on what the suppliers serve, so each is posted in a
+code block no line of it can close: its CRs go and every line starts with
+`- ` (`test_the_walk_s_lists_stay_in_their_code_block`).
 
 `--backfill N` also mirrors the N closed months before this one, at most
 `--keep-months`, from every supplier archive, for months not held yet. Each

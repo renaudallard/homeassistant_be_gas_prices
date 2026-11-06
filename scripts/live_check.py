@@ -1278,6 +1278,25 @@ def render_fingerprint(checks: Iterable[Check]) -> str:
     )
 
 
+def _code_span(text: str) -> str:
+    """``text`` as a code span for a table cell, or nothing when it is blank.
+
+    A detail quotes what a supplier serves (an error about its card, an
+    address the card finder read off its pages), a label can carry the
+    month a card names itself for, as the card prints it, and the report is
+    posted as an issue. Inside a code span GitHub renders no mention, link,
+    image, issue reference or HTML. A backtick would close the span, so none
+    is kept. A CR or LF would end the table row, and the runner splits the
+    printed report on either, so what followed could start a workflow
+    command. A pipe ends the cell even inside a span, so it keeps its escape.
+    """
+    flat = text.replace("`", "").replace("\r", " ").replace("\n", " ")
+    if not flat.strip():
+        return ""
+    escaped = flat.replace("|", "\\|")
+    return f"`{escaped}`"
+
+
 def _table(lines: list[str], title: str, note: str | None, checks: list[Check]) -> None:
     if not checks:
         return
@@ -1286,8 +1305,7 @@ def _table(lines: list[str], title: str, note: str | None, checks: list[Check]) 
         lines += [note, ""]
     lines += ["| Check | Detail |", "| --- | --- |"]
     for check in checks:
-        detail = check.detail.replace("|", "\\|").replace("\n", " ")
-        lines.append(f"| `{check.label}` | {detail} |")
+        lines.append(f"| {_code_span(check.label)} | {_code_span(check.detail)} |")
     lines.append("")
 
 

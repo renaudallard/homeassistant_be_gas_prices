@@ -214,7 +214,10 @@ jobs:
             echo
             echo "## Failing checks"
             echo
-            sed 's/^/- `/; s/$/`/' tmp/report/failures.txt
+            # A label can carry the month a card names itself for, as the
+            # card prints it, so it loses the backticks and CRs that would
+            # let it out of its code span.
+            tr -d '\r`' < tmp/report/failures.txt | sed 's/^/- `/; s/$/`/'
             echo
             # The report without its "All checks" list, which only repeats
             # the tables above it and would push a large fleet's body past

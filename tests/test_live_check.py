@@ -1105,9 +1105,34 @@ async def test_failures_are_told_apart_and_set_the_exit_code(tmp_path: Path) -> 
     assert lc.render_fingerprint(checks) == "gone/gone_fix/flanders: fetch\n"
     report = lc.render_report(checks)
     assert "## Failures" in report and "## Transient failures" in report
-    assert "| `slow/slow_fix/flanders: fetch` | ExtractorError: network error fetching" in report
+    assert "| `slow/slow_fix/flanders: fetch` | `ExtractorError: network error fetching" in report
 
     assert lc.exit_code(await lc.check_fleet(None, healthy, TODAY, sleep=_no_sleep)) == 0
+
+
+def test_a_detail_is_shown_as_one_code_span() -> None:
+    """A detail can quote what a supplier serves, and the report is posted
+    as an issue: as it came, a mention, a link, an image and an issue
+    reference would all render, and a CR would end the table row. A detail
+    is one code span in its cell: no backtick of its own to close it, no
+    line ending, and its pipes escaped. A blank one leaves the cell empty."""
+    label = "acme/acme_fix/flanders: fetch"
+    detail = (
+        "ExtractorError: `Zen` @renaudallard [fix](https://evil.example/phish) "
+        "![](https://evil.example/pixel.png) see #1 a|b <!-- x"
+        "\r::warning title=spoofed::fake\nend"
+    )
+    report = lc.render_report(
+        [lc.Check(label, "fail", detail), lc.Check("acme/acme_dyn/flanders: fetch", "fail", "``")]
+    )
+    assert "\r" not in report
+    rows = [row for row in report.split("\n") if row.startswith("| `acme/")]
+    assert rows == [
+        f"| `{label}` | `ExtractorError: Zen @renaudallard [fix](https://evil.example/phish) "
+        "![](https://evil.example/pixel.png) see #1 a\\|b <!-- x ::warning title=spoofed::fake "
+        "end` |",
+        "| `acme/acme_dyn/flanders: fetch` |  |",
+    ]
 
 
 async def test_a_supplier_that_does_not_answer_is_given_up_on_for_the_run() -> None:
@@ -1445,23 +1470,69 @@ def test_the_issue_is_filed_by_a_job_that_runs_no_check(tmp_path: Path) -> None:
     assert upload["if"] == filer["if"].replace("needs.check.", "steps.check.")
 
     # The issue step, over a report handed over where the check leaves it.
-    report = tmp_path / "tmp" / "report"
-    report.mkdir(parents=True)
-    (report / "failures.txt").write_text("ebem/fix/flanders: fetch\n")
-    (report / "report.md").write_text("# Live check\n\n## Failures\n\nx\n\n## All checks\n\n- a\n")
+    body, fingerprint = _filed_issue(
+        tmp_path,
+        "ebem/fix/flanders: fetch\n",
+        "# Live check\n\n## Failures\n\nx\n\n## All checks\n\n- a\n",
+    )
+    assert "- `ebem/fix/flanders: fetch`" in body
+    assert "## Failures" in body and "All checks" not in body
+    assert fingerprint == "ebem/fix/flanders: fetch\n"
+
+
+def _filed_issue(tmp_path: Path, failures: str, report: str) -> tuple[str, str]:
+    """The body and the fingerprint the issue step files from these two
+    hand-overs, read as bytes, since text mode would turn a CR into a line
+    ending."""
+    workflow = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / ".github/workflows/live_check.yml").read_text()
+    )
+    handed = tmp_path / "tmp" / "report"
+    handed.mkdir(parents=True)
+    (handed / "failures.txt").write_bytes(failures.encode())
+    (handed / "report.md").write_bytes(report.encode())
     (tmp_path / "scripts").mkdir()
     (tmp_path / "scripts" / "file_ci_issue.sh").write_text(
         'while [ $# -gt 0 ]; do case "$1" in\n'
         '  --fingerprint) cp "$2" filed_fingerprint.txt ;;\n'
         "esac; shift; done\n"
     )
-    step = next(s for s in filer["steps"] if s.get("name", "").startswith("Open or update"))
+    steps = workflow["jobs"]["file"]["steps"]
+    step = next(s for s in steps if s.get("name", "").startswith("Open or update"))
     run = re.sub(r"\$\{\{[^}]*\}\}", "x", step["run"])
     subprocess.run(["bash", "-e", "-c", run], cwd=tmp_path, check=True)
-    body = (tmp_path / "issue_body.md").read_text()
-    assert "- `ebem/fix/flanders: fetch`" in body
-    assert "## Failures" in body and "All checks" not in body
-    assert (tmp_path / "filed_fingerprint.txt").read_text() == "ebem/fix/flanders: fetch\n"
+    return (
+        (tmp_path / "issue_body.md").read_bytes().decode(),
+        (tmp_path / "filed_fingerprint.txt").read_bytes().decode(),
+    )
+
+
+def test_a_failing_check_is_listed_as_one_code_span(tmp_path: Path) -> None:
+    """The failing checks are labels, and a label can carry the month a card
+    names itself for, as the card prints it: a backtick in one closed its
+    code span in the list the issue leads with, and a CR ended its line."""
+    label = "fleet: federal excise for novembre`@renaudallard [l](https://evil.example)` 2026"
+    body, _fingerprint = _filed_issue(tmp_path, f"{label}\r\n", "# Live check\n")
+    assert "\r" not in body
+    assert (
+        "\n- `fleet: federal excise for novembre@renaudallard [l](https://evil.example) 2026`\n"
+        in body
+    )
+
+
+def test_a_label_is_shown_as_one_code_span() -> None:
+    """A label can carry the month a card names itself for, as the card
+    prints it: a backtick in it closed the label's span in the report's
+    tables. A label is one code span, and one of the harness's own reads
+    exactly as before."""
+    crafted = "fleet: federal excise for novembre`@renaudallard [l](https://evil.example)` 2026"
+    plain = "acme/acme_fix/flanders: fetch"
+    report = lc.render_report(
+        [lc.Check(crafted, "fail", "no majority"), lc.Check(plain, "fail", "HTTP 404")]
+    )
+    clean = "`fleet: federal excise for novembre@renaudallard [l](https://evil.example) 2026`"
+    assert f"| {clean} | `no majority` |" in report
+    assert f"| `{plain}` | `HTTP 404` |" in report
 
 
 def test_a_render_that_never_returns_does_not_hold_the_exit() -> None:
