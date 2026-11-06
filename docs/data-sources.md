@@ -75,7 +75,8 @@ consolidate. `tarbel.py` reads the rates in force from the workbook FPS
 Finance publishes for excise declarations (annex 7):
 
 - `GET https://eservices.minfin.fgov.be/extTariffBrowser/FileResourceForHomePageServlet?fname=accijnzen.xlsx&lang=NL`,
-  in Dutch, about 280 KB, its unpacked size capped at 16 MiB;
+  in Dutch, about 280 KB, its unpacked size capped at 16 MiB and read as
+  every workbook is (`xlsx.py`, under Fluvius's sheet below);
 - sheet `Q`, the rows "Aardgas gebruikt als verwarmingsbrandstof voor
   niet-zakelijk gebruik, m.u.v. de beschermde residentiële afnemer", "van 0
   tot 12 MWh" or "vanaf 12 MWh", "van toepassing vanaf ... tot en met ...",
@@ -117,6 +118,13 @@ off Fluvius's yearly tariff list, which the VREG approves:
 - the first one of the year links its workbook,
   `/sites/fluvius/files/.../*.xlsx`, read with the standard library's zip
   reader and defusedxml, its unpacked size capped at 4 MiB.
+
+Each workbook read here, Fluvius's, the CWaPE's and FPS Finance's, is read
+in a worker thread, and nothing its zip declares is trusted: the zip has to
+end with its directory, at most 64 KiB, with no comment or ZIP64 record, a
+member has to be stored or deflated, and each member is read through
+`ZipFile.open` no further than what is left of the cap, which is as far as
+it is inflated.
 
 Every area prints the same fee (17,51 EUR/year excluding VAT in 2025,
 17,85 in 2026), so one sheet stands for all eight. A sheet that is not the

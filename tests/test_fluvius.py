@@ -28,9 +28,11 @@
 from __future__ import annotations
 
 import io
+import threading
 import zipfile
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -166,6 +168,32 @@ async def test_the_sheet_is_found_from_the_listing_and_kept() -> None:
     session.asked.clear()
     await ensure_tariff_sheet(session, 2026)
     assert session.asked == [], "a held year was fetched again"
+
+
+async def test_the_sheets_are_read_off_the_event_loop() -> None:
+    """A workbook is remote content: what it unpacks to and how long that
+    takes is up to it, as for every other workbook read."""
+    threads: list[threading.Thread] = []
+    fee, area = fluvius.parse_sheet, fluvius.parse_area_network
+
+    def recorded(parse: Any) -> Any:
+        def call(payload: bytes, year: int) -> Any:
+            threads.append(threading.current_thread())
+            return parse(payload, year)
+
+        return call
+
+    session: Any = _Session()
+    with (
+        patch.object(fluvius, "parse_sheet", recorded(fee)),
+        patch.object(fluvius, "parse_area_network", recorded(area)),
+    ):
+        await ensure_tariff_sheet(session, 2026)
+        await fluvius.ensure_area_network(session, 2026, "fluvius_antwerpen")
+    assert len(threads) == 2
+    assert threading.main_thread() not in threads
+    assert fluvius.data_management_fee(2026) == 17.85
+    assert fluvius.cached_area_network(2026, "fluvius_antwerpen") is not None
 
 
 async def test_a_year_not_listed_yet_yields_nothing_until_the_backoff() -> None:

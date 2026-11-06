@@ -181,7 +181,9 @@ async def fetch_fee(session: aiohttp.ClientSession, year: int) -> float | None:
         _LOGGER.debug("Fluvius %d gas publication page links no workbook", year)
         return None
     payload = await fetch_bytes(session, _SITE + sheet.group(1), timeout=_TIMEOUT)
-    return parse_sheet(payload, year)
+    # Off the event loop, as every workbook is read: what it unpacks to and
+    # how long that takes is up to the payload.
+    return await asyncio.to_thread(parse_sheet, payload, year)
 
 
 def parse_sheet(payload: bytes, year: int) -> float | None:
@@ -275,7 +277,7 @@ async def read_area_network(
     if sheet is None:
         return None
     payload = await fetch_bytes(session, _SITE + sheet.group(1), timeout=_TIMEOUT)
-    return parse_area_network(payload, year)
+    return await asyncio.to_thread(parse_area_network, payload, year)
 
 
 def parse_area_network(payload: bytes, year: int) -> SheetNetwork | None:
