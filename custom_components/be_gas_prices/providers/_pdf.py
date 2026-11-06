@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+import codecs
 import ipaddress
 import json
 import logging
@@ -217,20 +218,34 @@ async def read_capped(resp: aiohttp.ClientResponse, url: str) -> bytes:
     return bytes(payload)
 
 
+# The charsets a text body is decoded in when it declares one, by the name
+# codecs.lookup gives them. On 6 November 2026 the 42 pages and documents
+# the integration reads declared UTF-8, ISO-8859-1 (Justel) or nothing. Any
+# other is read as UTF-8: the server names the codec, which runs on the
+# event loop, and some are slow, punycode quadratically so.
+_CHARSETS = frozenset({"utf-8", "iso8859-1", "cp1252", "ascii"})
+
+
+def _charset(declared: str | None) -> str:
+    """The codec a body that declares ``declared`` is decoded in."""
+    try:
+        name = codecs.lookup(declared or "utf-8").name
+    except LookupError:
+        # A charset Python does not know, such as "utf8mb4".
+        return "utf-8"
+    return name if name in _CHARSETS else "utf-8"
+
+
 async def read_text_capped(resp: aiohttp.ClientResponse, url: str) -> str:
-    """Read a text body under the cap, in the charset it declares or UTF-8.
+    """Read a text body under the cap, in the charset it declares when that
+    is UTF-8, Latin-1, Windows-1252 or ASCII, and as UTF-8 otherwise.
 
     Not strict: a page in another charset than it declares (a maintenance
     page in Latin-1) is then refused by its parser as an ExtractorError
     rather than raised as a UnicodeDecodeError.
     """
     payload = await read_capped(resp, url)
-    try:
-        return payload.decode(resp.charset or "utf-8", errors="replace")
-    except (LookupError, UnicodeError):
-        # A charset Python does not know ("utf8mb4"), or a codec with no
-        # replace handler (idna).
-        return payload.decode("utf-8", errors="replace")
+    return payload.decode(_charset(resp.charset), errors="replace")
 
 
 # Redirects followed in a row at most. On 6 November 2026 none of the 200

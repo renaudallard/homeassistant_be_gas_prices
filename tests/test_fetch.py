@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -71,6 +72,51 @@ async def test_a_page_in_another_charset_is_read_not_raised(
     async with https_site(_app(page), tmp_path) as site:
         text = await fetch_text(site.session, site.url("/"))
     assert text.startswith("Maintenance planifi")
+
+
+_PUNYCODE_BOMB = b"-" + b"a" * 200_000
+
+
+async def test_a_charset_off_the_list_is_read_as_utf8(socket_enabled: None, tmp_path: Path) -> None:
+    """200 kB that name punycode, whose decoder takes seconds on them: the
+    decode runs on the event loop, so the codec a server names is not
+    trusted. Read as punycode they would be other text."""
+
+    async def page(request: web.Request) -> web.Response:
+        return web.Response(
+            body=_PUNYCODE_BOMB, headers={"Content-Type": "text/html; charset=punycode"}
+        )
+
+    async with https_site(_app(page), tmp_path) as site:
+        text = await fetch_text(site.session, site.url("/"))
+    assert text == _PUNYCODE_BOMB.decode("ascii")
+
+
+def test_a_body_that_names_punycode_decodes_in_well_under_a_second() -> None:
+    start = time.monotonic()
+    _PUNYCODE_BOMB.decode(_pdf._charset("punycode"), errors="replace")
+    assert time.monotonic() - start < 0.5
+
+
+@pytest.mark.parametrize(
+    ("declared", "body", "text"),
+    [
+        # Justel's page, which declares it.
+        ("ISO-8859-1", "planifiée".encode("latin-1"), "planifiée"),
+        ("windows-1252", "5 €".encode("cp1252"), "5 €"),
+        ("US-ASCII", b"5 EUR", "5 EUR"),
+        ("UTF8", "planifiée".encode(), "planifiée"),
+        (None, "planifiée".encode(), "planifiée"),
+        # Unknown to Python, or a codec off the list: UTF-8.
+        ("utf8mb4", "planifiée".encode(), "planifiée"),
+        ("idna", "planifiée".encode(), "planifiée"),
+        ("utf-16", "planifiée".encode(), "planifiée"),
+    ],
+)
+def test_a_declared_charset_is_read_in_its_codec_when_listed(
+    declared: str | None, body: bytes, text: str
+) -> None:
+    assert body.decode(_pdf._charset(declared), errors="replace") == text
 
 
 async def _streamed(request: web.Request) -> web.StreamResponse:

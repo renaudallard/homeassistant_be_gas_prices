@@ -102,6 +102,11 @@ account. A link to another host is passed over like a missing one.
 `read_capped` and `read_text_capped` hold every body to 64 MiB as it
 streams.
 
+`read_text_capped` decodes a text in the charset it declares only when that
+is UTF-8, Latin-1, Windows-1252 or ASCII, and as UTF-8 otherwise: the decode
+runs on the event loop, and a codec such as punycode takes seconds on a few
+hundred kB.
+
 ## A card that moved (providers/_moved.py)
 
 `EXTRACTORS` wraps the `fetch` of Elegant, Engie and Dots
