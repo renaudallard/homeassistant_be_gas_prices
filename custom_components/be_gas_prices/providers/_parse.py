@@ -120,6 +120,52 @@ def parse_sign(char: str) -> float:
     return -1.0 if char in _DASHES else 1.0
 
 
+def stated_unit(
+    text: str,
+    pattern: re.Pattern[str],
+    figure: tuple[int, int],
+    *,
+    before: int = 0,
+    after: int = 0,
+) -> str | None:
+    """The unit a card states for the figure at ``figure``, the start and end
+    offsets of it in ``text``, or None where it states none there.
+
+    ``pattern`` matches one statement of the unit as the card prints it (a
+    column heading, the words after a formula), with the unit as its first
+    group. The last statement lying within ``before`` characters ahead of the
+    figure is taken, else the first within ``after`` characters behind it. A
+    reader compares the answer with the spellings its cards have printed and
+    refuses any other, None included: a figure read on a scale its card no
+    longer states parses clean ten or a hundred times out, as OCTA+'s formulas
+    did in November 2026 (``octaplus.py``).
+    """
+    start, end = figure
+    if before:
+        stated = list(pattern.finditer(text, max(0, start - before), start))
+        if stated:
+            return stated[-1].group(1)
+    if after:
+        match = pattern.search(text, end, end + after)
+        if match:
+            return match.group(1)
+    return None
+
+
+def formula_gives(
+    printed: float, factor: float, index: float, base: float, *, tolerance: float
+) -> bool:
+    """Whether ``factor`` x ``index`` + ``base`` gives back the price a card
+    prints beside its formula, within ``tolerance`` of it as a share.
+
+    For a card that states no unit for its formula but prints the index its
+    price is worked out at: a formula read on the wrong scale, or off the
+    wrong row, does not give the printed price back. All four figures in one
+    unit and on one VAT basis.
+    """
+    return abs(factor * index + base - printed) <= tolerance * abs(printed)
+
+
 def require_contract[T](by_id: Mapping[str, T], contract_id: str, label: str) -> T:
     """The contract definition for ``contract_id``, or raise."""
     try:

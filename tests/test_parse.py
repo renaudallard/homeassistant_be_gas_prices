@@ -23,15 +23,43 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""The HTML table reader."""
+"""The two helpers a formula reader checks its figures with: the unit its
+card states for them, and the price its formula gives back. And the HTML
+table reader."""
 
 from __future__ import annotations
 
+import re
 import time
 
 import pytest
 
-from custom_components.be_gas_prices.providers._parse import html_rows
+from custom_components.be_gas_prices.providers._parse import (
+    formula_gives,
+    html_rows,
+    stated_unit,
+)
+
+
+def test_the_unit_a_card_states_is_the_nearest_statement_of_it() -> None:
+    """The last statement before the figure wins, else the first after it,
+    each within its own reach; a card stating none there answers None."""
+    unit = re.compile(r"\((c€/kWh|€/MWh)\)")
+    text = "TTF (€/MWh) 86,10 Formule (c€/kWh) 0,1001 x TTF + 0,52 (€/MWh)"
+    figure = text.index("0,1001"), text.index("0,1001") + 6
+    assert stated_unit(text, unit, figure, before=30) == "c€/kWh"
+    assert stated_unit(text, unit, figure, before=5, after=30) == "€/MWh"
+    assert stated_unit(text, unit, figure, before=5, after=5) is None
+    assert stated_unit(text, unit, figure) is None
+
+
+def test_a_formula_gives_back_the_price_its_card_prints() -> None:
+    # Luminus's November 2026 gas card: 0,1001 x TTF DAH M + 0,5279 c€/kWh
+    # before VAT, with TTF DAH M at 86,104 EUR/MWh.
+    price = 0.1001 * 86.104 + 0.5279
+    assert formula_gives(price, 0.1001, 86.104, 0.5279, tolerance=0.001)
+    assert not formula_gives(price, 1.001, 86.104, 0.5279, tolerance=0.001)
+    assert not formula_gives(price, 0.1001, 86.104, 5.279, tolerance=0.001)
 
 
 def test_a_table_reads_as_its_patterns_did() -> None:
