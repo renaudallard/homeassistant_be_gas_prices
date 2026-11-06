@@ -426,6 +426,11 @@ Every hour, each entry runs one refresh:
 - **Fluvius's gas tariff sheet** of this year, once, for an entry billing a
   Flemish contract this year (an earlier one included): the data management
   fee a card may leave out. A failure waits six hours.
+- **Your operator's network sheet** of this year, once, for a custom entry
+  taking its network from it (an earlier custom contract of the year
+  included): Fluvius's for your area, Brugel's, or the CWaPE's grid for ORES
+  or RESA, the year before's standing in until the year's is published. A
+  failure waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
 - **The card archive's VAT and law tables**, once a day each, for an entry
