@@ -164,6 +164,14 @@ _INDEX = "TTF"
 # A card is about 1.7 MB and Bolt's CDN is slow now and then.
 _PDF_TIMEOUT = 60
 
+# Versions a walk asks at most, from the one the listing links down. Bolt
+# numbered its French variable cards 10 (January 2025) to 14 (October 2026),
+# four of them from June to October 2026, and the walk stops at 10, the
+# older template: five versions today. 36 is three years at one a month,
+# more than twice the pace of 2026, while a listing that linked version
+# 200000 would cost 36 requests rather than 200,000.
+_MAX_VERSIONS = 36
+
 
 @dataclass(frozen=True)
 class _ContractDef:
@@ -289,13 +297,14 @@ async def _url_in_force(
 ) -> str | None:
     """The variable card in force at the end of ``year_month``.
 
-    Walks down from the version the listing links, reading each title with
-    pypdf, several times faster than the layout reader. A number Bolt
-    skipped (Plenty has no 12) answers 404 and is passed over; a title the
-    module does not read stops the walk, since the older versions are of the
-    older template too.
+    Walks down from the version the listing links, :data:`_MAX_VERSIONS` of
+    them at most, reading each title with pypdf, several times faster than
+    the layout reader. A number Bolt skipped (Plenty has no 12) answers 404
+    and is passed over; a title the module does not read stops the walk,
+    since the older versions are of the older template too.
     """
-    for version in range(int(await _current_suffix(session, contract)), 0, -1):
+    newest = int(await _current_suffix(session, contract))
+    for version in range(newest, max(newest - _MAX_VERSIONS, 0), -1):
         url = _card_url(contract, str(version))
         try:
             text = await fetch_pdf_text(session, url, timeout=_PDF_TIMEOUT)

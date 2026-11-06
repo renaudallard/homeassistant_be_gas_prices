@@ -479,6 +479,27 @@ async def test_a_title_not_read_stops_the_walk() -> None:
     layout.assert_not_called()
 
 
+async def test_the_walk_asks_no_more_versions_than_its_cap() -> None:
+    """A listing that links version 1000, as one someone else wrote could,
+    with every version answering 404: the walk asks the 36 from 1000 down,
+    not a thousand."""
+    listing = '<a href="https://files.boltenergie.be/pricelists/var/bolt_res_ng_fr_1000.pdf">'
+    titles = _versions({})
+    with (
+        patch.object(bolt, "fetch_text", AsyncMock(return_value=listing)),
+        patch.object(bolt, "fetch_pdf_text", titles),
+        patch.object(bolt, "fetch_pdf_text_layout", AsyncMock()) as layout,
+    ):
+        snap = await bolt.fetch_for_month(
+            AsyncMock(), "bolt_variable", REGION_WALLONIA, date(2026, 9, 1)
+        )
+    assert snap is None
+    assert [c.args[1] for c in titles.call_args_list] == [
+        _VAR_URL.format(version) for version in range(1000, 964, -1)
+    ]
+    layout.assert_not_called()
+
+
 async def test_the_walk_raises_on_a_transient_failure() -> None:
     with pytest.raises(ExtractorError):
         await _variable_month(

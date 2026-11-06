@@ -201,8 +201,9 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   or August 2026.
 - `fetch_for_month` for a variable contract takes the newest version whose
   title names the month or an earlier one, which is the card in force at the
-  end of that month. It walks down from the version the listing links,
-  reading titles with pypdf (about 9 s a card on a Raspberry Pi, against 40
+  end of that month. It walks down from the version the listing links, 36
+  versions at most (`_MAX_VERSIONS`, three years at one a month), reading
+  titles with pypdf (about 9 s a card on a Raspberry Pi, against 40
   to 45 s for the layout reader), passes over a number that fails to download, and stops at a title
   it does not read. A transient failure raises. Only the chosen card is read
   with the layout reader; when it does not parse, the month has no card. The
@@ -239,7 +240,8 @@ pays pdfplumber's 45 s on a Raspberry Pi):
   tables in each region, another product refused, no `valid_until`.
 - The version walk: September takes version 13; July takes the June card,
   version 12, passing over a missing number; a title not read stops the
-  walk; a transient failure raises.
+  walk; a transient failure raises; a listing linking version 1000 costs 36
+  downloads, not a thousand.
 - Version 12: refused in Flanders, read in Wallonia and Brussels off its
   two-column levy table.
 - The index: the October listing's months up to September, September's
