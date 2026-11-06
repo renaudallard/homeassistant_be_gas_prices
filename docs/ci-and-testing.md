@@ -70,6 +70,11 @@ cache and 54 seconds with a full one.
 - `test_autorelease.py`: the release job of `autorelease.yml`, its own
   steps run under `bash -e` against a scratch origin and a fake `gh`: the
   retries, a re-run over a pushed tag, and a draft left by a failed publish.
+  Its zip step fails on a symbolic link anywhere from `custom_components`
+  down, the component itself included: zip stores what a link points at, a
+  folder's files included, so a link to the runner's temp folder, where the
+  checkout keeps the job's write token, would ship the token in the zip HACS
+  installs, and the repository holds no link there.
 - `tests/recorder/`: tests that need a real recorder database (the gas
   meter's statistics). `recorder_mock` must build its database before `hass`
   exists, so the directory's own `conftest.py` turns the parent's two autouse
