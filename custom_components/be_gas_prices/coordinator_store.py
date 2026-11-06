@@ -32,6 +32,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from dataclasses import asdict
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -42,8 +43,10 @@ from homeassistant.util import dt as dt_util
 
 from . import excise_law, fluvius, law_archive, tarbel, vat_rates
 from .const import CONF_DSO, CONF_STATION, DOMAIN
+from .contract_periods import periods_this_year
 from .daily_ranking import DailyRanking
 from .month_cards import MonthCardCache
+from .network_sheet import held_network, takes_network_sheet
 from .providers._resolve import LAW_FIGURES, tier_for
 from .providers.base import IndexTable, SupplierExtractor, SupplierSnapshot
 from .running_costs import Household
@@ -240,15 +243,37 @@ class _StoreMixin:
         """Write the store now, outside a tick."""
         await self._save_persistent()
 
+    def _network_sheets_held(self, today: date) -> list[Any]:
+        """What the network sheets held give each month of the year so far,
+        for each contract of the year that takes its network from one: the
+        entry's own and the earlier ones recorded at a switch."""
+        contracts = [
+            self._data,
+            *(period for period, _first, _last in periods_this_year(self._data, today)),
+        ]
+        days = [date(today.year, month, 1) for month in range(1, today.month + 1)]
+        return [
+            [
+                None
+                if (held := held_network(day, str(contract.get(CONF_DSO, "")))) is None
+                else asdict(held)
+                for day in days
+            ]
+            for contract in contracts
+            if takes_network_sheet(contract)
+        ]
+
     def card_months_signature(self) -> str:
         """What the year's past months are priced from: the entry's
         settings, each past month's own card and the card in hand as read,
         the index values, the calorific values, the figures of the law and
-        the tier the measured volume falls in. It moves when any of them
-        changes or lands, a card read again after an update or the value of
-        an index that lags the others included, which is when the price
-        history is worth drawing again. The excise blend within a tier,
-        which moves the price a few hundredths of a cent, does not move it."""
+        the tier the measured volume falls in, and the network a custom
+        contract takes off its DSO's tariff sheet. It moves when any of them
+        changes or lands, a card read again after an update, the value of
+        an index that lags the others or a sheet read after the history was
+        drawn included, which is when the price history is worth drawing
+        again. The excise blend within a tier, which moves the price a few
+        hundredths of a cent, does not move it."""
         today = dt_util.now().date()
         own = [
             f"{month}:{_card_digest(card)}"
@@ -258,19 +283,23 @@ class _StoreMixin:
         index = _digest(self._index_table)
         gcv = _digest(self._gcv)
         current = "" if self._snapshot is None else _card_digest(self._snapshot)
-        law = _digest(
-            [
-                LAW_FIGURES,
-                excise_law.held_table(),
-                excise_law.protected_held_table(),
-                excise_law.contribution_held_table(),
-                tarbel.held_table(),
-                tarbel.protected_held_table(),
-                tarbel.contribution_held_table(),
-                fluvius.held_table(),
-                vat_rates.held_table(),
-                law_archive.held_table(),
-            ]
-        )
+        figures: list[Any] = [
+            LAW_FIGURES,
+            excise_law.held_table(),
+            excise_law.protected_held_table(),
+            excise_law.contribution_held_table(),
+            tarbel.held_table(),
+            tarbel.protected_held_table(),
+            tarbel.contribution_held_table(),
+            fluvius.held_table(),
+            vat_rates.held_table(),
+            law_archive.held_table(),
+        ]
+        # Left out where no contract takes a sheet, so every other entry's
+        # stamp stays what it was.
+        sheets = self._network_sheets_held(today)
+        if sheets:
+            figures.append(sheets)
+        law = _digest(figures)
         tier = "" if self.household is None else tier_for(self.household.annual_kwh)
         return f"{self._settings_digest()}|{','.join(own)}|{index}|{gcv}|{current}|{law}|{tier}"

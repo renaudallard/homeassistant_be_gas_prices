@@ -72,6 +72,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CONVERSION_FACTOR,
     CONF_CONVERSION_MODE,
     CONF_CUSTOM_EXCISE_LOW,
+    CONF_CUSTOM_NETWORK_FROM_SHEET,
     CONF_CUSTOM_PRICE,
     CONF_CUSTOM_T1_FIXED,
     CONF_CUSTOM_T1_PROP,
@@ -3079,6 +3080,56 @@ async def test_the_price_history_stamp_moves_with_a_lagging_value(
     before = coordinator.card_months_signature()
     coordinator._gcv["2026-07"] = 11.4
     assert coordinator.card_months_signature() != before
+
+
+def _custom_network(sheet: bool) -> dict[str, Any]:
+    """A custom ORES entry, its network typed or taken off the sheet."""
+    return {
+        **DATA,
+        CONF_SUPPLIER: SUPPLIER_CUSTOM,
+        CONF_CONTRACT: CUSTOM_CONTRACT,
+        CONF_CUSTOM_PRICE: 7.5,
+        CONF_CUSTOM_T1_FIXED: 15.0,
+        CONF_CUSTOM_T1_PROP: 2.0,
+        CONF_CUSTOM_T2_FIXED: 80.0,
+        CONF_CUSTOM_T2_PROP: 1.0,
+        CONF_CUSTOM_TRANSPORT: 0.165,
+        CONF_CUSTOM_EXCISE_LOW: 1.09286,
+        CONF_CUSTOM_NETWORK_FROM_SHEET: sheet,
+    }
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("sheet", [True, False])
+async def test_the_price_history_stamp_moves_with_a_network_sheet_read(
+    hass: HomeAssistant, sheet: bool
+) -> None:
+    """A custom entry taking its network off its DSO's sheet prices every
+    month of the year anew once the sheet is read after the history was
+    drawn, and again when the sheet changes; one typing its network does
+    not, nor does a sheet it does not take."""
+    from custom_components.be_gas_prices import cwape
+    from custom_components.be_gas_prices.providers.base import SheetNetwork
+
+    entry = await _setup(hass, _custom_network(sheet))
+    coordinator = entry.runtime_data
+    before = coordinator.card_months_signature()
+
+    def grid(t1: float) -> cwape.GridNetwork:
+        network = SheetNetwork(
+            t1_fixed=30.1,
+            t1_proportional=t1,
+            t2_fixed=132.95,
+            t2_proportional=0.0208,
+            metering_per_year=0.0,
+        )
+        return cwape.GridNetwork(date(2026, 1, 1), date(2026, 12, 31), network)
+
+    cwape._grids[DSO_ORES] = {"grid": grid(0.0405)}
+    read = coordinator.card_months_signature()
+    assert (read != before) is sheet
+    cwape._grids[DSO_ORES] = {"grid": grid(0.0410)}
+    assert (coordinator.card_months_signature() != read) is sheet
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

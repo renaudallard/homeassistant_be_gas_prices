@@ -212,10 +212,13 @@ the entry's settings, each past month's own card and the current card as read
 calorific values (so the value of an index that lags the supplier's others
 redraws it when it lands or is revised), the figures of the law (so a release,
 a Justel or FPS Finance read or a Fluvius sheet that gives another month's
-redraws it), and the tier the measured volume falls in (so a year that crosses
-into another tier redraws its hours on it; the excise blend within a tier, a
-few hundredths of a cent, does not). It is stamped in the Store, and skipped
-where Home Assistant runs no recorder.
+redraws it), the network a custom contract of the year takes off its DSO's
+tariff sheet, month by month (so a sheet read after the history was drawn, or
+changed, redraws it; left out where no contract takes one), and the tier the
+measured volume falls in (so a year that crosses into another tier redraws its
+hours on it; the excise blend within a tier, a few hundredths of a cent, does
+not). It is stamped in the Store, and skipped where Home Assistant runs no
+recorder.
 
 ## The automatic cost history
 
