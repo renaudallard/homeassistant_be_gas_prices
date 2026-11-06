@@ -70,7 +70,13 @@ def _serve(monkeypatch: pytest.MonkeyPatch, pages: dict[str, str], cards: dict[s
     async def fetch_pdf_text(_session: Any, url: str, **_kw: Any) -> str:
         payload = _match(cards, url)
         if not _pdf.is_pdf_payload(payload):
-            raise ExtractorError(f"expected a PDF at {url}, payload starts with {payload[:80]!r}")
+            # As fetch_pdf_bytes words it.
+            got = (
+                "a web page"
+                if payload.lstrip(b" \t\r\n").startswith(b"<")
+                else f"{len(payload)} bytes of something else"
+            )
+            raise ExtractorError(f"expected a PDF at {url}, got {got}")
         return _pdf.extract_pdf_text(_pdf.strip_pdf_prefix(payload))
 
     # The candidates read their pages through their own import of it.

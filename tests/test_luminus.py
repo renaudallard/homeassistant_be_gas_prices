@@ -520,7 +520,9 @@ async def test_fetch_for_month_is_none_for_a_card_that_is_not_there() -> None:
         patch.object(
             luminus,
             "fetch_pdf_text",
-            AsyncMock(side_effect=ExtractorError("expected a PDF at x, payload starts with b''")),
+            AsyncMock(
+                side_effect=ExtractorError("expected a PDF at x, got 0 bytes of something else")
+            ),
         ),
     ):
         assert (
@@ -558,7 +560,9 @@ async def test_fetch_for_month_takes_the_month_in_brussels_time() -> None:
         patch.object(
             luminus,
             "fetch_pdf_text",
-            AsyncMock(side_effect=ExtractorError("expected a PDF at x, payload starts with b''")),
+            AsyncMock(
+                side_effect=ExtractorError("expected a PDF at x, got 0 bytes of something else")
+            ),
         ),
     ):
         await luminus.fetch_for_month(
@@ -573,7 +577,8 @@ _PRODUCTS_BY_MONTH = {
     "2026-11": "archive_products_Gas_Flanders_2026-11.json",
 }
 _LIVE_404 = "HTTP 404 fetching https://www.luminus.be/api-next/get-pricelist/"
-_NO_PDF = "expected a PDF at x, payload starts with b'\"Pdf not available.\"'"
+# Luminus's answer for a card it does not have: '"Pdf not available."'.
+_NO_PDF = "expected a PDF at x, got 20 bytes of something else"
 
 
 def _products(session: object, url: str, **kwargs: object) -> str:

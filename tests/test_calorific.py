@@ -35,7 +35,8 @@ from aiohttp import web
 
 from custom_components.be_gas_prices import calorific
 from custom_components.be_gas_prices.calorific import CalorificError, Station, parse_gcv_file
-from tests.local_https import client_context, device, https_site
+from custom_components.be_gas_prices.providers import _pdf
+from tests.local_https import client_context, device, https_site, malformed_status_line, raw_site
 
 # The August 2026 file's shape: a byte order mark, quoted decimal commas, a
 # station out of use listed at zero.
@@ -140,6 +141,20 @@ async def test_the_key_goes_in_a_header_and_stays_out_of_errors(
             await calorific.fetch_month(site.session, client_context(), key, months["2026-08"])
     assert key not in str(err.value)
     assert queries and all(key not in query for query in queries)
+
+
+async def test_a_malformed_answer_from_atrias_reaches_the_error_cut(
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """aiohttp quotes the whole chunk a status line it cannot parse came in:
+    60 kB of a host's choosing, before the cut."""
+    async with raw_site(malformed_status_line, tmp_path) as site:
+        monkeypatch.setattr(calorific, "ATRIAS_API_URL", site.url(""))
+        with pytest.raises(CalorificError, match=r"^network error fetching ") as err:
+            await calorific.fetch_month(site.session, client_context(), "0123abcd", "x.txt")
+        prefix = f"network error fetching {site.url('/download/x.txt')}: "
+    assert str(err.value).startswith(prefix)
+    assert len(str(err.value)) <= len(prefix) + _pdf._SHOWN + len("...")
 
 
 async def test_a_redirect_from_atrias_is_checked_before_it_is_followed(

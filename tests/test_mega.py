@@ -511,7 +511,7 @@ async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:
 
 
 async def test_fetch_for_month_treats_the_cdn_stub_as_no_card() -> None:
-    stub = ExtractorError("expected a PDF at x, payload starts with b'<!DOCTYPE html>'")
+    stub = ExtractorError("expected a PDF at x, got a web page")
     with (
         freeze_time(datetime(2026, 9, 15, 12)),
         patch.object(mega, "fetch_text", AsyncMock(return_value=_listing())),

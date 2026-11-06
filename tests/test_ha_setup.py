@@ -270,7 +270,7 @@ async def test_a_network_failure_keeps_an_unreadable_card_marked(
     [
         "HTTP 404 fetching https://x/card.pdf",
         "HTTP 410 fetching https://x/card.pdf",
-        "expected a PDF at https://x/card.pdf, payload starts with b'\\n<!DOCTYPE html>'",
+        "expected a PDF at https://x/card.pdf, got a web page",
     ],
 )
 async def test_a_card_gone_from_its_address_is_no_layout_change(
@@ -331,9 +331,9 @@ async def test_a_missing_card_stays_named_through_a_restart(
         ("HTTP 410 fetching https://x", True),
         ("HTTP 403 fetching https://x", False),
         ("HTTP 500 fetching https://x", False),
-        ("expected a PDF at https://x, payload starts with b'<html>'", True),
-        ("expected a PDF at https://x, payload starts with b'\\r\\n  <!DOCTYPE'", True),
-        ("expected a PDF at https://x, payload starts with b'{\"error\"'", False),
+        ("expected a PDF at https://x, got a web page", True),
+        ("expected a PDF at https://x/card.pdf?download=1, got a web page", True),
+        ("expected a PDF at https://x, got 13 bytes of something else", False),
         ("Engie: variable price block or formula not found", False),
     ],
 )

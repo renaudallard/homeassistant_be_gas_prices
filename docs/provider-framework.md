@@ -112,6 +112,14 @@ is UTF-8, Latin-1, Windows-1252 or ASCII, and as UTF-8 otherwise: the decode
 runs on the event loop, and a codec such as punycode takes seconds on a few
 hundred kB.
 
+A fetch error names its address through `shown_url`, percent-encoded where
+a URL may not hold the character and cut at 500 characters, and never quotes
+what a server sent: a payload that is no card is called a web page or named
+by its size, its first bytes going to the debug log. The text of an aiohttp
+error, which quotes a malformed answer whole, is cut at 500 characters too
+(`error_text`). An error reaches last_error, the Repairs cards and the
+diagnostics.
+
 ## A card that moved (providers/_moved.py)
 
 `EXTRACTORS` wraps the `fetch` of Elegant, Engie and Dots

@@ -67,7 +67,13 @@ from homeassistant.util.ssl import create_client_context
 
 from .const import ATRIAS_API_URL, ATRIAS_CONFIG_URL
 from .providers._parse import to_float
-from .providers._pdf import checked_request, error_text, read_capped, read_text_capped
+from .providers._pdf import (
+    checked_request,
+    error_text,
+    read_capped,
+    read_text_capped,
+    shown_url,
+)
 from .providers.base import ExtractorError
 
 _INTERMEDIATE = Path(__file__).with_name("certs") / "godaddy_g2_intermediate.pem"
@@ -144,10 +150,10 @@ async def _get(
             ssl=context,
         ) as resp:
             if resp.status >= 400:
-                raise CalorificError(f"HTTP {resp.status} fetching {url}")
+                raise CalorificError(f"HTTP {resp.status} fetching {shown_url(url)}")
             return await read_capped(resp, url, _LIMIT)
     except (aiohttp.ClientError, TimeoutError) as err:
-        raise CalorificError(f"network error fetching {url}: {error_text(err)}") from err
+        raise CalorificError(f"network error fetching {shown_url(url)}: {error_text(err)}") from err
     except ExtractorError as err:
         raise CalorificError(str(err)) from err
 

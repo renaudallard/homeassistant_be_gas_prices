@@ -42,6 +42,7 @@ from contextvars import ContextVar
 from pathlib import Path
 from ssl import SSLContext
 from typing import Any
+from urllib.parse import quote
 
 import aiohttp
 import pypdf
@@ -136,11 +137,8 @@ def is_transient_fetch_error(message: str) -> bool:
 
 
 # The "expected a PDF" message fetch_pdf_bytes writes when the address
-# served a web page: the repr of a payload whose first byte, past any
-# leading whitespace, opens a tag.
-_WEB_PAGE_INSTEAD_OF_CARD = re.compile(
-    r"expected a PDF at .*, payload starts with b['\"](?:\\[nrt]|\s)*<"
-)
+# served a web page.
+_WEB_PAGE_INSTEAD_OF_CARD = re.compile(r"expected a PDF at \S*, got a web page$")
 
 
 def is_missing_card_error(message: str) -> bool:
@@ -159,6 +157,29 @@ def is_missing_card_error(message: str) -> bool:
     return _WEB_PAGE_INSTEAD_OF_CARD.match(message) is not None
 
 
+# How much of an address, or of an error, a message shows. A link read off a
+# page can be as long as the page, and aiohttp's error for a malformed answer
+# quotes the whole chunk the server sent; a message reaches last_error, the
+# Repairs cards, the diagnostics and the log. The longest real address,
+# Elegant's archive, was 358 characters on 6 November 2026.
+_SHOWN = 500
+
+
+def _shown(text: str) -> str:
+    """``text`` cut to :data:`_SHOWN` characters, for a message."""
+    return text if len(text) <= _SHOWN else f"{text[:_SHOWN]}..."
+
+
+def shown_url(url: str) -> str:
+    """``url`` as a message quotes it, cut like any other text (:func:`_shown`).
+
+    Percent-encoded wherever a URL may not hold the character as it is, so
+    markup that a page put in a link reaches a Repairs card as escapes
+    rather than as a link or an image there.
+    """
+    return _shown(quote(url, safe=":/?#@!$&'()*+,;=%~"))
+
+
 def error_text(err: BaseException) -> str:
     """The exception's message, or its class name when it carries none.
 
@@ -169,8 +190,12 @@ def error_text(err: BaseException) -> str:
     Repairs card, the ``current_price`` sensor attribute, and diagnostics.
     Naming the class is the smallest thing that stays informative: the
     caller's own prefix already says what was being attempted.
+
+    Cut like an address (:func:`_shown`): aiohttp's error for a malformed
+    status or header line carries the chunk the server sent, as long as the
+    server makes it.
     """
-    return str(err) or type(err).__name__
+    return _shown(str(err) or type(err).__name__)
 
 
 async def guarded[T](label: str, call: Awaitable[T]) -> T:
@@ -219,12 +244,12 @@ async def read_capped(resp: aiohttp.ClientResponse, url: str, limit: int | None 
     cap = MAX_RESPONSE_BYTES if limit is None else limit
     declared = resp.content_length
     if declared is not None and declared > cap:
-        raise ExtractorError(f"refusing {url}: declared {declared} bytes (limit {cap})")
+        raise ExtractorError(f"refusing {shown_url(url)}: declared {declared} bytes (limit {cap})")
     payload = bytearray()
     async for chunk in resp.content.iter_chunked(65536):
         payload.extend(chunk)
         if len(payload) > cap:
-            raise ExtractorError(f"refusing {url}: more than {cap} bytes")
+            raise ExtractorError(f"refusing {shown_url(url)}: more than {cap} bytes")
     return bytes(payload)
 
 
@@ -353,7 +378,9 @@ def _redirect_target(url: str, answer: URL, location: str) -> URL:
     reason = "not a valid address" if target is None else _refusal(target)
     if target is None or reason is not None:
         _LOGGER.debug("%s redirected to %s", url, location)
-        raise ExtractorError(f"{url} redirected; refusing to follow it: the target is {reason}")
+        raise ExtractorError(
+            f"{shown_url(url)} redirected; refusing to follow it: the target is {reason}"
+        )
     return target
 
 
@@ -396,7 +423,7 @@ async def checked_request(
         # Not a URL yarl reads: aiohttp refuses it below with its own error.
         reason = None
     if reason is not None:
-        raise ExtractorError(f"refusing {url}: {reason}")
+        raise ExtractorError(f"refusing {shown_url(url)}: {reason}")
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout
     send = session.head if head else session.get
@@ -452,9 +479,12 @@ def is_pdf_payload(payload: bytes) -> bool:
 
 # An object store that refuses the read answers the proxy in front of it
 # with its own XML error document, and the proxy passes that through as a
-# 200. Azure Blob and S3 both shape it as a root <Error> carrying a <Code>.
+# 200. Azure Blob and S3 both shape it as a root <Error> carrying a <Code>,
+# a word such as "PublicAccessNotPermitted": a code of anything else is not
+# taken, since it is quoted to the user.
 _STORAGE_ERROR_RE = re.compile(
-    rb"^(?:\xef\xbb\xbf)?\s*(?:<\?xml[^>]*\?>\s*)?<Error>\s*<Code>([^<]{1,64})</Code>",
+    rb"^(?:\xef\xbb\xbf)?\s*(?:<\?xml[^>]*\?>\s*)?<Error>\s*"
+    rb"<Code>\s*([A-Za-z0-9]{1,64})\s*</Code>",
     re.IGNORECASE,
 )
 
@@ -471,9 +501,7 @@ def _storage_error_code(payload: bytes) -> str | None:
     it, which is the definition of transient in this taxonomy.
     """
     match = _STORAGE_ERROR_RE.match(payload)
-    if match is None:
-        return None
-    return match.group(1).decode("ascii", "replace").strip() or None
+    return None if match is None else match.group(1).decode("ascii")
 
 
 async def fetch_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int = 30) -> bytes:
@@ -489,10 +517,10 @@ async def fetch_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int 
     try:
         async with checked_request(session, url, timeout=timeout) as resp:
             if resp.status >= 400:
-                raise ExtractorError(f"HTTP {resp.status} fetching {url}")
+                raise ExtractorError(f"HTTP {resp.status} fetching {shown_url(url)}")
             return await read_capped(resp, url)
     except (aiohttp.ClientError, TimeoutError) as err:
-        raise ExtractorError(f"network error fetching {url}: {error_text(err)}") from err
+        raise ExtractorError(f"network error fetching {shown_url(url)}: {error_text(err)}") from err
 
 
 async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int = 30) -> bytes:
@@ -508,12 +536,20 @@ async def fetch_pdf_bytes(session: aiohttp.ClientSession, url: str, *, timeout: 
         # the user to report a layout change.
         code = _storage_error_code(payload)
         if code is not None:
-            raise ExtractorError(f"storage error fetching {url}: {code}")
+            raise ExtractorError(f"storage error fetching {shown_url(url)}: {code}")
         # Some CDNs return 200 + text/html for a missing PDF (a 404
         # disguised as success, as TotalEnergies does for a card it does not
         # publish), and Engie's API serves valid ones as octet-stream, so
         # the magic bytes are more reliable than the Content-Type header.
-        raise ExtractorError(f"expected a PDF at {url}, payload starts with {payload[:80]!r}")
+        # What the address served goes to the debug log only: it can be a
+        # page someone else wrote, and the message reaches the Repairs
+        # cards, the diagnostics and a sensor's attributes.
+        _LOGGER.debug("%s served %r", url, payload[:80])
+        if payload.lstrip(b" \t\r\n").startswith(b"<"):
+            raise ExtractorError(f"expected a PDF at {shown_url(url)}, got a web page")
+        raise ExtractorError(
+            f"expected a PDF at {shown_url(url)}, got {len(payload)} bytes of something else"
+        )
     return strip_pdf_prefix(payload)
 
 
@@ -635,10 +671,10 @@ async def head_or_raise(
     try:
         async with checked_request(session, url, timeout=timeout, head=True) as resp:
             if resp.status >= 400:
-                raise ExtractorError(f"HTTP {resp.status} fetching {url}")
+                raise ExtractorError(f"HTTP {resp.status} fetching {shown_url(url)}")
             return resp.headers.get("Last-Modified")
     except (aiohttp.ClientError, TimeoutError) as err:
-        raise ExtractorError(f"network error fetching {url}: {error_text(err)}") from err
+        raise ExtractorError(f"network error fetching {shown_url(url)}: {error_text(err)}") from err
 
 
 def printed_vat_rate(text: str, *patterns: str | re.Pattern[str]) -> float | None:
@@ -762,7 +798,7 @@ async def fetch_text(
     try:
         async with checked_request(session, url, timeout=timeout, params=params) as resp:
             if resp.status >= 400:
-                raise ExtractorError(f"HTTP {resp.status} fetching {url}")
+                raise ExtractorError(f"HTTP {resp.status} fetching {shown_url(url)}")
             body = await read_text_capped(resp, url, limit)
             # Only a success is memoised. A failure is re-attempted by the
             # next caller, which is what the negative cache one layer up is
@@ -771,7 +807,7 @@ async def fetch_text(
                 memo[memo_key] = body
             return body
     except (aiohttp.ClientError, TimeoutError) as err:
-        raise ExtractorError(f"network error fetching {url}: {error_text(err)}") from err
+        raise ExtractorError(f"network error fetching {shown_url(url)}: {error_text(err)}") from err
 
 
 def parse_json(body: str, what: str) -> Any:

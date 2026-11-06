@@ -29,15 +29,17 @@ The fetch helpers hold every address to https and to a public host, so a
 test server on 127.0.0.1 is reached by name: the session resolves the names
 below to it and trusts only a certificate authority made for the run.
 :func:`device` stands for an appliance on the household's network, a plain
-http server that logs every request it gets.
+http server that logs every request it gets, and :func:`raw_site` for a host
+whose reply is no well-formed HTTP.
 """
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import socket
 import ssl
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from functools import cache
@@ -190,6 +192,37 @@ async def https_site(app: web.Application, folder: Path) -> AsyncIterator[Site]:
             yield Site(session, server.port, asked)
     finally:
         await server.close()
+
+
+@asynccontextmanager
+async def raw_site(
+    answer: Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]],
+    folder: Path,
+) -> AsyncIterator[Site]:
+    """Like :func:`https_site`, but ``answer`` writes the reply bytes itself,
+    for a reply aiohttp's server would never send. Nothing is logged."""
+    server = await asyncio.start_server(answer, "127.0.0.1", 0, ssl=_server_context(folder))
+    port = server.sockets[0].getsockname()[1]
+    connector = aiohttp.TCPConnector(resolver=_Names(), ssl=client_context())
+    try:
+        async with aiohttp.ClientSession(connector=connector) as session:
+            yield Site(session, port)
+    finally:
+        server.close()
+        await server.wait_closed()
+
+
+async def malformed_status_line(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    """A :func:`raw_site` reply aiohttp cannot parse: a status line with
+    markup in it and 60 kB after, as a host someone else runs could send."""
+    await reader.read(2048)
+    writer.write(
+        b"HTTX/1.1 200 OK ![pixel](https://example.com/p.png) [login](https://example.com/) "
+        + b"B" * 60_000
+        + b"\r\n\r\n"
+    )
+    await writer.drain()
+    writer.close()
 
 
 @dataclass

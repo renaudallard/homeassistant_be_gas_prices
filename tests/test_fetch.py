@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any
@@ -51,7 +52,7 @@ from custom_components.be_gas_prices.providers._pdf import (
     is_transient_fetch_error,
 )
 from custom_components.be_gas_prices.providers.base import ExtractorError
-from tests.local_https import device, https_site
+from tests.local_https import device, https_site, malformed_status_line, raw_site
 
 
 def _app(handler: Any, path: str = "/") -> web.Application:
@@ -237,7 +238,7 @@ async def test_an_address_off_https_or_on_the_household_network_is_never_asked(
         try:
             answer = await fetch(site.session, url)
         except ExtractorError as err:
-            assert str(err).startswith(f"refusing {url}: not a")
+            assert str(err).startswith(f"refusing {_pdf.shown_url(url)}: not a")
         else:
             # The probe, which answers None for what it cannot read.
             assert answer is None
@@ -445,6 +446,118 @@ async def test_a_head_tells_a_name_not_there_from_a_site_that_is_down(
     assert is_transient_fetch_error(str(down.value))
     assert not is_missing_card_error(str(down.value))
     assert str(gone.value).startswith("network error fetching")
+
+
+@pytest.mark.parametrize(
+    "page", [b"<!DOCTYPE html><title>Admin</title>LAN-DEVICE-SECRET", b"\r\n  <html>SECRET"]
+)
+async def test_a_web_page_in_a_cards_place_is_named_not_quoted(
+    socket_enabled: None, tmp_path: Path, caplog: pytest.LogCaptureFixture, page: bytes
+) -> None:
+    """TotalEnergies answers a card it does not publish with a web page. What
+    the page holds stays out of the message, which reaches the Repairs
+    cards, the diagnostics and a sensor's attributes: only the debug log
+    has it."""
+
+    async def card(request: web.Request) -> web.Response:
+        return web.Response(body=page, content_type="text/html")
+
+    caplog.set_level(logging.DEBUG, logger=_pdf.__name__)
+    async with https_site(_app(card, "/card.pdf"), tmp_path) as site:
+        url = site.url("/card.pdf")
+        with pytest.raises(ExtractorError) as err:
+            await fetch_pdf_bytes(site.session, url)
+    assert str(err.value) == f"expected a PDF at {url}, got a web page"
+    assert is_missing_card_error(str(err.value))
+    assert "SECRET" in caplog.text
+
+
+async def test_a_payload_that_is_no_card_is_named_by_its_size(
+    socket_enabled: None, tmp_path: Path
+) -> None:
+    answer = json.dumps({"error": "![x](https://example.com/i.png)"})
+
+    async def card(request: web.Request) -> web.Response:
+        return web.Response(text=answer, content_type="application/json")
+
+    async with https_site(_app(card, "/card.pdf"), tmp_path) as site:
+        url = site.url("/card.pdf")
+        with pytest.raises(ExtractorError) as err:
+            await fetch_pdf_bytes(site.session, url)
+    assert str(err.value) == f"expected a PDF at {url}, got {len(answer)} bytes of something else"
+    assert not is_missing_card_error(str(err.value))
+    assert not is_transient_fetch_error(str(err.value))
+
+
+@pytest.mark.parametrize(
+    ("code", "message"),
+    [
+        ("PublicAccessNotPermitted", "storage error fetching {url}: PublicAccessNotPermitted"),
+        # Markup is no code: the document is not quoted, and stands as a
+        # page in the card's place, as any markup there does.
+        ("![x](https://example.com/i.png)", "expected a PDF at {url}, got a web page"),
+    ],
+)
+async def test_a_storage_error_is_named_by_its_code_alone(
+    socket_enabled: None, tmp_path: Path, code: str, message: str
+) -> None:
+    """Luminus's storage answered every card with such a document from
+    10 August 2026, under a 200."""
+    document = f'<?xml version="1.0" encoding="utf-8"?><Error><Code>{code}</Code></Error>'
+
+    async def card(request: web.Request) -> web.Response:
+        return web.Response(text=document, content_type="application/xml")
+
+    async with https_site(_app(card, "/card.pdf"), tmp_path) as site:
+        url = site.url("/card.pdf")
+        with pytest.raises(ExtractorError) as err:
+            await fetch_pdf_bytes(site.session, url)
+    assert str(err.value) == message.format(url=url)
+
+
+async def test_an_address_in_a_message_is_escaped_and_cut(
+    socket_enabled: None, tmp_path: Path
+) -> None:
+    """A link a page gave, markup and all, a few kB long."""
+    async with https_site(web.Application(), tmp_path) as site:
+        url = site.url("/files/![x](https://example.com/i.png)<img src=x>" + "a" * 4000)
+        with pytest.raises(ExtractorError, match=r"^HTTP 404 fetching ") as err:
+            await fetch_text(site.session, url)
+    message = str(err.value)
+    assert not {"[", "]", "<", ">"} & set(message)
+    assert len(message) == len("HTTP 404 fetching ") + _pdf._SHOWN + len("...")
+
+
+@pytest.mark.parametrize("fetch", [fetch_text, fetch_bytes, head_or_raise])
+async def test_a_malformed_answer_reaches_the_message_cut(
+    socket_enabled: None, tmp_path: Path, fetch: Any
+) -> None:
+    """aiohttp's error for a status line it cannot parse quotes the whole
+    chunk the server sent. Before the cut it put 60 kB of a host's choosing
+    into last_error and the log."""
+    async with raw_site(malformed_status_line, tmp_path) as site:
+        url = site.url("/card.pdf")
+        with pytest.raises(ExtractorError, match=r"^network error fetching ") as err:
+            await fetch(site.session, url)
+    prefix = f"network error fetching {url}: "
+    assert str(err.value).startswith(prefix)
+    assert len(str(err.value)) <= len(prefix) + _pdf._SHOWN + len("...")
+
+
+@pytest.mark.parametrize(
+    ("url", "shown"),
+    [
+        (
+            "https://totalenergies.be/fr/files/Historique-valeurs-param%C3%A8tres-gaz.pdf",
+            "https://totalenergies.be/fr/files/Historique-valeurs-param%C3%A8tres-gaz.pdf",
+        ),
+        ("https://www.energie.be/api/v1/data/document?key=Indexation", None),
+        ("https://cdn.elegant.be/Current/Flex Gas_Residential.pdf", None),
+        ("https://x.be/a`b`<i>[c](d)", "https://x.be/a%60b%60%3Ci%3E%5Bc%5D(d)"),
+    ],
+)
+def test_an_address_is_quoted_as_a_url_holds_it(url: str, shown: str | None) -> None:
+    assert _pdf.shown_url(url) == (shown or url.replace(" ", "%20"))
 
 
 async def _card_behind(prefix: bytes, folder: Path) -> bytes:

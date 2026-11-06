@@ -161,9 +161,8 @@ async def test_dots_is_read_where_its_product_page_links_it(
     the search to the product page as well."""
     monkeypatch.setattr(dots, "_CARD_URL", _DOTS_ODOO)
     if old == "web page":
-        home = _DOTS_PAGE.encode()
         stale: str | ExtractorError = ExtractorError(
-            f"expected a PDF at {_DOTS_ODOO}, payload starts with {home[:80]!r}"
+            f"expected a PDF at {_DOTS_ODOO}, got a web page"
         )
     else:
         stale = fixture_text("dots", "Tariefkaart NG Dots Connect - Digital 09_2026.pdf")

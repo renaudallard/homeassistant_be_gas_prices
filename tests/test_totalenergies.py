@@ -502,7 +502,7 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
 
 async def test_fetch_for_month_treats_the_soft_404_as_no_card() -> None:
     """A month the archive does not hold answers 200 with an HTML page."""
-    soft_404 = ExtractorError("expected a PDF at x, payload starts with b'<!DOCTYPE html>'")
+    soft_404 = ExtractorError("expected a PDF at x, got a web page")
     with (
         freeze_time(datetime(2026, 9, 15, 12)),
         patch.object(totalenergies, "fetch_pdf_text_layout", AsyncMock(side_effect=soft_404)),
