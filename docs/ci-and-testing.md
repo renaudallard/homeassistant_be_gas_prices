@@ -456,7 +456,12 @@ Opens or updates the one issue a job files for a problem, found by its label.
 The body carries a fingerprint of what failed; while the open issue's latest
 post carries the same fingerprint and is younger than the cooldown, nothing
 is posted, so a lasting outage gets one comment per cooldown rather than one
-a day, and a failure that changes shape is posted at once.
+a day, and a failure that changes shape is posted at once. Only the bot's own
+posts count (gh names it `app/github-actions` as an issue's author and
+`github-actions` as a comment's), since anyone can comment and a comment
+repeating the last marker kept the same failure quiet for another week; and
+only the last marker of a post, the one the script writes, since a report
+can quote one.
 
 ## GitHub workflows
 
