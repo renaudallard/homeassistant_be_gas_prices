@@ -1,0 +1,479 @@
+{
+ "residential": {
+  "2023-11": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "luminus",
+    "social"
+   ]
+  },
+  "2023-12": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "luminus",
+    "social"
+   ]
+  },
+  "2024-01": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "luminus",
+    "social"
+   ]
+  },
+  "2024-02": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-03": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-04": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-05": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-06": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-07": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-08": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-09": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-10": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-11": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2024-12": {
+   "rate": 0.06,
+   "suppliers": [
+    "eneco",
+    "engie",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-01": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-02": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-03": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-04": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-05": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-06": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-07": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "trevion"
+   ]
+  },
+  "2025-08": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social"
+   ]
+  },
+  "2025-09": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "trevion"
+   ]
+  },
+  "2025-10": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2025-11": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2025-12": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-01": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-02": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-03": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "luminus",
+    "mega",
+    "social",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-04": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-05": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-06": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-07": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-08": {
+   "rate": 0.06,
+   "suppliers": [
+    "ebem",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-09": {
+   "rate": 0.06,
+   "suppliers": [
+    "dots",
+    "ebem",
+    "ecofix",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-10": {
+   "rate": 0.06,
+   "suppliers": [
+    "dots",
+    "ebem",
+    "ecofix",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  },
+  "2026-11": {
+   "rate": 0.06,
+   "suppliers": [
+    "dots",
+    "ebem",
+    "ecofix",
+    "elegant",
+    "eneco",
+    "energyvision",
+    "engie",
+    "frank",
+    "luminus",
+    "mega",
+    "social",
+    "sparki",
+    "totalenergies",
+    "trevion"
+   ]
+  }
+ }
+}

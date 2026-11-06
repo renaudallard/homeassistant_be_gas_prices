@@ -38,6 +38,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 from homeassistant.util import dt as dt_util
 
 from custom_components.be_gas_prices import archive_table, excise_law, law_archive, tarbel
@@ -95,6 +96,27 @@ def test_only_figures_that_read_are_held() -> None:
     }
     # A month the table does not hold is no month before or after it.
     assert law_archive.excise_for(date(2026, 8, 1)) is None
+
+
+def test_every_month_of_the_archives_table_is_held() -> None:
+    """law.json as the card archive published it on 6 November 2026, January
+    2025 to November 2026, figure for figure."""
+    table = json.loads((Path(__file__).parent / "fixtures/card_archive/law.json").read_text())
+    law_archive.hold(table)
+    assert law_archive.held_table() == table
+    held = law_archive.held_table()["residential"]
+    assert (min(held), max(held), len(held)) == ("2025-01", "2026-11", 23)
+
+
+@freeze_time("2026-11-06 12:00:00+01:00")
+def test_only_a_month_from_2000_to_next_year_is_held() -> None:
+    """A table is written to every entry's Store on each tick, and 600,000
+    months made up by a tampered archive made a 49 MiB one."""
+    made_up = {f"{year}-01": KEPT for year in range(2028, 22028)}
+    law_archive.hold(
+        {"residential": {**made_up, "1999-12": KEPT, "2026-09": KEPT, "2027-12": KEPT}}
+    )
+    assert law_archive.held_table() == {"residential": {"2026-09": KEPT, "2027-12": KEPT}}
 
 
 def test_an_empty_table_does_not_wipe_a_held_one() -> None:

@@ -44,11 +44,12 @@ in every entry's store so a restart without the network still knows it.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from datetime import date
 from typing import Any, Final
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from .archive_table import ArchiveTable
 from .const import LAW_TABLE_URL
@@ -56,6 +57,9 @@ from .const import LAW_TABLE_URL
 # A figure outside these is a misread, not a levy (EUR/kWh excluding VAT).
 _MAX_EUR_PER_KWH: Final = 0.2
 _RATES: Final = ("protected", "contribution")
+# The first year a table of the card archive may name a month of. The last
+# is next year: in December the cards of January are already out.
+_FIRST_YEAR: Final = 2000
 
 # (year, month) -> the figures the archive kept for it.
 _HELD: dict[tuple[int, int], dict[str, Any]] = {}
@@ -106,20 +110,32 @@ def _entry(raw: Any) -> dict[str, Any]:
     return out
 
 
-def _months(section: Any) -> dict[tuple[int, int], dict[str, Any]]:
-    """The months of the table that hold a figure that reads."""
-    out: dict[tuple[int, int], dict[str, Any]] = {}
+def table_months(section: Any) -> Iterator[tuple[tuple[int, int], Any]]:
+    """Each month a section of a card archive table names, as (year, month),
+    with what the table gives for it: the months from 2000 to next year
+    alone.
+
+    A table is held for the process and written to every entry's Store on
+    each tick, so it holds no month a tampered archive could make up: 600,000
+    of them made a 49 MiB Store. The tables the archive kept on 6 November
+    2026 ran from November 2023 (vat.json) and January 2025 (law.json,
+    network.json) to November 2026.
+    """
     if not isinstance(section, Mapping):
-        return out
-    for label, raw in section.items():
+        return
+    last = dt_util.now().year + 1
+    for label, value in section.items():
         try:
             year, month = (int(part) for part in str(label).split("-"))
         except ValueError:
             continue
-        entry = _entry(raw)
-        if 1 <= month <= 12 and entry:
-            out[(year, month)] = entry
-    return out
+        if _FIRST_YEAR <= year <= last and 1 <= month <= 12:
+            yield (year, month), value
+
+
+def _months(section: Any) -> dict[tuple[int, int], dict[str, Any]]:
+    """The months of the table that hold a figure that reads."""
+    return {key: entry for key, raw in table_months(section) if (entry := _entry(raw))}
 
 
 def hold(table: Mapping[str, Any]) -> None:

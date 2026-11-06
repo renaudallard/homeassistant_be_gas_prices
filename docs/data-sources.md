@@ -205,8 +205,9 @@ Beside the cards, the workflow writes `gas/vat.json`: per card month, the
 residential VAT rate three suppliers or more state and none contradicts.
 `vat_rates.py` reads it once a day for an entry with the card archive
 option on (`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/vat.json`,
-a failure waiting six hours) and keeps it in each entry's Store; an entry
-with the option off reads nothing and bills on the table it last read. A month is
+a failure waiting six hours) and keeps it in each entry's Store, a month from
+2000 to next year alone (`law_archive.table_months`); an entry with the
+option off reads nothing and bills on the table it last read. A month is
 billed on its own entry, or on the last month before it that agreed; before
 the table has been read, or for a month before the first it holds, on the
 law's 6 % in `const.py`. That rate grosses the law's figures on a card that
@@ -222,9 +223,9 @@ after a pause. A month they still give is written again, figure by figure; one
 they no longer give keeps what was written. `law_archive.py` reads it once
 a day for an entry with the card archive option on
 (`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/law.json`,
-a failure waiting six hours), keeps it in each entry's Store, and answers
-only for a month the entry's own readings do not give, ahead of the
-figures `const.py` holds.
+a failure waiting six hours), keeps it in each entry's Store, a month from
+2000 to next year alone, and answers only for a month the entry's own
+readings do not give, ahead of the figures `const.py` holds.
 
 And it writes `gas/network.json`: per month of last year and this one, and
 per DSO, what each regulator's network sheet gives a custom entry taking its
@@ -234,9 +235,9 @@ longer give keeps what was written, and months past the rows' retention go.
 `network_archive.py` reads it once a day for an entry with a contract taking
 its network from a sheet and the card archive option on
 (`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/network.json`,
-a failure waiting six hours), keeps it in such an entry's Store, and answers
-only for a month the entry's own reading of the sheets does not give, ahead
-of the figures typed.
+a failure waiting six hours), keeps it in such an entry's Store, a month
+from 2000 to next year alone, and answers only for a month the entry's own
+reading of the sheets does not give, ahead of the figures typed.
 
 ## The recorder
 

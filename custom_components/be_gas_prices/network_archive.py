@@ -50,6 +50,7 @@ import aiohttp
 
 from .archive_table import ArchiveTable
 from .const import NETWORK_TABLE_URL
+from .law_archive import table_months
 from .providers.base import SheetNetwork
 
 # A figure outside these is a misread, not a tariff, excluding VAT: EUR a
@@ -86,20 +87,15 @@ def _network(raw: Any) -> SheetNetwork | None:
 
 
 def _months(section: Any) -> dict[tuple[int, int], dict[str, SheetNetwork]]:
-    """The months of the table that hold a DSO that reads."""
+    """The months of the table that hold a DSO that reads, from 2000 to next
+    year alone (law_archive.table_months)."""
     out: dict[tuple[int, int], dict[str, SheetNetwork]] = {}
-    if not isinstance(section, Mapping):
-        return out
-    for label, raw in section.items():
-        try:
-            year, month = (int(part) for part in str(label).split("-"))
-        except ValueError:
-            continue
-        if not 1 <= month <= 12 or not isinstance(raw, Mapping):
+    for key, raw in table_months(section):
+        if not isinstance(raw, Mapping):
             continue
         dsos = {str(dso): network for dso, item in raw.items() if (network := _network(item))}
         if dsos:
-            out[(year, month)] = dsos
+            out[key] = dsos
     return out
 
 

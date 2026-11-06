@@ -3,6 +3,7 @@ published tariff sheet."""
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 
 from custom_components.be_gas_prices import brugel, cwape, fluvius, network_sheet
 from custom_components.be_gas_prices.const import (
@@ -182,6 +184,30 @@ def test_a_month_is_read_by_dso_and_kept_until_a_table_replaces_it() -> None:
     network_archive.restore({"months": {"2026-12": {DSO_ORES: _ORES}}})
     assert network_archive.network_for(date(2026, 12, 1), DSO_ORES) is None
     assert network_archive.held_table() == {"months": {"2026-11": {DSO_ORES: _ORES}}}
+
+
+def test_every_month_of_the_archives_network_table_is_held() -> None:
+    """network.json as the card archive published it on 6 November 2026,
+    January 2025 to November 2026 for eleven DSOs, figure for figure."""
+    from custom_components.be_gas_prices import network_archive
+
+    table = json.loads((_FIXTURES / "card_archive" / "network.json").read_text())
+    network_archive.hold(table)
+    assert network_archive.held_table() == table
+    held = network_archive.held_table()["months"]
+    assert (min(held), max(held), len(held)) == ("2025-01", "2026-11", 23)
+
+
+@freeze_time("2026-11-06 12:00:00+01:00")
+def test_only_a_network_month_from_2000_to_next_year_is_held() -> None:
+    """A table is written to every entry's Store on each tick, and months
+    made up by a tampered archive would make it as large as they like."""
+    from custom_components.be_gas_prices import network_archive
+
+    made_up = {f"{year}-01": {DSO_ORES: _ORES} for year in range(2028, 22028)}
+    real = {"2026-11": {DSO_ORES: _ORES}, "2027-12": {DSO_ORES: _ORES}}
+    network_archive.hold({"months": {**made_up, "1999-12": {DSO_ORES: _ORES}, **real}})
+    assert network_archive.held_table() == {"months": real}
 
 
 @pytest.mark.parametrize(

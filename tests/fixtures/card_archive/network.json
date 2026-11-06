@@ -1,0 +1,1737 @@
+{
+ "months": {
+  "2025-01": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-02": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-03": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-04": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-05": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-06": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-07": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-08": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-09": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-10": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-11": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2025-12": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.43,
+    "t1_proportional": 0.0197843,
+    "t2_fixed": 71.32,
+    "t2_proportional": 0.0082087
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 14.6,
+    "t1_proportional": 0.0211386,
+    "t2_fixed": 77.54,
+    "t2_proportional": 0.0085538
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.05,
+    "t1_proportional": 0.023148,
+    "t2_fixed": 85.22,
+    "t2_proportional": 0.0093171
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.87,
+    "t1_proportional": 0.0200356,
+    "t2_fixed": 73.67,
+    "t2_proportional": 0.0080793
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 12.57,
+    "t1_proportional": 0.0196727,
+    "t2_fixed": 66.72,
+    "t2_proportional": 0.0088447
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 13.82,
+    "t1_proportional": 0.0201272,
+    "t2_fixed": 73.38,
+    "t2_proportional": 0.0082179
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 16.18,
+    "t1_proportional": 0.0234132,
+    "t2_fixed": 85.91,
+    "t2_proportional": 0.0094706
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.51,
+    "t1_fixed": 15.72,
+    "t1_proportional": 0.0225586,
+    "t2_fixed": 83.45,
+    "t2_proportional": 0.0090146
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 29.11,
+    "t1_proportional": 0.0380828,
+    "t2_fixed": 127.75,
+    "t2_proportional": 0.0192678
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.05,
+    "t1_proportional": 0.0400663,
+    "t2_fixed": 113.11,
+    "t2_proportional": 0.0218056
+   }
+  },
+  "2026-01": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-02": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-03": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-04": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-05": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-06": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-07": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-08": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-09": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-10": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  },
+  "2026-11": {
+   "fluvius_antwerpen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442
+   },
+   "fluvius_halle_vilvoorde": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 16.59,
+    "t1_proportional": 0.0235451,
+    "t2_fixed": 88.09,
+    "t2_proportional": 0.0092477
+   },
+   "fluvius_imewo": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.56,
+    "t1_proportional": 0.02479,
+    "t2_fixed": 93.22,
+    "t2_proportional": 0.0096603
+   },
+   "fluvius_kempen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.25,
+    "t1_proportional": 0.0214612,
+    "t2_fixed": 80.97,
+    "t2_proportional": 0.0083194
+   },
+   "fluvius_limburg": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 13.76,
+    "t1_proportional": 0.0211346,
+    "t2_fixed": 73.08,
+    "t2_proportional": 0.0092729
+   },
+   "fluvius_midden_vlaanderen": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 15.41,
+    "t1_proportional": 0.02186,
+    "t2_fixed": 81.8,
+    "t2_proportional": 0.0085838
+   },
+   "fluvius_west": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.95,
+    "t1_proportional": 0.0254207,
+    "t2_fixed": 95.3,
+    "t2_proportional": 0.0099528
+   },
+   "fluvius_zenne_dijle": {
+    "metering_per_year": 17.85,
+    "t1_fixed": 17.36,
+    "t1_proportional": 0.0245521,
+    "t2_fixed": 92.19,
+    "t2_proportional": 0.0095895
+   },
+   "ores": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089
+   },
+   "resa": {
+    "metering_per_year": 0.0,
+    "t1_fixed": 32.63,
+    "t1_proportional": 0.0437653,
+    "t2_fixed": 115.14,
+    "t2_proportional": 0.0238628
+   },
+   "sibelga": {
+    "metering_per_year": 23.54,
+    "t1_fixed": 15.0,
+    "t1_proportional": 0.0187738,
+    "t2_fixed": 40.63,
+    "t2_proportional": 0.0136483
+   }
+  }
+ }
+}

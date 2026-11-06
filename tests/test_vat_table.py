@@ -38,6 +38,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from freezegun import freeze_time
 from homeassistant.util import dt as dt_util
 
 from custom_components.be_gas_prices import archive_table, vat_rates
@@ -152,6 +153,39 @@ def test_only_agreed_months_within_bounds_are_held() -> None:
     assert vat_rates.held_table() == {"residential": {"2026-10": {"rate": 0.06}}}
     # A disputed month keeps the last month that agreed.
     assert vat_rates.residential_vat(NOV) == 0.06
+
+
+def test_every_month_of_the_archives_table_is_held() -> None:
+    """vat.json as the card archive published it on 6 November 2026, every
+    month from November 2023 to November 2026 agreed."""
+    table = json.loads((Path(__file__).parent / "fixtures/card_archive/vat.json").read_text())
+    vat_rates.hold(table)
+    held = vat_rates.held_table()["residential"]
+    assert held == {month: {"rate": entry["rate"]} for month, entry in table["residential"].items()}
+    assert (min(held), max(held), len(held)) == ("2023-11", "2026-11", 37)
+
+
+@freeze_time("2026-11-06 12:00:00+01:00")
+def test_only_a_month_from_2000_to_next_year_is_held() -> None:
+    """A table is written to every entry's Store on each tick, and 600,000
+    months made up by a tampered archive made a 49 MiB one."""
+    made_up = {
+        f"{year}-{month:02d}": {"rate": 0.06} for year in range(2028, 12028) for month in (1, 7)
+    }
+    vat_rates.hold(
+        {
+            "residential": {
+                **made_up,
+                "1999-12": {"rate": 0.06},
+                "0-01": {"rate": 0.06},
+                "2026-10": {"rate": 0.06},
+                "2027-12": {"rate": 0.21},
+            }
+        }
+    )
+    assert vat_rates.held_table() == {
+        "residential": {"2026-10": {"rate": 0.06}, "2027-12": {"rate": 0.21}}
+    }
 
 
 def test_a_month_before_the_table_is_billed_on_the_law_s_rate() -> None:
