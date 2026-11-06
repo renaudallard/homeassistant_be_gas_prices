@@ -522,6 +522,9 @@
     },
     "card_archive_needed": {
       "message": "{supplier} veröffentlicht seine Karten als Bilder, die nur das Kartenarchiv des Projekts liest, und dieser Eintrag schließt das Archiv aus. Schalten Sie die Option für das Kartenarchiv in den Einstellungen des Eintrags ein."
+    },
+    "refresh_pressed_recently": {
+      "message": "Der Tarif wurde zuletzt um {last} geprüft; ab {next} kann er erneut geprüft werden."
     }
   }
 }

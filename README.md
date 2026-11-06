@@ -243,7 +243,12 @@ All sensors share one device per entry, named after the contract.
 
 The device also has a **Refresh tariff card** button, which fetches the card,
 the index values and the calorific values again, even while the card cannot
-be read.
+be read. It does so at most once a quarter of an hour after the last update
+that asked the supplier: a press within that time is refused and says when it
+can fetch again. Asking Home Assistant to update one of the entry's entities
+asks nobody within that time either and keeps what the sensors show; the
+hourly update, an hour after the last one, always asks. The
+`be_gas_prices.refresh` action and the Repairs card's retry fetch every time.
 
 The running costs report `unknown` until a gas meter is readable. The rolling
 year needs 350 of the 365 days before today on record and the year-end
@@ -516,6 +521,8 @@ data:
 year's window, whatever the start date. `clear` leaves them alone: deleting
 them would take the years before with them. Only an administrator can call
 it, as with Home Assistant's own statistics actions; an automation can too.
+The same holds for `refresh`, which fetches from the supplier every time it
+is called; the button is there for everyone else.
 
 ## Diagnostics
 

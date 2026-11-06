@@ -35,11 +35,22 @@ reads `unknown` until then.
 *Refresh tariff card* (diagnostic): fetch the card, the index values and the
 calorific values, by the update running if it has yet to check its card,
 else by the next one. An update running to read the meter after startup
-checks none, so the next one does.
+checks none, so the next one does. It forces at most one fetch a quarter of
+an hour after the last update that asked the supplier, the setup's included
+(`MIN_FETCH_INTERVAL` in `coordinator.py`): any user who is not read-only can
+press a button, and pressing in a loop fetched in a loop. A press within that
+time is refused with the translated `refresh_pressed_recently` error. Home
+Assistant's `update_entity` on any entity of the entry is held to the same
+interval, with no error: within it the update asks nobody and the entities
+keep what they show.
 
 ## Services
 
-- `be_gas_prices.refresh` (`entry_id` optional).
+- `be_gas_prices.refresh` (`entry_id` optional). Registered with
+  `async_register_admin_service`, as the backfill below: every call fetches
+  the card, the index values and the calorific values again whatever their
+  age, so a user who is not an administrator is refused; an automation is
+  not.
 - `be_gas_prices.backfill_statistics` (`entry_id`, `start_date`, `clear`),
   returning the rows written per statistic, `current_year_cost`'s included.
   It is registered with `async_register_admin_service`, so a user who is not

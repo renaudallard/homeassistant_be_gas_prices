@@ -179,7 +179,25 @@ hand is still stale, and it is what lets the card archive stand in.
   values already being fetched are the ones it gets; if that fetch fails,
   they are retried when any failed fetch of theirs would be. The service
   returns once the fetch is done, so what follows it reads the prices it
-  gave; the button does not wait.
+  gave; the button does not wait. The service is for administrators only
+  (`async_register_admin_service`); an automation, which has no user, can
+  call it too. The button, which any user who is not read-only can press,
+  is refused with the translated `refresh_pressed_recently` error within
+  `MIN_FETCH_INTERVAL` (15 minutes) of the last full tick, or while a fetch
+  it or the service forced is still to be made. The error gives the time
+  the last full tick began and the time the next can, rounded up to the
+  minute.
+- A refresh that is not forced and not a reprice, within
+  `MIN_FETCH_INTERVAL` of the start of the last full tick, runs no tick:
+  `_async_update_data` returns the data it holds, or raises `UpdateFailed`
+  again when the last tick failed, so the entry is not marked recovered
+  with nothing tried. Nothing is probed, fetched, priced or read. Home
+  Assistant's `update_entity`, which any user who may control an entity can
+  call, runs the debounced refresh, at most one every ten seconds, and each
+  was a full tick: the supplier's probe, and the card whenever
+  `_card_is_due`. The hourly tick goes through the same check and is never
+  held by it: Home Assistant arms it `UPDATE_INTERVAL_MINUTES` after the end
+  of the last refresh, on the loop clock the interval is counted on.
 - `be_gas_prices.backfill_statistics` rewrites the price sensors' hourly
   statistics from a start date (default: the start of the year's window) to
   the newest hour the recorder has compiled, which after a restart can be

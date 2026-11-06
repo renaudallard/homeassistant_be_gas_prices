@@ -128,6 +128,19 @@ from .running_costs import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# The shortest time between two ticks that ask the supplier, Atrias and the
+# rest. Home Assistant's update_entity lets any user who may control an
+# entity ask for a refresh every ten seconds, and every refresh was a full
+# tick: the supplier's probe each time, and the card itself whenever it is
+# due, as in the first days of every month or on an entry whose card fails.
+# A refresh within this time of the last full tick publishes what it holds
+# and asks nobody, and the refresh button refuses a press. The hourly tick
+# goes through the same check and is never held: Home Assistant arms it an
+# hour after the end of the last refresh, on the loop clock this is counted
+# on. A forced fetch (the refresh action, the button, the Repair's retry)
+# is not held either.
+MIN_FETCH_INTERVAL = timedelta(minutes=15)
+
 
 class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinator[CoordinatorData]):
     """Fetches the card, reads the meter and prices one household."""
@@ -214,6 +227,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         # made: one asked for since is still to be made (_make_forced_fetch).
         self._force_asked = 0
         self._force_made = 0
+        # When the last full tick began, on the event loop's clock: what
+        # MIN_FETCH_INTERVAL counts from.
+        self._last_fetch_at: float | None = None
         self._held: dict[str, Any] | None = None
         # What the price history was last drawn from (backfill.py), kept in
         # the store so a restart does not redraw an unchanged year.
@@ -337,6 +353,17 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
                 return
             await self._async_refresh(log_failures=True)
 
+    def fetch_held_for(self) -> timedelta:
+        """How long a refresh would still ask nobody for
+        (``MIN_FETCH_INTERVAL``), zero once the next one asks. A forced
+        fetch not yet made counts as one starting now."""
+        if self._force_made < self._force_asked:
+            return MIN_FETCH_INTERVAL
+        if self._last_fetch_at is None:
+            return timedelta(0)
+        left = self._last_fetch_at + MIN_FETCH_INTERVAL.total_seconds() - self.hass.loop.time()
+        return timedelta(seconds=max(left, 0.0))
+
     @property
     def failures(self) -> int:
         """Consecutive fetches that failed for a reason a retry will not fix."""
@@ -353,6 +380,20 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         return self._snapshot is not None
 
     async def _async_update_data(self) -> CoordinatorData:
+        if (
+            self.data is not None
+            and not self._reprice_only
+            and self._force_made >= self._force_asked
+            and self.fetch_held_for()
+        ):
+            # Nothing is priced or read again either: the next tick, at
+            # most an hour away, brings the meter's figures on. A tick that
+            # failed still stands, or the held refresh would mark the entry
+            # recovered with nothing tried.
+            _LOGGER.debug("gas tick less than %s after the last one, held", MIN_FETCH_INTERVAL)
+            if not self.last_update_success:
+                raise UpdateFailed(self.last_error or "the last tick failed")
+            return self.data
         try:
             return await self._tick()
         finally:
@@ -382,6 +423,8 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         # retries it, rather than a reprice seconds after counting it twice.
         reprice_only = self._reprice_only and self._force_made >= self._force_asked
         self._reprice_only = False
+        if not reprice_only:
+            self._last_fetch_at = self.hass.loop.time()
         try:
             return await self._tick_with(deferred, reprice_only)
         except BaseException:

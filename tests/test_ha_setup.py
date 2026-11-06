@@ -38,6 +38,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
+from homeassistant.auth.const import GROUP_ID_USER
 from homeassistant.components.repairs import repairs_flow_manager
 from homeassistant.config_entries import ConfigEntryDisabler, ConfigEntryState
 from homeassistant.core import Context, HomeAssistant
@@ -45,6 +46,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import ServiceValidationError, Unauthorized
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
@@ -148,6 +150,12 @@ def _no_card_archive_rows() -> Iterator[None]:
         ),
     ):
         yield
+
+
+def let_the_fetch_interval_pass(coordinator: GasCoordinator) -> None:
+    """Have the coordinator's next refresh run a full tick, as it does once
+    ``MIN_FETCH_INTERVAL``, a quarter of an hour, has passed since the last."""
+    coordinator._last_fetch_at = None
 
 
 @pytest.fixture
@@ -428,6 +436,7 @@ async def test_an_unexpected_probe_error_leaves_the_card_to_its_age(
     stub = replace(providers.EXTRACTORS["engie"], probe=probe)
     with patch.dict(providers.EXTRACTORS, {"engie": stub}):
         entry = await _setup(hass)
+        let_the_fetch_interval_pass(entry.runtime_data)
         await entry.runtime_data.async_refresh()
     price = hass.states.get("sensor.engie_flow_current_price")
     assert price is not None and price.state != "unavailable"
@@ -477,6 +486,7 @@ async def test_an_unexpected_month_card_error_prices_on_the_current_card(
     with patch.dict(providers.EXTRACTORS, {"engie": stub}):
         entry = await _setup(hass)
         coordinator = entry.runtime_data
+        let_the_fetch_interval_pass(coordinator)
         await coordinator.async_refresh()
     assert month.await_count > 0
     assert coordinator.last_update_success
@@ -581,6 +591,133 @@ async def test_only_an_administrator_can_backfill(
                 return_response=True,
             )
     assert prices.await_count == 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_only_an_administrator_can_refresh(
+    hass: HomeAssistant, fetch: AsyncMock, hass_read_only_user: Any, hass_admin_user: Any
+) -> None:
+    """Every refresh fetches the card, the index values and the calorific
+    values again whatever their age, so a user who is not an administrator is
+    refused, read-only or not. An administrator is not, and neither is an
+    automation: its actions run with no user, even when an event a user fired
+    set it off."""
+    entry = await _setup(hass)
+    household = await hass.auth.async_create_user("Household", group_ids=[GROUP_ID_USER])
+    assert not household.is_admin
+    data = {"entry_id": entry.entry_id}
+    start = fetch.await_count
+    for user in (hass_read_only_user, household):
+        with pytest.raises(Unauthorized):
+            await hass.services.async_call(
+                DOMAIN, "refresh", data, blocking=True, context=Context(user_id=user.id)
+            )
+    assert fetch.await_count == start
+    await hass.services.async_call(
+        DOMAIN, "refresh", data, blocking=True, context=Context(user_id=hass_admin_user.id)
+    )
+    assert fetch.await_count == start + 1
+    assert await async_setup_component(
+        hass,
+        "automation",
+        {
+            "automation": {
+                "triggers": {"trigger": "event", "event_type": "refresh_now"},
+                "actions": {"action": f"{DOMAIN}.refresh", "data": data},
+            }
+        },
+    )
+    hass.bus.async_fire("refresh_now", context=Context(user_id=household.id))
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert fetch.await_count == start + 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_button_forces_one_fetch_a_quarter_hour(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """Any user allowed to press a button can press this one. Each press
+    forced a full fetch, so pressing in a loop fetched in a loop; a press
+    within a quarter of an hour of the last full tick, the setup's included,
+    is refused and says when the button can fetch again."""
+    entry = await _setup(hass)
+    household = await hass.auth.async_create_user("Household", group_ids=[GROUP_ID_USER])
+    button = er.async_get(hass).async_get_entity_id("button", DOMAIN, f"{entry.entry_id}_refresh")
+    assert button is not None
+
+    async def press() -> None:
+        await hass.services.async_call(
+            "button",
+            "press",
+            {"entity_id": button},
+            blocking=True,
+            context=Context(user_id=household.id),
+        )
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    start = fetch.await_count
+    with pytest.raises(ServiceValidationError) as refused:
+        await press()
+    assert refused.value.translation_placeholders == {"last": "10:00", "next": "10:15"}
+    assert fetch.await_count == start
+    # A fetch begun at 10:15:20 holds the next to 10:30:20, so the time
+    # given is 10:31.
+    freezer.tick(timedelta(minutes=15, seconds=20))
+    await press()
+    assert fetch.await_count == start + 1
+    for _ in range(3):
+        with pytest.raises(ServiceValidationError) as refused:
+            await press()
+        assert refused.value.translation_key == "refresh_pressed_recently"
+        assert refused.value.translation_placeholders == {"last": "10:15", "next": "10:31"}
+    assert fetch.await_count == start + 1
+    freezer.tick(timedelta(minutes=15))
+    await press()
+    assert fetch.await_count == start + 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_update_entity_asks_nobody_within_a_quarter_hour(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """Any user who may control an entity can have Home Assistant update it,
+    and each time the debouncer's ten seconds had passed that ran a full
+    tick: the supplier's probe, and the card whenever it was due, as on 2
+    October before the month's card is out. Within a quarter of an hour of
+    the last full tick a refresh asks nobody; the hourly tick still does."""
+    probe = AsyncMock(return_value=None)
+    stub = replace(providers.EXTRACTORS["engie"], probe=probe)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        assert await async_setup_component(hass, "homeassistant", {})
+        await _setup(hass)
+        freezer.move_to("2026-10-02 10:00:00+02:00")
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+        fetch.side_effect = ExtractorError("HTTP 404 fetching https://card.example/card.pdf")
+        household = await hass.auth.async_create_user("Household", group_ids=[GROUP_ID_USER])
+
+        async def update() -> None:
+            await hass.services.async_call(
+                "homeassistant",
+                "update_entity",
+                {"entity_id": "sensor.engie_flow_current_price"},
+                blocking=True,
+                context=Context(user_id=household.id),
+            )
+            await hass.async_block_till_done(wait_background_tasks=True)
+
+        fetches, probes = fetch.await_count, probe.await_count
+        for _ in range(6):
+            freezer.tick(timedelta(seconds=11))
+            await update()
+        assert (fetch.await_count, probe.await_count) == (fetches, probes)
+        freezer.tick(timedelta(minutes=14))
+        await update()
+        assert (fetch.await_count, probe.await_count) == (fetches + 1, probes + 1)
+        freezer.tick(timedelta(hours=1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done(wait_background_tasks=True)
+        assert (fetch.await_count, probe.await_count) == (fetches + 2, probes + 2)
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -883,6 +1020,7 @@ async def test_an_earlier_contract_s_last_month_falls_back_like_any_other(
         ),
     ):
         entry = await _setup(hass, {**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]})
+        let_the_fetch_interval_pass(entry.runtime_data)
         await entry.runtime_data.async_refresh()
         await hass.async_block_till_done()
     cost = hass.states.get("sensor.engie_flow_current_year_cost")
@@ -1755,6 +1893,7 @@ async def test_a_home_assistant_without_its_recorder_is_told_so(
     key = f"recorder_missing_{entry.entry_id}"
     issue = issues.async_get_issue(DOMAIN, key)
     assert issue is not None and issue.translation_key == "recorder_missing"
+    let_the_fetch_interval_pass(entry.runtime_data)
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
     assert issues.async_get_issue(DOMAIN, key) is None
@@ -1872,6 +2011,7 @@ async def test_a_restart_waiting_for_the_energy_manager_keeps_the_held_figures(
             ores = snapshot.dsos[DSO_ORES]
             t2_only = replace(ores, tiers={TIER_T2: ores.tiers[TIER_T2]})
             coordinator._snapshot = replace(snapshot, dsos={**snapshot.dsos, DSO_ORES: t2_only})
+            let_the_fetch_interval_pass(coordinator)
             await coordinator.async_refresh()
             assert not coordinator.last_update_success
             issue = issues.async_get_issue(DOMAIN, key)
@@ -1879,6 +2019,7 @@ async def test_a_restart_waiting_for_the_energy_manager_keeps_the_held_figures(
             coordinator._snapshot = snapshot
             consumption.reset_mock()
             discover.return_value = ("sensor.gas", 1)
+            let_the_fetch_interval_pass(coordinator)
             await coordinator.async_refresh()
             await hass.async_block_till_done(wait_background_tasks=True)
     assert coordinator.last_update_success
@@ -2769,6 +2910,7 @@ async def test_a_failed_meter_read_keeps_the_figures_held_for_a_restart(
         held = coordinator._held
         assert held is not None and held["current_year_cost"] is not None
         kind.side_effect = RecorderUnavailable("recorder query for sensor.gas failed")
+        let_the_fetch_interval_pass(coordinator)
         await coordinator.async_refresh()
         assert coordinator.data.current_year_cost == held["current_year_cost"]
         assert coordinator.data.current_month_cost == held["current_month_cost"]
@@ -4102,3 +4244,23 @@ async def test_diagnostics_of_an_entry_not_set_up_redact_its_settings(
     payload = await diagnostics.async_get_config_entry_diagnostics(hass, entry)
     assert set(payload) == {"entry"}
     _assert_private_redacted(payload)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_held_refresh_leaves_a_failed_tick_failed(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """A refresh the quarter hour holds tries nothing, so after a tick that
+    failed it must not read as the entry recovering."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    let_the_fetch_interval_pass(coordinator)
+    with patch.object(GasCoordinator, "_tick_with", AsyncMock(side_effect=UpdateFailed("boom"))):
+        await coordinator.async_refresh()
+    assert coordinator.last_update_success is False
+    freezer.tick(timedelta(minutes=1))
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success is False
+    freezer.tick(timedelta(minutes=15))
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success is True

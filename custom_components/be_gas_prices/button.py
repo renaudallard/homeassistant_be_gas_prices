@@ -27,14 +27,19 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
-from .coordinator import GasCoordinator
+from .const import DOMAIN
+from .coordinator import MIN_FETCH_INTERVAL, GasCoordinator
 from .sensor import device_info
 
 _REFRESH = ButtonEntityDescription(
@@ -71,4 +76,26 @@ class RefreshButton(CoordinatorEntity[GasCoordinator], ButtonEntity):
         return True
 
     async def async_press(self) -> None:
+        # Any user allowed to press a button can press this one, and every
+        # press fetched the card, the index values and the calorific values
+        # again past their age, so pressing it in a loop fetched all three in
+        # a loop. A press within the coordinator's MIN_FETCH_INTERVAL of the
+        # last full tick, or while a forced fetch is on its way, is refused
+        # and says when the button can fetch again.
+        if held := self.coordinator.fetch_held_for():
+            ready = dt_util.utcnow() + held
+            # Up to the minute, so a press at the time it gives fetches.
+            shown = ready.replace(second=0, microsecond=0)
+            if shown < ready:
+                shown += timedelta(minutes=1)
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="refresh_pressed_recently",
+                translation_placeholders={
+                    "last": dt_util.as_local(ready - MIN_FETCH_INTERVAL).strftime("%H:%M"),
+                    "next": dt_util.as_local(shown).strftime("%H:%M"),
+                },
+            )
+        # Counted as a fetch from here, before anything is awaited, so
+        # presses arriving meanwhile are refused rather than queued.
         await self.coordinator.async_force_refresh()

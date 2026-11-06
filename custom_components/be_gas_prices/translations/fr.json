@@ -522,6 +522,9 @@
     },
     "card_archive_needed": {
       "message": "{supplier} publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit, et cette entrée exclut l'archive. Activez l'option de l'archive des cartes dans les paramètres de l'entrée."
+    },
+    "refresh_pressed_recently": {
+      "message": "Le tarif a été vérifié pour la dernière fois à {last} ; la prochaine vérification peut commencer à partir de {next}."
     }
   }
 }

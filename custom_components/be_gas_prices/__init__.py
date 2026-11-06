@@ -152,7 +152,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             written.update(await backfill_cost(hass, coordinator))
         return {"rows": written}
 
-    hass.services.async_register(DOMAIN, SERVICE_REFRESH, _refresh, schema=_REFRESH_SCHEMA)
+    # For administrators only, as the backfill below. Every call fetches the
+    # card, the index values and the calorific values again whatever their
+    # age, and any user, read-only ones included, could repeat it at will. A
+    # call with no user, as an automation's is, still goes through.
+    async_register_admin_service(hass, DOMAIN, SERVICE_REFRESH, _refresh, schema=_REFRESH_SCHEMA)
     # For administrators only, as Home Assistant registers its own statistics
     # services: a clear deletes a statistic's whole history, which nothing
     # gives back. A call with no user, as an automation's is, still goes

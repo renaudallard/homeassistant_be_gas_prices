@@ -522,6 +522,9 @@
     },
     "card_archive_needed": {
       "message": "{supplier} publishes its cards as images, which only the project's card archive reads, and this entry keeps the archive out. Turn the card archive option on in the entry's settings."
+    },
+    "refresh_pressed_recently": {
+      "message": "The tariff was last checked at {last}; the next check can start from {next}."
     }
   }
 }

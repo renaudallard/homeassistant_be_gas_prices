@@ -522,6 +522,9 @@
     },
     "card_archive_needed": {
       "message": "{supplier} publiceert zijn kaarten als afbeeldingen, die alleen het kaartarchief van het project leest, en dit item sluit het archief uit. Zet de optie voor het kaartarchief aan in de instellingen van het item."
+    },
+    "refresh_pressed_recently": {
+      "message": "Het tarief werd het laatst gecontroleerd om {last}; vanaf {next} kan het opnieuw worden gecontroleerd."
     }
   }
 }
