@@ -130,7 +130,8 @@ sheet is held. The transport stays as typed: no sheet prints it. Each sheet
 is read in the tick for the current year, the year before's standing in
 until the year's is published, and for an earlier custom contract of the
 year at its DSO; nothing of it is kept over a restart, and a failure waits
-six hours.
+six hours. For a month no sheet held covers, what the card archive kept of
+it stands in (`network.json`, below), ahead of the figures typed.
 
 Every sheet prints a fixed term a year and a rate per kWh per tier, then the
 public service, pension, levy and regulatory balance rates per kWh, which
@@ -209,6 +210,18 @@ a day for an entry with the card archive option on
 a failure waiting six hours), keeps it in each entry's Store, and answers
 only for a month the entry's own readings do not give, ahead of the
 figures `const.py` holds.
+
+And it writes `gas/network.json`: per month of last year and this one, and
+per DSO, what each regulator's network sheet gives a custom entry taking its
+network from it, read with an installation's readers, each figure to the
+seventh decimal. A month the sheets still give is written again; one they no
+longer give keeps what was written, and months past the rows' retention go.
+`network_archive.py` reads it once a day for an entry with a contract taking
+its network from a sheet and the card archive option on
+(`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/network.json`,
+a failure waiting six hours), keeps it in such an entry's Store, and answers
+only for a month the entry's own reading of the sheets does not give, ahead
+of the figures typed.
 
 ## The recorder
 

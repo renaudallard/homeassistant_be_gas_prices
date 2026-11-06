@@ -3,6 +3,7 @@ published tariff sheet."""
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -156,3 +157,73 @@ async def test_an_earlier_custom_contract_reads_its_own_dso_s_sheet() -> None:
     [(_session, period, year)] = [call.args for call in reads.await_args_list]
     assert period[CONF_DSO] == DSO_SIBELGA and period[CONF_CUSTOM_NETWORK_FROM_SHEET] is True
     assert year == 2026
+
+
+# The card archive's network table (network_archive.py).
+
+_ORES = {
+    "t1_fixed": 30.1,
+    "t1_proportional": 0.0404664,
+    "t2_fixed": 132.95,
+    "t2_proportional": 0.0208089,
+    "metering_per_year": 0.0,
+}
+
+
+def test_a_month_is_read_by_dso_and_kept_until_a_table_replaces_it() -> None:
+    from custom_components.be_gas_prices import network_archive
+
+    network_archive.hold({"months": {"2026-11": {DSO_ORES: _ORES}}})
+    held = network_archive.network_for(_NOV, DSO_ORES)
+    assert held is not None and held.t1_proportional == 0.0404664
+    assert network_archive.network_for(date(2026, 10, 1), DSO_ORES) is None
+    network_archive.hold({"months": {}})
+    assert network_archive.network_for(_NOV, DSO_ORES) == held
+    network_archive.restore({"months": {"2026-12": {DSO_ORES: _ORES}}})
+    assert network_archive.network_for(date(2026, 12, 1), DSO_ORES) is None
+    assert network_archive.held_table() == {"months": {"2026-11": {DSO_ORES: _ORES}}}
+
+
+@pytest.mark.parametrize(
+    "spoilt",
+    [
+        {"t1_proportional": 4.04664},
+        {"t1_fixed": 3010.0},
+        {"metering_per_year": -1.0},
+        {"t2_fixed": "132.95"},
+        {"t2_fixed": True},
+        {"transport": 0.00165},
+    ],
+)
+def test_a_dso_month_that_does_not_read_whole_is_left_out(spoilt: dict[str, Any]) -> None:
+    """A figure out of bounds or of another type, or one no sheet gives,
+    drops the DSO's month whole, and so does a missing one; the others stay."""
+    from custom_components.be_gas_prices import network_archive
+
+    short = {k: v for k, v in _ORES.items() if k != "t2_fixed"}
+    network_archive.hold(
+        {"months": {"2026-11": {DSO_ORES: {**_ORES, **spoilt}, "resa": _ORES, "sibelga": short}}}
+    )
+    assert network_archive.network_for(_NOV, DSO_ORES) is None
+    assert network_archive.network_for(_NOV, "sibelga") is None
+    assert network_archive.network_for(_NOV, "resa") is not None
+
+
+def test_the_archive_stands_in_for_a_month_no_sheet_held_covers() -> None:
+    """A month the entry's own reading of the sheets does not give is billed
+    on what the card archive kept of it, ahead of the figures typed; a sheet
+    held is billed first."""
+    from custom_components.be_gas_prices import network_archive
+
+    network_archive.hold({"months": {"2026-11": {DSO_ORES: _ORES}}})
+    card = build_snapshot(_typed(DSO_ORES, **{CONF_CUSTOM_NETWORK_FROM_SHEET: True}))
+    overlay = resolve_for_delivery(card, _NOV).dsos[DSO_ORES]
+    assert overlay.tiers[TIER_T1].proportional == pytest.approx(0.0404664 * 1.06)
+    assert overlay.metering_per_year == 0.0
+    grid = cwape.parse_grid((_FIXTURES / "cwape" / "ores_gaz_2026.xlsx").read_bytes())
+    assert grid is not None
+    cwape._grids[DSO_ORES] = {
+        "grid": replace(grid, network=replace(grid.network, t1_proportional=0.05))
+    }
+    overlay = resolve_for_delivery(card, _NOV).dsos[DSO_ORES]
+    assert overlay.tiers[TIER_T1].proportional == pytest.approx(0.05 * 1.06)

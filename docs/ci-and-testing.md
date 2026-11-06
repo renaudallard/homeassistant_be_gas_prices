@@ -334,6 +334,15 @@ under `gas/`:
   reads. The run reads the law with the live check's `check_excise_law` and
   `check_excise_tariff`, so a network failure is tried again after a pause
   and one that persists is printed, costing the cards nothing.
+- `network.json`: per month of last year and this one up to the current
+  month, and per DSO key, what each regulator's network sheet gives a custom
+  entry (`_network_months`, `_write_network`): each tier's terms and the
+  metering, excluding VAT, off the sheet of the month's own year, read with
+  the integration's readers (`read_area_network`, `read_network`,
+  `read_listing`, `read_grids`) and fetched as the live check fetches. A
+  DSO's month read again is written again, one no longer read keeps what was
+  written, and a month past the rows' retention goes with them, which
+  `network_archive.py` reads.
 
 A row is rewritten only when the parse changed, so a quiet day writes
 nothing. Months older than `--keep-months` (36) are removed, with the texts

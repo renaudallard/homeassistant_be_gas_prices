@@ -3133,6 +3133,60 @@ async def test_the_price_history_stamp_moves_with_a_network_sheet_read(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(
+    ("sheet", "archive", "reads"),
+    [(True, True, True), (True, False, False), (False, True, False)],
+)
+async def test_only_a_sheet_entry_reading_the_archive_reads_the_network_table(
+    hass: HomeAssistant, sheet: bool, archive: bool, reads: bool
+) -> None:
+    """The table is the card archive's, and of use only to a contract taking
+    its network from a sheet: an entry keeping the archive out, or typing its
+    network, asks GitHub for none of it."""
+    from custom_components.be_gas_prices import network_archive
+
+    await _setup(hass, {**_custom_network(sheet), CONF_CARD_ARCHIVE: archive})
+    fetch: Any = network_archive.ensure_network_archive
+    assert (fetch.await_count > 0) is reads
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("sheet", [True, False])
+async def test_the_network_table_travels_through_a_sheet_entry_s_store(
+    hass: HomeAssistant, sheet: bool
+) -> None:
+    """Kept by an entry with a contract taking its network from a sheet, so a
+    restart without the network still knows it, and by no other."""
+    from custom_components.be_gas_prices import network_archive
+
+    entry = await _setup(hass, _custom_network(sheet))
+    coordinator = entry.runtime_data
+    figures = {
+        "t1_fixed": 30.1,
+        "t1_proportional": 0.0404664,
+        "t2_fixed": 132.95,
+        "t2_proportional": 0.0208089,
+        "metering_per_year": 0.0,
+    }
+    network_archive.hold({"months": {"2026-09": {DSO_ORES: figures}}})
+    saved: list[dict[str, Any]] = []
+
+    async def save(payload: dict[str, Any]) -> None:
+        saved.append(payload)
+
+    with patch.object(coordinator._store, "async_save", save):
+        await coordinator.async_save()
+    assert ("network_archive" in saved[-1]) is sheet
+    if not sheet:
+        return
+    network_archive._HELD.clear()
+    coordinator._store.async_load = AsyncMock(return_value=saved[-1])
+    await coordinator.async_load_persistent()
+    held = network_archive.network_for(date(2026, 9, 1), DSO_ORES)
+    assert held is not None and held.t1_fixed == 30.1
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_card_reissued_within_its_month_prices_the_day_signed(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

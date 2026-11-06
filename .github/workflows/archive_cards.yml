@@ -467,6 +467,10 @@ jobs:
             "  excise of both slices, the protected customer's rate and the energy" \
             "  contribution), read from FPS Finance's tariff and Justel; a month they no" \
             "  longer give keeps what was written." \
+            "- \`network.json\`: per month and DSO, what each regulator's sheet gives a" \
+            "  custom entry taking its network from it (Fluvius, Brugel, the CWaPE):" \
+            "  each tier's terms and the metering, excluding VAT; a month no longer read" \
+            "  keeps what was written." \
             "" \
             "The PDFs themselves are the assets of the \`gas-<YYYY-MM>\` releases of this" \
             "repository, one release per month of cards, each file named by its SHA-256." \

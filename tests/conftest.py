@@ -226,6 +226,21 @@ def _law_table_unread() -> Iterator[None]:
     law_archive._HELD.clear()
 
 
+@pytest.fixture(autouse=True)
+def _network_table_unread() -> Iterator[None]:
+    """The tick reads the card archive's network table for a contract taking
+    its network from a sheet. Tests start with none held and never reach the
+    network."""
+    from custom_components.be_gas_prices import network_archive
+
+    network_archive._HELD.clear()
+    network_archive._TABLE.fetched_at = None
+    network_archive._TABLE.failed_at = None
+    with patch.object(network_archive, "ensure_network_archive", AsyncMock()):
+        yield
+    network_archive._HELD.clear()
+
+
 # The data management fee each year's Fluvius gas tariff sheet prints, EUR/year
 # excluding VAT.
 FLUVIUS_FEES = {2025: 17.51, 2026: 17.85}

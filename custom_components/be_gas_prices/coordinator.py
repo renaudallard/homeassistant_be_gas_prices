@@ -54,7 +54,15 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from . import excise_law, fluvius, law_archive, network_sheet, tarbel, vat_rates
+from . import (
+    excise_law,
+    fluvius,
+    law_archive,
+    network_archive,
+    network_sheet,
+    tarbel,
+    vat_rates,
+)
 from .bill import IndexValue, bill_month, month_key
 from .compare import OwnContract, rank
 from .const import (
@@ -412,6 +420,10 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             if self._data.get(CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE):
                 await vat_rates.ensure_vat_rates(self._session)
                 await law_archive.ensure_law_archive(self._session)
+                # And what it kept of the network sheets, for a contract of
+                # the year taking its network from one.
+                if self._sheet_contracts(dt_util.now().date()):
+                    await network_archive.ensure_network_archive(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the

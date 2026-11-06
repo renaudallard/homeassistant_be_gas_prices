@@ -28,8 +28,9 @@
 A custom entry types its DSO's figures, or ticks the box that takes them off
 the regulator's sheet of each delivery year instead: Fluvius's sheet for its
 area in Flanders (fluvius.py), Brugel's in Brussels (brugel.py) or its
-operator's grid as the CWaPE publishes it in Wallonia (cwape.py). The typed
-figures stand in while no sheet is held.
+operator's grid as the CWaPE publishes it in Wallonia (cwape.py). For a month
+no sheet held covers, what the card archive kept of it stands in
+(network_archive.py), and the typed figures stand in while neither is held.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from typing import Any
 
 import aiohttp
 
-from . import brugel, cwape, fluvius
+from . import brugel, cwape, fluvius, network_archive
 from .const import (
     BRUSSELS_DSO_KEYS,
     CONF_CUSTOM_NETWORK_FROM_SHEET,
@@ -80,11 +81,13 @@ async def ensure_network_sheet(
 
 def held_network(delivery: date, dso: str) -> SheetNetwork | None:
     """``dso``'s network for the month of ``delivery`` off the sheet held for
-    it, or ``None`` while none is."""
+    it, else what the card archive kept of that month's sheet
+    (network_archive.py), or ``None`` while neither is."""
+    held: SheetNetwork | None = None
     if dso in FLUVIUS_KEYS:
-        return fluvius.cached_area_network(delivery.year, dso)
-    if dso in BRUSSELS_DSO_KEYS:
-        return brugel.cached_network(delivery.year)
-    if dso in WALLONIA_DSO_KEYS:
-        return cwape.cached_network(delivery, dso)
-    return None
+        held = fluvius.cached_area_network(delivery.year, dso)
+    elif dso in BRUSSELS_DSO_KEYS:
+        held = brugel.cached_network(delivery.year)
+    elif dso in WALLONIA_DSO_KEYS:
+        held = cwape.cached_network(delivery, dso)
+    return held if held is not None else network_archive.network_for(delivery, dso)

@@ -41,7 +41,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
-from . import excise_law, fluvius, law_archive, tarbel, vat_rates
+from . import excise_law, fluvius, law_archive, network_archive, tarbel, vat_rates
 from .const import CONF_DSO, CONF_STATION, DOMAIN
 from .contract_periods import periods_this_year
 from .daily_ranking import DailyRanking
@@ -172,6 +172,7 @@ class _StoreMixin:
         fluvius.restore(blob.get("fluvius"))
         vat_rates.restore(blob.get("vat_rates"))
         law_archive.restore(blob.get("law_archive"))
+        network_archive.restore(blob.get("network_archive"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
             self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
@@ -227,6 +228,10 @@ class _StoreMixin:
             "ranking_for": self._settings_digest(),
             "held": self._held,
         }
+        if self._sheet_contracts(dt_util.now().date()):
+            # What the card archive kept of the network sheets, only where a
+            # contract of the year takes its network from one.
+            payload["network_archive"] = network_archive.held_table()
         await self._store.async_save(payload)
 
     def _card_key(self) -> list[str]:
@@ -243,14 +248,18 @@ class _StoreMixin:
         """Write the store now, outside a tick."""
         await self._save_persistent()
 
-    def _network_sheets_held(self, today: date) -> list[Any]:
-        """What the network sheets held give each month of the year so far,
-        for each contract of the year that takes its network from one: the
-        entry's own and the earlier ones recorded at a switch."""
+    def _sheet_contracts(self, today: date) -> list[dict[str, Any]]:
+        """The contracts of the year that take their network from a sheet:
+        the entry's own and the earlier ones recorded at a switch."""
         contracts = [
             self._data,
             *(period for period, _first, _last in periods_this_year(self._data, today)),
         ]
+        return [contract for contract in contracts if takes_network_sheet(contract)]
+
+    def _network_sheets_held(self, today: date) -> list[Any]:
+        """What the network sheets held give each month of the year so far,
+        for each contract of the year that takes its network from one."""
         days = [date(today.year, month, 1) for month in range(1, today.month + 1)]
         return [
             [
@@ -259,8 +268,7 @@ class _StoreMixin:
                 else asdict(held)
                 for day in days
             ]
-            for contract in contracts
-            if takes_network_sheet(contract)
+            for contract in self._sheet_contracts(today)
         ]
 
     def card_months_signature(self) -> str:

@@ -61,7 +61,11 @@ Every supplier's index publication (its ``fetch_index``) is kept as
 what earlier runs kept, so a month the supplier's page stopped listing stays.
 The law is read the way the live check reads it, and what the integration
 bills each month on from it goes to ``<out>/law.json`` the same way, so a
-month FPS Finance's tariff and Justel no longer give stays.
+month FPS Finance's tariff and Justel no longer give stays. The network sheet
+of every DSO a custom entry can take its network from is read with the
+integration's readers too, and what each gives every month of last year and
+this one goes to ``<out>/network.json``, so a year the regulator stops
+listing stays.
 
 A parser fix reaches the stored months by itself. When the parser sources,
 the PDF readers or the OCR engine changed since the rows were last replayed
@@ -100,8 +104,8 @@ import hashlib
 import json
 import re
 import sys
-from collections.abc import Awaitable, Callable, Iterable
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable, Iterable, Mapping
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -141,7 +145,11 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
     targets,
 )
 
-from custom_components.be_gas_prices.const import GAS_EXCISE_KNOWN_FROM  # noqa: E402
+from custom_components.be_gas_prices import brugel, cwape, fluvius  # noqa: E402
+from custom_components.be_gas_prices.const import (  # noqa: E402
+    BRUSSELS_DSO_KEYS,
+    GAS_EXCISE_KNOWN_FROM,
+)
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     fetch_pdf_bytes,
@@ -163,6 +171,7 @@ from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     CardNotReadableError,
     ExtractorError,
     IndexTable,
+    SheetNetwork,
     SupplierExtractor,
     SupplierSnapshot,
 )
@@ -177,6 +186,7 @@ _MANIFEST = "pdfs.json"
 _COVERAGE = "coverage.md"
 _VAT = "vat.json"
 _LAW = "law.json"
+_NETWORK = "network.json"
 _COVERAGE_DIR = "coverage"
 # The running month and the thirty-six before it, the same retention the
 # other two namespaces keep: a fixed contract runs up to three years on the
@@ -883,6 +893,96 @@ def _write_law(out: Path, today: date) -> int:
     return len(months)
 
 
+async def _network_months(
+    session: aiohttp.ClientSession,
+    today: date,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> dict[str, dict[str, dict[str, float]]]:
+    """What the network sheet of every DSO gives a custom entry for every
+    month of last year and of this one up to this month, by month and DSO
+    key: each tier's terms and the metering, excluding VAT, off the sheet of
+    the month's own year, read with the integration's readers and fetched as
+    the live check fetches, a network failure tried again after a pause. A
+    sheet that cannot be read gives none of its months."""
+    out: dict[str, dict[str, dict[str, float]]] = {}
+
+    async def read(what: str, fetch: Callable[[], Awaitable[Any]]) -> Any:
+        try:
+            return await fetch_with_retry(fetch, sleep=sleep)
+        except Exception as err:  # one sheet must not stop the others
+            print(f"{what} could not be read: {type(err).__name__}: {err}")
+            return None
+
+    def put(day: date, dso: str, network: SheetNetwork | None) -> None:
+        # To the seventh decimal the regulators publish at, so a sum the
+        # reader made reads as the tariff.
+        if network is not None:
+            out.setdefault(_month_id(day.year, day.month), {})[dso] = {
+                name: round(value, 7) for name, value in asdict(network).items()
+            }
+
+    documents = await read("the CWaPE's listing", functools.partial(cwape.read_listing, session))
+    for year in (today.year - 1, today.year):
+        last = today.month if year == today.year else 12
+        days = [date(year, month, 1) for month in range(1, last + 1)]
+        for dso, area in sorted(fluvius._AREA_SLUGS.items()):
+            terms = await read(
+                f"Fluvius's {year} gas sheet for {area}",
+                functools.partial(fluvius.read_area_network, session, year, area),
+            )
+            for day in days:
+                put(day, dso, terms)
+        sheet = await read(
+            f"Brugel's {year} gas sheet", functools.partial(brugel.read_network, session, year)
+        )
+        for dso in sorted(BRUSSELS_DSO_KEYS):
+            for day in days:
+                put(day, dso, sheet)
+        if documents is None:
+            continue
+        for dso in sorted(cwape._OPERATORS):
+            grids = await read(
+                f"the CWaPE's {year} gas grid for {dso}",
+                functools.partial(cwape.read_grids, session, documents, year, dso),
+            )
+            for day in days:
+                grid = cwape.valid_on(grids or (), day)
+                put(day, dso, None if grid is None else grid.network)
+    return out
+
+
+def _write_network(
+    out: Path,
+    read: Mapping[str, Mapping[str, Mapping[str, float]]],
+    today: date,
+    keep_months: int = _KEEP_MONTHS,
+) -> int:
+    """``network.json``: what the network sheet of every DSO gives a custom
+    entry, by month and DSO key (:func:`_network_months`). Returns the months
+    held.
+
+    A DSO's month read today is written again, one not read keeps what was
+    written, which is what an installation reads for a month its own reading
+    of the sheets does not give (network_archive.py), and a month more than
+    ``keep_months`` before this one goes, as the rows do. Deterministic, so a
+    day that changed nothing rewrites the same bytes.
+    """
+    path = out / _NETWORK
+    held = _read_json(path)
+    section = held.get("months") if isinstance(held, dict) else None
+    months: dict[str, dict[str, Any]] = {
+        str(label): dict(dsos)
+        for label, dsos in (section.items() if isinstance(section, dict) else ())
+        if isinstance(dsos, dict)
+    }
+    for label, dsos in read.items():
+        months[label] = {**months.get(label, {}), **dsos}
+    cutoff = _months_before(today, keep_months)
+    table = {"months": {label: months[label] for label in sorted(months) if label >= cutoff}}
+    _write_json(path, table)
+    return len(table["months"])
+
+
 def _parser_digest() -> str:
     """One digest over every source a parse depends on, and what reads the
     cards: the PDF readers and the OCR engine, so a new release of either
@@ -1303,6 +1403,11 @@ async def archive(
             check = await read(session, sleep=sleep)
             if check.status != "ok":
                 print(f"{check.label}: {check.status}: {check.detail}")
+        # The network sheets a custom entry takes its network from, for
+        # network.json, read the same way and outside the memo too: a sheet
+        # that failed costs the cards nothing, and network.json keeps what it
+        # held of its months.
+        network = await _network_months(session, today, sleep)
     if summary.download_failed and stamp is not None:
         # Stamping now would call the rows it missed replayed, and no later
         # run would look at them again until an unrelated parser change.
@@ -1313,10 +1418,11 @@ async def archive(
     _write_coverage(out, pdf_base_url, archive_base_url)
     _write_vat(out)
     law = _write_law(out, today)
+    sheets = _write_network(out, network, today, keep_months)
     print(
         f"{summary.stored} stored, {summary.unchanged} unchanged, "
         f"{summary.backfilled} backfilled, {summary.reoffered} offered again, "
-        f"{summary.absent} absent, {law} months of the law, "
+        f"{summary.absent} absent, {law} months of the law, {sheets} of the network sheets, "
         f"{len(summary.failed)} failed, {summary.indices} index tables changed, "
         f"{removed} pruned, {len(wanted)} cards asked; {cards.rendered} rendered, "
         f"{cards.served} served from stored text, {len(cards.saved)} new PDFs kept; "

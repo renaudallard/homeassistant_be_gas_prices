@@ -47,6 +47,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import aiohttp
 import pytest
@@ -244,6 +245,20 @@ def law_reads(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, Any]]:
     monkeypatch.setattr(ac, "check_excise_law", stub("gas excise law"))
     monkeypatch.setattr(ac, "check_excise_tariff", stub("gas excise tariff"))
     return made
+
+
+# The run's own read of the network sheets, which the fixture below stands
+# in for in every other test.
+_NETWORK_MONTHS = ac._network_months
+
+
+@pytest.fixture(autouse=True)
+def network_reads(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+    """The run reads the regulators' network sheets; tests read none unless
+    they say what the sheets give."""
+    read = AsyncMock(return_value={})
+    monkeypatch.setattr(ac, "_network_months", read)
+    return read
 
 
 async def _no_sleep(_seconds: float) -> None:
@@ -1697,3 +1712,99 @@ async def test_a_card_read_by_its_text_layer_is_not_marked(tmp_path: Path, web: 
     )
     got = await fetch_archived_row(reader, "acme", "acme_fix", "wallonia", "2026-09")  # type: ignore[arg-type]
     assert got is not None and got[1] is False
+
+
+_KEMPEN = {
+    "t1_fixed": 14.79,
+    "t1_proportional": 0.0212869,
+    "t2_fixed": 78.51,
+    "t2_proportional": 0.0085442,
+    "metering_per_year": 17.85,
+}
+
+
+async def test_the_run_writes_the_network_sheets_table(
+    tmp_path: Path, network_reads: AsyncMock
+) -> None:
+    """What each DSO's sheet gives a custom entry, by month: a month read
+    again is written again, one no longer read keeps what was written, and a
+    month past the rows' retention goes with them."""
+    out = tmp_path / "gas"
+    network_reads.return_value = {
+        "2023-08": {"fluvius_kempen": _KEMPEN},
+        "2026-09": {"fluvius_kempen": _KEMPEN},
+    }
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    assert network_reads.await_args is not None
+    assert network_reads.await_args.args[1] == date(2026, 9, 11)
+    table = json.loads((out / "network.json").read_text())["months"]
+    assert table == {"2026-09": {"fluvius_kempen": _KEMPEN}}
+    network_reads.return_value = {"2026-09": {"sibelga": {**_KEMPEN, "t1_fixed": 15.0}}}
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    table = json.loads((out / "network.json").read_text())["months"]
+    assert sorted(table["2026-09"]) == ["fluvius_kempen", "sibelga"]
+    moved = {**_KEMPEN, "t1_proportional": 0.0213}
+    network_reads.return_value = {"2026-09": {"fluvius_kempen": moved}}
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    table = json.loads((out / "network.json").read_text())["months"]
+    assert table["2026-09"]["fluvius_kempen"] == moved
+
+
+async def test_each_sheet_gives_the_months_of_its_own_year() -> None:
+    """Last year's months and this year's up to this one, each off the sheet
+    of its own year, through the integration's readers, to the seventh
+    decimal. A sheet that does not read gives none of its months, and a
+    dropped connection is tried again."""
+    from custom_components.be_gas_prices.providers.base import SheetNetwork
+
+    def network(year: int) -> SheetNetwork:
+        return SheetNetwork(
+            t1_fixed=15.0,
+            t1_proportional=year / 1e5 + 1e-9,
+            t2_fixed=80.0,
+            t2_proportional=0.0085,
+            metering_per_year=17.85,
+        )
+
+    tries: dict[str, int] = {}
+
+    async def area(_session: Any, year: int, slug: str) -> Any:
+        if slug == "west":
+            raise ValueError("no row")
+        if slug == "kempen" and year == 2026 and not tries.get(slug):
+            tries[slug] = 1
+            raise ExtractorError("network error fetching the listing: reset")
+        return network(year)
+
+    async def brugel(_session: Any, year: int) -> Any:
+        if year == 2025:
+            raise ExtractorError("HTTP 404 fetching the 2025 sheet")
+        return network(year)
+
+    async def listing(_session: Any) -> list[str]:
+        return ["listed"]
+
+    grid = SimpleNamespace(
+        valid_from=date(2026, 1, 1), valid_to=date(2026, 12, 31), network=network(2026)
+    )
+
+    async def grids(_session: Any, _docs: Any, year: int, dso: str) -> list[Any]:
+        return [grid] if dso == "ores" and year == 2026 else []
+
+    with (
+        patch.object(ac.fluvius, "read_area_network", area),
+        patch.object(ac.brugel, "read_network", brugel),
+        patch.object(ac.cwape, "read_listing", listing),
+        patch.object(ac.cwape, "read_grids", grids),
+    ):
+        months = await _NETWORK_MONTHS(None, date(2026, 3, 9), _no_sleep)
+    assert sorted(months) == [f"2025-{m:02d}" for m in range(1, 13)] + [
+        "2026-01",
+        "2026-02",
+        "2026-03",
+    ]
+    assert months["2025-06"]["fluvius_antwerpen"]["t1_proportional"] == 0.02025
+    assert months["2026-03"]["fluvius_kempen"]["t1_proportional"] == 0.02026
+    assert "fluvius_west" not in months["2026-03"]
+    assert "sibelga" not in months["2025-12"] and "sibelga" in months["2026-01"]
+    assert "ores" in months["2026-02"] and "resa" not in months["2026-02"]
