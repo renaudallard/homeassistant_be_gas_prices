@@ -26,20 +26,23 @@
 """Turning a tariff card's bytes into text.
 
 Every stored text of the card archive was rendered by one of these readers,
-and each is stamped with a digest of this module (``scripts/card_texts.py``),
-so a change here renders every kept card again. Downloading, validating and
-memoising a card stay in ``_pdf.py``, where a change renders nothing.
+and each is stamped with a digest of this module and of the decode bounds
+(``scripts/card_texts.py``), so a change here renders every kept card again.
+Downloading, validating and memoising a card stay in ``_pdf.py``, where a
+change renders nothing.
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from io import BytesIO
 from typing import Any
 
 import pypdf
 
+from ._pdf_bound import bounded_pypdf
+from ._pdf_bound_pdfminer import bounded_pdfminer
 from .base import CardNotReadableError, ExtractorError
 
 _LOGGER = logging.getLogger(__name__)
@@ -65,21 +68,23 @@ def _require_text_layer(text: str, pages: int) -> None:
 
 def extract_pdf_text(payload: bytes) -> str:
     try:
-        reader = pypdf.PdfReader(BytesIO(payload))
-        pages = list(reader.pages)
         chunks: list[str] = []
         failures = 0
-        for idx, page in enumerate(pages):
-            text = page.extract_text()
-            if text is None:
-                # pypdf returns None when a page cannot be decoded (e.g.
-                # an unsupported font). The caller would otherwise see a
-                # corrupt snapshot with regex misses on whatever was on
-                # that page; log so the failure is visible in HA logs.
-                _LOGGER.warning("pypdf returned None for page %d/%d", idx + 1, len(pages))
-                failures += 1
-                continue
-            chunks.append(text)
+        # Held to the bound from opening the file, which inflates the
+        # cross-reference and object streams.
+        with bounded_pypdf():
+            pages = list(pypdf.PdfReader(BytesIO(payload)).pages)
+            for idx, page in enumerate(pages):
+                text = page.extract_text()
+                if text is None:
+                    # pypdf returns None when a page cannot be decoded (e.g.
+                    # an unsupported font). The caller would otherwise see a
+                    # corrupt snapshot with regex misses on whatever was on
+                    # that page; log so the failure is visible in HA logs.
+                    _LOGGER.warning("pypdf returned None for page %d/%d", idx + 1, len(pages))
+                    failures += 1
+                    continue
+                chunks.append(text)
         if pages and failures == len(pages):
             raise ExtractorError("PDF parse error: every page failed to decode")
         text = "\n".join(chunks)
@@ -105,7 +110,7 @@ def pdfplumber_text(payload: bytes, kind: str, render: Callable[[Any], str]) -> 
     try:
         import pdfplumber
 
-        with pdfplumber.open(BytesIO(payload)) as pdf:
+        with bounded_pdfminer(), pdfplumber.open(BytesIO(payload)) as pdf:
             text = render(pdf)
             # The text-layer check lives on both readers, or whether a card
             # counts as unreadable would depend on which reader its
@@ -116,6 +121,14 @@ def pdfplumber_text(payload: bytes, kind: str, render: Callable[[Any], str]) -> 
         raise
     except Exception as err:
         raise ExtractorError(f"PDF {kind} parse error: {err}") from err
+
+
+def _each_page(pdf: Any) -> Iterator[Any]:
+    """``pdf``'s pages, each let go of once read: pdfplumber holds every
+    page it laid out until the document is closed."""
+    for page in pdf.pages:
+        yield page
+        page.close()
 
 
 def word_rows(words: list[dict[str, Any]], tolerance: float = 3.0) -> list[list[dict[str, Any]]]:
@@ -149,7 +162,9 @@ def extract_pdf_text_layout(payload: bytes) -> str:
     return pdfplumber_text(
         payload,
         "layout",
-        lambda pdf: "\n".join((page.dedupe_chars().extract_text() or "") for page in pdf.pages),
+        lambda pdf: "\n".join(
+            (page.dedupe_chars().extract_text() or "") for page in _each_page(pdf)
+        ),
     )
 
 
@@ -166,7 +181,7 @@ def extract_pdf_text_rows(payload: bytes) -> str:
         "rows",
         lambda pdf: "\n".join(
             " ".join(word["text"] for word in row)
-            for page in pdf.pages
+            for page in _each_page(pdf)
             for row in word_rows(page.dedupe_chars().extract_words())
         ),
     )

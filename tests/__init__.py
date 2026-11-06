@@ -57,9 +57,9 @@ def _text_cache_dir() -> Path:
 
     One directory per reader code, named by the digest the card archive
     keys its stored texts on (``card_texts.render_digest``): it covers
-    ``providers/_pdf_render.py`` and the pypdf and pdfplumber versions, so a change
-    to either reads every card afresh instead of serving text the current
-    code would not produce.
+    ``providers/_pdf_render.py``, the bounds it reads under and the pypdf and
+    pdfplumber versions, so a change to any of them reads every card afresh
+    instead of serving text the current code would not produce.
     Under ``tmp/`` by default, which git ignores; ``BE_FIXTURE_TEXT_CACHE``
     moves it, which the gate does so its throwaway worktree reuses the main
     checkout's.

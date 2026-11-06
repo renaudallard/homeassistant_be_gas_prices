@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: tmp/fixture_text
-          key: fixture-text-${{ hashFiles('tests/fixtures/**/*.pdf', 'tests/**/*.py', 'custom_components/be_gas_prices/providers/_pdf_render.py', 'requirements-dev.txt') }}
+          key: fixture-text-${{ hashFiles('tests/fixtures/**/*.pdf', 'tests/**/*.py', 'custom_components/be_gas_prices/providers/_pdf_render.py', 'custom_components/be_gas_prices/providers/_pdf_bound.py', 'custom_components/be_gas_prices/providers/_pdf_bound_pdfminer.py', 'requirements-dev.txt') }}
           restore-keys: fixture-text-
       - name: Install dependencies
         run: |

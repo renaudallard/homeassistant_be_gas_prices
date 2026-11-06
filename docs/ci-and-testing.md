@@ -14,7 +14,8 @@ process).
 Reading the fixture cards is most of what the suite spends, a Frank or Bolt
 card 40 to 50 seconds of pdfplumber on a Raspberry Pi, so `fixture_text`
 also keeps each card's text on disk under `tmp/fixture_text/`. A directory
-per reader code, named by a digest of `providers/_pdf_render.py` and the pypdf and
+per reader code, named by a digest of `providers/_pdf_render.py`, the bounds it
+reads under (`_pdf_bound.py`, `_pdf_bound_pdfminer.py`) and the pypdf and
 pdfplumber versions, holds one file per card digest and reader, so a changed
 card, reader or version is read afresh. `BE_FIXTURE_TEXT_CACHE` moves the
 directory. On a Raspberry Pi the whole suite took 630 seconds with an empty
@@ -409,8 +410,9 @@ up for the day after three network failures in a row.
 
 `scripts/card_texts.py` is the render cache both scripts share: each PDF
 source of a row names the pypdf and pdfplumber versions that rendered its
-text and a digest of the render code (`providers/_pdf_render.py` with those
-versions, the digest the fixture text cache is named by), and a stored text
+text and a digest of the render code (`providers/_pdf_render.py` and the bounds
+in `_pdf_bound.py` and `_pdf_bound_pdfminer.py`, with those versions, the
+digest the fixture text cache is named by), and a stored text
 is served only to the same versions and code, so a reader upgrade or a
 render fix renders every card afresh, in the archive and in the live check,
 for as long as it takes. A replay renders such a card again from its kept

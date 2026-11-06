@@ -58,18 +58,20 @@ PARSER_STAMP = "parser.txt"
 # its version stands for both. Their versions are recorded on each source
 # they rendered, like the OCR engine's.
 _READERS = ("pypdf", "pdfplumber")
-# The code that drives them: every text a row stores was rendered by
-# extract_pdf_text, extract_pdf_text_layout or extract_pdf_text_rows, which
-# live in a module of their own, so that a change to how a card is
-# downloaded (_pdf.py) renders nothing again. The extractors' own renderers
-# (Eneco's and Luminus's index tables) feed only the index publications,
-# which keep no text.
+# The code that drives them and the bounds it holds them to: every text a row
+# stores was rendered by extract_pdf_text, extract_pdf_text_layout or
+# extract_pdf_text_rows, which live in a module of their own, so that a
+# change to how a card is downloaded (_pdf.py) renders nothing again, while a
+# change to a bound, which decides whether a card is read at all, renders
+# every card again. The extractors' own renderers (Eneco's and Luminus's
+# index tables) feed only the index publications, which keep no text.
+_PROVIDERS = (
+    Path(__file__).resolve().parent.parent / "custom_components" / "be_gas_prices" / "providers"
+)
 _RENDER_CODE = (
-    Path(__file__).resolve().parent.parent
-    / "custom_components"
-    / "be_gas_prices"
-    / "providers"
-    / "_pdf_render.py"
+    _PROVIDERS / "_pdf_render.py",
+    _PROVIDERS / "_pdf_bound.py",
+    _PROVIDERS / "_pdf_bound_pdfminer.py",
 )
 # The engine that reads a card published as page images. Its version is
 # recorded on each source it read, so a new engine reads those cards again
@@ -108,9 +110,12 @@ def engine_version() -> str:
 
 
 def render_digest() -> str:
-    """One digest over what turns a card's bytes into text: the render code
-    and the reader versions. Also what the tests key their fixture texts on."""
-    digest = hashlib.sha256(_RENDER_CODE.read_bytes())
+    """One digest over what turns a card's bytes into text: the render code,
+    its bounds and the reader versions. Also what the tests key their fixture
+    texts on."""
+    digest = hashlib.sha256()
+    for code in _RENDER_CODE:
+        digest.update(code.read_bytes())
     for name in _READERS:
         digest.update(f"{name} {_version(name)}".encode())
     return digest.hexdigest()
