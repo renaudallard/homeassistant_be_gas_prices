@@ -103,7 +103,15 @@ from ._network import (
     require_region,
     signing_dsos,
 )
-from ._parse import SIGN_CHARS, cell_value, month_date, parse_sign, require_contract, to_float
+from ._parse import (
+    LINE_BREAK,
+    SIGN_CHARS,
+    cell_value,
+    month_date,
+    parse_sign,
+    require_contract,
+    to_float,
+)
 from ._pdf import (
     NL_MONTHS,
     fetch_pdf_rendered,
@@ -292,11 +300,15 @@ def _card_month(text: str) -> date:
 # Under the "VERBRUIK (€cent/kWh)" heading the yearly fee comes first. The
 # fixed card prints the price beside it; the variable one prints the yearly
 # estimate and then the Maandprijs on lines of their own, each followed by its
-# label, which the cards before 2025 prefixed with a ">" bullet.
-_ENERGY_HEAD = r"VERBRUIK\s*\n\s*\(€cent/kWh\)\s*\n\s*(\d+,\d+)"
+# label, which the cards before 2025 prefixed with a ">" bullet. The bullet
+# and the spaces around it are taken whole, as _parse.LINE_BREAK is: "\s*>?\s*"
+# split a run of spaces every way before failing.
+_ENERGY_HEAD = rf"VERBRUIK{LINE_BREAK}\(€cent/kWh\){LINE_BREAK}(\d+,\d+)"
+_BULLET = r"(?>\s*>?\s*)"
 _FIXED_RE = re.compile(_ENERGY_HEAD + r"[ \t]+(\d+,\d+)[ \t]*\n")
 _VARIABLE_RE = re.compile(
-    _ENERGY_HEAD + r"\s*\n\s*\d+,\d+\s*>?\s*Geschatte jaarprijs\s*\n\s*(\d+,\d+)\s*>?\s*Maandprijs"
+    _ENERGY_HEAD
+    + rf"{LINE_BREAK}\d+,\d+{_BULLET}Geschatte jaarprijs{LINE_BREAK}(\d+,\d+){_BULLET}Maandprijs"
 )
 _FORMULA_RE = re.compile(
     rf"\(\s*(\d+(?:,\d+)?)\s*X\s*{_INDEX}\s*([{SIGN_CHARS}])\s*(\d+,\d+)\s*\)\s*X\s*(\d+,\d+)"
@@ -352,8 +364,13 @@ _LABELS: dict[str, dict[str, str]] = {
 
 # pypdf breaks "FLUVIUS MIDDEN VLAANDEREN (INTERGEM)" before the bracket and
 # leaves the cells on the second line, where table_row would read "(INTERGEM)"
-# as the whole label. Joined back, the row is one line like the others.
-_WRAPPED_LABEL_RE = re.compile(r"^([A-Z][^\d\n]*?)[ \t]*\n(\([A-Z]+\)[ \t]+\d)", re.MULTILINE)
+# as the whole label. Joined back, the row is one line like the others. The
+# label is the line up to its last character that is no space or tab, the
+# one a lazy label stopped at: lazily, the spaces after the label were
+# scanned again from every one of them, in time growing with their square.
+_WRAPPED_LABEL_RE = re.compile(
+    r"^([A-Z](?:[^\d\n]*[^\d\n \t])?)[ \t]*\n(\([A-Z]+\)[ \t]+\d)", re.MULTILINE
+)
 
 # Transport is a note beside the table, not a column: "Voor het jaar 2026
 # raamt Fluxys deze kosten op 0,165 €cent/kWh (incl. btw)".

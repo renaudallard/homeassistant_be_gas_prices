@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
@@ -340,6 +341,104 @@ def _listing() -> str:
 )
 def test_listing_links_the_gas_card(contract: str, region: str, name: str) -> None:
     assert mega.card_url(_listing(), contract, region) == f"{_CDN}Mega-FR-NG-B2C-{name}.pdf"
+
+
+def test_elements_no_tag_end_follows_are_read_past_in_time() -> None:
+    """The listing patterns once looked to the next ">" again from every
+    product element: 200 kB of elements that none followed, put in front of
+    the real listing, took more than a minute. The listing still reads as
+    it does alone."""
+    name = mega._CONTRACTS_BY_ID["mega_smart_flex"].listing_name
+    listing = f'data-product-element="{name}" ' * 8000 + _listing()
+    started = time.monotonic()
+    url = mega.card_url(listing, "mega_smart_flex", REGION_WALLONIA)
+    catalog = mega.parse_catalog(listing)
+    assert time.monotonic() - started < 1.0
+    assert url == mega.card_url(_listing(), "mega_smart_flex", REGION_WALLONIA)
+    assert catalog == mega.parse_catalog(_listing())
+
+
+def test_index_rows_no_closing_follows_are_read_past_in_time() -> None:
+    """The index row pattern once looked to the end of the page again from
+    every row that no "</tr>" followed: 72 kB of them took 26 s."""
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="index values not found"):
+        mega.parse_index_page('<tr data-line="ZTP mensuel">' * 20000)
+    assert time.monotonic() - started < 1.0
+
+
+_BLANK_LINES = "\n" * 16000
+
+
+def test_figures_after_blank_lines_are_read_past_in_time() -> None:
+    """The figure patterns once split a run of blank lines after their label
+    every way before failing: 16 000 of them after each of six labels, put
+    in front of the real card, took 42 s. The card still reads as it does
+    alone."""
+    labels = (
+        "Coût énergie (c€/kWh)",
+        "Redevance fixe (€/an)",
+        "Coût du transport",
+        "Redevance de raccordement",
+        "Consommation entre 0 et 12.000 kWh",
+        "Consommation de plus de 12.000 kWh",
+    )
+    card = _card("WL-092026-Smart0109")
+    crafted = "".join(f"{label}{_BLANK_LINES}x\n" for label in labels)
+    started = time.monotonic()
+    snap = mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, crafted + card)
+    assert time.monotonic() - started < 1.0
+    assert snap == mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, card)
+
+
+def test_levy_amounts_after_blank_lines_are_read_past_in_time() -> None:
+    """The Brussels levy amount pattern once split a run of blank lines
+    after "/heure" every way before failing: 16 000 of them in the real
+    card's table took 7,0 s. The card still reads as it does alone."""
+    card = _card("BX-092026-Smart0109")
+    heading = "Obligations de Service Public"
+    crafted = card.replace(heading, f"{heading}\n/heure{_BLANK_LINES}x", 1)
+    started = time.monotonic()
+    snap = mega.parse_snapshot("mega_smart_flex", REGION_BRUSSELS, crafted)
+    assert time.monotonic() - started < 1.0
+    assert snap == mega.parse_snapshot("mega_smart_flex", REGION_BRUSSELS, card)
+
+
+def test_blank_lines_after_a_product_heading_are_read_past_in_time() -> None:
+    """The product pattern once took each blank line after "Gaz naturel" for
+    the name in turn, scanning the lines after it again from each: 32 000
+    lines holding a space, in front of the real card, took 12 s. The card
+    still reads as it does alone."""
+    card = _card("WL-092026-Smart0109")
+    started = time.monotonic()
+    snap = mega.parse_snapshot(
+        "mega_smart_flex", REGION_WALLONIA, "Gaz naturel" + "\n " * 32000 + "\n" + card
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, card)
+
+
+def test_a_product_name_holding_a_run_of_spaces_is_refused_in_time() -> None:
+    """The term after the name was looked for from every space of a run in
+    it, to the end of the run each time: a name holding 16 000 spaces took
+    5,4 s to be refused."""
+    text = "Gaz naturel\nSmart" + " " * 16000 + "Flex\n(Variable)\n"
+    text += _card("WL-092026-Smart0109")
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="card is for"):
+        mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, text)
+    assert time.monotonic() - started < 1.0
+
+
+def test_a_card_url_of_many_month_segments_is_read_in_time() -> None:
+    """The URL month pattern looked along the rest of the URL from every
+    "-MMYYYY-" in it: 32 000 of them in a folder's name took 12 s. Only the
+    file name is read for its month."""
+    url = f"{_CDN}Mega-FR-NG-B2C-WL-092026-" + "-123456-" * 32000 + "/x.pdf"
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="no month in card URL"):
+        mega.archive_url(url, date(2026, 8, 1))
+    assert time.monotonic() - started < 1.0
 
 
 def test_every_contract_is_on_the_listing_where_it_is_sold() -> None:

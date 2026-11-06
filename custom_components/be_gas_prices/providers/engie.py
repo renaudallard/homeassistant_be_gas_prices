@@ -86,7 +86,15 @@ from ._network import (
     require_region,
     signing_dsos,
 )
-from ._parse import fold_accents, html_rows, month_date, require_contract, to_float
+from ._parse import (
+    LINE_BREAK,
+    fold_accents,
+    html_rows,
+    month_date,
+    require_contract,
+    search_once_per_line,
+    to_float,
+)
 from ._pdf import MONTH_NAMES, fetch_pdf_text, fetch_text
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, month_card
@@ -313,9 +321,13 @@ def _vat_rate(text: str) -> float:
 # "Redevance fixe (EUR/an)(11) Prix par kWh(1) (c EUR/kWh)" is a heading; the
 # fixed card prints the two figures on the next line ("60,00 7,939"), the
 # variable one prints the monthly price after "Prix mensuels" and the fee
-# before a repeated "Prix par kWh".
-_FIXED_RE = re.compile(r"Redevance fixe[^\n]*\n\s*(\d+,\d+)\s+(\d+,\d+)\s*\n")
-_MONTHLY_RE = re.compile(r"Prix mensuels\s*\n\s*(\d+,\d+)\s*\n\s*(\d+,\d+)\s+Prix par kWh")
+# before a repeated "Prix par kWh". The figures are looked for after the
+# first "Redevance fixe" of a line only (search_once_per_line): after every
+# one the rest of its line was scanned again, in time growing with the
+# square of the line, to reach the same line break.
+_FIXED_START_RE = re.compile("Redevance fixe")
+_FIXED_RE = re.compile(r"[^\n]*\n\s*(\d+,\d+)\s+(\d+,\d+)\s*\n")
+_MONTHLY_RE = re.compile(rf"Prix mensuels{LINE_BREAK}(\d+,\d+){LINE_BREAK}(\d+,\d+)\s+Prix par kWh")
 _FORMULA_RE = re.compile(
     r"Prélèvement\s*:\s*(\d+,\d+)\s*\+\s*\(\s*(\d+,\d+)\s*x\s*(ZTP101|ZTPDAM)\s*\(Heren\)"
 )
@@ -345,7 +357,7 @@ def _energy(
     text: str, contract: _ContractDef, vat: float, card_month: date
 ) -> FixedRates | IndexedRates:
     if contract.kind == "fixed":
-        match = _FIXED_RE.search(text)
+        match = search_once_per_line(text, _FIXED_START_RE, _FIXED_RE)
         if match is None:
             raise ExtractorError("Engie: fixed price block not found")
         return FixedRates(

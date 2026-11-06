@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -47,6 +50,25 @@ def test_a_sheet_missing_a_row_gives_no_network(row: str) -> None:
         assert terms.t1_proportional < brugel.parse_network(_text()).t1_proportional  # type: ignore[union-attr]
     else:
         assert terms is None
+
+
+def test_a_long_run_of_thousands_groups_is_read_past_in_time() -> None:
+    """A line of thousands groups that no comma ends, which the figure
+    pattern once tried from every digit of: 80 kB of it held the event loop
+    for 86 s. The sheet still reads as it does alone."""
+    started = time.monotonic()
+    terms = brugel.parse_network("1." + "111." * 20000 + "x\n" + _text())
+    assert time.monotonic() - started < 1.0
+    assert terms == brugel.parse_network(_text())
+
+
+def test_a_figure_starts_where_a_number_does() -> None:
+    """Never inside one, after a digit or a dot: the pattern read "345,6"
+    off "12345,6" before. Every figure a sheet prints stands apart."""
+    assert brugel._FIGURE_RE.findall("4.720,80 12345,6 x.5,25 0,0148166") == [
+        "4.720,80",
+        "0,0148166",
+    ]
 
 
 class _Body:
@@ -111,6 +133,22 @@ async def test_the_years_sheet_is_read_and_the_year_before_stands_in() -> None:
     session.asked.clear()
     await brugel.ensure_network(session, 2027)
     assert session.asked == [], "the backoff did not hold"
+
+
+async def test_the_sheet_is_read_off_the_event_loop() -> None:
+    """Its text is the sheet's to make as long as it likes."""
+    threads: list[threading.Thread] = []
+    parse = brugel.parse_network
+
+    def recorded(text: str) -> Any:
+        threads.append(threading.current_thread())
+        return parse(text)
+
+    with patch.object(brugel, "parse_network", recorded):
+        await brugel.ensure_network(_Session(), 2026)  # type: ignore[arg-type]
+    assert threads
+    assert threading.main_thread() not in threads
+    assert brugel.cached_network(2026) == parse(_text())
 
 
 async def test_a_sheet_that_is_not_a_pdf_never_raises() -> None:

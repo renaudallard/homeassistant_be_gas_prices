@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date
 from unittest.mock import AsyncMock, patch
 
@@ -77,6 +78,20 @@ def test_aardgas_variabel_is_priced_at_the_previous_months_index() -> None:
     assert snap.valid_until == date(2026, 9, 30)
     assert snap.taxes.card_vat_rate == pytest.approx(0.06)
     assert snap.taxes.vat_rate == 0.0
+
+
+def test_a_long_run_of_digits_is_read_past_in_time() -> None:
+    """The price row pattern once tried every digit of a run as the start of
+    its first figure, reading to the end of the run each time: 32 000 digits
+    below the product's heading took 7,3 s. The card still reads as it does
+    alone."""
+    card = _card(SEPTEMBER)
+    below = card.index("\n", card.index("TARIEFKAART EBEM Aardgas Variabel")) + 1
+    crafted = card[:below] + "1" * 32000 + "\n" + card[below:]
+    started = time.monotonic()
+    snap = ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, crafted)
+    assert time.monotonic() - started < 1.0
+    assert snap == ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, card)
 
 
 def test_gas_plus_shares_the_pdf_with_its_own_formula() -> None:

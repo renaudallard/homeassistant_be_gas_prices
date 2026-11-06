@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import date
 from unittest.mock import AsyncMock, patch
 
@@ -300,6 +301,30 @@ async def test_fetch_takes_the_newest_month_of_the_tier() -> None:
     assert fetched.call_args.args[1] == _url(HV)
     assert snap.source_url == _url(HV)
     assert snap.publication_label == "2026-09"
+
+
+async def test_a_long_file_name_is_read_past_in_time() -> None:
+    """A name of "Gas" over and over with no month, the shape the file name
+    pattern once ran to the end of from every "Gas": 32 kB of it in the
+    Sanity answer held the event loop for 19,5 s. The tier's card is still
+    the one the real rows give."""
+    answer = json.loads(_assets())
+    answer["result"].insert(
+        0,
+        {
+            "originalFilename": "Gas " * 8000,
+            "url": "https://cdn.sanity.io/files/8navd656/production-be/x.pdf",
+            "_createdAt": "2026-10-30T00:00:00Z",
+        },
+    )
+    with (
+        patch.object(frank, "fetch_text", AsyncMock(return_value=json.dumps(answer))),
+        patch.object(frank, "fetch_pdf_text_layout", AsyncMock(return_value=_card(HV))) as fetched,
+    ):
+        started = time.monotonic()
+        await frank.fetch(AsyncMock(), "frank_variable_hv", REGION_FLANDERS)
+        assert time.monotonic() - started < 1.0
+    assert fetched.call_args.args[1] == _url(HV)
 
 
 @freeze_time("2026-08-31 12:00:00+02:00")

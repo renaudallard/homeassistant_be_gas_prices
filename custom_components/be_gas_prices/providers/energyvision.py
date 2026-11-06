@@ -138,7 +138,7 @@ from ._network import (
     require_region,
     signing_dsos,
 )
-from ._parse import fold_accents, require_contract, to_float
+from ._parse import NUMBER_START, fold_accents, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text_layout,
@@ -503,7 +503,9 @@ _ENERGY_RE = re.compile(
     r"(?:Fossiel gas|Gaz fossile)\s*[–-]\s*(variabel|variable|vast|fixe)\s+(\d+,\d+)\s*€cent/kWh"
 )
 _FEE_RE = re.compile(r"(?:Vaste vergoeding|Frais fixes)\s+(\d+(?:,\d+)?)\s*€/(?:jaar|an)")
-_FORMULA_RE = re.compile(r"(\d+(?:,\d+)?)\s*x\s*ZTP-RLP-M\s*\+\s*(\d+(?:,\d+)?)\s*EUR/MWh")
+_FORMULA_RE = re.compile(
+    NUMBER_START + r"(\d+(?:,\d+)?)\s*x\s*ZTP-RLP-M\s*\+\s*(\d+(?:,\d+)?)\s*EUR/MWh"
+)
 
 
 def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | IndexedRates:
@@ -580,10 +582,15 @@ def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
 
 # The two bands, worded differently over the months: "Verbruik tussen 0 &
 # 12.000 kWh", then "Verbruik boven 12.000 kWh", "Verbruik tussen 12.000 &
-# 150.000 kWh", "Consommation au-dessus de 12 000 kWh" and more.
+# 150.000 kWh", "Consommation au-dessus de 12 000 kWh" and more. The first
+# "12.000" of the second line is taken for good, which reads the same: a
+# later one only leaves less of the line to find the rate in, and trying
+# every pair of the two took time growing with the square of the line. The
+# first rate's decimals are read whole too: the rest of its line follows
+# them however many are read, and trying each count scanned the line again.
 _EXCISE_RE = re.compile(
-    r"^(?:Verbruik|Consommation) (?:tussen|entre) 0 & 12[ .]000 kWh (\d+,\d+)[^\n]*\n"
-    r"(?:Verbruik|Consommation) [^\n]*?12[ .]000[^\n]*? kWh (\d+,\d+)",
+    r"^(?:Verbruik|Consommation) (?:tussen|entre) 0 & 12[ .]000 kWh (\d+,(?>\d+))[^\n]*\n"
+    r"(?:Verbruik|Consommation) (?>[^\n]*?12[ .]000)[^\n]*? kWh (\d+,\d+)",
     re.MULTILINE,
 )
 _SINGLE_EXCISE_RE = re.compile(r"Accise spéciale (\d+,\d+)\s*€cent/kWh")
@@ -631,8 +638,9 @@ def _connection_fee(text: str) -> float:
 
 
 # "<= 10 m3/h 2 3,56": the smallest caliber carries its footnote digit
-# inline, so the amount is the row's last figure.
-_OSP_ROW_RE = re.compile(r"^(?:<=|Tussen|>)[^\n]*?m3/h[^\n]*?\s(\d+,\d+)\s*$", re.MULTILINE)
+# inline, so the amount is the row's last figure. The first "m3/h" is taken
+# for good, as the excise's "12.000" is.
+_OSP_ROW_RE = re.compile(r"^(?:<=|Tussen|>)(?>[^\n]*?m3/h)[^\n]*?\s(\d+,\d+)\s*$", re.MULTILINE)
 
 
 def _osp(text: str) -> dict[str, float]:

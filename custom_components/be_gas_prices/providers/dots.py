@@ -120,9 +120,13 @@ _REGION_TEXT = "residentiële klanten in het Vlaamse Gewest"
 _VAT_RE = r"inclusief\s+(\d+)\s*%\s*BTW"
 # "Gas 1,05 * M ZTP rek. gem. EGSI EEX + 0,9 7,873": the formula up to its
 # adder, then the price. Anchored on the adder, so a price wrapped onto the
-# next line refuses the card rather than reading the 0,9 as the price.
+# next line refuses the card rather than reading the 0,9 as the price. The
+# first "ZTP" is taken for good, which reads the same: the "+" can only be
+# the line's last, and a later "ZTP" only leaves less room before it. Trying
+# every pair of the two made a 64 kB line put on a real card hold the event
+# loop for 14 s.
 _PRICE_RE = re.compile(
-    r"^Gas[ \t]+(\S.*ZTP.*\+[ \t]*\d+(?:,\d+)?)[ \t]+(\d+,\d+)[ \t]*$", re.MULTILINE
+    r"^Gas[ \t]+(\S(?>.*?ZTP).*\+[ \t]*\d+(?:,\d+)?)[ \t]+(\d+,\d+)[ \t]*$", re.MULTILINE
 )
 _FEE_RE = re.compile(r"€\s*(\d+(?:,\d+)?)\s*/maand/EAN")
 # pypdf breaks some tax figures around their comma ("0, 10577", "1 ,093").

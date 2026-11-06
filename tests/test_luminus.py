@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from datetime import date, datetime
 from functools import cache
@@ -412,6 +413,31 @@ def test_indexation_page_links_the_index_pdf() -> None:
         "https://www.luminus.be/api-next/download/"
         "?fileId=file-52a69f0e2a8fdd2905723e58474ddc38bd49de04-pdf&openFile=true"
     )
+
+
+def test_index_links_no_tag_end_follows_are_read_past_in_time() -> None:
+    """The index PDF's link was looked for with a pattern running on to the
+    end of the link's tag, from every link again: 8 000 links that no ">"
+    ended took 4,2 s."""
+    page = 'href="/api-next/download/?fileId=file-a-pdf"' * 8000
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="0 index PDF links"):
+        luminus.parse_index_page(page)
+    assert time.monotonic() - started < 1.0
+
+
+def test_a_long_run_of_digits_after_the_index_heading_is_read_past_in_time() -> None:
+    """The formula pattern once tried every digit of a run as the start of
+    its factor, reading to the end of the run each time: 32 000 digits after
+    an "Index (HTVA)" heading in front of the real card took 7,3 s. The
+    card still reads as it does alone."""
+    card = _card(_COMFYFLEX_W)
+    started = time.monotonic()
+    snap = luminus.parse_snapshot(
+        "luminus_comfyflex", REGION_WALLONIA, "Index (HTVA) " + "1" * 32000 + "\n" + card
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == luminus.parse_snapshot("luminus_comfyflex", REGION_WALLONIA, card)
 
 
 async def test_fetch_index_follows_the_page_link() -> None:

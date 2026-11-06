@@ -27,7 +27,9 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -48,6 +50,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T1,
     TIER_T2,
 )
+from custom_components.be_gas_prices.providers import _energy_together
 from custom_components.be_gas_prices.providers import energy_together as et
 from custom_components.be_gas_prices.providers._energy_together import last_known_index
 from custom_components.be_gas_prices.providers._rates import IndexedRates
@@ -209,6 +212,85 @@ def test_august_card_and_evident_typo() -> None:
     assert nova.publication_label == "2026-08"
     assert isinstance(nova.energy, IndexedRates)
     assert nova.energy.at(53.07468) == pytest.approx(0.0681 * VAT, abs=0.00005 * VAT)
+
+
+def _crafted_card_path() -> object:
+    return et.current_card_path("<h3>" * 20000, et._CONTRACTS_BY_ID["servolt_control"])
+
+
+def _crafted_archive() -> object:
+    variabel = et._CONTRACTS_BY_ID["power2you_variabel"]
+    return et.archived_card_path("<h2>" * 20000, variabel, date(2024, 5, 1))
+
+
+# Card links that no ">" ends, in the group a contract reads.
+_LINKS = 'href="/web/content/xx.product.group.tariff.card/1/file"' * 8000
+
+
+def _crafted_links() -> object:
+    return et.current_card_path("<h3>Control</h3>" + _LINKS, et._CONTRACTS_BY_ID["servolt_control"])
+
+
+def _crafted_archive_links() -> object:
+    variabel = et._CONTRACTS_BY_ID["power2you_variabel"]
+    return et.archived_card_path("<h2>Variabel</h2>" + _LINKS, variabel, date(2024, 5, 1))
+
+
+@pytest.mark.parametrize(
+    ("read", "refused"),
+    [
+        (_crafted_card_path, "not listed"),
+        (_crafted_archive, None),
+        (lambda: et.parse_index_publication("GAS: TTF_RLP MAAND 2026\n" * 1000), "table not"),
+        (
+            lambda: _energy_together._taxes(
+                "Bijzondere accijns op Energie < 12.000 kWh " * 8000, "x"
+            ),
+            "^x: excise rows not found",
+        ),
+        (_crafted_links, "links 0 gas cards"),
+        (_crafted_archive_links, None),
+        (
+            lambda: _energy_together._energy("Jaarlijkse abonnementskost " * 8000, "x"),
+            "^x: fee, price or formula not found",
+        ),
+    ],
+    ids=[
+        "product groups",
+        "archive groups",
+        "index table",
+        "excise block",
+        "card links",
+        "archive links",
+        "fee labels",
+    ],
+)
+def test_a_crafted_page_or_card_is_read_in_time(read: Any, refused: str | None) -> None:
+    """Headings that no closing follows, rows of years that no table end
+    follows, excise labels that no contribution follows, card links that no
+    ">" ends and fee labels that no figure follows, which patterns spanning
+    them once read again from every copy, for seconds to minutes."""
+    started = time.monotonic()
+    if refused is None:
+        assert read() is None
+    else:
+        with pytest.raises(ExtractorError, match=refused):
+            read()
+    assert time.monotonic() - started < 1.0
+
+
+async def test_index_links_no_tag_end_follows_are_read_past_in_time() -> None:
+    """The link to the index publication was looked for with a pattern
+    running on to the end of the link's tag, from every link again: 16 000
+    links that no ">" ended took 7,9 s."""
+    page = 'href="/web/content/1"' * 16000
+    started = time.monotonic()
+    with (
+        patch.object(et, "fetch_text", AsyncMock(return_value=page)),
+        pytest.raises(ExtractorError, match="no index publication linked"),
+    ):
+        await et._publication(AsyncMock(), "www.example.be")
+    assert time.monotonic() - started < 1.0
 
 
 def test_card_of_another_product_is_refused() -> None:

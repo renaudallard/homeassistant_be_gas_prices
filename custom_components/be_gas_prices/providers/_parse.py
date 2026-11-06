@@ -36,7 +36,7 @@ from __future__ import annotations
 import html
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Iterator, Mapping
 from datetime import date
 from difflib import SequenceMatcher
 
@@ -57,6 +57,21 @@ _NUMERIC_SEPARATORS = (
 _DASHES = ("-", "‐", "‑", "‒", "–", "—", "−")
 SIGN_CHARS = r"+\-‐‑‒–—−"
 """Drop into a regex character class: ``[`` + SIGN_CHARS + ``]``."""
+
+LINE_BREAK = r"(?>\s*\n\s*)"
+"""Drop into a pattern for a line break with the spaces and blank lines
+around it, before an item that cannot begin with a space. Taken whole, as
+the atomic group does, it reads what ``\\s*\\n\\s*`` reads there, which split
+a run of blank lines every way before failing: 32 kB of them after Mega's
+"Coût énergie" heading took 28 s."""
+
+NUMBER_START = r"(?<!\d)"
+"""Drop into a pattern before the figure it opens on, so that a search for
+it starts where a number does. It finds what it found without: a match
+after a digit was a match from that digit too, which the search reached
+first. Tried from every digit of a long run instead, the figure was read
+to the end of the run again each time, in time growing with its square:
+32 kB of digits held EBEM's price row for 3,7 s."""
 
 # One table cell: a figure, or a lone dash for an empty cell. A figure may
 # carry thousands separators and a decimal part in either convention.
@@ -113,23 +128,150 @@ def require_contract[T](by_id: Mapping[str, T], contract_id: str, label: str) ->
         raise ExtractorError(f"unknown {label} contract {contract_id!r}") from None
 
 
-_HTML_ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.DOTALL)
-_HTML_CELL_RE = re.compile(r"<t[hd][^>]*>(.*?)</t[hd]>", re.DOTALL)
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
+# A page is remote text, and a pattern that scans to the end of it from every
+# place it could start takes time growing with the square of the page:
+# "<tr[^>]*>(.*?)</tr>" spent a minute on 128 kB of "<tr>". The re module
+# holds the GIL while it matches, so not even a worker thread keeps the event
+# loop running meanwhile.
+_TAG_RE = re.compile(r"<[^>]+>")
+_ROW_OPEN = re.compile("<tr")
+_ROW_CLOSE = re.compile("</tr>")
+_CELL_OPEN = re.compile("<t[hd]")
+_CELL_CLOSE = re.compile("</t[hd]>")
+_TAG_END = re.compile(">")
+
+
+def sub_closed(
+    pattern: re.Pattern[str],
+    repl: str | Callable[[re.Match[str]], str],
+    text: str,
+    closing: str,
+) -> str:
+    """``pattern.sub(repl, text)`` in time linear in ``text``, for a
+    ``pattern`` that runs from where it starts to the first ``closing``
+    after it and matches there.
+
+    Substituted up to the last ``closing`` only, which no match runs past:
+    up to there every start finds its closing and the match takes in what
+    was scanned, while past it such a pattern scans to the end of the text
+    from every place it could start.
+    """
+    end = text.rfind(closing)
+    end = 0 if end < 0 else end + len(closing)
+    return pattern.sub(repl, text[:end]) + text[end:]
+
+
+def strip_tags(text: str) -> str:
+    """``text`` with every tag replaced by a space: what ``<[^>]+>``
+    matches, which fails, and at once, only on an empty "<>"."""
+    return sub_closed(_TAG_RE, " ", text, ">")
+
+
+def elements(
+    text: str, opening: re.Pattern[str], closing: re.Pattern[str], *, attributes: bool = True
+) -> Iterator[tuple[re.Match[str], str, re.Match[str]]]:
+    """Each element of ``text``, as the match of its ``opening``, what it
+    holds and the match of its ``closing``, the first after the opening; the
+    next element is looked for after that closing. With ``attributes`` what
+    the element holds starts after the first ">" past ``opening``, which ends
+    the tag, and without them right after ``opening``.
+
+    These are the matches of ``opening[^>]*>(.*?)closing``, or of
+    ``opening(.*?)closing``, found one after the other in time linear in
+    ``text``: once no ">" or no ``closing`` follows an opening, none follows
+    a later one either. Such a pattern cannot be cut as :func:`sub_closed`
+    cuts, since the ">" ending an opening tag can be the closing's own.
+    """
+    at = 0
+    while (opened := opening.search(text, at)) is not None:
+        inner = opened.end()
+        if attributes:
+            inner = text.find(">", inner) + 1
+            if not inner:
+                return
+        closed = closing.search(text, inner)
+        if closed is None:
+            return
+        yield opened, text[inner : closed.start()], closed
+        at = closed.end()
+
+
+def in_tag(
+    text: str,
+    opening: re.Pattern[str],
+    target: re.Pattern[str],
+    *,
+    end: re.Pattern[str] = _TAG_END,
+) -> Iterator[tuple[re.Match[str], re.Match[str]]]:
+    """Each ``opening`` with the first ``target`` after it before the tag
+    ends, as the two matches, the next looked for after that target: what
+    ``opening[^>]*?target`` finds, the tag ending at a ">" or at the first
+    match of ``end``, for a ``target`` whose match does not depend on where
+    it is searched from. A ``target`` beginning with the tag's end, as
+    ``>rest`` does, gives what ``opening[^>]*>rest`` finds.
+
+    In time linear in ``text``: the tag's end and the next ``target`` are
+    looked for again only once an opening has passed them, where the pattern
+    looked for both from every opening.
+    """
+    at = 0
+    tag_end = -1
+    found: re.Match[str] | None = None
+    while (opened := opening.search(text, at)) is not None:
+        start = opened.end()
+        if tag_end < start:
+            ended = end.search(text, start)
+            tag_end = len(text) if ended is None else ended.start()
+        if found is None or found.start() < start:
+            found = target.search(text, start)
+            if found is None:
+                return
+        if found.start() <= tag_end:
+            yield opened, found
+            at = found.end()
+        else:
+            at = opened.start() + 1
+
+
+def search_once_per_line(
+    text: str, start: re.Pattern[str], rest: re.Pattern[str]
+) -> re.Match[str] | None:
+    """The match of ``rest`` right after the first ``start`` it follows:
+    what ``start`` then ``rest`` searches for. ``rest`` is tried after the
+    first ``start`` it would begin on in each line only, for a ``rest`` that
+    fails after a later ``start`` on a line once it failed after an earlier
+    one there, as one looking for something further on the same line does.
+
+    In time linear in ``text`` for such a ``rest``, where the pattern looked
+    to the end of the line again from every ``start`` on it.
+    """
+    failed_to = -1
+    at = 0
+    while (begun := start.search(text, at)) is not None:
+        here = begun.end()
+        if here > failed_to:
+            found = rest.match(text, here)
+            if found is not None:
+                return found
+            failed_to = text.find("\n", here)
+            if failed_to < 0:
+                return None
+        at = begun.start() + 1
+    return None
 
 
 def html_cells(row: str) -> list[str]:
     """The text of each cell of one HTML table row, tags dropped, entities
     decoded and whitespace collapsed."""
     return [
-        " ".join(html.unescape(_HTML_TAG_RE.sub(" ", cell)).split())
-        for cell in _HTML_CELL_RE.findall(row)
+        " ".join(html.unescape(strip_tags(cell)).split())
+        for _opened, cell, _closed in elements(row, _CELL_OPEN, _CELL_CLOSE)
     ]
 
 
 def html_rows(page: str) -> list[list[str]]:
     """Every ``<tr>`` of ``page`` as its cells' text."""
-    return [html_cells(row) for row in _HTML_ROW_RE.findall(page)]
+    return [html_cells(row) for _opened, row, _closed in elements(page, _ROW_OPEN, _ROW_CLOSE)]
 
 
 def split_row(line: str) -> tuple[str, list[str]]:

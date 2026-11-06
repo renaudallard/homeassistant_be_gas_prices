@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
@@ -63,6 +64,35 @@ def _card(name: str) -> str:
 
 def _mycomfort(region: str, name: str) -> SupplierSnapshot:
     return totalenergies.parse_snapshot("totalenergies_mycomfort_variable", region, _card(name))
+
+
+def test_a_levy_row_of_calibers_is_read_past_in_time() -> None:
+    """A row naming "m³/h" over and over with no amount at its end, which
+    the levy row pattern once tried every "m³/h" of against every place for
+    the amount: 16 000 of them in the real card's levy table took 8,6 s. The
+    card still reads as it does alone."""
+    card = _card("MYCOMFORT_GAS_BXL_FR.pdf")
+    start = totalenergies._OSP_START
+    crafted = card.replace(start, start + "\n<= " + "m³/h " * 16000 + "\n", 1)
+    assert crafted != card
+    started = time.monotonic()
+    snap = totalenergies.parse_snapshot(
+        "totalenergies_mycomfort_variable", REGION_BRUSSELS, crafted
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == totalenergies.parse_snapshot(
+        "totalenergies_mycomfort_variable", REGION_BRUSSELS, card
+    )
+
+
+def test_vat_headings_no_condition_follows_are_refused_in_time() -> None:
+    """The VAT pattern once looked to the end of the text again from every
+    "TVA % incluse" that no "Conditions particulières" line followed: 280 kB
+    of them took more than a minute."""
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="VAT statement not found"):
+        totalenergies._vat_rate("TVA % incluse\n" * 20000)
+    assert time.monotonic() - started < 1.0
 
 
 def test_mycomfort_variable_is_priced_at_the_last_known_ttf() -> None:

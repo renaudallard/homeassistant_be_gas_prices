@@ -133,6 +133,7 @@ from ._parse import (
     month_date,
     parse_sign,
     require_contract,
+    search_once_per_line,
     to_float,
 )
 from ._pdf import (
@@ -364,13 +365,21 @@ def parse_snapshot(
 
 
 # "Carte Tarifaire / Bolt Fixe / Septembre 2026 /Résidentiel /Gaz". The August
-# 2026 card spells its month "Aôut", which folds to "aout" all the same.
-_HEADING_RE = re.compile(r"Carte Tarifaire\s+(.+?)\s+(\S+)\s+(\d{4})\s*/Résidentiel\s*/Gaz")
+# 2026 card spells its month "Aôut", which folds to "aout" all the same. The
+# product's name ends on a character that is no space, and the heading is
+# tried after the first "Carte Tarifaire" of a line only
+# (search_once_per_line): a name ending inside a run of spaces, or a later
+# "Carte Tarifaire" on the line, only leaves less of it to read the month
+# in, and trying each took time growing with the square of the line. The
+# name begins after all the spaces that follow "Carte Tarifaire": one that
+# began with a space was no product's, and refused all the same.
+_HEADING_START_RE = re.compile(r"Carte Tarifaire\s+")
+_HEADING_RE = re.compile(r"(.*?\S)\s+(\S+)\s+(\d{4})\s*/Résidentiel\s*/Gaz")
 
 
 def _card_month(text: str, contract: _ContractDef) -> date:
     """The month of the card's title, once the title names this product."""
-    match = _HEADING_RE.search(text)
+    match = search_once_per_line(text, _HEADING_START_RE, _HEADING_RE)
     if match is None:
         raise ExtractorError("Bolt: card title not found")
     if match.group(1) != contract.heading:

@@ -27,6 +27,9 @@
 
 from __future__ import annotations
 
+import threading
+import time
+from collections.abc import Callable
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -158,6 +161,63 @@ def test_an_article_that_is_not_as_expected_is_refused(label: str, old: str, new
     assert _PAGE.count(old) == 1, label
     with pytest.raises(excise_law.ExciseLawError):
         excise_law.parse(_PAGE.replace(old, new))
+
+
+_GAS_PARAGRAPH = "NAME='Art.419' gaz naturel relevant des codes NC 2711 11 00 et 2711 21 00 "
+# Pages that took a pattern the article was once read with to the end of the
+# page from every place it could start, each holding the event loop for
+# seconds to a minute: the article's anchor with no article after it,
+# amendment brackets that no title end follows, an opening bracket that
+# repeats its entry into force, tags that never close, and the protected
+# customer's label that no colon follows.
+_CRAFTED = {
+    "anchors": "NAME='Art.419'" * 8000,
+    "closing brackets": "NAME='Art.419'" + "]<sup>" * 4000 + "NAME='Art.420'",
+    "opening brackets": "NAME='Art.419'"
+    + "[<sup>En vigueur : 01-08-2026 " * 200
+    + "NAME='Art.420'",
+    "tags": "NAME='Art.419'" + "<" * 64000 + "NAME='Art.420'",
+    "protected labels": _GAS_PARAGRAPH
+    + "consommation non professionnelle : "
+    + "a) client protégé résidentiel " * 10000
+    + "b) autres : houille, coke et lignite NAME='Art.420'",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED))
+def test_a_crafted_page_is_refused_in_time_linear_in_it(shape: str) -> None:
+    page = _CRAFTED[shape]
+    started = time.monotonic()
+    for parse in (excise_law.parse, excise_law.parse_protected, excise_law.parse_contribution):
+        with pytest.raises(excise_law.ExciseLawError):
+            parse(page)
+    assert time.monotonic() - started < 1.0, shape
+
+
+async def test_the_law_is_read_off_the_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each reader takes time linear in the page, which is still seconds for
+    a page of a few MiB on a Raspberry Pi."""
+    threads: list[threading.Thread] = []
+
+    def recorded(read: Callable[[str], Any]) -> Callable[[str], Any]:
+        def call(page: str) -> Any:
+            threads.append(threading.current_thread())
+            return read(page)
+
+        return call
+
+    async def fetch_text(_session: Any, _url: str, **_kwargs: Any) -> str:
+        return _PAGE
+
+    for name in ("parse", "parse_protected", "parse_contribution"):
+        monkeypatch.setattr(excise_law, name, recorded(getattr(excise_law, name)))
+    monkeypatch.setattr(excise_law, "fetch_text", fetch_text)
+    await ensure_excise_law(None)  # type: ignore[arg-type]
+    assert len(threads) == 3
+    assert threading.main_thread() not in threads
+    assert excise_law.excise_for(date(2026, 8, 1)) == (0.01031, 0.01116)
+    assert excise_law.protected_excise_for(date(2026, 8, 1)) == 0.00309
+    assert excise_law.contribution_for(date(2026, 8, 1)) == 0.0
 
 
 def test_a_month_takes_the_step_in_force_on_its_first_day() -> None:

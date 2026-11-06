@@ -60,8 +60,9 @@ text of article 419 of the programme law of 27 December 2004:
   excise.
 
 A page that is not the article as expected (another band, a rate past
-0,05 EUR/kWh, a missing slice) is refused whole. It is read once a day, a
-failure waits six hours, and what was read is kept in each entry's Store.
+0,05 EUR/kWh, a missing slice) is refused whole. It is read in a worker
+thread, in time linear in the page, once a day; a failure waits six hours,
+and what was read is kept in each entry's Store.
 It bills a month FPS Finance's excise tariff does not list yet, below. The
 live check reads the same page and fails when most of the fleet prints
 another excise than the one billed.
@@ -158,7 +159,8 @@ against what the cards print for the DSO (see
 - **Brussels** (`brugel.py`): Brugel's final sheet,
   `https://brugel.brussels/publication/document/notype/<year-1>/fr/Tarif-distribution-Gaz-<year>.pdf`,
   "prix hors TVA": the "X = EUR / an" and "Y = EUR / kWh" rows, every row in
-  EUR / kWh below them, and the "Comptage YMR" term of a yearly-read meter.
+  EUR / kWh below them, and the "Comptage YMR" term of a yearly-read meter,
+  its text read in a worker thread, a figure starting where a number does.
   For 2026: 15,00 and 40,63 EUR a year, 0,0187738 and 0,0136483 EUR/kWh,
   23,54 EUR a year. Only 2026's was served on 6 November 2026.
 - **Wallonia** (`cwape.py`): the operator's approved grid, found through the

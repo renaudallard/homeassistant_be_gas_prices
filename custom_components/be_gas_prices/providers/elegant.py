@@ -385,9 +385,13 @@ def parse_snapshot(
 # "Tariefkaart Aardgas", the product ("Flex", or "Flex 09.26" on an archived
 # card, "Zeker & Vast 06/03/2026" or "Zeker & Vast 21.03.26" on a reissue
 # within the month), then "Variabel Onbepaalde duur Versie september 2026
-# Particulier".
+# Particulier". The name ends on a character that is no space: lazily, the
+# spaces after it were scanned again from every one of them, in time growing
+# with their square. A name of spaces only, which it could also be, names
+# no product, and such a heading is passed over rather than read.
 _HEADING_RE = re.compile(
-    r"Tariefkaart Aardgas\s*\n(?P<name>[^\n]+?)(?:\s+\d{2}[./]\d{2}(?:[./]\d{2}(?:\d{2})?)?)?\s*\n"
+    r"Tariefkaart Aardgas\s*\n(?P<name>[^\n]*?\S)"
+    r"(?:\s+\d{2}[./]\d{2}(?:[./]\d{2}(?:\d{2})?)?)?\s*\n"
     r"[^\n]*?Versie\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d{4})\s+(?P<segment>\w+)"
 )
 

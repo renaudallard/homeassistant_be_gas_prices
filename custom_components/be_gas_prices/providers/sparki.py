@@ -79,7 +79,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import fold_accents, require_contract, to_float
+from ._parse import elements, fold_accents, require_contract, search_once_per_line, to_float
 from ._pdf import (
     MONTH_NAMES,
     NL_MONTHS,
@@ -216,20 +216,30 @@ def _card_month(text: str) -> date:
     return date(int(match.group(2)), month, 1)
 
 
-_PRODUCT_RE = re.compile(r"produ(?:ct|it)\s*“([^”]+)”")
+# 'product “Self Service”', 'produit “Self service”': the name, read from its
+# opening quote to the first closing one after it (_parse.elements). Looked
+# for from every opening that no closing quote followed, the pattern scanned
+# to the end of the text from each.
+_PRODUCT_OPEN_RE = re.compile(r"produ(?:ct|it)\s*“")
+_PRODUCT_CLOSE_RE = re.compile("”")
 _VAT_PATTERNS = (r"inclusief\s+(\d+)\s*%\s*BTW", r"TVA\s+(\d+)\s*%\s*comprise")
 _PRICE_RE = re.compile(
     r"^(\d+,\d+)\s+(\d+,\d+)\s+(?:Geschatte maandprijs|Prix mensuel estimé)", re.MULTILINE
 )
 # "((0,105*TTF)+0,8)*1,06.", from October 2026 "((0,105* TTF EGSI EEX DA)+0,8)
-# *1,06.": up to the full stop.
-_FORMULA_RE = re.compile(r"formule\s+(\S.*?TTF.*?)\.(?:\s|$)")
+# *1,06.": up to the full stop. The first "TTF" is taken for good, and the
+# formula is tried after the first "formule" of a line only
+# (search_once_per_line), which reads the same: a later "TTF" or "formule" on
+# the line only leaves less of it to find the full stop in, and trying each
+# took time growing with the square of the line.
+_FORMULA_START_RE = re.compile(r"formule\s+")
+_FORMULA_RE = re.compile(r"(\S(?>.*?TTF).*?)\.(?:\s|$)")
 
 
 def _energy(text: str) -> VariableRates:
     """The fee and the estimated monthly price: "21,20 7,79 Geschatte maandprijs"."""
     price = _PRICE_RE.search(text)
-    formula = _FORMULA_RE.search(text)
+    formula = search_once_per_line(text, _FORMULA_START_RE, _FORMULA_RE)
     if price is None or formula is None:
         raise ExtractorError("Sparki: price or formula not found")
     return VariableRates(
@@ -298,9 +308,18 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
     card for another one is refused.
     """
     contract = _contract(contract_id, region)
-    product = _PRODUCT_RE.search(text)
+    product = next(
+        (
+            name
+            for _opened, name, _closed in elements(
+                text, _PRODUCT_OPEN_RE, _PRODUCT_CLOSE_RE, attributes=False
+            )
+            if name
+        ),
+        None,
+    )
     # "Self Service" until September 2026, "Self service" from October.
-    if product is None or product.group(1).casefold() != contract.product.casefold():
+    if product is None or product.casefold() != contract.product.casefold():
         raise ExtractorError(f"Sparki: card is not for {contract.product!r}")
     if _REGION_TEXT[region] not in text:
         raise ExtractorError(f"Sparki: card is not for {region}")

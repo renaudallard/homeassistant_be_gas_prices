@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import date
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -155,6 +156,19 @@ def test_flex_card_is_not_the_comfortflex_one() -> None:
     """The two print the same figures; only the heading tells them apart."""
     with pytest.raises(ExtractorError):
         elegant.parse_snapshot("elegant_comfortflex", REGION_FLANDERS, _card(_FLEX))
+
+
+def test_a_product_line_holding_a_run_of_spaces_is_read_past_in_time() -> None:
+    """The heading pattern once tried every space of a run on the product's
+    line as the end of its name, scanning the rest of the run from each:
+    16 000 spaces in a heading in front of the real card took 9,4 s. The
+    card still reads as it does alone."""
+    card = _card(_FLEX)
+    heading = "Tariefkaart Aardgas\nFlex" + " " * 16000 + "x\n"
+    started = time.monotonic()
+    snap = elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, heading + card)
+    assert time.monotonic() - started < 1.0
+    assert snap == elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, card)
 
 
 def test_other_region_is_refused() -> None:

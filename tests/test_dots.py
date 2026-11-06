@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -170,6 +171,20 @@ def test_the_november_2026_card_is_read() -> None:
     )
     assert snap.publication_label == "2026-11"
     assert set(snap.dsos) == FLUVIUS_KEYS
+
+
+def test_a_long_line_of_formula_words_is_read_past_in_time() -> None:
+    """A line that opens on "Gas" and runs on with a "ZTP" and a "+" at every
+    step, the shape the price pattern once tried every pair of: 64 kB of it
+    ahead of the real card held the event loop for 14 s. The card still
+    reads as it does alone."""
+    card = fixture_text("dots", NOVEMBER)
+    started = time.monotonic()
+    snap = dots.parse_snapshot(
+        "dots_connect_digital", REGION_FLANDERS, "Gas " + "ZTP+" * 16000 + "x\n" + card, "url"
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, card, "url")
 
 
 async def test_fetch_reads_the_card_at_its_address() -> None:

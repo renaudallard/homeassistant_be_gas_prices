@@ -69,7 +69,11 @@ _URL: Final = (
 _TIMEOUT: Final = 30
 _FAILURE_RETRY_S: Final = 6 * 3600
 _PER_KWH: Final = "EUR / kWh"
-_FIGURE_RE: Final = re.compile(r"\d{1,3}(?:\.\d{3})*,\d+")
+# A figure starts where a number does, never after a digit or a dot inside
+# one. Tried from every digit of a long run of thousands groups that no comma
+# ends, the pattern took time growing with the square of the line: 80 kB
+# took 86 s. Every figure the sheets print stands apart.
+_FIGURE_RE: Final = re.compile(r"(?<![\d.])\d{1,3}(?:\.\d{3})*,\d+")
 _FIXED_RE: Final = re.compile(r"X\s*=\s*EUR\s*/\s*an")
 _RATE_RE: Final = re.compile(r"Y\s*=\s*EUR\s*/\s*kWh")
 _METERING_RE: Final = re.compile(r"^\s*Comptage YMR\b.*EUR\s*/\s*an", re.IGNORECASE)
@@ -124,7 +128,10 @@ async def read_network(session: aiohttp.ClientSession, year: int) -> SheetNetwor
     payload = await fetch_pdf_bytes(
         session, _URL.format(published=year - 1, year=year), timeout=_TIMEOUT
     )
-    return parse_network(await render_in_thread(extract_pdf_text, payload))
+    text = await render_in_thread(extract_pdf_text, payload)
+    # Off the event loop too: the text is the sheet's to make as long as it
+    # likes.
+    return await asyncio.to_thread(parse_network, text)
 
 
 def parse_network(text: str) -> SheetNetwork | None:

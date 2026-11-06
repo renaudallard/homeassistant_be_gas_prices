@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
@@ -82,6 +83,49 @@ def test_variable_card_prints_the_vnr_estimate() -> None:
     assert snap.publication_label == "2026-09"
     assert snap.valid_until == date(2026, 9, 30)
     assert snap.taxes.card_vat_rate == pytest.approx(0.06)
+
+
+def test_crafted_excise_and_levy_lines_are_read_past_in_time() -> None:
+    """The excise and Brussels levy patterns once tried every "12.000" or
+    "m3/h" of a line, scanning the rest of it again from each: such lines
+    beside the real cards took seconds. The cards still read as they do
+    alone."""
+    card = _card("EV-0926-GSG-nl.pdf")
+    brussels = _card("brusol/EV-0926-GSG-BXL-nl.pdf")
+    excise = "Verbruik tussen 0 & 12.000 kWh 1,5\nVerbruik " + "12.000 " * 8000 + "\n"
+    started = time.monotonic()
+    snap = energyvision.parse_snapshot(_GSG, REGION_FLANDERS, excise + card)
+    levied = energyvision.parse_snapshot(
+        _GSG, REGION_BRUSSELS, brussels + "\n<= " + "m3/h " * 16000 + "\n"
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == energyvision.parse_snapshot(_GSG, REGION_FLANDERS, card)
+    assert levied == energyvision.parse_snapshot(_GSG, REGION_BRUSSELS, brussels)
+
+
+@pytest.mark.parametrize(
+    ("contract", "name", "crafted"),
+    [
+        (_GSG, "EV-0926-GSG-nl.pdf", "1" * 8000 + "\n"),
+        (
+            _GS1JVG,
+            "EV-0926-GS1JVG-nl.pdf",
+            "Verbruik tussen 0 & 12.000 kWh 1," + "1" * 64000 + "\n",
+        ),
+    ],
+    ids=["a run of digits", "an excise rate of many decimals"],
+)
+def test_long_runs_of_digits_are_read_past_in_time(contract: str, name: str, crafted: str) -> None:
+    """The formula pattern once tried every digit of a run as the start of
+    its factor, and the excise pattern every count of the first rate's
+    decimals, reading the rest of the run or of the line again each time:
+    in front of the real cards these took 4,8 s and 9,7 s. The cards
+    still read as they do alone."""
+    card = _card(name)
+    started = time.monotonic()
+    snap = energyvision.parse_snapshot(contract, REGION_FLANDERS, crafted + card)
+    assert time.monotonic() - started < 1.0
+    assert snap == energyvision.parse_snapshot(contract, REGION_FLANDERS, card)
 
 
 def test_fixed_card() -> None:

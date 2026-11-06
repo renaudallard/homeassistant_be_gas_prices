@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import re
+import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
@@ -76,6 +77,33 @@ def test_price_is_kept_as_printed() -> None:
     )
     assert snap.publication_label == "2026-09"
     assert snap.valid_until == date(2026, 9, 30)
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["formule x " * 8000, "formule x " + "TTF " * 8000],
+    ids=["many formulas", "many TTF"],
+)
+def test_a_crafted_formula_line_is_read_past_in_time(line: str) -> None:
+    """The formula pattern once tried every "formule" of a line, and after
+    each every "TTF", scanning the rest of the line again from each: such a
+    line put in front of the real card took seconds. The card still reads
+    as it does alone."""
+    card = _card(SS_NL)
+    started = time.monotonic()
+    snap = sparki.parse_snapshot("sparki_self_service", REGION_FLANDERS, line + "\n" + card, "url")
+    assert time.monotonic() - started < 1.0
+    assert snap == sparki.parse_snapshot("sparki_self_service", REGION_FLANDERS, card, "url")
+
+
+def test_product_names_no_closing_quote_follows_are_refused_in_time() -> None:
+    """The product pattern once looked to the end of the text again from
+    every opening quote that no closing one followed: 8 000 of them took
+    9,0 s to be refused."""
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="card is not for"):
+        sparki.parse_snapshot("sparki_self_service", REGION_FLANDERS, "product “x" * 8000, "url")
+    assert time.monotonic() - started < 1.0
 
 
 @pytest.mark.parametrize(

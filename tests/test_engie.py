@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
 
@@ -133,6 +134,35 @@ def test_empty_house_has_its_own_formula_and_no_fee() -> None:
 def test_fixed_cards(contract: str, name: str, price: float, fee: float) -> None:
     snap = engie.parse_snapshot(contract, REGION_WALLONIA, _card(name))
     assert snap.energy == FixedRates(price=approx(price), yearly_fixed_fee=fee)
+
+
+@pytest.mark.parametrize(
+    ("contract", "name", "crafted"),
+    [
+        (
+            "engie_easy_fixed",
+            "G_EASY_R_GREY_C_F_12_W_F_202609.pdf",
+            "Redevance fixe " * 16000 + "\n",
+        ),
+        (
+            "engie_easy_variable",
+            "G_EASY_R_GREY_C_I_12_W_F_202609.pdf",
+            "Prix mensuels" + "\n" * 16000,
+        ),
+    ],
+    ids=["a line of fee headings", "blank lines after the monthly price heading"],
+)
+def test_crafted_price_blocks_are_read_past_in_time(contract: str, name: str, crafted: str) -> None:
+    """The fixed card's pattern once scanned the rest of a line again from
+    every "Redevance fixe" on it, and the variable card's split a run of
+    blank lines after "Prix mensuels" every way before failing: either in
+    front of the real card took 9,0 s or 7,0 s. The cards still read
+    as they do alone."""
+    card = _card(name)
+    started = time.monotonic()
+    snap = engie.parse_snapshot(contract, REGION_WALLONIA, crafted + "x\n" + card)
+    assert time.monotonic() - started < 1.0
+    assert snap == engie.parse_snapshot(contract, REGION_WALLONIA, card)
 
 
 def test_wallonia_table_collapses_the_ores_sub_areas() -> None:

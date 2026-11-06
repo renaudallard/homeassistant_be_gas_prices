@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from pathlib import PurePosixPath
 from unittest.mock import AsyncMock, patch
@@ -100,6 +101,22 @@ def test_september_card_prices_at_the_last_known_value() -> None:
     assert snap.publication_label == "2026-09"
     assert snap.valid_until == date(2026, 9, 30)
     assert snap.taxes.card_vat_rate == pytest.approx(0.06)
+
+
+def test_blank_lines_after_the_price_and_excise_headings_are_read_past_in_time() -> None:
+    """The price and excise patterns once split a run of blank lines after
+    their headings every way before failing: 16 000 after each, in front of
+    the real card, took 8,5 s. The card still reads as it does alone."""
+    headings = (
+        "Energiekost Variabel (c€/kWh) Abonnementskost (€/jaar)",
+        "Bijzondere accijns op Energie (c€/kWh)",
+    )
+    card = _card(_SEPTEMBER)
+    crafted = "".join(heading + "\n" * 16000 + "x\n" for heading in headings)
+    started = time.monotonic()
+    snap = trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, crafted + card)
+    assert time.monotonic() - started < 1.0
+    assert snap == trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, card)
 
 
 def test_dso_table_reads_every_fluvius_row() -> None:

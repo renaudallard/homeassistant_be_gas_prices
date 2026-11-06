@@ -57,6 +57,7 @@ text dates.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from collections.abc import Callable
@@ -69,6 +70,7 @@ import aiohttp
 from homeassistant.util import dt as dt_util
 
 from .const import EXCISE_BAND_KWH, EXCISE_LAW_URL, GAS_EXCISE_KNOWN_UNTIL
+from .providers._parse import strip_tags, sub_closed
 from .providers._pdf import MONTH_NAMES, fetch_text
 from .providers.base import ExtractorError
 
@@ -83,23 +85,35 @@ _MAX_EUR_PER_KWH: Final = 0.05
 # (first day, EUR/kWh excluding VAT up to the band, above it), ascending.
 type Step = tuple[date, float, float]
 
-_ARTICLE_RE = re.compile(r"NAME='Art\.419'(.*?)(?:NAME='Art\.419bis'|NAME='Art\.420')", re.S)
-# An amendment's bracket, opening and closing. The opening carries the
-# amendment as a title: <L 2026-05-30/01, art. 38, 071; En vigueur : 01-08-2026>.
-_OPEN_RE = re.compile(
-    r"\[<sup>(?:(?!</sup>).)*?En vigueur\s*:\s*(\d{2})-(\d{2})-(\d{4})(?:(?!</sup>).)*</sup>",
-    re.S,
-)
-_CLOSE_RE = re.compile(r"\]<sup>(?:(?!</sup>).)*</sup>", re.S)
+# The page is remote text, and re holds the GIL while it matches: nothing
+# here may scan to the end of the page from every place a pattern could
+# start, as a lazy pattern spanning the article did from every copy of its
+# anchor that no end followed (16,7 s over 112 kB). The article runs from its
+# anchor to the first of the next articles' anchors, found with str.find.
+_ARTICLE: Final = "NAME='Art.419'"
+_NEXT_ARTICLES: Final = ("NAME='Art.419bis'", "NAME='Art.420'")
+# An amendment's bracket, opening and closing, each followed by a title up
+# to "</sup>". The opening's names the amendment:
+# <L 2026-05-30/01, art. 38, 071; En vigueur : 01-08-2026>. Each pattern
+# takes in the whole title, substituted up to the last "</sup>" only
+# (sub_closed), and the entry into force is looked for in the title after:
+# asking for it inside the pattern tried every opening within a title that
+# gives none, in time growing with the cube of the page.
+_TITLE_END: Final = "</sup>"
+_BRACKET_OPEN_RE = re.compile(r"\[<sup>((?:(?!</sup>).)*)</sup>", re.S)
+_BRACKET_CLOSE_RE = re.compile(r"\]<sup>(?:(?!</sup>).)*</sup>", re.S)
+_IN_FORCE_RE = re.compile(r"En vigueur\s*:\s*(\d{2})-(\d{2})-(\d{4})")
 _OPEN = "\x01"
 _CLOSE = "\x02"
-_TAG_RE = re.compile(r"<[^>]+>")
 
 _GAS = "gaz naturel relevant des codes NC 2711 11 00 et 2711 21 00"
 # The paragraph after the gas one.
 _COAL = "houille, coke et lignite"
 _HOUSEHOLD_RE = re.compile(r"consommation non[- ]professionnelle\s*:")
-_PROTECTED_RE = re.compile(r"a[.)]\s*client protégé résidentiel[^:]*:")
+# Its rate follows the first colon after it, found with str.find: a pattern
+# running on to that colon ran to the end of the text from every copy of the
+# label that no colon followed.
+_PROTECTED_RE = re.compile(r"a[.)]\s*client protégé résidentiel")
 _OTHERS_RE = re.compile(r"b[.)]\s*autres\s*:")
 _LOW_RE = re.compile(r"pour la tranche de 0 à ([\d.]+) MWh\s*:")
 _HIGH_RE = re.compile(r"pour la tranche à partir de ([\d.]+) MWh\s*:")
@@ -208,23 +222,41 @@ def parse_protected(page: str) -> tuple[tuple[date, float], ...]:
     try:
         text, household, others, _rates, _end = _household(page)
         label = _PROTECTED_RE.search(text, household, others)
-        if label is None:
+        colon = -1 if label is None else text.find(":", label.end(), others)
+        if colon < 0:
             raise ExciseLawError("no protected customer rate")
-        return tuple(_steps(text, label.end(), others))
+        return tuple(_steps(text, colon + 1, others))
     except (ValueError, OverflowError) as err:
         raise ExciseLawError(f"unreadable article: {err}") from err
+
+
+def _article(page: str) -> str | None:
+    """What article 419 prints up to the next article, or None."""
+    start = page.find(_ARTICLE)
+    if start < 0:
+        return None
+    start += len(_ARTICLE)
+    ends = [end for end in (page.find(name, start) for name in _NEXT_ARTICLES) if end >= 0]
+    return page[start : min(ends)] if ends else None
+
+
+def _in_force(bracket: re.Match[str]) -> str:
+    """An amendment's opening bracket as marked: _OPEN and the entry into
+    force its title gives, or the bracket as it is when it gives none."""
+    found = _IN_FORCE_RE.search(bracket[1])
+    return bracket[0] if found is None else f"{_OPEN}{found[1]}-{found[2]}-{found[3]} "
 
 
 def _household(page: str) -> tuple[str, int, int, int, int]:
     """The article as plain text with its amendments marked, where its
     household rates begin, where "b) autres" begins and where its rates do,
     and where the gas paragraph ends."""
-    match = _ARTICLE_RE.search(page)
-    if match is None:
+    article = _article(page)
+    if article is None:
         raise ExciseLawError("article 419 not found")
-    marked = _CLOSE_RE.sub(_CLOSE, match.group(1))
-    marked = _OPEN_RE.sub(lambda m: f"{_OPEN}{m[1]}-{m[2]}-{m[3]} ", marked)
-    text = " ".join(unescape(_TAG_RE.sub(" ", marked)).split())
+    marked = sub_closed(_BRACKET_CLOSE_RE, _CLOSE, article, _TITLE_END)
+    marked = sub_closed(_BRACKET_OPEN_RE, _in_force, marked, _TITLE_END)
+    text = " ".join(unescape(strip_tags(marked)).split())
     start = text.find(_GAS)
     end = text.find(_COAL, start)
     if start < 0 or end < 0:
@@ -427,7 +459,9 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
         return
     try:
         page = await fetch_text(session, EXCISE_LAW_URL, timeout=15)
-        steps = parse(page)
+        # Read off the event loop: the readers take time linear in the page,
+        # which is still seconds on a Raspberry Pi for a page of a few MiB.
+        steps = await asyncio.to_thread(parse, page)
     except ExciseLawError as err:
         # The page came back and is not the article: a layout change, or a
         # bot check served instead of the law.
@@ -451,13 +485,13 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
         return
     hold(steps)
     try:
-        hold_protected(parse_protected(page))
+        hold_protected(await asyncio.to_thread(parse_protected, page))
     except ExciseLawError as err:
         # Only the social tariff bills it, and FPS Finance's tariff still
         # gives the months it lists: the household rates stay read.
         _LOGGER.warning("The protected customer's gas excise could not be read: %s", err)
     try:
-        hold_contribution(parse_contribution(page))
+        hold_contribution(await asyncio.to_thread(parse_contribution, page))
     except ExciseLawError as err:
         # FPS Finance's tariff gives the months it lists, and const.py the
         # rest: the excise stays read.

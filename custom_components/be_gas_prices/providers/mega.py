@@ -113,7 +113,17 @@ from ._network import (
     require_region,
     signing_dsos,
 )
-from ._parse import SIGN_CHARS, html_cells, month_date, parse_sign, require_contract, to_float
+from ._parse import (
+    LINE_BREAK,
+    SIGN_CHARS,
+    elements,
+    html_cells,
+    in_tag,
+    month_date,
+    parse_sign,
+    require_contract,
+    to_float,
+)
 from ._pdf import fetch_pdf_text, fetch_text, printed_vat_rate
 from ._rates import ALL_REGIONS, Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, future_month, month_card
@@ -238,13 +248,12 @@ def _region_code(contract: _ContractDef, region: str) -> str:
 def _listed_url(listing: str, contract: _ContractDef, code: str) -> str | None:
     """The link the listing carries for ``contract``'s gas card in the
     region ``code``, pinned to that segment, so the electricity card and
-    the other regions' links of the same product never match."""
-    match = re.search(
-        r'data-product-element="' + re.escape(contract.listing_name) + r'"[^>]*?'
-        r'href="(' + re.escape(_CARD_BASE) + code + r'-\d{6}-[^"]+\.pdf)"',
-        listing,
-    )
-    return None if match is None else match.group(1)
+    the other regions' links of the same product never match. Looked for
+    in the element's tag as :func:`parse_catalog` reads the listing."""
+    element = re.compile(r'data-product-element="' + re.escape(contract.listing_name) + '"')
+    link = re.compile(r'href="(' + re.escape(_CARD_BASE) + code + r'-\d{6}-[^"]+\.pdf)"')
+    found = next(in_tag(listing, element, link), None)
+    return None if found is None else found[1].group(1)
 
 
 def card_url(listing: str, contract_id: str, region: str) -> str:
@@ -276,8 +285,12 @@ def card_url(listing: str, contract_id: str, region: str) -> str:
 
 
 # Every product whose listing element links a residential gas card; the SME
-# cards are -NG-B2B- and the electricity ones -EL-.
-_LISTED_RE = re.compile(r'data-product-element="([^"]+)"[^>]*?href="' + re.escape(_CARD_BASE))
+# cards are -NG-B2B- and the electricity ones -EL-. The link is looked for
+# in the element's tag with in_tag: a pattern lazily spanning the tag looked
+# to the next ">" again from every element, and 100 kB of elements that no
+# ">" followed took 5 s.
+_LISTED_ELEMENT_RE = re.compile(r'data-product-element="([^"]+)"')
+_LISTED_LINK_RE = re.compile(r'href="' + re.escape(_CARD_BASE))
 
 
 def parse_catalog(listing: str) -> set[str]:
@@ -289,9 +302,10 @@ def parse_catalog(listing: str) -> set[str]:
     the fixed-price page still sold it, and that is no news.
     """
     by_name = {c.listing_name: c.contract_id for c in _CONTRACTS}
+    names = [element[1] for element, _link in in_tag(listing, _LISTED_ELEMENT_RE, _LISTED_LINK_RE)]
     listed = {
         by_name.get(name, "mega_" + "_".join(re.findall(r"[a-z0-9]+", name.lower())))
-        for name in _LISTED_RE.findall(listing)
+        for name in names
     }
     return listed | {c.contract_id for c in _CONTRACTS if c.last_card and c.withdrawn is None}
 
@@ -306,7 +320,10 @@ def _last_card_url(contract: _ContractDef, code: str) -> str:
     return f"{_CARD_BASE}{code}-{contract.last_card}.pdf"
 
 
-_URL_MONTH_RE = re.compile(r"-(\d{2})(\d{4})-(?=[^/]*\.pdf$)")
+# The "-MMYYYY-" segment, looked for in the file name before its ".pdf":
+# "(?=[^/]*\.pdf$)" after the segment looked along the rest of the URL again
+# from every such segment, in time growing with their square.
+_URL_MONTH_RE = re.compile(r"-(\d{2})(\d{4})-")
 
 
 def archive_url(current: str, year_month: date) -> str:
@@ -317,7 +334,9 @@ def archive_url(current: str, year_month: date) -> str:
     date is left alone. The current month keeps the listing's own URL, which
     is its latest issue.
     """
-    match = _URL_MONTH_RE.search(current)
+    match = None
+    if current.endswith(".pdf"):
+        match = _URL_MONTH_RE.search(current, current.rfind("/") + 1, len(current) - 4)
     if match is None:
         raise ExtractorError(f"Mega: no month in card URL {current}")
     if (int(match.group(2)), int(match.group(1))) == (year_month.year, year_month.month):
@@ -420,8 +439,15 @@ def parse_snapshot(
 
 
 # "Gaz naturel / Smart Flex 2Y / (Variable)". The term is not part of the
-# name: the January 2025 card printed "Smart Flex" alone.
-_PRODUCT_RE = re.compile(r"Gaz naturel\s*\n(.+)\n\s*\((?:Variable|Fixe)\)")
+# name: the January 2025 card printed "Smart Flex" alone. The name is the
+# first line after "Gaz naturel" that is not blank: the line break before it
+# is taken whole. Backing into it read a blank line between as the name,
+# which names no product, and scanned the lines after it again from every
+# one, in time growing with their square.
+_PRODUCT_RE = re.compile(r"Gaz naturel(?>\s*\n)(.+)\n\s*\((?:Variable|Fixe)\)")
+# The term after the name, from the first space before it: tried from
+# every space of a run, it was scanned to the end of the run again.
+_TERM_RE = re.compile(r"(?<!\s)\s+\d+Y$")
 
 
 def _check_product(text: str, contract: _ContractDef) -> None:
@@ -433,7 +459,7 @@ def _check_product(text: str, contract: _ContractDef) -> None:
     match = _PRODUCT_RE.search(text)
     if match is None:
         raise ExtractorError("Mega: product name not found")
-    printed = re.sub(r"\s+\d+Y$", "", match.group(1).strip())
+    printed = _TERM_RE.sub("", match.group(1).strip())
     if printed != contract.card_name:
         raise ExtractorError(f"Mega {contract.contract_id}: card is for {printed!r}")
 
@@ -449,8 +475,8 @@ def _card_month(flat: str) -> date:
     return month_date(match.group(2), match.group(1), "Mega")
 
 
-_PRICE_RE = re.compile(rf"Coût énergie \(c€/kWh\)\s*\n\s*({_FIG})\s*\n")
-_FEE_RE = re.compile(rf"Redevance fixe \(€/an\)\s*\n\s*({_FIG})\s*\n")
+_PRICE_RE = re.compile(rf"Coût énergie \(c€/kWh\){LINE_BREAK}({_FIG})\s*\n")
+_FEE_RE = re.compile(rf"Redevance fixe \(€/an\){LINE_BREAK}({_FIG})\s*\n")
 _FORMULA_RE = re.compile(
     rf"formule tarifaire pour le gaz est la suivante \(HTVA\) ?: "
     rf"((ZTP|TTF) x ({_FIG}) ([{SIGN_CHARS}]) ({_FIG}) c€/kWh)"
@@ -519,7 +545,7 @@ _LABELS: dict[str, dict[str, str]] = {
     REGION_BRUSSELS: {"Sibelga": DSO_SIBELGA},
 }
 _FIGURE_LINE_RE = re.compile(_FIG)
-_TRANSPORT_RE = re.compile(rf"Coût du transport\s*\n\s*({_FIG})\s*\n")
+_TRANSPORT_RE = re.compile(rf"Coût du transport{LINE_BREAK}({_FIG})\s*\n")
 
 
 def _table_rows(text: str) -> str:
@@ -569,7 +595,7 @@ def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
 
 # One excise row per slice, followed on the cards printed before August 2026
 # by the energy contribution in a column of its own.
-_EXCISE_ROW = rf"\s*\n\s*({_FIG})(?:\s*\n\s*({_FIG}))?\s*\n"
+_EXCISE_ROW = rf"{LINE_BREAK}({_FIG})(?:{LINE_BREAK}({_FIG}))?\s*\n"
 _EXCISE_LOW_RE = re.compile(r"Consommation entre 0 et 12\.000 kWh" + _EXCISE_ROW)
 _EXCISE_HIGH_RE = re.compile(r"Consommation de plus de 12\.000 kWh" + _EXCISE_ROW)
 _CONTRIBUTION_ZERO = "La contribution énergétique est fixée à 0"
@@ -595,7 +621,7 @@ def _excise(text: str, flat: str) -> tuple[tuple[tuple[float | None, float], ...
     return bands, 0.0
 
 
-_CONNECTION_FEE_RE = re.compile(rf"Redevance de raccordement\s*\n\s*({_FIG})\s*\n")
+_CONNECTION_FEE_RE = re.compile(rf"Redevance de raccordement{LINE_BREAK}({_FIG})\s*\n")
 
 
 def _connection_fee(text: str) -> float:
@@ -608,7 +634,7 @@ def _connection_fee(text: str) -> float:
 
 # "6 ou 10 m / 3 / /heure* / 3.56": the caliber, its unit split around the
 # superscript, the footnote marks, then the amount on a line of its own.
-_OSP_AMOUNT_RE = re.compile(rf"^/heure\**\s*\n\s*({_FIG})\s*$", re.MULTILINE)
+_OSP_AMOUNT_RE = re.compile(rf"^/heure\**{LINE_BREAK}({_FIG})\s*$", re.MULTILINE)
 
 
 def _osp(text: str) -> dict[str, float]:
@@ -620,7 +646,11 @@ def _osp(text: str) -> dict[str, float]:
     return osp_table(amounts, supplier="Mega")
 
 
-_INDEX_ROW_RE = re.compile(r'<tr data-line="([^"]+)"[^>]*>(.*?)</tr>', re.DOTALL)
+# One row of the index page and the series it is of, found from its opening
+# to its closing (_parse.elements): "<tr data-line=...>(.*?)</tr>" scanned to
+# the end of the page from every row no closing followed, 26 s over 72 kB.
+_INDEX_ROW_RE = re.compile(r'<tr data-line="([^"]+)"')
+_INDEX_ROW_END_RE = re.compile("</tr>")
 _MONTH_START_RE = re.compile(r"01-(0[1-9]|1[0-2])-(\d{4})")
 _INDEX_VALUE_RE = re.compile(r"€\s*(\d+[.,]\d+)")
 
@@ -633,7 +663,8 @@ def parse_index_page(page: str) -> IndexTable:
     month to the first of the next is not a monthly value and is skipped.
     """
     table: IndexTable = {name: {} for name in _INDEX_NAMES.values()}
-    for name, row in _INDEX_ROW_RE.findall(page):
+    for opened, row, _closed in elements(page, _INDEX_ROW_RE, _INDEX_ROW_END_RE):
+        name = opened.group(1)
         if name not in table:
             continue
         cells = html_cells(row)

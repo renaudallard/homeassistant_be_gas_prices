@@ -83,7 +83,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import fold_accents, month_date, require_contract, to_float
+from ._parse import LINE_BREAK, fold_accents, month_date, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text,
@@ -328,8 +328,8 @@ _VAT_RE = re.compile(r"Incl\.\s*(\d+)\s*%\s*BTW")
 # The energy block's two headings and, on the next line, their figures:
 # "Energiekost Variabel (c€/kWh) Abonnementskost (€/jaar)" then "7,20 39".
 _PRICE_RE = re.compile(
-    r"Energiekost Variabel \(c€/kWh\) Abonnementskost \(€/jaar\)\s*\n"
-    r"\s*(\d+,\d+)\s+(\d+(?:,\d+)?)\s*\n"
+    rf"Energiekost Variabel \(c€/kWh\) Abonnementskost \(€/jaar\){LINE_BREAK}"
+    r"(\d+,\d+)\s+(\d+(?:,\d+)?)\s*\n"
 )
 _FORMULA_RE = re.compile(
     r"\(\s*(\d+,\d+)\s*x\s*TTF_RLP\s*\+\s*(\d+,\d+)\s*\)\s*x\s*(\d+,\d+)",
@@ -375,8 +375,8 @@ def _dsos(text: str) -> dict[str, DsoOverlay]:
 
 # The two band labels print above their two rates.
 _EXCISE_RE = re.compile(
-    r"Bijzondere accijns op Energie \(c€/kWh\)\s*\n\s*≤ 12 MWh\s*\n\s*≥ 12 MWh\s*\n"
-    r"\s*(\d+,\d+)\s*\n\s*(\d+,\d+)"
+    rf"Bijzondere accijns op Energie \(c€/kWh\){LINE_BREAK}≤ 12 MWh{LINE_BREAK}≥ 12 MWh"
+    rf"{LINE_BREAK}(\d+,\d+){LINE_BREAK}(\d+,\d+)"
 )
 
 

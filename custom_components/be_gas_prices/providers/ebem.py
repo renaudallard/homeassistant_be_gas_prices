@@ -79,7 +79,15 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_contract, to_float
+from ._parse import (
+    NUMBER_START,
+    SIGN_CHARS,
+    fold_accents,
+    month_date,
+    parse_sign,
+    require_contract,
+    to_float,
+)
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text_layout,
@@ -261,7 +269,7 @@ _VAT_RE = re.compile(r"INCL\.\s*BTW\s*(\d+)\s*%")
 # as "7,5431 €/kWh" and some months drop the space before the unit.
 _UNIT = r"\s*c?€/kWh\s+"
 _ENERGY_RE = re.compile(
-    r"(\d+,\d+)\s*ZTP\s*([" + SIGN_CHARS + r"])\s*(\d+,\d+)\s+"
+    NUMBER_START + r"(\d+,\d+)\s*ZTP\s*([" + SIGN_CHARS + r"])\s*(\d+,\d+)\s+"
     r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)"
 )
 # "Vaste vergoeding 66,04 €/jaar 70,00 €/jaar", excluding then including VAT.

@@ -176,10 +176,12 @@ _CONTRACTS_BY_ID = {c.contract_id: c for c in _CONTRACTS}
 # "Gas[ ZTP][ <tier words>] <Maand> <jaar>", in a file name whose runs of
 # spaces are collapsed first (the August 2026 names put two before the
 # month). A name without a month ("Gas ZTP Wintervast 2025") is another
-# product.
-_FILE_RE = re.compile(
-    r"\bGas(?: ZTP)?((?: \S+)*?) (" + "|".join(NL_MONTHS) + r") (20\d{2})\b", re.IGNORECASE
-)
+# product. The first "Gas" is found, then the first month after it, and the
+# tier words are what lies between: one pattern lazily spanning those words
+# ran to the end of the name from every "Gas" in it, 19,5 s over a 32 kB
+# name that the Sanity answer could carry.
+_FILE_GAS_RE = re.compile(r"\bGas(?: ZTP)?(?= )", re.IGNORECASE)
+_FILE_MONTH_RE = re.compile(r" (" + "|".join(NL_MONTHS) + r") (20\d{2})\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True, order=True)
@@ -189,19 +191,28 @@ class _Asset:
     url: str
 
 
+def _file_month(name: str) -> tuple[str, date] | None:
+    """The tier words and the month a collapsed file name gives, or None."""
+    gas = _FILE_GAS_RE.search(name)
+    month = None if gas is None else _FILE_MONTH_RE.search(name, gas.end())
+    if gas is None or month is None:
+        return None
+    tier = name[gas.end() : month.start()].strip()
+    return tier, date(int(month.group(2)), MONTH_NAMES[month.group(1).lower()], 1)
+
+
 def _assets(rows: list[dict[str, Any]], contract: _ContractDef) -> list[_Asset]:
     """The rows that are ``contract``'s cards, whatever month."""
     out: list[_Asset] = []
     for row in rows:
-        name = " ".join(str(row.get("originalFilename", "")).split())
-        match = _FILE_RE.search(name)
+        found = _file_month(" ".join(str(row.get("originalFilename", "")).split()))
         url = row.get("url")
-        if match is None or not isinstance(url, str) or not url.startswith("https://"):
+        if found is None or not isinstance(url, str) or not url.startswith("https://"):
             continue
-        if match.group(1).strip() not in contract.files:
+        tier, month = found
+        if tier not in contract.files:
             continue
-        month = MONTH_NAMES[match.group(2).lower()]
-        out.append(_Asset(date(int(match.group(3)), month, 1), str(row.get("_createdAt", "")), url))
+        out.append(_Asset(month, str(row.get("_createdAt", "")), url))
     return out
 
 

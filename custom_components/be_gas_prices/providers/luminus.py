@@ -107,9 +107,11 @@ from ._network import (
     signing_dsos,
 )
 from ._parse import (
+    NUMBER_START,
     SIGN_CHARS,
     cell_value,
     fold_accents,
+    in_tag,
     month_date,
     parse_sign,
     require_contract,
@@ -384,10 +386,12 @@ _FEE_RE = re.compile(r"^Redevance fixe \(€/an\)\s+(\d+,\d+)\s*$", re.MULTILINE
 
 # The formula on the whitespace-collapsed text, c EUR/kWh excluding VAT for
 # an index in EUR/MWh: "0,1001 x TTF DAH M + 1,5650", and on the quarterly
-# products "0,1004 x TTF DAHW + 0,0000 x TTF 1-0-3 + 2,0204".
+# products "0,1004 x TTF DAHW + 0,0000 x TTF 1-0-3 + 2,0204". Searched for
+# from "Index (HTVA)", where no number starts.
 _S = f"[{SIGN_CHARS}]"
 _FORMULA_RE = re.compile(
-    rf"(\d+,\d+) x (TTF [A-Z]+(?: [A-Z]+)*) (?:({_S}) (\d+,\d+) x TTF 1-0-3 )?({_S}) (\d+,\d+)"
+    rf"{NUMBER_START}(\d+,\d+) x (TTF [A-Z]+(?: [A-Z]+)*) "
+    rf"(?:({_S}) (\d+,\d+) x TTF 1-0-3 )?({_S}) (\d+,\d+)"
 )
 # The indices a formula can name, as the card spells them, with the title of
 # their table in the index PDF and the period each one averages over.
@@ -530,10 +534,11 @@ def _taxes(text: str, region: str, vat_rate: float) -> TaxOverlay:
     )
 
 
-# The indexation page links the PDF from its "Télécharger les indices" buttons.
-_INDEX_LINK_RE = re.compile(
-    r'href="/api-next/download/?\?fileId=(file-[0-9a-f]+-pdf)[^"]*"[^>]*>\s*<span>Télécharger les indices'
-)
+# The indexation page links the PDF from its "Télécharger les indices"
+# buttons, read in each link's tag with _parse.in_tag: one pattern running
+# on through "[^>]*>" scanned to the next ">" again from every link.
+_INDEX_LINK_OPEN_RE = re.compile(r'href="/api-next/download/?\?fileId=(file-[0-9a-f]+-pdf)[^"]*"')
+_INDEX_LINK_RE = re.compile(r">\s*<span>Télécharger les indices")
 
 _INDEX_BY_TITLE = {title: name for name, (title, _) in _INDICES.items()}
 _YEAR_RE = re.compile(r"20\d\d")
@@ -549,7 +554,7 @@ _ROW_TOLERANCE = 3.0
 
 def parse_index_page(page: str) -> str:
     """The URL of the index PDF the indexation page links."""
-    ids = set(_INDEX_LINK_RE.findall(page))
+    ids = {opened[1] for opened, _button in in_tag(page, _INDEX_LINK_OPEN_RE, _INDEX_LINK_RE)}
     if len(ids) != 1:
         raise ExtractorError(f"Luminus: {len(ids)} index PDF links on the indexation page")
     return f"{_DOWNLOAD_URL}?fileId={ids.pop()}&openFile=true"

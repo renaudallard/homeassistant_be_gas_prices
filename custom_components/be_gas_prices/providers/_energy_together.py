@@ -90,7 +90,7 @@ from ..const import (
     VAT_RATE_REDUCED,
 )
 from ._network import T1_FIXED, T1_PROP, T2_FIXED, T2_PROP, dso_overlay, excise_bands
-from ._parse import fold_accents, month_date, split_row, to_float
+from ._parse import fold_accents, in_tag, month_date, split_row, to_float
 from ._pdf import NL_MONTHS
 from ._rates import IndexedRates
 from ._validity import end_of_month
@@ -121,7 +121,13 @@ def card_month(text: str, label: str) -> tuple[date, str]:
     return date(int(match.group(3)), month, 1), product_key(match.group(1))
 
 
-_FEE_RE = re.compile(r"Jaarlijkse abonnementskost[^€\n]*€\s*(\d+(?:,\d+)?)")
+# "Jaarlijkse abonnementskost ... € 96": the fee after the first "€" of the
+# label's line, read with _parse.in_tag as if the "€" or the line's end
+# ended a tag: one pattern running on to that "€" scanned to the end of the
+# line again from every label on it.
+_FEE_LABEL_RE = re.compile("Jaarlijkse abonnementskost")
+_FEE_RE = re.compile(r"€\s*(\d+(?:,\d+)?)")
+_FEE_END_RE = re.compile("[€\n]")
 _LAST_KNOWN_PRICE_RE = re.compile(
     r"\*\*\s*€c\s*(\d+,\d+)\s*/kWh|^(\d+,\d+)[ \t]*\n\*\*[ \t]*$", re.MULTILINE
 )
@@ -131,7 +137,9 @@ _FORMULA_RE = re.compile(
 
 
 def _energy(text: str, label: str) -> IndexedRates:
-    fee = _FEE_RE.search(text)
+    fee = next(
+        (found for _label, found in in_tag(text, _FEE_LABEL_RE, _FEE_RE, end=_FEE_END_RE)), None
+    )
     price = _LAST_KNOWN_PRICE_RE.search(text)
     formula = _FORMULA_RE.search(text)
     if fee is None or price is None or formula is None:
@@ -177,9 +185,12 @@ def last_known_index(text: str) -> tuple[date, float] | None:
     return month, to_float(match.group(3))
 
 
-_EXCISE_RE = re.compile(
-    r"Bijzondere accijns op Energie\s*<\s*12\.000 kWh(.*?)Bijdrage op Energie", re.DOTALL
-)
+# The excise block runs from the lower band's label to the energy
+# contribution's, the first after it: one pattern lazily spanning the block
+# looked to the end of the text again from every label that no contribution
+# followed.
+_EXCISE_RE = re.compile(r"Bijzondere accijns op Energie\s*<\s*12\.000 kWh")
+_EXCISE_END = "Bijdrage op Energie"
 _EXCISE_HIGH_LABEL_RE = re.compile(r"Bijzondere accijns op Energie\s*>\s*12\.000 kWh")
 _CENT_RE = re.compile(r"€\s*c\s*(\d+,\d+)")
 _CONTRIBUTION_RE = re.compile(r"Bijdrage op Energie\s*€\s*c\s*(\d+,\d+)")
@@ -192,10 +203,12 @@ def _taxes(text: str, label: str) -> TaxOverlay:
     rates after them, so the rates are read in order between the first label
     and the contribution rather than off each label's line.
     """
-    block = _EXCISE_RE.search(text)
-    rates = _CENT_RE.findall(block.group(1)) if block else []
+    low = _EXCISE_RE.search(text)
+    end = -1 if low is None else text.find(_EXCISE_END, low.end())
+    block = text[low.end() : end] if low is not None and end >= 0 else None
+    rates = _CENT_RE.findall(block) if block is not None else []
     contribution = _CONTRIBUTION_RE.search(text)
-    if block is None or not _EXCISE_HIGH_LABEL_RE.search(block.group(1)) or len(rates) != 2:
+    if block is None or not _EXCISE_HIGH_LABEL_RE.search(block) or len(rates) != 2:
         raise ExtractorError(f"{label}: excise rows not found")
     if contribution is None:
         raise ExtractorError(f"{label}: energy contribution not found")

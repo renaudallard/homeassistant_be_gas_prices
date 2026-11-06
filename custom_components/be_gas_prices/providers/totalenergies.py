@@ -281,16 +281,18 @@ def _card_month(text: str, contract: _ContractDef) -> date:
 
 # "TVA 6 % incluse" comes out as "TVA % incluse", and the rate as a line of
 # its own after the heading's "Conditions particulières relatives à la
-# formule ..." line.
+# formule ..." line, looked for from the first "TVA % incluse" on: one
+# pattern lazily spanning the text between looked to the end of the text
+# again from every copy of it that no such line followed.
+_VAT_HEADING = "TVA % incluse\n"
 _VAT_RE = re.compile(
-    r"TVA % incluse\n[\s\S]*?^Conditions particulières relatives à la formule [^\n]+\n"
-    r"(\d+(?:,\d+)?)$",
-    re.MULTILINE,
+    r"^Conditions particulières relatives à la formule [^\n]+\n(\d+(?:,\d+)?)$", re.MULTILINE
 )
 
 
 def _vat_rate(text: str) -> float:
-    rate = printed_vat_rate(text, _VAT_RE)
+    start = text.find(_VAT_HEADING)
+    rate = None if start < 0 else printed_vat_rate(text[start + len(_VAT_HEADING) :], _VAT_RE)
     if rate is None:
         raise ExtractorError("TotalEnergies: VAT statement not found")
     return rate
@@ -424,8 +426,11 @@ def _excise(text: str) -> tuple[tuple[float | None, float], ...]:
 
 _OSP_START = "Droit pour le financement des Obligations de Service Public"
 # "<= 10 m³/h 5 3,56": the digit after the caliber is a footnote mark the card
-# never defines, so the amount is the last figure of the row.
-_OSP_ROW_RE = re.compile(r"^(?:<=|Entre|>)[^\n]*m³/h[^\n]* (\d+,\d+)$", re.MULTILINE)
+# never defines, so the amount is the last figure of the row. The first
+# "m³/h" is taken for good, which reads the same: the amount ends the row
+# whichever is used, and trying each "m³/h" of a row against each place for
+# the amount took time growing with the square of the row.
+_OSP_ROW_RE = re.compile(r"^(?:<=|Entre|>)(?>[^\n]*?m³/h)[^\n]* (\d+,\d+)$", re.MULTILINE)
 
 
 def _osp(text: str) -> dict[str, float]:

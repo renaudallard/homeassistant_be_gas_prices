@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import html
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
 from functools import partial
@@ -71,7 +72,7 @@ import aiohttp
 
 from ..const import REGION_FLANDERS
 from ._energy_together import INDEX, parse_card
-from ._parse import fold_accents, require_contract, to_float
+from ._parse import elements, fold_accents, in_tag, require_contract, to_float
 from ._pdf import NL_MONTHS, fetch_pdf_text, fetch_text, is_transient_fetch_error
 from ._rates import Contract
 from ._validity import future_month, month_card
@@ -150,22 +151,43 @@ def _is_gas(name: str) -> bool:
     return re.search(r"_(?:NG|GAS)$", name.strip(), re.IGNORECASE) is not None
 
 
-_LINK = (
-    r'href="(/web/content/xx\.product\.group\.tariff\.card/\d+/file)"[^>]*>\s*'
-    r"<span[^>]*>\s*</span>\s*<span>([^<]*)</span>"
-)
-_GROUP_RE = re.compile(r"<h3>(.*?)</h3>(.*?)(?=<h3>|\Z)", re.DOTALL)
+# A card's link and the name after it, read with _parse.in_tag: one pattern
+# running on through "[^>]*>" to the end of the link's tag scanned to the
+# next ">" again from every link, and 440 kB of links that no ">" followed
+# took 5,2 s, four times what half of them took.
+_LINK_OPEN_RE = re.compile(r'href="(/web/content/xx\.product\.group\.tariff\.card/\d+/file)"')
+_LINK = r">\s*<span[^>]*>\s*</span>\s*<span>([^<]*)</span>"
+# A product group of /products is its "<h3>" heading and what follows it up
+# to the next, and a group of /products/history its "<h2>" heading and what
+# follows it up to the next: found from heading to heading (_groups), where
+# "<h3>(.*?)</h3>(.*?)(?=<h3>|\Z)" looked to the end of the page again from
+# every heading that no closing followed.
+_GROUP_RE = re.compile("<h3>")
+_GROUP_END_RE = re.compile("</h3>")
 _LINK_RE = re.compile(_LINK)
-_HISTORY_GROUP_RE = re.compile(r"<h2[^>]*>(.*?)</h2>(.*?)(?=<h2|\Z)", re.DOTALL)
+_HISTORY_GROUP_RE = re.compile("<h2")
+_HISTORY_GROUP_END_RE = re.compile("</h2>")
 _HISTORY_ROW_RE = re.compile(_LINK + r"\s*</a>\s*</td>\s*<td[^>]*>\s*<span>([^<]*)</span>")
+
+
+def _groups(
+    page: str, heading: re.Pattern[str], closing: re.Pattern[str], *, attributes: bool
+) -> Iterator[tuple[str, str]]:
+    """Each group of ``page``: its heading's text, and what follows the
+    heading up to the next ``heading`` or the end of the page."""
+    for _opened, name, closed in elements(page, heading, closing, attributes=attributes):
+        following = heading.search(page, closed.end())
+        yield name, page[closed.end() : len(page) if following is None else following.start()]
 
 
 def current_card_path(page: str, contract: _ContractDef) -> str:
     """The path of the gas card the product group links on /products."""
-    for name, body in _GROUP_RE.findall(page):
+    for name, body in _groups(page, _GROUP_RE, _GROUP_END_RE, attributes=False):
         if not _same(name, contract.group):
             continue
-        gas: list[str] = [path for path, card in _LINK_RE.findall(body) if _is_gas(card)]
+        gas: list[str] = [
+            opened[1] for opened, card in in_tag(body, _LINK_OPEN_RE, _LINK_RE) if _is_gas(card[1])
+        ]
         if len(gas) != 1:
             raise ExtractorError(
                 f"{contract.brand.label}: group {contract.group!r} links {len(gas)} gas cards"
@@ -177,12 +199,12 @@ def current_card_path(page: str, contract: _ContractDef) -> str:
 def archived_card_path(page: str, contract: _ContractDef, year_month: date) -> str | None:
     """The path of the gas card the archive lists for ``year_month``, or None."""
     wanted = f"{NL_MONTHS[year_month.month - 1]} {year_month.year}"
-    for name, body in _HISTORY_GROUP_RE.findall(page):
+    for name, body in _groups(page, _HISTORY_GROUP_RE, _HISTORY_GROUP_END_RE, attributes=True):
         if not _same(name, contract.group):
             continue
-        for row in _HISTORY_ROW_RE.finditer(body):
-            if _is_gas(row.group(2)) and _same(row.group(3), wanted):
-                return row.group(1)
+        for opened, row in in_tag(body, _LINK_OPEN_RE, _HISTORY_ROW_RE):
+            if _is_gas(row[1]) and _same(row[2], wanted):
+                return opened[1]
         return None
     return None
 
@@ -249,10 +271,16 @@ async def fetch_for_month(
     return await month_card(_read_month(session, contract, year_month), year_month)
 
 
-_INDEX_LINK_RE = re.compile(r'href="(/web/content/\d+)"[^>]*>\s*De indexatieparameters')
-_INDEX_TABLE_RE = re.compile(
-    r"GAS:\s*TTF_RLP.*?MAAND((?:[ \t]+20\d{2})+)[ \t]*\n(.*?)De parameter TTF_RLP", re.DOTALL
-)
+# The publication's link, in its tag as the cards' are.
+_INDEX_LINK_OPEN_RE = re.compile(r'href="(/web/content/\d+)"')
+_INDEX_LINK_RE = re.compile(r">\s*De indexatieparameters")
+# "GAS: TTF_RLP", then the row of years "MAAND 2025 2026", then the table up
+# to "De parameter TTF_RLP", each looked for after the one before: one
+# pattern lazily spanning them looked to the end of the text again from every
+# row of years, in time growing with the cube of the text.
+_INDEX_TABLE_RE = re.compile(r"GAS:\s*TTF_RLP")
+_INDEX_YEARS_RE = re.compile(r"MAAND((?:[ \t]+20\d{2})+)[ \t]*\n")
+_INDEX_TABLE_END = "De parameter TTF_RLP"
 _INDEX_ROW_RE = re.compile(r"^\s*([A-Za-z]+)((?:[ \t]+\d+,\d+)*)[ \t]*$")
 
 
@@ -267,11 +295,13 @@ def parse_index_publication(text: str) -> IndexTable:
     either way.
     """
     table = _INDEX_TABLE_RE.search(text)
-    if table is None:
+    heading = None if table is None else _INDEX_YEARS_RE.search(text, table.end())
+    end = -1 if heading is None else text.find(_INDEX_TABLE_END, heading.end())
+    if heading is None or end < 0:
         raise ExtractorError("Energy Together: TTF_RLP table not found")
-    years = table.group(1).split()
+    years = heading.group(1).split()
     values: dict[str, float] = {}
-    for line in table.group(2).splitlines():
+    for line in text[heading.end() : end].splitlines():
         row = _INDEX_ROW_RE.match(line)
         if row is None or row.group(1).lower() not in NL_MONTHS:
             continue
@@ -290,10 +320,10 @@ def parse_index_publication(text: str) -> IndexTable:
 
 async def _publication(session: aiohttp.ClientSession, host: str) -> IndexTable:
     page = await fetch_text(session, f"https://{host}/indexatieparameters")
-    link = _INDEX_LINK_RE.search(page)
+    link = next(in_tag(page, _INDEX_LINK_OPEN_RE, _INDEX_LINK_RE), None)
     if link is None:
         raise ExtractorError(f"Energy Together: no index publication linked on {host}")
-    return parse_index_publication(await fetch_pdf_text(session, f"https://{host}{link.group(1)}"))
+    return parse_index_publication(await fetch_pdf_text(session, f"https://{host}{link[0][1]}"))
 
 
 async def _fetch_index(brand: _Brand, session: aiohttp.ClientSession) -> IndexTable:

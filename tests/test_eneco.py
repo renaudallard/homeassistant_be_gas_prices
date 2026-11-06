@@ -28,6 +28,7 @@ archive issues back to December 2024."""
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime
 from functools import cache
 from unittest.mock import AsyncMock, patch
@@ -154,6 +155,46 @@ def test_card_of_another_product_is_refused(contract: str, name: str) -> None:
     apart."""
     with pytest.raises(ExtractorError, match="titled"):
         _parse(contract, REGION_FLANDERS, name)
+
+
+def test_a_line_of_spaces_is_read_past_in_time() -> None:
+    """The wrapped-label pattern once scanned the spaces after a label again
+    from every one of them: 64 kB of them after the real card took seconds.
+    The card still reads as it does alone."""
+    card = _card(_FLEX_2609)
+    started = time.monotonic()
+    snap = eneco.parse_snapshot(
+        "eneco_aardgas_flex", REGION_FLANDERS, card + "\nA" + " " * 64000 + "\nx\n", "url"
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == eneco.parse_snapshot("eneco_aardgas_flex", REGION_FLANDERS, card, "url")
+
+
+@pytest.mark.parametrize(
+    ("contract", "name", "crafted"),
+    [
+        ("eneco_aardgas_vast", _FIX_2609, "VERBRUIK" + "\n" * 32000 + "x\n"),
+        (
+            "eneco_aardgas_flex",
+            _FLEX_2609,
+            "VERBRUIK\n(€cent/kWh)\n60,00\n7,20" + " " * 32000 + "x\n",
+        ),
+    ],
+    ids=["blank lines after the heading", "spaces before a label"],
+)
+def test_crafted_energy_blocks_are_read_past_in_time(
+    contract: str, name: str, crafted: str
+) -> None:
+    """The energy patterns once split a run of blank lines after "VERBRUIK",
+    or of spaces where a label's ">" bullet may stand, every way before
+    failing: such a block below the card's title took 5,9 s.
+    The cards still read as they do alone."""
+    card = _card(name)
+    title, rest = card.split("\n", 1)
+    started = time.monotonic()
+    snap = eneco.parse_snapshot(contract, REGION_FLANDERS, f"{title}\n{crafted}{rest}", "url")
+    assert time.monotonic() - started < 1.0
+    assert snap == eneco.parse_snapshot(contract, REGION_FLANDERS, card, "url")
 
 
 def test_flanders_rows_include_the_wrapped_label() -> None:

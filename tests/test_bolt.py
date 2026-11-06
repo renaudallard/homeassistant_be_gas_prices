@@ -28,6 +28,7 @@ the June, September and October 2026 variable cards and the listing."""
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
@@ -103,6 +104,23 @@ def test_bolt_fixe_price_and_monthly_fee() -> None:
     # "TTC", and no rate stated.
     assert snap.taxes.card_vat_rate is None
     assert snap.taxes.vat_rate == 0.0
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["Carte Tarifaire x " * 8000, "Carte Tarifaire x" + " " * 64000 + "y"],
+    ids=["many headings", "a long run of spaces"],
+)
+def test_a_crafted_heading_line_is_read_past_in_time(line: str) -> None:
+    """The heading pattern once tried every "Carte Tarifaire" of a line, and
+    every place in a run of spaces to end the product's name, each scanning
+    the rest of the line again: such a line put in front of the real card
+    took a minute or more. The card still reads as it does alone."""
+    card = _card(_FIX_202609)
+    started = time.monotonic()
+    snap = bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, line + "\n" + card)
+    assert time.monotonic() - started < 1.0
+    assert snap == bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, card)
 
 
 def test_plenty_fixe_differs_by_its_fee() -> None:

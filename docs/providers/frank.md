@@ -27,7 +27,9 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   double space, "Gas ZTP HV Oktober 2026 (1)"). The standard tier has no
   tier word ("Gas ZTP September 2026"). Runs of spaces are collapsed before
   matching; a name without a month ("Gas ZTP Wintervast 2025", a different,
-  fixed product) is ignored.
+  fixed product) is ignored. The first "Gas" is found, then the first month
+  after it, and the tier words are what lies between, in time linear in the
+  name.
 - `fetch` reads the 40 newest gas uploads, keeps the tier's, takes the newest
   month the names give that is not after the running one (the newest at all
   when there is none) and then the newest upload of it. Frank uploads a
