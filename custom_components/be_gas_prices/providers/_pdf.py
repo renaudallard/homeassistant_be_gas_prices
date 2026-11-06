@@ -197,24 +197,34 @@ async def guarded[T](label: str, call: Awaitable[T]) -> T:
 # into Home Assistant's memory in one fetch.
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 
+# What a page or a document read as text may hold, unless its caller sizes
+# its own: six times the largest the integration reads, OCTA+'s tariff
+# sheet answer at 1,26 MB with its card in base64 (October 2026), the
+# largest web page being Luminus's index page at 747 kB. A text is parsed
+# on the event loop, and a worker thread would not spare it: json.loads
+# holds the GIL, and on a Raspberry Pi 4 on 6 November 2026 8 MiB of it
+# stalled the loop 1,6 s from a thread against 2,0 s on the loop. The cap
+# is what bounds the stall.
+MAX_TEXT_BYTES = 8 * 1024 * 1024
 
-async def read_capped(resp: aiohttp.ClientResponse, url: str) -> bytes:
-    """Read a response body, refusing one past :data:`MAX_RESPONSE_BYTES`.
+
+async def read_capped(resp: aiohttp.ClientResponse, url: str, limit: int | None = None) -> bytes:
+    """Read a response body, refusing one past ``limit`` bytes,
+    :data:`MAX_RESPONSE_BYTES` unless the caller sizes its own.
 
     Content-Length is only a hint: a chunked answer carries none and a
     server can lie, so the cap holds on the bytes read as well. The bytes
     counted are the decoded ones, so a compressed answer is held to it too.
     """
+    cap = MAX_RESPONSE_BYTES if limit is None else limit
     declared = resp.content_length
-    if declared is not None and declared > MAX_RESPONSE_BYTES:
-        raise ExtractorError(
-            f"refusing {url}: declared {declared} bytes (limit {MAX_RESPONSE_BYTES})"
-        )
+    if declared is not None and declared > cap:
+        raise ExtractorError(f"refusing {url}: declared {declared} bytes (limit {cap})")
     payload = bytearray()
     async for chunk in resp.content.iter_chunked(65536):
         payload.extend(chunk)
-        if len(payload) > MAX_RESPONSE_BYTES:
-            raise ExtractorError(f"refusing {url}: more than {MAX_RESPONSE_BYTES} bytes")
+        if len(payload) > cap:
+            raise ExtractorError(f"refusing {url}: more than {cap} bytes")
     return bytes(payload)
 
 
@@ -236,15 +246,16 @@ def _charset(declared: str | None) -> str:
     return name if name in _CHARSETS else "utf-8"
 
 
-async def read_text_capped(resp: aiohttp.ClientResponse, url: str) -> str:
-    """Read a text body under the cap, in the charset it declares when that
+async def read_text_capped(resp: aiohttp.ClientResponse, url: str, limit: int | None = None) -> str:
+    """Read a text body of at most ``limit`` bytes, :data:`MAX_TEXT_BYTES`
+    unless the caller sizes its own, in the charset it declares when that
     is UTF-8, Latin-1, Windows-1252 or ASCII, and as UTF-8 otherwise.
 
     Not strict: a page in another charset than it declares (a maintenance
     page in Latin-1) is then refused by its parser as an ExtractorError
     rather than raised as a UnicodeDecodeError.
     """
-    payload = await read_capped(resp, url)
+    payload = await read_capped(resp, url, MAX_TEXT_BYTES if limit is None else limit)
     return payload.decode(_charset(resp.charset), errors="replace")
 
 
@@ -721,8 +732,10 @@ async def fetch_text(
     *,
     params: dict[str, str] | None = None,
     timeout: int = 20,
+    limit: int | None = None,
 ) -> str:
-    """GET ``url`` and return the response body as text.
+    """GET ``url`` and return the response body as text, of at most
+    ``limit`` bytes, :data:`MAX_TEXT_BYTES` unless the caller sizes its own.
 
     Raises :class:`ExtractorError` on any HTTP non-2xx, network error,
     or aiohttp client failure. Use for HTML listing / index pages and
@@ -750,7 +763,7 @@ async def fetch_text(
         async with checked_request(session, url, timeout=timeout, params=params) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
-            body = await read_text_capped(resp, url)
+            body = await read_text_capped(resp, url, limit)
             # Only a success is memoised. A failure is re-attempted by the
             # next caller, which is what the negative cache one layer up is
             # for; caching it here would give it a second, untracked lifetime.
@@ -763,7 +776,12 @@ async def fetch_text(
 
 def parse_json(body: str, what: str) -> Any:
     """``body`` decoded, or an :class:`ExtractorError` naming ``what``. Its
-    shape is the caller's to check."""
+    shape is the caller's to check.
+
+    On the event loop: json.loads holds the GIL, so a worker thread would
+    stall the loop as long. What bounds it is the cap of the fetch that read
+    ``body``, which a caller sizes to its document.
+    """
     try:
         return json.loads(body)
     except ValueError as err:

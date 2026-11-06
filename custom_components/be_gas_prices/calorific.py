@@ -52,6 +52,7 @@ otherwise standard client context, rather than verification being turned off.
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import json
@@ -72,6 +73,10 @@ from .providers.base import ExtractorError
 _INTERMEDIATE = Path(__file__).with_name("certs") / "godaddy_g2_intermediate.pem"
 _KEY_RE = re.compile(r"apimSubscriptionKey\s*:\s*['\"]([0-9a-fA-F]+)['\"]")
 _TIMEOUT = 30
+# Atrias answers a few kB: on 6 November 2026 the folder list held 9 kB (60
+# files, a file more each month), a month's file 4 kB and runtime-config.js
+# 668 bytes. Past this an answer is refused as it streams.
+_LIMIT = 256 * 1024
 
 
 class CalorificError(Exception):
@@ -105,7 +110,7 @@ async def subscription_key(session: aiohttp.ClientSession) -> str:
                 raise CalorificError(f"HTTP {resp.status} fetching {ATRIAS_CONFIG_URL}")
             # Not strict, so a page in another charset fails the key search
             # below as a CalorificError rather than escaping as a decode error.
-            body = await read_text_capped(resp, ATRIAS_CONFIG_URL)
+            body = await read_text_capped(resp, ATRIAS_CONFIG_URL, _LIMIT)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise CalorificError(
             f"network error fetching {ATRIAS_CONFIG_URL}: {error_text(err)}"
@@ -140,7 +145,7 @@ async def _get(
         ) as resp:
             if resp.status >= 400:
                 raise CalorificError(f"HTTP {resp.status} fetching {url}")
-            return await read_capped(resp, url)
+            return await read_capped(resp, url, _LIMIT)
     except (aiohttp.ClientError, TimeoutError) as err:
         raise CalorificError(f"network error fetching {url}: {error_text(err)}") from err
     except ExtractorError as err:
@@ -225,6 +230,11 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
 async def fetch_month(
     session: aiohttp.ClientSession, context: ssl.SSLContext, key: str, path: str
 ) -> dict[Station, float]:
-    """The calorific values of the month file at ``path``, as listed."""
+    """The calorific values of the month file at ``path``, as listed.
+
+    Read in a worker thread: the parse is Python, a few tenths of a second
+    at the cap on a Raspberry Pi, and the event loop runs between its steps.
+    """
     url = f"{ATRIAS_API_URL}/download/{quote(path, safe='')}"
-    return parse_gcv_file(await _get(session, context, url, key))
+    payload = await _get(session, context, url, key)
+    return await asyncio.to_thread(parse_gcv_file, payload)

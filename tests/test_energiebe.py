@@ -31,9 +31,11 @@ import asyncio
 import json
 import logging
 from datetime import date
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from aiohttp import web
 
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
@@ -56,6 +58,7 @@ from custom_components.be_gas_prices.providers.base import (
     SupplierSnapshot,
 )
 from tests import FIXTURES, approx, fixture_page, fixture_text
+from tests.local_https import https_site
 
 VARIABLE = "Energie_be_Gas_Particulier_18ddc53692.pdf"
 FIXED = "VAST_Energie_be_RES_GAS_pdf_276e3f8ac3.pdf"
@@ -306,6 +309,28 @@ async def test_a_card_link_off_energiebes_storage_is_not_read(link: str) -> None
             )
             is None
         )
+    fetched.assert_not_called()
+
+
+async def test_an_endpoint_answer_past_its_cap_is_not_parsed(
+    socket_enabled: None, tmp_path: Path
+) -> None:
+    """The contracts endpoint answers 3 kB. One of 300 kB is refused as it
+    streams, before json.loads would hold the event loop on it."""
+    body = fixture_page("energiebe", "contracts.json") + " " * 300_000
+
+    async def contracts(request: web.Request) -> web.Response:
+        return web.Response(text=body, content_type="application/json")
+
+    app = web.Application()
+    app.router.add_get("/api/v1/data/contracts", contracts)
+    async with https_site(app, tmp_path) as site:
+        with (
+            patch.object(energiebe, "_CONTRACTS_URL", site.url("/api/v1/data/contracts")),
+            patch.object(energiebe, "fetch_pdf_text_layout", AsyncMock()) as fetched,
+            pytest.raises(ExtractorError, match=r"\(limit 262144\)"),
+        ):
+            await energiebe.fetch(site.session, "energiebe_fixed", REGION_FLANDERS)
     fetched.assert_not_called()
 
 

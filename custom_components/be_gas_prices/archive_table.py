@@ -49,6 +49,10 @@ _LOGGER = logging.getLogger(__name__)
 
 _REFRESH_S: Final = 24 * 3600
 _FAILURE_RETRY_S: Final = 6 * 3600
+# The tables are small: on 6 November 2026 network.json held 42 kB, vat.json
+# 6 kB and law.json 3 kB. One past this is refused as it streams rather than
+# parsed on the event loop.
+_LIMIT: Final = 1024 * 1024
 
 
 class ArchiveTable:
@@ -69,7 +73,7 @@ class ArchiveTable:
         if self.failed_at is not None and (now - self.failed_at).total_seconds() < _FAILURE_RETRY_S:
             return
         try:
-            table = json.loads(await fetch_text(session, self.url))
+            table = json.loads(await fetch_text(session, self.url, limit=_LIMIT))
             if not isinstance(table, Mapping):
                 raise ValueError("not a table")
         except Exception as err:  # the docstring promises no raise

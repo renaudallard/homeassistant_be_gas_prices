@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,7 @@ import pytest
 from aiohttp import web
 
 from custom_components.be_gas_prices import month_cards
+from custom_components.be_gas_prices.archive_table import ArchiveTable
 from custom_components.be_gas_prices.providers import _pdf
 from custom_components.be_gas_prices.providers._pdf import (
     fetch_bytes,
@@ -131,11 +133,13 @@ async def _streamed(request: web.Request) -> web.StreamResponse:
     return resp
 
 
-@pytest.mark.parametrize("fetch", [fetch_text, fetch_pdf_bytes])
+@pytest.mark.parametrize(
+    ("fetch", "cap"), [(fetch_text, "MAX_TEXT_BYTES"), (fetch_pdf_bytes, "MAX_RESPONSE_BYTES")]
+)
 async def test_a_body_past_the_cap_is_refused_as_it_streams(
-    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fetch: Any
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fetch: Any, cap: str
 ) -> None:
-    monkeypatch.setattr(_pdf, "MAX_RESPONSE_BYTES", 4096)
+    monkeypatch.setattr(_pdf, cap, 4096)
     async with https_site(_app(_streamed), tmp_path) as site:
         with pytest.raises(ExtractorError, match="more than 4096 bytes"):
             await fetch(site.session, site.url("/"))
@@ -152,6 +156,56 @@ async def test_a_body_declared_past_the_cap_is_refused_unread(
     async with https_site(_app(large), tmp_path) as site:
         with pytest.raises(ExtractorError, match="declared 8196 bytes"):
             await fetch_pdf_bytes(site.session, site.url("/"))
+
+
+def test_a_text_is_held_to_a_tighter_cap_than_a_card() -> None:
+    assert _pdf.MAX_TEXT_BYTES < _pdf.MAX_RESPONSE_BYTES
+
+
+async def test_a_caller_sizes_the_cap_of_its_own_text(socket_enabled: None, tmp_path: Path) -> None:
+    async with https_site(_app(_streamed), tmp_path) as site:
+        with pytest.raises(ExtractorError, match="more than 4096 bytes"):
+            await fetch_text(site.session, site.url("/"), limit=4096)
+        assert len(await fetch_text(site.session, site.url("/"), limit=9 + 8 * 1024)) == 9 + 8192
+
+
+async def test_an_archive_row_past_its_cap_is_not_parsed(
+    socket_enabled: None, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Rows are a few kB. A larger one is refused as it streams, before
+    json.loads would hold the event loop on it."""
+
+    async def row(request: web.Request) -> web.Response:
+        return web.json_response([{}] * 100_000)
+
+    app = web.Application()
+    app.router.add_get("/rows/{tail:.*}", row)
+    async with https_site(app, tmp_path) as site:
+        assert await _archived_row(site.session, site.url("/card")) is None
+    assert "declared 400000 bytes (limit 262144)" in caplog.text
+
+
+async def test_an_archive_table_past_its_cap_is_not_held(
+    socket_enabled: None, tmp_path: Path
+) -> None:
+    """vat.json, law.json and network.json are tens of kB at most."""
+    table = {
+        "residential": {
+            f"{year}-{month:02d}": 0.06 for year in range(2025, 2027) for month in range(1, 13)
+        }
+    }
+
+    async def answer(request: web.Request) -> web.Response:
+        return web.Response(
+            text=json.dumps(table) + " " * (1024 * 1024), content_type="application/json"
+        )
+
+    held: list[Any] = []
+    async with https_site(_app(answer, "/vat.json"), tmp_path) as site:
+        reader = ArchiveTable(site.url("/vat.json"), held.append)
+        await reader.ensure(site.session)
+    assert held == []
+    assert reader.failed_at is not None
 
 
 async def test_a_body_under_the_cap_is_read_whole(socket_enabled: None, tmp_path: Path) -> None:

@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 import pytest
@@ -64,6 +65,49 @@ def test_a_file_that_is_no_csv_is_a_calorific_error() -> None:
     payload = b'ARSName,ARSEanGSRN,GCVValue\n"X' + b"x" * 140_000 + b"\n"
     with pytest.raises(CalorificError, match="not CSV"):
         parse_gcv_file(payload)
+
+
+async def test_a_month_file_past_the_cap_is_refused(
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A month's file is 4 kB. A larger one is refused as it streams rather
+    than parsed, at about 1,6 s a MiB on a Raspberry Pi."""
+    big = (_FILE + '2026-08,GOS X,541454827090000001,"11,1"\r\n' * 8000).encode()
+
+    async def answer(request: web.Request) -> web.Response:
+        return web.Response(body=big)
+
+    app = web.Application()
+    app.router.add_get("/download/{path:.+}", answer)
+    async with https_site(app, tmp_path) as site:
+        monkeypatch.setattr(calorific, "ATRIAS_API_URL", site.url(""))
+        with pytest.raises(CalorificError, match=r"\(limit 262144\)"):
+            await calorific.fetch_month(site.session, client_context(), "0123abcd", "x.txt")
+
+
+async def test_a_month_file_is_parsed_off_the_event_loop(
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    threads: list[threading.Thread] = []
+    parse = calorific.parse_gcv_file
+
+    def parse_where(payload: bytes) -> dict[Station, float]:
+        threads.append(threading.current_thread())
+        return parse(payload)
+
+    async def answer(request: web.Request) -> web.Response:
+        return web.Response(body=_FILE.encode())
+
+    app = web.Application()
+    app.router.add_get("/download/{path:.+}", answer)
+    monkeypatch.setattr(calorific, "parse_gcv_file", parse_where)
+    async with https_site(app, tmp_path) as site:
+        monkeypatch.setattr(calorific, "ATRIAS_API_URL", site.url(""))
+        values = await calorific.fetch_month(site.session, client_context(), "0123abcd", "x.txt")
+    assert values == {
+        Station(ean="541454827090000155", name="GOS FLUVIUS - AALST"): pytest.approx(11.519258996)
+    }
+    assert threads and threads[0] is not threading.main_thread()
 
 
 async def test_the_key_goes_in_a_header_and_stays_out_of_errors(

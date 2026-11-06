@@ -26,7 +26,10 @@ station from Atrias:
   days of the next month;
 - `GET https://api.atrias.be/roots/download/<path>` returns the month's CSV
   (station name, EAN, value in kWh/m³(n)), whose format varies from file to
-  file and is read tolerantly.
+  file and is read tolerantly, in a worker thread.
+
+Each answer is held to 256 KiB as it streams: on 6 November 2026 the folder
+list was 9 kB, a month's file 4 kB and the runtime config 668 bytes.
 
 `api.atrias.be` does not send its intermediate certificate. The public
 "Go Daddy Secure Certificate Authority - G2" intermediate ships in `certs/`
@@ -184,7 +187,9 @@ running month of a card published as images
 (`month_cards.current_card`), and when its current card cannot be read at
 all or has gone stale. The request names the supplier, the contract,
 the region and the month and nothing else; the *Read the project's card
-archive* option switches it off.
+archive* option switches it off. A row past 256 KiB is refused as it
+streams (the largest of the 3,037 held on 5 November 2026 was 4 kB), and so
+is a table below past 1 MiB (network.json, the largest, was 42 kB).
 
 Beside the cards, the workflow writes `gas/vat.json`: per card month, the
 residential VAT rate three suppliers or more state and none contradicts.

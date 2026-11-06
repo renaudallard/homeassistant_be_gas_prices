@@ -118,6 +118,9 @@ _ARCHIVE_URL = "https://www.energie.be/api/v1/data/tariff-cards"
 _INDEX_URL = "https://www.energie.be/api/v1/data/document?key=Indexation"
 # The storage account the endpoints link every card on.
 _STORAGE = "https://energie.blob.core.windows.net"
+# The endpoints answer a few kB: 3 kB for the contracts and 11 kB for each
+# archive on 6 November 2026, an archive a row longer each month.
+_JSON_LIMIT = 256 * 1024
 
 # The index the variable card names, and the name fetch_index files it under.
 _INDEX = "TTF_RLP"
@@ -160,7 +163,9 @@ def _card_link(value: object) -> str | None:
 
 
 async def _current_card_url(session: aiohttp.ClientSession, contract: _ContractDef) -> str:
-    payload = _json(await fetch_text(session, _CONTRACTS_URL), "contracts endpoint")
+    payload = _json(
+        await fetch_text(session, _CONTRACTS_URL, limit=_JSON_LIMIT), "contracts endpoint"
+    )
     rows = payload.get("contracts")
     for row in rows if isinstance(rows, list) else ():
         if not isinstance(row, dict) or row.get("tariffType") != contract.tariff_type:
@@ -181,6 +186,7 @@ async def _archive_card_url(
         session,
         _ARCHIVE_URL,
         params={"isProfessional": "false", "tariffType": contract.tariff_type},
+        limit=_JSON_LIMIT,
     )
     rows = _json(body, "tariff card archive").get("tariffCards")
     if not isinstance(rows, list):

@@ -66,6 +66,11 @@ _LOGGER = logging.getLogger(__name__)
 # again: the archive can capture a month late, and a supplier can reissue.
 _ABSENT_TTL = timedelta(days=1)
 
+# A row is a few kB: the largest of the 3,037 the archive held on 5 November
+# 2026 was 4 kB. One past this is refused as it streams rather than parsed
+# on the event loop.
+_ROW_LIMIT = 256 * 1024
+
 CardSource = Literal["supplier", "archive"]
 
 
@@ -113,7 +118,7 @@ async def fetch_archived_row(
                 return None
             if resp.status >= 400:
                 raise ArchiveUnavailable(f"HTTP {resp.status} fetching {url}")
-            blob = json.loads(await read_capped(resp, url))
+            blob = json.loads(await read_capped(resp, url, _ROW_LIMIT))
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ArchiveUnavailable(f"network error fetching {url}: {error_text(err)}") from err
     except (ExtractorError, ValueError) as err:
