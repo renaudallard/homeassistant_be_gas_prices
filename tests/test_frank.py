@@ -327,6 +327,40 @@ async def test_a_long_file_name_is_read_past_in_time() -> None:
     assert fetched.call_args.args[1] == _url(HV)
 
 
+@freeze_time("2026-11-06 12:00:00+01:00")
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://192.168.1.1/files/8navd656/production-be/x.pdf",
+        "http://cdn.sanity.io/files/8navd656/production-be/x.pdf",
+        "https://cdn.sanity.io.example.net/files/8navd656/production-be/x.pdf",
+        "https://cdn.sanity.io@192.168.1.1/files/8navd656/production-be/x.pdf",
+        "https://cdn.sanity.io/files/anotherid/production-be/x.pdf",
+    ],
+)
+async def test_a_card_link_off_the_datasets_files_is_passed_over(url: str) -> None:
+    """Every gas upload Sanity lists is a file of the dataset the query
+    reads, on cdn.sanity.io. A link anywhere else, which a tampered answer
+    could give to reach a host on the household's network, is never fetched,
+    even as the tier's newest month."""
+    answer = json.loads(_assets())
+    answer["result"].insert(
+        0,
+        {
+            "originalFilename": _PREFIX + "Gas ZTP HV Oktober 2026.pdf",
+            "url": url,
+            "_createdAt": "2026-10-30T13:59:39Z",
+        },
+    )
+    with (
+        patch.object(frank, "fetch_text", AsyncMock(return_value=json.dumps(answer))),
+        patch.object(frank, "fetch_pdf_text_layout", AsyncMock(return_value=_card(HV))) as fetched,
+    ):
+        snap = await frank.fetch(AsyncMock(), "frank_variable_hv", REGION_FLANDERS)
+    assert [call.args[1] for call in fetched.call_args_list] == [_url(HV)]
+    assert snap.publication_label == "2026-09"
+
+
 @freeze_time("2026-08-31 12:00:00+02:00")
 async def test_fetch_keeps_the_running_month_until_the_next_one_begins() -> None:
     """September's cards were uploaded on 31 August: that day is still

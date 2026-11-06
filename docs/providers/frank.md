@@ -30,6 +30,10 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   fixed product) is ignored. The first "Gas" is found, then the first month
   after it, and the tier words are what lies between, in time linear in the
   name.
+- A card's link has to be a file of the dataset the query reads,
+  `https://cdn.sanity.io/files/8navd656/production-be/...`, as all 221 gas
+  uploads Sanity listed on 6 November 2026 were; a link anywhere else is
+  passed over unread.
 - `fetch` reads the 40 newest gas uploads, keeps the tier's, takes the newest
   month the names give that is not after the running one (the newest at all
   when there is none) and then the newest upload of it. Frank uploads a

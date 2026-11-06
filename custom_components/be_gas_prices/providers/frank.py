@@ -120,6 +120,12 @@ from .base import (
 )
 
 _SANITY_URL = "https://8navd656.api.sanity.io/v2023-01-01/data/query/production-be"
+# Where the files of the project's dataset the query reads are served, which
+# every card link has to point into: all 221 gas uploads Sanity listed on
+# 6 November 2026, from July 2023 on, did. A link anywhere else, which a
+# tampered answer could give to reach a host on the household's network, is
+# passed over unread.
+_FILES_URL = "https://cdn.sanity.io/files/8navd656/production-be/"
 _TERMS_URL = "https://www.frankenergie.be/nl/voorwaarden"
 _GAS_ASSETS = '*[_type=="sanity.fileAsset" && originalFilename match "*Gas*"'
 
@@ -207,7 +213,7 @@ def _assets(rows: list[dict[str, Any]], contract: _ContractDef) -> list[_Asset]:
     for row in rows:
         found = _file_month(" ".join(str(row.get("originalFilename", "")).split()))
         url = row.get("url")
-        if found is None or not isinstance(url, str) or not url.startswith("https://"):
+        if found is None or not isinstance(url, str) or not url.startswith(_FILES_URL):
             continue
         tier, month = found
         if tier not in contract.files:
