@@ -243,6 +243,19 @@ How the cross-check decides:
   While the sheet does not answer (a transient check), a Fluvius row
   printing no fee is transient too: its fee is the sheet's, which the
   integration bills once read.
+- It also reads this year's network sheet of every DSO a custom entry can
+  take its network from, through the integration's readers
+  (`read_network_sheets`): each Fluvius area's, Brugel's, and ORES's and
+  RESA's CWaPE grid valid today, one row each (`fluvius: <year> gas network
+  sheets`, `brugel: <year> gas network sheet`, `cwape: <year> gas network
+  grids`), a sheet not listed or that does not read failing, the network
+  transient. Then each sheet's T1, T2 and metering figures, on the month's
+  VAT, are measured against what the fleet prints for the DSO
+  (`against_sheets`), compared the way two cards are and only where the
+  fleet has a majority: a misread sheet stays within every bound, and only
+  the cards show it. One that disagrees fails as `<regulator>: <dso>
+  <figure> for <month> against the sheet`. On 6 November 2026 all eleven
+  read and agreed with the October cards.
 - A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
   and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
   T1) is a notice while the card prints that value: it is billed as

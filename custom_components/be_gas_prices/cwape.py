@@ -258,6 +258,24 @@ def parse_listing(text: str) -> list[_Document]:
     return documents
 
 
+async def read_grids(
+    session: aiohttp.ClientSession,
+    documents: Sequence[_Document],
+    year: int,
+    dso: str,
+) -> list[GridNetwork]:
+    """``dso``'s grids listed for ``year`` that read, read now. Raises on a
+    failed fetch, for the live check and the card archive to tell it from a
+    grid that does not read; ``KeyError`` for a key that is not a Walloon gas
+    operator."""
+    grids: list[GridNetwork] = []
+    for doc in grid_documents(documents, year, _OPERATORS[dso]):
+        grid = await read_grid(session, doc)
+        if grid is not None:
+            grids.append(grid)
+    return grids
+
+
 async def read_grid(session: aiohttp.ClientSession, doc: _Document) -> GridNetwork | None:
     """What one grid gives, or ``None`` where it does not read. Raises on a
     failed fetch or a file that is not a workbook."""

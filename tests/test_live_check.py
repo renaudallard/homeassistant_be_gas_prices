@@ -44,6 +44,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -60,6 +61,7 @@ from custom_components.be_gas_prices.providers.base import (
     DsoOverlay,
     DsoTier,
     ExtractorError,
+    SheetNetwork,
     SupplierExtractor,
     SupplierSnapshot,
     TaxOverlay,
@@ -500,6 +502,102 @@ def test_a_fluvius_fleet_printing_another_fee_than_the_sheet_fails() -> None:
     assert list(_failing(lc.consensus(cards))) == [
         "fluvius_kempen: metering for 2026-09 against the Fluvius sheet"
     ]
+
+
+def _network(t1_prop: float = 0.0227 / 1.06) -> SheetNetwork:
+    """A sheet giving, with 6% VAT, what ``_snapshot`` prints for Kempen."""
+    return SheetNetwork(
+        t1_fixed=16.0 / 1.06,
+        t1_proportional=t1_prop,
+        t2_fixed=86.0 / 1.06,
+        t2_proportional=0.0088 / 1.06,
+        metering_per_year=18.5 / 1.06,
+    )
+
+
+def test_a_sheet_giving_what_the_fleet_prints_passes() -> None:
+    """Each of a sheet's figures on the month's VAT is compared the way two
+    cards are, against what most voters print for the DSO."""
+    cards = [_card(_snapshot(sid)) for sid in ("alpha", "beta", "gamma")]
+    sheets = {"fluvius_kempen": ("fluvius", _network())}
+    assert lc.against_sheets(cards, sheets, date(2026, 9, 29)) == []
+
+
+def test_a_sheet_the_fleet_prints_otherwise_fails() -> None:
+    """A misread sheet stays within every bound: only the cards show it, and
+    a custom entry taking its network from the sheet is billed it."""
+    cards = [_card(_snapshot(sid)) for sid in ("alpha", "beta", "gamma")]
+    sheets = {"fluvius_kempen": ("fluvius", _network(t1_prop=0.0088 / 1.06))}
+    failing = _failing(lc.against_sheets(cards, sheets, date(2026, 9, 29)))
+    assert list(failing) == [
+        "fluvius: fluvius_kempen T1 proportional for 2026-09 against the sheet"
+    ]
+    assert failing[next(iter(failing))].startswith(
+        "the sheet gives 0.88 c EUR/kWh with VAT where alpha, beta, gamma print 2.27 c EUR/kWh"
+    )
+
+
+def test_a_fleet_without_a_majority_or_of_another_year_says_nothing_of_a_sheet() -> None:
+    """Two voters against two is no verdict on a card, nor on a sheet; and
+    the sheets are read for this year, so a month of another one is not
+    compared."""
+    split = [
+        _card(_snapshot("alpha")),
+        _card(_snapshot("beta")),
+        _card(_snapshot("gamma", t1_prop=0.03)),
+        _card(_snapshot("delta", t1_prop=0.03)),
+    ]
+    sheets = {"fluvius_kempen": ("fluvius", _network(t1_prop=0.0088 / 1.06))}
+    assert lc.against_sheets(split, sheets, date(2026, 9, 29)) == []
+    whole = [_card(_snapshot(sid)) for sid in ("alpha", "beta", "gamma")]
+    assert lc.against_sheets(whole, sheets, date(2027, 1, 2)) == []
+
+
+async def test_each_network_sheet_is_read_before_the_fleet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every Fluvius area, Brugel's sheet and ORES's and RESA's grid valid
+    today, through the readers that raise where the integration logs: one row
+    per regulator, a sheet not listed or that does not read failing, the
+    network transient."""
+    from custom_components.be_gas_prices import brugel, cwape
+
+    async def area(_session: Any, year: int, slug: str) -> Any:
+        if slug == "west":
+            raise ExtractorError("network error fetching the listing: timeout")
+        return None if slug == "kempen" else _network()
+
+    async def sheet(_session: Any, year: int) -> Any:
+        return _network()
+
+    async def listing(_session: Any) -> list[str]:
+        return ["listed"]
+
+    grid = SimpleNamespace(
+        valid_from=date(2026, 1, 1), valid_to=date(2026, 12, 31), network=_network()
+    )
+
+    async def grids(_session: Any, _docs: Any, year: int, dso: str) -> list[Any]:
+        return [grid] if dso == "ores" else []
+
+    monkeypatch.setattr(fluvius, "read_area_network", area)
+    monkeypatch.setattr(brugel, "read_network", sheet)
+    monkeypatch.setattr(cwape, "read_listing", listing)
+    monkeypatch.setattr(cwape, "read_grids", grids)
+    sheets, checks = await lc.read_network_sheets(None, date(2026, 9, 29), sleep=_no_sleep)
+    assert sorted(sheets) == sorted(
+        {*fluvius._AREA_SLUGS} - {"fluvius_kempen", "fluvius_west"} | {"sibelga", "ores"}
+    )
+    assert sheets["ores"] == ("cwape", grid.network)
+    rows = {c.label: (c.status, c.detail) for c in checks}
+    assert rows["fluvius: 2026 gas network sheets"][0] == "fail"
+    assert "fluvius_kempen: not listed or not read" in rows["fluvius: 2026 gas network sheets"][1]
+    assert (
+        "fluvius_west: ExtractorError: network error" in rows["fluvius: 2026 gas network sheets"][1]
+    )
+    assert rows["brugel: 2026 gas network sheet"] == ("ok", "")
+    assert rows["cwape: 2026 gas network grids"][0] == "fail"
+    assert "resa: no grid listed or read" in rows["cwape: 2026 gas network grids"][1]
 
 
 @pytest.mark.parametrize(
@@ -1201,7 +1299,7 @@ async def test_a_supplier_s_own_page_is_its_list_of_products(
 
 
 def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The law, the tariff and the sheet read, without the network."""
+    """The law, the tariff and the sheets read, without the network."""
 
     async def check_excise_law(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: gas excise law", "ok")
@@ -1211,6 +1309,9 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
 
     async def check_fluvius_sheet(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("fluvius: 2026 gas tariff sheet", "ok")
+
+    async def read_network_sheets(*_args: Any, **_kwargs: Any) -> Any:
+        return {}, [lc.Check("cwape: 2026 gas network grids", "ok")]
 
     def check_protected_excise(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: protected excise for 2026-10", "ok")
@@ -1231,6 +1332,7 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lc, "check_protected_excise", check_protected_excise)
     monkeypatch.setattr(lc, "check_law_against_tariff", check_law_against_tariff)
     monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
+    monkeypatch.setattr(lc, "read_network_sheets", read_network_sheets)
 
 
 def test_main_writes_the_fingerprint_and_returns_the_code(
@@ -1250,9 +1352,11 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     # Without the archive's checkout there is no VAT table to read.
     out = capsys.readouterr().out
-    assert out.startswith("# Live check: 6 pass, 1 fail, 0 transient, 1 notices")
+    assert out.startswith("# Live check: 7 pass, 1 fail, 0 transient, 1 notices")
     assert "- [x] frank/catalog: no new products" in out
     assert fleets[-1]["sheet_unread"] is False
+    # The network sheets read before the fleet are what it is held against.
+    assert fleets[-1]["sheets"] == {}
 
     async def sheet_down(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("fluvius: 2026 gas tariff sheet", "transient", "network error")

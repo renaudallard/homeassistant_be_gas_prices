@@ -55,7 +55,12 @@ says nothing about the card, and checks what came back:
     the ``--texts`` checkout, 6 % without one);
   - the law and FPS Finance's tariff agreeing on the household excise and
     the energy contribution in every month around this one that both give,
-    since the fleet is measured against the tariff wherever it lists a month.
+    since the fleet is measured against the tariff wherever it lists a month;
+  - this year's network sheet of every DSO a custom entry can take its
+    network from (Fluvius's area sheets, Brugel's, the CWaPE's grids for ORES
+    and RESA) read as the integration reads it, and each of its T1, T2 and
+    metering figures on the month's VAT measured against what the fleet
+    prints for the DSO.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -103,8 +108,16 @@ import card_finder  # type: ignore[import-not-found]  # noqa: E402
 from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
 from homeassistant.util import dt as dt_util  # noqa: E402
 
-from custom_components.be_gas_prices import excise_law, fluvius, tarbel, vat_rates  # noqa: E402
+from custom_components.be_gas_prices import (  # noqa: E402
+    brugel,
+    cwape,
+    excise_law,
+    fluvius,
+    tarbel,
+    vat_rates,
+)
 from custom_components.be_gas_prices.const import (  # noqa: E402
+    BRUSSELS_DSO_KEYS,
     EXCISE_LAW_URL,
     FLUVIUS_KEYS,
     REGION_BRUSSELS,
@@ -131,6 +144,7 @@ from custom_components.be_gas_prices.providers._resolve import (  # noqa: E402
 )
 from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     CardNotReadableError,
+    SheetNetwork,
     SupplierExtractor,
     SupplierSnapshot,
 )
@@ -788,20 +802,7 @@ def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterato
     first = group[0]
     unit = first.unit
     what = f"{first.scope} {first.name} for {first.month}"
-    values = sorted({f.value for f in group})
-    support = {v: {f.voter for f in group if agree(f.value, v, unit)} for v in values}
-    top = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
-    cluster = [v for v in values if agree(v, top, unit)]
-    printed_as = {
-        v: {
-            f.voter
-            for f in group
-            if f.value == v or (_step(f.value, unit) > _step(v, unit) and agree(f.value, v, unit))
-        }
-        for v in cluster
-    }
-    shared = [v for v in cluster if len({f.voter for f in group if f.value == v}) >= 2]
-    best = max(shared or cluster, key=lambda v: (len(printed_as[v]), -_step(v, unit), v))
+    values, support, cluster, best = _fleet_figure(group)
     billed = _billed(first)
     if (
         billed is not None
@@ -833,18 +834,11 @@ def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterato
                     f"{shown(billed[0], unit)}; the others print fewer digits",
                 )
     rivals = [v for v in values if not agree(v, best, unit)]
-    # Finer figures the consensus agrees with but that disagree with each
-    # other: printed to fewer digits, it cannot tell which one is right.
-    finer = [v for v in values if _step(v, unit) < _step(best, unit) and agree(v, best, unit)]
-    split = any(not agree(a, b, unit) for a, b in itertools.combinations(finer, 2))
+    split = _split(values, best, unit)
     if not rivals and not split:
         return
     agreeing = sorted({f.supplier for f in group if agree(f.value, best, unit)})
-    if (
-        split
-        or len(support[best]) < 2
-        or any(len(support[v]) >= len(support[best]) for v in rivals)
-    ):
+    if _no_majority(values, support, best, unit):
         printed = "; ".join(
             f"{shown(v, unit)} on {', '.join(sorted({f.supplier for f in group if f.value == v}))}"
             for v in values
@@ -878,6 +872,50 @@ def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterato
         yield Check(f"{supplier}: {what}", status, detail)
 
 
+def _fleet_figure(
+    group: list[Figure],
+) -> tuple[list[float], dict[float, set[str]], list[float], float]:
+    """The figures ``group`` prints, the voters agreeing with each, the ones
+    agreeing with the most voters and, among them, the one the fleet prints
+    (:func:`_departures` says how it is settled)."""
+    unit = group[0].unit
+    values = sorted({f.value for f in group})
+    support = {v: {f.voter for f in group if agree(f.value, v, unit)} for v in values}
+    top = max(values, key=lambda v: (len(support[v]), -_step(v, unit), v))
+    cluster = [v for v in values if agree(v, top, unit)]
+    printed_as = {
+        v: {
+            f.voter
+            for f in group
+            if f.value == v or (_step(f.value, unit) > _step(v, unit) and agree(f.value, v, unit))
+        }
+        for v in cluster
+    }
+    shared = [v for v in cluster if len({f.voter for f in group if f.value == v}) >= 2]
+    best = max(shared or cluster, key=lambda v: (len(printed_as[v]), -_step(v, unit), v))
+    return values, support, cluster, best
+
+
+def _split(values: list[float], best: float, unit: str) -> bool:
+    """Whether finer figures the consensus agrees with disagree with each
+    other: printed to fewer digits, it cannot tell which one is right."""
+    finer = [v for v in values if _step(v, unit) < _step(best, unit) and agree(v, best, unit)]
+    return any(not agree(a, b, unit) for a, b in itertools.combinations(finer, 2))
+
+
+def _no_majority(
+    values: list[float], support: dict[float, set[str]], best: float, unit: str
+) -> bool:
+    """Whether the fleet's figure is no verdict: split, printed by fewer
+    than two voters, or matched by as many on another figure."""
+    rivals = [v for v in values if not agree(v, best, unit)]
+    return (
+        _split(values, best, unit)
+        or len(support[best]) < 2
+        or any(len(support[v]) >= len(support[best]) for v in rivals)
+    )
+
+
 def consensus(
     cards: Iterable[Card], today: date | None = None, *, sheet_unread: bool = False
 ) -> list[Check]:
@@ -903,8 +941,10 @@ async def check_fleet(
     *,
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
     sheet_unread: bool = False,
+    sheets: Mapping[str, tuple[str, SheetNetwork]] | None = None,
 ) -> list[Check]:
-    """Every check of the run, in report order.
+    """Every check of the run, in report order, the fleet held against the
+    network ``sheets`` read before it (:func:`read_network_sheets`).
 
     The suppliers are checked side by side and each one's cards in turn,
     which keeps the load on any one site what an installation puts on it.
@@ -924,8 +964,9 @@ async def check_fleet(
             )
         )
     checks = [check for part, _cards in parts for check in part]
-    fleet = (card for _part, cards in parts for card in cards)
+    fleet = [card for _part, cards in parts for card in cards]
     checks.extend(consensus(fleet, today, sheet_unread=sheet_unread))
+    checks.extend(against_sheets(fleet, sheets or {}, today))
     return checks
 
 
@@ -1104,6 +1145,123 @@ async def check_fluvius_sheet(
     return Check(label, "ok")
 
 
+# The figures of a DSO's network a sheet gives (providers/base.SheetNetwork),
+# by the name the fleet's figures carry, and their unit.
+_SHEET_FIGURES: dict[str, tuple[str, str]] = {
+    "T1 fixed": ("t1_fixed", "EUR/year"),
+    "T1 proportional": ("t1_proportional", "EUR/kWh"),
+    "T2 fixed": ("t2_fixed", "EUR/year"),
+    "T2 proportional": ("t2_proportional", "EUR/kWh"),
+    "metering": ("metering_per_year", "EUR/year"),
+}
+
+
+async def read_network_sheets(
+    session: aiohttp.ClientSession,
+    today: date,
+    *,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> tuple[dict[str, tuple[str, SheetNetwork]], list[Check]]:
+    """This year's sheet of every DSO, as a custom entry taking its network
+    from it reads it: each Fluvius area's, Brugel's and ORES's and RESA's
+    CWaPE grid valid today, held by DSO key with the regulator's name, and a
+    row per regulator. A sheet not listed or that does not read fails, since
+    such an entry then bills the figures typed into it; the network is
+    transient."""
+    year = today.year
+    sheets: dict[str, tuple[str, SheetNetwork]] = {}
+    problems: dict[str, list[Check]] = {"fluvius": [], "brugel": [], "cwape": []}
+
+    async def read(regulator: str, dso: str, fetch: Callable[[], Awaitable[Any]]) -> Any:
+        try:
+            return await fetch_with_retry(fetch, sleep=sleep)
+        except Exception as err:  # reported like a card
+            problems[regulator].append(_failure(dso, err))
+            return None
+
+    for dso, area in sorted(fluvius._AREA_SLUGS.items()):
+        terms = await read(
+            "fluvius", dso, functools.partial(fluvius.read_area_network, session, year, area)
+        )
+        if terms is not None:
+            sheets[dso] = ("fluvius", terms)
+        elif not any(check.label == dso for check in problems["fluvius"]):
+            problems["fluvius"].append(Check(dso, "fail", "not listed or not read"))
+    brussels = await read(
+        "brugel", "sibelga", functools.partial(brugel.read_network, session, year)
+    )
+    for dso in sorted(BRUSSELS_DSO_KEYS):
+        if brussels is not None:
+            sheets[dso] = ("brugel", brussels)
+        elif not problems["brugel"]:
+            problems["brugel"].append(Check(dso, "fail", "does not read"))
+    documents = await read("cwape", "listing", functools.partial(cwape.read_listing, session))
+    for dso in sorted(cwape._OPERATORS) if documents is not None else ():
+        grids = await read(
+            "cwape", dso, functools.partial(cwape.read_grids, session, documents, year, dso)
+        )
+        grid = None if grids is None else cwape.valid_on(grids, today)
+        if grid is not None:
+            sheets[dso] = ("cwape", grid.network)
+        elif grids is not None:
+            problems["cwape"].append(Check(dso, "fail", "no grid listed or read"))
+    labels = {
+        "fluvius": f"fluvius: {year} gas network sheets",
+        "brugel": f"brugel: {year} gas network sheet",
+        "cwape": f"cwape: {year} gas network grids",
+    }
+    checks: list[Check] = []
+    for regulator, found in problems.items():
+        failed = [c for c in found if c.status == "fail"]
+        status: Status = "fail" if failed else "transient" if found else "ok"
+        detail = "; ".join(f"{c.label}: {c.detail}" for c in found)
+        if failed:
+            detail += "; a custom entry taking its network from it bills the figures typed"
+        checks.append(Check(labels[regulator], status, detail))
+    return sheets, checks
+
+
+def against_sheets(
+    cards: Iterable[Card],
+    sheets: Mapping[str, tuple[str, SheetNetwork]],
+    today: date,
+) -> list[Check]:
+    """Every figure of a sheet the fleet's cards of this year print
+    otherwise, as a custom entry taking its network from the sheet is billed
+    it: on the month's VAT, compared the way two cards are, against what most
+    voters print. A figure the fleet has no majority on, or that its cards do
+    not print, says nothing of the sheet."""
+    groups: dict[tuple[str, str, str], list[Figure]] = {}
+    for card in cards:
+        for figure in figures(card):
+            if figure.scope in sheets and figure.name in _SHEET_FIGURES:
+                groups.setdefault((figure.month, figure.scope, figure.name), []).append(figure)
+    checks: list[Check] = []
+    for (month, dso, name), group in sorted(groups.items()):
+        parsed = label_month(month)
+        if parsed is None or parsed[0] != today.year:
+            continue
+        regulator, network = sheets[dso]
+        attribute, unit = _SHEET_FIGURES[name]
+        values, support, _cluster, best = _fleet_figure(group)
+        if _no_majority(values, support, best, unit):
+            continue
+        billed = getattr(network, attribute) * (1 + residential_vat(date(*parsed, 1)))
+        if agree(best, billed, unit):
+            continue
+        checks.append(
+            Check(
+                f"{regulator}: {dso} {name} for {month} against the sheet",
+                "fail",
+                f"the sheet gives {shown(billed, unit)} with VAT where "
+                f"{', '.join(sorted({f.supplier for f in group if agree(f.value, best, unit)}))} "
+                f"print {shown(best, unit)}; a custom entry taking its network from the sheet "
+                "is billed the sheet's",
+            )
+        )
+    return checks
+
+
 def exit_code(checks: Iterable[Check]) -> int:
     statuses = {check.status for check in checks}
     if "fail" in statuses:
@@ -1190,8 +1348,14 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             checks.append(check_vat_table(texts))
             sheet = await check_fluvius_sheet(session, today)
             checks.append(sheet)
+            sheets, read = await read_network_sheets(session, today)
+            checks += read
             checks += await check_fleet(
-                session, all_extractors(), today, sheet_unread=sheet.status == "transient"
+                session,
+                all_extractors(),
+                today,
+                sheet_unread=sheet.status == "transient",
+                sheets=sheets,
             )
             checks += await check_catalogs(session, all_extractors())
             # Report only, last: where a covered card failed to fetch or is

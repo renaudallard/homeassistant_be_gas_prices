@@ -141,6 +141,10 @@ in 2026), so a row a sheet stops printing is billed as gone. With 6% VAT each
 gives what every card of October 2026 prints for its DSO, within the cards'
 rounding: eleven DSOs, five figures each.
 
+The live check reads every sheet the same way each day and holds its figures
+against what the cards print for the DSO (see
+[ci-and-testing.md](ci-and-testing.md)).
+
 - **Flanders** (`fluvius.py`, `parse_area_network`): the entry's own area's
   sheet off the listing above, `fluvius-<area>-distributienettarief-afname-aardgas-0101<year>-3112<year>`;
   the "Vaste term" and "Proportionele term" of the T1 and T2 columns, every
