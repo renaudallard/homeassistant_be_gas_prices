@@ -78,8 +78,8 @@ _RENDER_CODE = (
 # and leaves every other card's text alone.
 OCR_ENGINE = "ocr-price-cards"
 # What the engine reads a card with: pypdfium2 renders the pages, numpy
-# matches the glyphs and pdfplumber lays out the words. They are installed
-# beside it unpinned, so one of them moving is the engine moving.
+# matches the glyphs and pdfplumber lays out the words. They are pinned
+# beside it in the walk, so moving one of the pins is the engine moving.
 _ENGINE_LIBRARIES = ("pypdfium2", "numpy", "pdfplumber")
 
 
@@ -93,8 +93,9 @@ def _version(name: str) -> str:
 def engine_version() -> str:
     """The OCR engine's version, with the commit pip recorded when it was
     installed from git, and the versions of the libraries it reads with: it
-    is installed from its main branch, where a new glyph library does not
-    move the version number. ``absent`` when it is not installed."""
+    is installed from a pinned commit, and a new glyph library comes as a
+    new commit, not a new version number. ``absent`` when it is not
+    installed."""
     version = _version(OCR_ENGINE)
     if version == "absent":
         return version

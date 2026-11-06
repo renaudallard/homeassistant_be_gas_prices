@@ -392,7 +392,8 @@ A card the text readers refuse as page images is read with the OCR engine,
 [ocr_price_cards](https://github.com/renaudallard/ocr_price_cards), from its
 trusted text: a line on which it refused a mark is left out, so a mandatory
 figure it could not read fails the parse rather than being guessed. The
-engine is installed from its main branch; its version and git commit, with
+engine is installed from a pinned commit of its main branch, with numpy and
+pypdfium2 pinned beside it; its version and git commit, with
 the versions of the pypdfium2, numpy and pdfplumber it reads with, are
 recorded on each source it read, and a stored reading is served again only
 to the same engine, so a new glyph library reads those cards again and no
@@ -472,6 +473,18 @@ can quote one.
 | `live_check.yml` | daily, and on pull requests that touch a provider, the readers of the law, of FPS Finance's tariff or of the card archive's tables, or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and reads the report the check hands over |
 | `archive_cards.yml` | daily at 05:53 UTC, before the live check | seven jobs, so no token shares a runner with third-party code, each passing what it made to the next as an artifact: `walk`, with no token, on Python 3.14 with the OCR engine, clones be_price_cards without credentials and archives into `gas/`; `keep` uploads the PDFs as `gas-<YYYY-MM>` releases with `BE_GAS_CARDS` and prunes those past 36 months, taking only a folder named `gas-YYYY-MM` and a file named by its SHA-256, the names the walk writes, and skipping anything else the artifact holds (`test_only_the_cards_the_walk_names_are_uploaded`); `index`, with no token, whenever the walk succeeded even if an upload failed, rewrites the sheets and writes the root and `gas/` READMEs; `push` lays them over a fresh clone and pushes with `BE_GAS_CARDS` through gh's credential helper (`gh auth git-credential`), on no command line and in no file, and a rebase retry; `token` warns 14 days before the token expires; `ocr` files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`); `report` files an issue when a job failed. Only `ocr`, `token` and `report` get a `github.token` that writes issues |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
+
+Every action the workflows use is pinned to a commit, with the release or
+the branch it was taken from in a comment beside it, and so is the OCR
+engine the walk installs from git, with the numpy and pypdfium2 it reads
+with: a tag or a branch is whatever its repository makes it next, and these
+run beside the cards token and on the cards installations bill on
+(`test_every_action_and_git_install_names_a_commit`). To move one, look up
+the commit the new tag names (`gh api repos/OWNER/REPO/commits/TAG --jq
+.sha`) and change the hash and its comment together. The pins stop at the
+action: hacs runs the `ghcr.io/hacs/action:main` image and hassfest the
+untagged `ghcr.io/home-assistant/hassfest`, which their repositories move,
+so both jobs keep a read-only token.
 
 ### What the repositories need
 

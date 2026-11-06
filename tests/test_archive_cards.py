@@ -1130,14 +1130,13 @@ def _archive_jobs() -> dict[str, Any]:
 
 @pytest.mark.parametrize("token", ["secrets.BE_GAS_CARDS", "github.token"])
 def test_a_token_never_shares_a_job_with_third_party_code(token: str) -> None:
-    """The walk, the OCR engine installed from its main branch among it, ran
-    in the one job that later uploaded the cards and pushed them with the
-    token that writes the cards of all three integrations, and filed issues
-    with github.token: a process, a git hook, a git config entry or a
-    GITHUB_ENV line the walk left would have run with either. A job that
-    installs or runs Python must not see either token, in its env or in a
-    checkout credential; a job that sees one runs only gh, git and jq on
-    files handed over as artifacts."""
+    """The walk, the OCR engine among it, ran in the one job that later
+    uploaded the cards and pushed them with the token that writes the cards
+    of all three integrations, and filed issues with github.token: a
+    process, a git hook, a git config entry or a GITHUB_ENV line the walk
+    left would have run with either. A job that installs or runs Python must
+    not see either token, in its env or in a checkout credential; a job that
+    sees one runs only gh, git and jq on files handed over as artifacts."""
     holders = set()
     for name, job in _archive_jobs().items():
         assert token not in json.dumps(job.get("env", {})), name
@@ -1651,8 +1650,8 @@ async def test_a_reader_upgrade_reaches_a_month_no_longer_downloaded(
 def test_the_engine_moves_with_the_libraries_it_reads_with(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """numpy and pypdfium2 are installed unpinned beside the engine, so a
-    new release of either reads the cards again like a new engine."""
+    """numpy and pypdfium2 are pinned beside the engine, so moving either pin
+    reads the cards again like a new engine."""
 
     class _Installed:
         def read_text(self, name: str) -> str:
