@@ -28,19 +28,23 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import pkgutil
 import re
+import socket
 import threading
-from collections.abc import Awaitable, Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
+from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
+from ssl import SSLContext
 from typing import Any
 
 import aiohttp
 import pypdf
+from yarl import URL
 
 from ._parse import (
     to_float,
@@ -229,24 +233,152 @@ async def read_text_capped(resp: aiohttp.ClientResponse, url: str) -> str:
         return payload.decode("utf-8", errors="replace")
 
 
-def guard_redirect(url: str, resp: aiohttp.ClientResponse) -> None:
-    """Refuse an answer a redirect carried off https.
+# Redirects followed in a row at most. On 6 November 2026 none of the 200
+# addresses the integration reads took more than one: TotalEnergies and
+# energie.be send their index publications to their storage, OCTA+ its short
+# link to the file, and a few sites their root to a language folder.
+MAX_REDIRECTS = 5
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
-    The extractors check the links they read off a page, but aiohttp
-    follows a redirect wherever it points, plain http included, and from
-    there to an address only the Home Assistant host can reach, whose
-    first bytes would then land in last_error. Over https such a host would
-    also need a certificate the client trusts. The redirect is not held to
-    the requested site: TotalEnergies and energie.be serve their index
-    publications from another site's storage.
+# NAT64's well-known prefix: a translator on the host's network carries an
+# address under it to the IPv4 address in its last 32 bits.
+_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
+
+
+def _ip_literal(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """The address ``host`` spells, or None for a name.
+
+    Every spelling a resolver reads as an address counts: getaddrinfo reads
+    "127.1", "0x7f000001", "2130706433" and "0177.0.0.1" as 127.0.0.1, as
+    inet_aton does, and a trailing dot or an IPv6 zone changes nothing.
     """
-    if not resp.history or not url.startswith("https://"):
-        return
-    if any(hop.url.scheme != "https" for hop in (*resp.history, resp)):
-        # The target can be a LAN appliance or a captive portal, so it goes
-        # to the debug log only, not to last_error or the diagnostics.
-        _LOGGER.debug("%s redirected to %s", url, resp.url)
-        raise ExtractorError(f"{url} redirected off https; refusing to read the answer")
+    bare = host.rstrip(".").partition("%")[0]
+    try:
+        return ipaddress.ip_address(bare)
+    except ValueError:
+        pass
+    try:
+        return ipaddress.IPv4Address(socket.inet_aton(bare))
+    except OSError:
+        return None
+
+
+def _is_internal(host: str) -> bool:
+    """Whether ``host`` is the Home Assistant host itself or an address only
+    it can reach: a private, loopback, link-local, shared, reserved,
+    multicast or unspecified one, an IPv4 one written as IPv6 included.
+
+    Any other name is taken as public: one that resolves to such an address
+    is left to TLS, since a device on the household's network has no
+    certificate for a public name that the client trusts.
+    """
+    name = host.rstrip(".").lower()
+    if name == "localhost" or name.endswith(".localhost"):
+        return True
+    address = _ip_literal(name)
+    if address is None:
+        return False
+    if isinstance(address, ipaddress.IPv6Address):
+        if address.ipv4_mapped is not None:
+            # A dual-stack socket connects to ::ffff:a.b.c.d over IPv4.
+            address = address.ipv4_mapped
+        elif address in _NAT64:
+            address = ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+        elif address.is_site_local:
+            return True
+    # is_global is false for the private, loopback, link-local and
+    # unspecified ranges and for 100.64.0.0/10, which carriers and Tailscale
+    # hand out, but true for multicast and IPv6's reserved ranges.
+    return not address.is_global or address.is_multicast or address.is_reserved
+
+
+def _refusal(url: URL) -> str | None:
+    """Why ``url`` is not requested, or None when it may be."""
+    if url.scheme != "https" or not url.raw_host:
+        return "not an https address"
+    if _is_internal(url.raw_host):
+        return "not a public address"
+    return None
+
+
+def _redirect_target(url: str, answer: URL, location: str) -> URL:
+    """Where a redirect from ``answer``, on the way from ``url``, points,
+    once it is an address the integration requests.
+
+    The target can be a LAN appliance or a captive portal, so it goes to the
+    debug log only, not to last_error or the diagnostics.
+    """
+    try:
+        target: URL | None = answer.join(URL(location))
+    except ValueError:
+        target = None
+    reason = "not a valid address" if target is None else _refusal(target)
+    if target is None or reason is not None:
+        _LOGGER.debug("%s redirected to %s", url, location)
+        raise ExtractorError(f"{url} redirected; refusing to follow it: the target is {reason}")
+    return target
+
+
+@asynccontextmanager
+async def checked_request(
+    session: aiohttp.ClientSession,
+    url: str,
+    *,
+    timeout: float,
+    head: bool = False,
+    params: Mapping[str, str] | None = None,
+    headers: Mapping[str, str] | None = None,
+    ssl: SSLContext | bool = True,
+) -> AsyncIterator[aiohttp.ClientResponse]:
+    """GET ``url``, or HEAD it, and hand over the answer once it is not a
+    redirect. Every fetch the integration makes goes through here.
+
+    aiohttp follows a redirect before its caller sees the answer, so the
+    request to wherever it pointed, an address only the Home Assistant host
+    can reach included, with the path and query the redirect wrote, was on
+    its way before a check on the answer could refuse it. Redirects are
+    followed here instead, at most :data:`MAX_REDIRECTS` in a row, and each
+    target is held to https and to a public host before it is requested. A
+    redirect may leave the site: energie.be's document key answers with its
+    storage on blob.core.windows.net, TotalEnergies' index publication with
+    its CDN.
+
+    ``timeout`` bounds the whole exchange, every redirect and the read of
+    the body included, as aiohttp's total timeout did. ``params`` goes with
+    the first request only, and the User-Agent with every one.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    send = session.head if head else session.get
+    target: str | URL = url
+    redirects: list[aiohttp.ClientResponse] = []
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            # A total of zero would be no timeout at all to aiohttp.
+            raise TimeoutError
+        async with send(
+            target,
+            params=None if redirects else params,
+            headers={"User-Agent": USER_AGENT, **(headers or {})},
+            timeout=aiohttp.ClientTimeout(total=remaining),
+            allow_redirects=False,
+            ssl=ssl,
+        ) as resp:
+            location = (
+                resp.headers.get(aiohttp.hdrs.LOCATION)
+                if resp.status in _REDIRECT_STATUSES
+                else None
+            )
+            if not location:
+                # No redirect, or one with no Location or an empty one,
+                # which aiohttp also hands over as the answer.
+                yield resp
+                return
+            redirects.append(resp)
+            if len(redirects) > MAX_REDIRECTS:
+                raise aiohttp.TooManyRedirects(redirects[0].request_info, tuple(redirects))
+            target = _redirect_target(url, resp.url, location)
 
 
 def strip_pdf_prefix(payload: bytes) -> bytes:
@@ -305,12 +437,7 @@ async def fetch_bytes(session: aiohttp.ClientSession, url: str, *, timeout: int 
     :func:`is_transient_fetch_error` keys on it to decide whether to retry.
     """
     try:
-        async with session.get(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            timeout=aiohttp.ClientTimeout(total=timeout),
-        ) as resp:
-            guard_redirect(url, resp)
+        async with checked_request(session, url, timeout=timeout) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
             return await read_capped(resp, url)
@@ -426,12 +553,7 @@ async def head_freshness_key(
     keeps a stable ETag passes ``prefer`` the other way round.
     """
     try:
-        async with session.head(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            timeout=aiohttp.ClientTimeout(total=10),
-            allow_redirects=True,
-        ) as resp:
+        async with checked_request(session, url, timeout=10, head=True) as resp:
             if resp.status >= 400:
                 return None
             for key in prefer:
@@ -439,11 +561,12 @@ async def head_freshness_key(
                 if value:
                     return value
             return None
-    except (aiohttp.ClientError, TimeoutError):
+    except (aiohttp.ClientError, TimeoutError, ExtractorError):
         # aiohttp's ClientTimeout fires asyncio.TimeoutError (==
         # builtins.TimeoutError on 3.11+), which is NOT a ClientError;
         # without this a slow HEAD would break the documented
-        # None-on-failure contract and bubble out of the probe path.
+        # None-on-failure contract and bubble out of the probe path. A
+        # redirect checked_request refuses is no signal either.
         return None
 
 
@@ -460,13 +583,7 @@ async def head_or_raise(
     answers None to both.
     """
     try:
-        async with session.head(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            timeout=aiohttp.ClientTimeout(total=timeout),
-            allow_redirects=True,
-        ) as resp:
-            guard_redirect(url, resp)
+        async with checked_request(session, url, timeout=timeout, head=True) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
             return resp.headers.get("Last-Modified")
@@ -591,13 +708,7 @@ async def fetch_text(
     if memo is not None and memo_key in memo:
         return memo[memo_key]
     try:
-        async with session.get(
-            url,
-            params=params,
-            headers={"User-Agent": USER_AGENT},
-            timeout=aiohttp.ClientTimeout(total=timeout),
-        ) as resp:
-            guard_redirect(url, resp)
+        async with checked_request(session, url, timeout=timeout, params=params) as resp:
             if resp.status >= 400:
                 raise ExtractorError(f"HTTP {resp.status} fetching {url}")
             body = await read_text_capped(resp, url)

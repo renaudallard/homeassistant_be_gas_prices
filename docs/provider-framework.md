@@ -73,12 +73,28 @@ card the parser refuses and the held card keeps pricing.
 
 | Module | Helpers |
 | --- | --- |
-| `_pdf.py` | HTTP and PDF: `fetch_text`, `fetch_pdf_text` (pypdf), `fetch_pdf_text_layout` (pdfplumber), `fetch_pdf_rendered` for an extractor's own render, `render_pdf` for bytes obtained otherwise, `render_in_thread`, which runs a render in a worker thread with what pypdf logs about the card (an undecodable ToUnicode entry on energie.be's November 2026 cards, its fontTools advice on Engie's) sent to the debug log, and in that thread only, so another integration's pypdf reads log as before, `parse_json`, `MONTH_NAMES` and `NL_MONTHS`, the transient-error taxonomy, `read_capped` and `read_text_capped`, which hold every body to 64 MiB as it streams, `guard_redirect`, which refuses an answer a redirect carried off https (not off the site: TotalEnergies and energie.be serve their index publications from another host), the per-walk text memo and the render hook the card archive listens on. |
+| `_pdf.py` | HTTP and PDF: `fetch_text`, `fetch_pdf_text` (pypdf), `fetch_pdf_text_layout` (pdfplumber), `fetch_pdf_rendered` for an extractor's own render, `render_pdf` for bytes obtained otherwise, `render_in_thread`, which runs a render in a worker thread with what pypdf logs about the card (an undecodable ToUnicode entry on energie.be's November 2026 cards, its fontTools advice on Engie's) sent to the debug log, and in that thread only, so another integration's pypdf reads log as before, `parse_json`, `MONTH_NAMES` and `NL_MONTHS`, the transient-error taxonomy, `checked_request`, which every request goes through, and the body readers `read_capped` and `read_text_capped` (see Fetching below), the per-walk text memo and the render hook the card archive listens on. |
 | `_pdf_render.py` | Turning a card's bytes into text: `extract_pdf_text` (pypdf), `extract_pdf_text_layout` (pdfplumber), `extract_pdf_text_rows` (pdfplumber's words in rows, for OCTA+'s older template), `pdfplumber_text` for an extractor's own render, `word_rows` and `word_centre` for one working from pdfplumber's words, and the text-layer check (`CardNotReadableError`). The card archive stamps every stored text with a digest of this module (`scripts/card_texts.py`), so only a change here renders the kept cards again. |
 | `_parse.py` | `to_float` (comma or dot decimals, thousands dots beside a comma), `split_row` and `table_row` (a table row by fuzzy label, cells read from the right so a label like "TECTEO - RESA" keeps its dash), `fold_accents`, `month_date` (the month a card names, an `ExtractorError` when the figures are no month, such as a year 0000), `require_contract`, `html_rows` and `html_cells` for an HTML table. |
 | `_network.py` | `read_dsos(text, labels, columns, ...)` with the column roles named in the card's header order, collapsing ORES's five sub-area rows (which must agree) and dropping a tier that is not degressive with those above it (a figure in the wrong cell), `require_region`, `signing_dsos` with `FLUVIUS_MERGED` for a card from before a supplier's current table layout (its energy leg alone, no DSO row), `excise_bands`, `osp_table` for the Brussels levy amounts in row order. Shared label maps for the Fluvius and ORES rows. |
 | `_validity.py` | `end_of_month`; for `fetch_for_month`, `future_month` (Home Assistant's clock) and `month_card`, which wraps the month's load: a transient failure raises, any other failure or a card naming another month is None. |
 | `_resolve.py` | Per household and delivery month: `tier_for`, `effective_excise`, `resolve_for_delivery`, `brussels_levy`. |
+
+## Fetching (providers/_pdf.py)
+
+Every request goes through `checked_request`, the card archive's and
+Atrias's included. It follows redirects itself, five in a row at most
+(`MAX_REDIRECTS`: none of the 200 addresses read on 6 November 2026 took
+more than one), and asks a redirect's target only over https and on a public
+host. An IP literal in a private, loopback, link-local, shared, reserved or
+multicast range, an IPv4 address written as IPv6, or a localhost name is
+refused before any connection is made, and the target goes to the debug log
+only. A target may be on another site: TotalEnergies and energie.be serve
+their index publications from another host. The timeout covers the whole
+exchange, redirects included.
+
+`read_capped` and `read_text_capped` hold every body to 64 MiB as it
+streams.
 
 ## A card that moved (providers/_moved.py)
 

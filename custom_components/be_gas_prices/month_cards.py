@@ -46,7 +46,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import CARD_ARCHIVE_URL
 from .providers._pdf import (
-    USER_AGENT,
+    checked_request,
     error_text,
     guarded,
     is_transient_fetch_error,
@@ -108,11 +108,7 @@ async def fetch_archived_row(
     card with its OCR engine, or None where it holds none."""
     url = f"{CARD_ARCHIVE_URL}/{supplier}/{contract}/{region}/{month}.json"
     try:
-        async with session.get(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            timeout=aiohttp.ClientTimeout(total=20),
-        ) as resp:
+        async with checked_request(session, url, timeout=20) as resp:
             if resp.status == 404:
                 return None
             if resp.status >= 400:

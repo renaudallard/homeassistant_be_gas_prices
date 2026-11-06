@@ -27,23 +27,29 @@
 
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import aiohttp
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
-from yarl import URL
 
+from custom_components.be_gas_prices import month_cards
 from custom_components.be_gas_prices.providers import _pdf
 from custom_components.be_gas_prices.providers._pdf import (
+    fetch_bytes,
     fetch_pdf_bytes,
     fetch_text,
+    head_freshness_key,
     head_or_raise,
     is_missing_card_error,
     is_transient_fetch_error,
 )
 from custom_components.be_gas_prices.providers.base import ExtractorError
+from tests.local_https import device, https_site
 
 
 async def test_a_page_in_another_charset_is_read_not_raised(socket_enabled: None) -> None:
@@ -123,53 +129,156 @@ async def test_a_body_under_the_cap_is_read_whole(socket_enabled: None) -> None:
     assert payload.startswith(b"%PDF-1.7") and len(payload) == 9 + 8 * 1024
 
 
-class _Hop:
-    def __init__(self, url: str) -> None:
-        self.url = URL(url)
+_ADMIN = "/cgi-bin/reboot?confirm=1"
+_CARD = b"%PDF-1.7\n"
 
 
-class _Redirected:
-    """An answer that came through the redirects ``hops`` name."""
+def _redirecting(target: str, status: int = 302) -> web.Application:
+    """A site whose /card, and every address under /rows/, redirects to
+    ``target``, where "{port}" is the site's own port."""
 
-    status = 200
-    content_length = None
-    charset = None
+    async def card(request: web.Request) -> web.Response:
+        port = request.url.port
+        return web.Response(status=status, headers={"Location": target.format(port=port)})
 
-    def __init__(self, *hops: str) -> None:
-        self.history = tuple(_Hop(hop) for hop in hops[:-1])
-        self.url = URL(hops[-1])
-
-    async def __aenter__(self) -> _Redirected:
-        return self
-
-    async def __aexit__(self, *_exc: object) -> None:
-        return None
+    app = web.Application()
+    app.router.add_route("*", "/card", card)
+    app.router.add_route("*", "/rows/{tail:.*}", card)
+    return app
 
 
-class _Session:
-    def __init__(self, resp: _Redirected) -> None:
-        self.resp = resp
-
-    def get(self, url: str, **_kw: Any) -> _Redirected:
-        return self.resp
-
-    head = get
+async def _archived_row(session: aiohttp.ClientSession, url: str) -> Any:
+    """The card archive's row read through month_cards, the archive's address
+    being ``url``."""
+    with patch.object(month_cards, "CARD_ARCHIVE_URL", url.removesuffix("/card") + "/rows"):
+        return await month_cards.fetch_archived_row(session, "acme", "fix", "wallonia", "2026-11")
 
 
 @pytest.mark.parametrize(
-    "hops",
+    "target",
     [
-        ("https://totalenergies.be/a.pdf", "http://192.168.1.1/a.pdf"),
-        ("https://a.be/x", "http://a.be/y", "https://a.be/z"),
+        "{device}" + _ADMIN,
+        "https://127.0.0.1:{port}" + _ADMIN,
+        "https://[::ffff:127.0.0.1]:{port}" + _ADMIN,
+        "https://0x7f000001:{port}" + _ADMIN,
+        "https://localhost:{port}" + _ADMIN,
+        "https://169.254.169.254/latest/meta-data/",
+        "https://[fe80::1]/",
+        "//10.0.0.1/admin",
     ],
 )
-@pytest.mark.parametrize("fetch", [fetch_text, fetch_pdf_bytes, head_or_raise])
-async def test_a_redirect_off_https_is_refused(fetch: Any, hops: tuple[str, ...]) -> None:
-    session: Any = _Session(_Redirected(*hops))
-    with pytest.raises(ExtractorError, match="redirected off https") as err:
-        await fetch(session, hops[0])
-    # The target stays out of what the user is shown.
-    assert "192.168" not in str(err.value)
+async def test_a_redirect_is_checked_before_it_is_followed(
+    socket_enabled: None, tmp_path: Path, target: str
+) -> None:
+    """A site that answers with a redirect to an address only the Home
+    Assistant host can reach: the address is never asked, and does not
+    reach the error the user is shown."""
+    async with device() as lan:
+        app = _redirecting(target.replace("{device}", lan.url))
+        async with https_site(app, tmp_path) as site:
+            with pytest.raises(ExtractorError, match="refusing to follow it") as err:
+                await fetch_text(site.session, site.url("/card"))
+    assert lan.asked == []
+    assert site.asked == ["GET /card"]
+    assert "reboot" not in str(err.value)
+    assert "127.0.0.1" not in str(err.value)
+
+
+@pytest.mark.parametrize(
+    "fetch",
+    [fetch_text, fetch_bytes, fetch_pdf_bytes, head_or_raise, head_freshness_key, _archived_row],
+)
+async def test_every_fetch_checks_a_redirect_before_following_it(
+    socket_enabled: None, tmp_path: Path, fetch: Any
+) -> None:
+    async with device() as lan, https_site(_redirecting(lan.url + _ADMIN), tmp_path) as site:
+        try:
+            answer = await fetch(site.session, site.url("/card"))
+        except ExtractorError as err:
+            assert "refusing to follow it" in str(err)
+        else:
+            # The two that answer None for what they cannot read.
+            assert answer is None
+    assert lan.asked == []
+    assert len(site.asked) == 1
+
+
+async def test_a_redirect_over_https_to_another_site_is_followed(
+    socket_enabled: None, tmp_path: Path
+) -> None:
+    """energie.be's document key answers with its storage on another host,
+    and TotalEnergies' index publication with its CDN. A relative address
+    is the answering site's, and the query goes with the first request
+    only, as aiohttp sends them."""
+
+    async def start(request: web.Request) -> web.Response:
+        port = request.url.port
+        raise web.HTTPFound(f"https://store.test:{port}/assets/key")
+
+    async def key(request: web.Request) -> web.Response:
+        raise web.HTTPSeeOther("/assets/card.pdf")
+
+    async def card(request: web.Request) -> web.Response:
+        return web.Response(body=_CARD, headers={"Last-Modified": "Thu, 05 Nov 2026 08:00:00 GMT"})
+
+    app = web.Application()
+    app.router.add_get("/document", start)
+    app.router.add_get("/assets/key", key)
+    app.router.add_get("/assets/card.pdf", card)
+    async with https_site(app, tmp_path) as site:
+        url = site.url("/document")
+        assert await fetch_pdf_bytes(site.session, url) == _CARD
+        assert await fetch_text(site.session, url, params={"key": "Indexation"}) == "%PDF-1.7\n"
+        assert await head_or_raise(site.session, url) == "Thu, 05 Nov 2026 08:00:00 GMT"
+    assert site.asked == [
+        *("GET /document", "GET /assets/key", "GET /assets/card.pdf"),
+        *("GET /document?key=Indexation", "GET /assets/key", "GET /assets/card.pdf"),
+        *("HEAD /document", "HEAD /assets/key", "HEAD /assets/card.pdf"),
+    ]
+
+
+@pytest.mark.parametrize("headers", [{}, {"Location": ""}])
+async def test_a_redirect_without_a_target_is_the_answer(
+    socket_enabled: None, tmp_path: Path, headers: dict[str, str]
+) -> None:
+    """As aiohttp has it: a redirect status with no Location, or an empty one,
+    is handed over as the answer."""
+
+    async def moved(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers=headers, text="moved")
+
+    app = web.Application()
+    app.router.add_get("/card", moved)
+    async with https_site(app, tmp_path) as site:
+        assert await fetch_text(site.session, site.url("/card")) == "moved"
+    assert site.asked == ["GET /card"]
+
+
+async def test_a_redirect_loop_is_a_network_error(socket_enabled: None, tmp_path: Path) -> None:
+    async with https_site(_redirecting("/card"), tmp_path) as site:
+        with pytest.raises(ExtractorError, match=r"^network error fetching") as err:
+            await fetch_text(site.session, site.url("/card"))
+    assert is_transient_fetch_error(str(err.value))
+    assert len(site.asked) == _pdf.MAX_REDIRECTS + 1
+
+
+async def test_the_timeout_covers_every_redirect(socket_enabled: None, tmp_path: Path) -> None:
+    """Three hops of 0,4 s each are past a total of one second, though no
+    single one is."""
+
+    async def hop(request: web.Request) -> web.Response:
+        await asyncio.sleep(0.4)
+        step = int(request.match_info["step"])
+        if step == 3:
+            return web.Response(text="end")
+        raise web.HTTPFound(f"/hop/{step + 1}")
+
+    app = web.Application()
+    app.router.add_get("/hop/{step}", hop)
+    async with https_site(app, tmp_path) as site:
+        with pytest.raises(ExtractorError, match=r"^network error fetching .*TimeoutError"):
+            await fetch_text(site.session, site.url("/hop/0"), timeout=1)
+    assert len(site.asked) <= 3
 
 
 async def test_a_head_tells_a_name_not_there_from_a_site_that_is_down(
@@ -202,15 +311,6 @@ async def test_a_head_tells_a_name_not_there_from_a_site_that_is_down(
     assert not is_missing_card_error(str(down.value))
     # The server has closed.
     assert str(gone.value).startswith("network error fetching")
-
-
-def test_a_redirect_to_another_site_over_https_is_followed() -> None:
-    """TotalEnergies serves its index publication from its storage's host."""
-    resp: Any = _Redirected(
-        "https://totalenergies.be/fr/files/x.pdf",
-        "https://cf.bewebsiteprod.alzp.tgscloud.net/s3fs-public/x.pdf",
-    )
-    _pdf.guard_redirect("https://totalenergies.be/fr/files/x.pdf", resp)
 
 
 async def _card_behind(prefix: bytes) -> bytes:

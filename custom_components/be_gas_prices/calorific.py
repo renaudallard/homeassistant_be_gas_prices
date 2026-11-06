@@ -66,12 +66,12 @@ from homeassistant.util.ssl import create_client_context
 
 from .const import ATRIAS_API_URL, ATRIAS_CONFIG_URL
 from .providers._parse import to_float
-from .providers._pdf import USER_AGENT, error_text, read_capped, read_text_capped
+from .providers._pdf import checked_request, error_text, read_capped, read_text_capped
 from .providers.base import ExtractorError
 
 _INTERMEDIATE = Path(__file__).with_name("certs") / "godaddy_g2_intermediate.pem"
 _KEY_RE = re.compile(r"apimSubscriptionKey\s*:\s*['\"]([0-9a-fA-F]+)['\"]")
-_TIMEOUT = aiohttp.ClientTimeout(total=30)
+_TIMEOUT = 30
 
 
 class CalorificError(Exception):
@@ -100,9 +100,7 @@ def build_ssl_context() -> ssl.SSLContext:
 async def subscription_key(session: aiohttp.ClientSession) -> str:
     """The public API key Atrias's site publishes in its runtime config."""
     try:
-        async with session.get(
-            ATRIAS_CONFIG_URL, headers={"User-Agent": USER_AGENT}, timeout=_TIMEOUT
-        ) as resp:
+        async with checked_request(session, ATRIAS_CONFIG_URL, timeout=_TIMEOUT) as resp:
             if resp.status >= 400:
                 raise CalorificError(f"HTTP {resp.status} fetching {ATRIAS_CONFIG_URL}")
             # Not strict, so a page in another charset fails the key search
@@ -132,12 +130,13 @@ async def _get(
     params: dict[str, str] | None = None,
 ) -> bytes:
     try:
-        async with session.get(
+        async with checked_request(
+            session,
             url,
-            params=params,
-            headers={"User-Agent": USER_AGENT, "subscription-key": key},
-            ssl=context,
             timeout=_TIMEOUT,
+            params=params,
+            headers={"subscription-key": key},
+            ssl=context,
         ) as resp:
             if resp.status >= 400:
                 raise CalorificError(f"HTTP {resp.status} fetching {url}")

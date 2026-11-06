@@ -27,15 +27,14 @@
 
 from __future__ import annotations
 
-import ssl
+from pathlib import Path
 
-import aiohttp
 import pytest
 from aiohttp import web
-from aiohttp.test_utils import TestServer
 
 from custom_components.be_gas_prices import calorific
 from custom_components.be_gas_prices.calorific import CalorificError, Station, parse_gcv_file
+from tests.local_https import client_context, device, https_site
 
 # The August 2026 file's shape: a byte order mark, quoted decimal commas, a
 # station out of use listed at zero.
@@ -68,7 +67,7 @@ def test_a_file_that_is_no_csv_is_a_calorific_error() -> None:
 
 
 async def test_the_key_goes_in_a_header_and_stays_out_of_errors(
-    socket_enabled: None, monkeypatch: pytest.MonkeyPatch
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """aiohttp puts the request URL in some of its error messages, too many
     redirects here, a connect timeout in the field."""
@@ -89,12 +88,36 @@ async def test_the_key_goes_in_a_header_and_stays_out_of_errors(
     app = web.Application()
     app.router.add_get("/folder/list", folder_list)
     app.router.add_get("/download/{path:.+}", loop)
-    context = ssl.create_default_context()
-    async with TestServer(app) as server, aiohttp.ClientSession() as session:
-        monkeypatch.setattr(calorific, "ATRIAS_API_URL", str(server.make_url("")).rstrip("/"))
-        months = await calorific.list_months(session, context, key)
+    async with https_site(app, tmp_path) as site:
+        monkeypatch.setattr(calorific, "ATRIAS_API_URL", site.url(""))
+        months = await calorific.list_months(site.session, client_context(), key)
         assert months == {"2026-08": "2026/GCV.txt"}
         with pytest.raises(CalorificError, match="network error fetching") as err:
-            await calorific.fetch_month(session, context, key, months["2026-08"])
+            await calorific.fetch_month(site.session, client_context(), key, months["2026-08"])
     assert key not in str(err.value)
     assert queries and all(key not in query for query in queries)
+
+
+async def test_a_redirect_from_atrias_is_checked_before_it_is_followed(
+    socket_enabled: None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Both of Atrias's hosts, its site with the key and its API, answering
+    with a redirect to an appliance on the household's network."""
+    async with device() as lan:
+
+        async def away(request: web.Request) -> web.Response:
+            raise web.HTTPFound(f"{lan.url}/admin/delete_all")
+
+        app = web.Application()
+        app.router.add_get("/{tail:.*}", away)
+        async with https_site(app, tmp_path) as site:
+            monkeypatch.setattr(calorific, "ATRIAS_CONFIG_URL", site.url("/runtime-config.js"))
+            monkeypatch.setattr(calorific, "ATRIAS_API_URL", site.url(""))
+            with pytest.raises(CalorificError, match="refusing to follow it"):
+                await calorific.subscription_key(site.session)
+            with pytest.raises(CalorificError, match="refusing to follow it"):
+                await calorific.list_months(site.session, client_context(), "0123abcd")
+            with pytest.raises(CalorificError, match="refusing to follow it"):
+                await calorific.fetch_month(site.session, client_context(), "0123abcd", "x.txt")
+    assert lan.asked == []
+    assert len(site.asked) == 3

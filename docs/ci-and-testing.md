@@ -34,7 +34,8 @@ cache and 54 seconds with a full one.
 - `test_postcodes.py`: the postcode table. `test_refresh_postcodes.py`: the
   script that generates it writes nothing when bpost or Synergrid comes back
   short or keeps failing.
-- `test_calorific.py`: Atrias's monthly calorific value files.
+- `test_calorific.py`: Atrias's monthly calorific value files, and its two
+  hosts held to the rules the shared helpers keep.
 - `test_excise_law.py`: article 419 read from Justel's page as served,
   refused when it is not the article, and the daily read and its backoff.
   `test_tarbel.py`: FPS Finance's excise tariff as served, the quarters
@@ -42,7 +43,12 @@ cache and 54 seconds with a full one.
   daily read, its backoff and the Store. `conftest.py` holds the article
   and the tariff as published for every other test.
 - `test_fetch.py`: the shared HTTP helpers against a local server
-  (`socket_enabled`, since the harness blocks sockets otherwise).
+  (`socket_enabled`, since the harness blocks sockets otherwise): the caps,
+  and a redirect refused before its target is asked, or followed over
+  https to another site. `tests/local_https.py` serves a test over https
+  under names of its own, on a certificate authority made for the run, and
+  stands an http server in for an appliance on the household's network,
+  logging what it is asked.
 - `test_module_size.py`: every integration module under 1000 lines, the
   generated postcode table aside; a module past it is split along a seam it
   already has.
