@@ -1208,6 +1208,59 @@ def test_every_hand_over_comes_from_a_job_run_before() -> None:
     assert handed == {"walk-cards", "walk-pdfs", "walk-ocr", "kept-manifest", "indexed-cards"}
 
 
+def test_only_the_cards_the_walk_names_are_uploaded(tmp_path: Path) -> None:
+    """The keep job holds the cards token and takes the walk's files from an
+    artifact, and it made a release of every gas-* folder in it, named after
+    the folder, and uploaded every PDF in one. Only a month folder and a card
+    named as the walk names them are uploaded, and nothing else that came
+    with them."""
+    log = tmp_path / "gh.log"
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    # No release exists until the step makes one; one made lists no file.
+    (stubs / "gh").write_text(
+        f'#!/bin/sh\necho "$*" >> "{log}"\n'
+        'case "$1 $2" in\n'
+        '  "release view") case "$*" in *--json*) exit 0 ;; esac; exit 1 ;;\n'
+        "esac\n"
+        "exit 0\n"
+    )
+    (stubs / "gh").chmod(0o755)
+    work = tmp_path / "work"
+    (work / "tmp" / "cards" / "gas").mkdir(parents=True)
+    card = f"{'e' * 64}.pdf"
+    for rel in (
+        f"gas-2026-10/{card}",
+        "gas-2026-10/notes.pdf",
+        f'gas-x"+env.GH_TOKEN+"/{"d" * 64}.pdf',
+        f"gas-2026-1/{'c' * 64}.pdf",
+    ):
+        path = work / "tmp" / "pdfs" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"%PDF")
+    step = next(s for s in _archive_jobs()["keep"]["steps"] if s.get("id") == "keep")
+    env = {
+        **os.environ,
+        "PATH": f"{stubs}:{os.environ['PATH']}",
+        "GH_TOKEN": "t0ken",
+        "CARDS_REPO": "o/r",
+    }
+    done = subprocess.run(
+        ["bash", "-e", "-c", step["run"]], cwd=work, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    calls = log.read_text().splitlines()
+    assert [c.split(" --")[0] for c in calls if c.startswith("release create")] == [
+        "release create gas-2026-10"
+    ]
+    assert [c for c in calls if c.startswith("release upload")] == [
+        f"release upload gas-2026-10 tmp/pdfs/gas-2026-10/{card} --repo o/r"
+    ]
+    assert not any("env.GH_TOKEN" in c or "gas-2026-1 " in c for c in calls)
+    manifest = json.loads((work / "tmp" / "cards" / "gas" / "pdfs.json").read_text())
+    assert manifest == {"e" * 64: f"gas-2026-10/{card}"}
+
+
 def test_the_glyphs_the_walk_finds_are_filed_by_the_ocr_job(tmp_path: Path) -> None:
     """The walk runs the OCR engine on the day's cards and hands what it
     finds over; the ocr job, which alone holds the issue token, files it."""
