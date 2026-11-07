@@ -30,7 +30,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import pkgutil
 import re
+import threading
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -38,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 import aiohttp
+import pypdf
 
 from ._parse import (
     to_float,
@@ -50,20 +53,43 @@ from .base import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class _NoFontToolsAdvice(logging.Filter):
-    """Drop pypdf's advice to install fontTools, and nothing else.
+# pypdf logs at WARNING what it skips or repairs while it reads a card: a
+# ToUnicode entry it cannot decode (every energie.be card from November
+# 2026 on), an object pointer it has to look for elsewhere, its advice to
+# install fontTools, with whole font dictionaries, several times per Engie
+# card. The text comes out as the tests pin it either way and nothing there
+# is for the user to act on, so while a render of ours runs, its pypdf
+# records go to this module's debug log instead. pypdf reads made by
+# anything else in Home Assistant log as before.
+_RENDERING = threading.local()
 
-    pypdf logs it at WARNING for every CFF font it meets, several times per
-    Engie card, and the cards read correctly without fontTools: the tests
-    pin every figure. Left alone it would put a screenful of font
-    dictionaries in the Home Assistant log on every fetch.
-    """
 
+class _PypdfToDebug(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
-        return not str(record.msg).startswith("fontTools is required")
+        if not getattr(_RENDERING, "active", False):
+            return True
+        _LOGGER.debug("%s: %.300s", record.name, record.getMessage())
+        return False
 
 
-logging.getLogger("pypdf._cmap").addFilter(_NoFontToolsAdvice())
+# pypdf logs to the logger of the module that met the problem.
+_TO_DEBUG = _PypdfToDebug()
+for _module in pkgutil.walk_packages(pypdf.__path__, "pypdf."):
+    logging.getLogger(_module.name).addFilter(_TO_DEBUG)
+
+
+def _render_quietly(render: Callable[[bytes], str], payload: bytes) -> str:
+    _RENDERING.active = True
+    try:
+        return render(payload)
+    finally:
+        _RENDERING.active = False
+
+
+async def render_in_thread(render: Callable[[bytes], str], payload: bytes) -> str:
+    """Run ``render`` on ``payload`` in a worker thread, the pypdf records
+    it causes logged at debug."""
+    return await asyncio.to_thread(_render_quietly, render, payload)
 
 
 def _read_version() -> str:
@@ -357,7 +383,7 @@ async def render_pdf(variant: str, url: str, payload: bytes, render: Callable[[b
     """
     hook = _RENDER_HOOK.get()
     if hook is None:
-        return await asyncio.to_thread(render, payload)
+        return await render_in_thread(render, payload)
     return await hook(variant, url, payload, render)
 
 

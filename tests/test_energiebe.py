@@ -27,6 +27,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from datetime import date
 from unittest.mock import AsyncMock, patch
 
@@ -44,14 +46,15 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
     TIER_T3,
 )
-from custom_components.be_gas_prices.providers import energiebe
+from custom_components.be_gas_prices.providers import _pdf, energiebe
+from custom_components.be_gas_prices.providers._pdf_render import extract_pdf_text
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
     CardNotReadableError,
     ExtractorError,
     SupplierSnapshot,
 )
-from tests import approx, fixture_page, fixture_text
+from tests import FIXTURES, approx, fixture_page, fixture_text
 
 VARIABLE = "Energie_be_Gas_Particulier_18ddc53692.pdf"
 FIXED = "VAST_Energie_be_RES_GAS_pdf_276e3f8ac3.pdf"
@@ -441,3 +444,26 @@ async def test_the_plain_text_is_fetched_for_the_november_2026_template_only(
         snap = await energiebe.fetch(AsyncMock(), "energiebe_fixed", REGION_FLANDERS)
     assert plain.called is plain_read
     assert snap.publication_label == ("2026-11" if plain_read else "2026-09")
+
+
+async def test_a_render_of_ours_logs_what_pypdf_skips_at_debug(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The November 2026 cards write a few ToUnicode entries as five hex
+    digits, which pypdf skips with a WARNING each time it reads them
+    (electricity #165). Read by us, the card logs none of them above debug
+    and its text is the same; read by anything else, pypdf logs them as
+    before."""
+    payload = (FIXTURES / "energiebe" / NOVEMBER_FIXED).read_bytes()
+    caplog.set_level(logging.DEBUG)
+    text = await _pdf.render_pdf("plain", "card", payload, extract_pdf_text)
+    assert [
+        r for r in caplog.records if r.name.startswith("pypdf") and r.levelno >= logging.WARNING
+    ] == []
+    assert any(
+        r.name == _pdf.__name__ and r.levelno == logging.DEBUG and "Odd-length" in r.getMessage()
+        for r in caplog.records
+    )
+    caplog.clear()
+    assert await asyncio.to_thread(extract_pdf_text, payload) == text
+    assert any(r.name == "pypdf._cmap" and r.levelno == logging.WARNING for r in caplog.records)

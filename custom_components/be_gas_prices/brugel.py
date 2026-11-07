@@ -56,7 +56,7 @@ from typing import Final
 import aiohttp
 from homeassistant.util import dt as dt_util
 
-from .providers._pdf import fetch_pdf_bytes
+from .providers._pdf import fetch_pdf_bytes, render_in_thread
 from .providers._pdf_render import extract_pdf_text
 from .providers.base import ExtractorError, SheetNetwork
 
@@ -124,7 +124,7 @@ async def read_network(session: aiohttp.ClientSession, year: int) -> SheetNetwor
     payload = await fetch_pdf_bytes(
         session, _URL.format(published=year - 1, year=year), timeout=_TIMEOUT
     )
-    return parse_network(await asyncio.to_thread(extract_pdf_text, payload))
+    return parse_network(await render_in_thread(extract_pdf_text, payload))
 
 
 def parse_network(text: str) -> SheetNetwork | None:
