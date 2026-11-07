@@ -26,8 +26,9 @@ that the tests call on a fixture's text.
 
 Every caller awaits `fetch`, `fetch_for_month` and `fetch_index` through
 `_pdf.guarded`, which turns any other exception into an `ExtractorError`
-naming its class, with the traceback logged, so a parser bug fails like a
-card the parser refuses and the held card keeps pricing.
+naming its class, its message cut at 500 characters and logged as a warning,
+its traceback at debug, so a parser bug fails like a card the parser refuses
+and the held card keeps pricing.
 
 ## The snapshot
 
@@ -120,7 +121,8 @@ what a server sent: a payload that is no card is called a web page or named
 by its size, its first bytes going to the debug log. The text of an aiohttp
 error, which quotes a malformed answer whole, is cut at 500 characters too
 (`error_text`). An error reaches last_error, the Repairs cards and the
-diagnostics.
+diagnostics, and last_error is cut at 500 characters where it is stored
+(`shown_text`), whatever a parser's message quotes of the card.
 
 ## A card that moved (providers/_moved.py)
 

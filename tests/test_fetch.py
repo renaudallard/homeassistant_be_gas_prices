@@ -46,6 +46,7 @@ from custom_components.be_gas_prices.providers._pdf import (
     fetch_bytes,
     fetch_pdf_bytes,
     fetch_text,
+    guarded,
     head_freshness_key,
     head_or_raise,
     is_missing_card_error,
@@ -578,3 +579,22 @@ async def test_a_pdf_behind_a_bom_or_blank_lines_is_read_from_its_signature(
 async def test_a_bom_after_a_blank_line_is_no_bom(socket_enabled: None, tmp_path: Path) -> None:
     with pytest.raises(ExtractorError, match="expected a PDF"):
         await _card_behind(b"\n\xef\xbb\xbf", tmp_path)
+
+
+async def test_an_unexpected_parser_error_is_logged_and_raised_cut(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A parser that trips over a page names what it read, as long as the
+    page makes it: the warning and the message last_error keeps were the
+    whole value, 66 kB of a supplier's markup on every failed tick."""
+
+    async def parse() -> None:
+        float("![x](https://evil.example/p.png)" * 2000)
+
+    caplog.set_level(logging.WARNING)
+    with pytest.raises(ExtractorError) as raised:
+        await guarded("Frank", parse())
+    assert len(str(raised.value)) < 600
+    assert caplog.records
+    assert all(record.exc_info is None for record in caplog.records)
+    assert max(len(record.getMessage()) for record in caplog.records) < 600

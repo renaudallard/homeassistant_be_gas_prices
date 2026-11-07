@@ -4333,3 +4333,15 @@ async def test_a_held_refresh_leaves_a_failed_tick_failed(
     freezer.tick(timedelta(minutes=15))
     await coordinator.async_refresh()
     assert coordinator.last_update_success is True
+
+
+async def test_a_long_parser_message_is_cut_where_last_error_keeps_it(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Frank's parser quoted a card title of 66 kB whole: last_error reaches
+    every user's attributes, the diagnostics and the warning of each tick."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    title = "![x](https://evil.example/p.png)" * 2000
+    coordinator._fetch_failed(f"Frank Energie: card title {title!r}", transient=False)
+    assert len(coordinator.last_error) < 600

@@ -38,8 +38,9 @@ cards (`issues.sync_issues`).
    month a run that began that month raises neither card while a card
    prices the entry (`issues.MONTH_START_HOLD_DAYS`). An error
    no extractor raises on purpose (a parser meeting a page it does not
-   expect) is failed the same way, through `providers._pdf.guarded`, with
-   its traceback logged; a probe raising one is no signal. With no
+   expect) is failed the same way, through `providers._pdf.guarded`, its
+   message logged as a warning and its traceback at debug; a probe raising
+   one is no signal. `last_error` holds at most 500 characters of a message. With no
    card at all, or a stale one, the card archive is asked for its latest row
    (`_adopt_archived_card`). With still no card the tick writes the Store,
    so the next setup retry counts the failures on, and raises

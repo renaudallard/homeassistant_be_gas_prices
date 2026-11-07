@@ -41,7 +41,7 @@ from homeassistant.util import dt as dt_util
 from .const import CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE, SUPPLIER_CUSTOM
 from .contract_periods import last_month_sold
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card, fetch_archived_row
-from .providers._pdf import is_missing_card_error, is_transient_fetch_error
+from .providers._pdf import is_missing_card_error, is_transient_fetch_error, shown_text
 from .providers.base import (
     CardNotReadableError,
     ExtractorError,
@@ -259,6 +259,9 @@ class _CardMixin:
             await self._adopt_archived_card()
 
     def _fetch_failed(self, message: str, *, transient: bool) -> None:
+        # A parser's message can quote the card or page, as long as they make
+        # it; last_error reaches every user's attributes and diagnostics.
+        message = shown_text(message)
         self.last_error = message
         if not transient:
             if not self._failures:

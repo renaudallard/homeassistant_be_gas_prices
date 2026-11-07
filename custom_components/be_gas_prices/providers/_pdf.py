@@ -165,19 +165,19 @@ def is_missing_card_error(message: str) -> bool:
 _SHOWN = 500
 
 
-def _shown(text: str) -> str:
+def shown_text(text: str) -> str:
     """``text`` cut to :data:`_SHOWN` characters, for a message."""
     return text if len(text) <= _SHOWN else f"{text[:_SHOWN]}..."
 
 
 def shown_url(url: str) -> str:
-    """``url`` as a message quotes it, cut like any other text (:func:`_shown`).
+    """``url`` as a message quotes it, cut like any other text (:func:`shown_text`).
 
     Percent-encoded wherever a URL may not hold the character as it is, so
     markup that a page put in a link reaches a Repairs card as escapes
     rather than as a link or an image there.
     """
-    return _shown(quote(url, safe=":/?#@!$&'()*+,;=%~"))
+    return shown_text(quote(url, safe=":/?#@!$&'()*+,;=%~"))
 
 
 def error_text(err: BaseException) -> str:
@@ -191,11 +191,11 @@ def error_text(err: BaseException) -> str:
     Naming the class is the smallest thing that stays informative: the
     caller's own prefix already says what was being attempted.
 
-    Cut like an address (:func:`_shown`): aiohttp's error for a malformed
+    Cut like an address (:func:`shown_text`): aiohttp's error for a malformed
     status or header line carries the chunk the server sent, as long as the
     server makes it.
     """
-    return _shown(str(err) or type(err).__name__)
+    return shown_text(str(err) or type(err).__name__)
 
 
 async def guarded[T](label: str, call: Awaitable[T]) -> T:
@@ -205,16 +205,19 @@ async def guarded[T](label: str, call: Awaitable[T]) -> T:
     Such an error is a parser meeting a page it does not expect. Let out,
     it escaped the tick and made every entity unavailable while the held
     card could still price them. It is now failed like a card the parser
-    refuses, and its traceback logged for the bug report.
+    refuses, its message cut like any other, since it can quote the page,
+    and its traceback logged at debug for the bug report.
     """
     try:
         return await call
     except ExtractorError:
         raise
     except Exception as err:
-        _LOGGER.warning("%s: unexpected error", label, exc_info=True)
         name = type(err).__name__
-        raise ExtractorError(f"{label}: {name}: {err}" if str(err) else f"{label}: {name}") from err
+        message = f"{label}: {name}: {error_text(err)}" if str(err) else f"{label}: {name}"
+        _LOGGER.warning("%s", message)
+        _LOGGER.debug("%s: traceback", label, exc_info=True)
+        raise ExtractorError(message) from err
 
 
 # 64 MiB: far above any real tariff card or page, so it never trips on a

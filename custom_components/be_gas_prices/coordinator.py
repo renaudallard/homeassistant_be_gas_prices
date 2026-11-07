@@ -111,6 +111,7 @@ from .month_cards import (
 )
 from .pricing import PricingError, fixed_costs
 from .providers import get as get_extractor
+from .providers._pdf import shown_text
 from .providers._resolve import resolve_for_delivery, tier_for
 from .providers.base import (
     IndexTable,
@@ -513,11 +514,12 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             # The card cannot price this household: its DSO or its tier is
             # missing, or it gives no gas excise and the law's is not held,
             # for this month or for one the running costs bill.
-            self.last_error = self._pricing_error = str(err)
+            message = shown_text(str(err))
+            self.last_error = self._pricing_error = message
             # Written as with no card: a setup retry counts on from the
             # count this tick's fetch left, not from an older one.
             await self._save_persistent()
-            raise UpdateFailed(str(err)) from err
+            raise UpdateFailed(message) from err
         # Not left pending by a tick still waiting for the energy manager,
         # which may never load: the ranking and the price history go ahead
         # on the held volume, or the typed one when none is held.

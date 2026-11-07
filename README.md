@@ -554,8 +554,8 @@ attached to an issue as it is.
       custom_components.be_gas_prices: debug
   ```
 
-  A card that fails, and the traceback of an error no parser expected, are
-  logged as warnings without it.
+  A card that fails, and an error no parser expected, are logged as
+  warnings without it; that error's traceback needs debug logging.
 - **An issue report**: attach the diagnostics and, for a card that fails,
   the log lines of a refresh with debug logging on. A card that fails is
   worth a report only on the latest version, since a newer one may already
