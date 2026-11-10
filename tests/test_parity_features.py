@@ -1187,7 +1187,7 @@ def test_quote_table_bolds_the_own_row_and_signs_the_gap() -> None:
         [_quote("cheap", 1500.0, provisional=True), own, _quote("broken", None)], own=own
     )
     lines = table.splitlines()
-    assert lines[2].startswith("| 1 | cheap † | 1,500.00 | -100.00 |")
+    assert lines[2].startswith("| 1 | cheap ~ | 1,500.00 | -100.00 |")
     assert "**own**" in lines[3] and "+0.00" in lines[3]
     assert lines[4].startswith("| - | broken | - | - |")
 

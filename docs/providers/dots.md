@@ -65,7 +65,7 @@ energy leg is `VariableRates(price=0,07873, yearly_fixed_fee=63,60,
 formula)`, the price as printed and VAT inclusive by the card's "Alle prijzen
 zijn inclusief 6% BTW (indien van toepassing)". The card calls it
 "indicatieve" and the bill follows the formula, so every month priced on it
-is provisional, and its comparison rows carry the dagger.
+is provisional, and its comparison rows carry the ~ mark.
 
 ## How each figure is read (pypdf text)
 

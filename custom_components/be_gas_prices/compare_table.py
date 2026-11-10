@@ -40,7 +40,7 @@ def _price(value: float | None) -> str:
 
 def quote_table(quotes: list[Quote], *, own: Quote | None) -> str:
     """One row per quote, cheapest first as given, the household's own row in
-    bold and the gap to it signed. A row marked with a dagger is provisional:
+    bold and the gap to it signed. A row marked with a ~ is provisional:
     priced at the month before's index value or at the price its card
     prints, which the month may still move, until its supplier publishes
     the month's own. OCR marks a card the card archive read off its image."""
@@ -53,7 +53,7 @@ def quote_table(quotes: list[Quote], *, own: Quote | None) -> str:
         label = (
             quote.label
             + (" OCR" if quote.read_by_ocr else "")
-            + (" †" if quote.provisional else "")
+            + (" ~" if quote.provisional else "")
         )
         if quote is own or (
             own is not None and (quote.supplier, quote.contract) == (own.supplier, own.contract)

@@ -53,7 +53,7 @@ the value the Energy Together cards' "*" twelve-month VNR estimate implies
 for September (HOA Nova: 7,74 = (62,4 + 15) / 10). TTF only reproduces the
 price in EUR/MWh. So the energy leg is `VariableRates(price, fee, formula)`,
 the price as printed. It is an estimate the bill's formula replaces, so every
-month priced on it is provisional, and its comparison rows carry the dagger.
+month priced on it is provisional, and its comparison rows carry the ~ mark.
 
 ## How each figure is read (pdfplumber layout text)
 

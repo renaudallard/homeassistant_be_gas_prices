@@ -1131,7 +1131,7 @@ async def test_options_compare_quotes_both_contracts(hass: HomeAssistant) -> Non
     placeholders = result["description_placeholders"]
     assert placeholders is not None
     table = placeholders["table"]
-    assert "**Engie Flow †**" in table and "-50.00" in table
+    assert "**Engie Flow ~**" in table and "-50.00" in table
     result = await hass.config_entries.options.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "compare_done"
@@ -1159,7 +1159,7 @@ async def test_options_compare_the_own_contract_quotes_it_once(hass: HomeAssista
     placeholders = result["description_placeholders"]
     assert placeholders is not None
     rows = [line for line in placeholders["table"].splitlines() if "Engie Flow" in line]
-    assert rows == ["| 1 | **Engie Flow †** | 1,500.00 | +0.00 | 0.0800 |"]
+    assert rows == ["| 1 | **Engie Flow ~** | 1,500.00 | +0.00 | 0.0800 |"]
 
 
 async def test_options_compare_quotes_the_own_contract_on_its_own_waiver(
@@ -1270,7 +1270,7 @@ async def test_compare_all_shows_today_s_ranking_and_prices_again_on_request(
         assert placeholders is not None
         assert placeholders["day"] == dt_util.now().date().isoformat()
         assert "| 1 | Bolt Fixe | 1,500.00 | -100.00 | 0.0800 |" in placeholders["table"]
-        assert "| 2 | **Engie Flow †** | 1,600.00 | +0.00 | 0.0900 |" in placeholders["table"]
+        assert "| 2 | **Engie Flow ~** | 1,600.00 | +0.00 | 0.0900 |" in placeholders["table"]
         done = await hass.config_entries.options.async_configure(result["flow_id"], {})
         assert done["reason"] == "compare_done"
         assert not calls

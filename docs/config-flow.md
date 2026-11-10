@@ -48,7 +48,7 @@ reloads the entry.
   household's own contract quoted the same way as above), then the ranked
   table with the household's own row in bold. Nothing is saved. When the
   entry's daily ranking already holds today's (`coordinator.daily_ranking`,
-  whose rows keep the price per kWh, the dagger and the OCR mark the table
+  whose rows keep the price per kWh, the ~ and the OCR mark the table
   shows), that ranking is shown instead (`compare_all_stored`), without the
   contracts it could not price, and a *price again* box ranks live. A
   ranking an older release stored without those fields is never shown.
@@ -57,7 +57,7 @@ reloads the entry.
   which most cards are set at, else at the price its card prints. An index
   set before delivery skips the month before, and none is priced at an
   older month's value: suppliers publish on their own schedules, so the
-  rows would sit on different months. A dagger marks a provisional price
+  rows would sit on different months. A ~ marks a provisional price
   and `OCR` a card published as images, quoted on the card archive's
   reading of it when the entry lets the archive be read
   (`month_cards.current_card`).
