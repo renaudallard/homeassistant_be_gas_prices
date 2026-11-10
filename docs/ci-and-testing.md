@@ -277,6 +277,12 @@ How the cross-check decides:
   the cards show it. One that disagrees fails as `<regulator>: <dso>
   <figure> for <month> against the sheet`. On 6 November 2026 all eleven
   read and agreed with the October cards.
+- It reads Atrias's newest month of calorific values as an entry
+  converting on a reception station does (`check_atrias`, `atrias:
+  calorific values`): the key from Atrias's site, the month list and that
+  month's file, through `calorific.build_ssl_context`, so a chain the
+  shipped intermediates no longer verify fails, as api.atrias.be's did on
+  10 November 2026.
 - A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
   and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
   T1) is a notice while the card prints that value: it is billed as

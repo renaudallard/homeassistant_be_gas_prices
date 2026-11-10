@@ -53,7 +53,7 @@ import aiohttp
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-from custom_components.be_gas_prices import excise_law, fluvius, tarbel
+from custom_components.be_gas_prices import calorific, excise_law, fluvius, tarbel
 from custom_components.be_gas_prices.providers import _moved
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates, IndexedRates
@@ -1145,6 +1145,60 @@ async def test_a_certificate_that_does_not_verify_is_filed() -> None:
     assert not lc.certificate_refused(ExtractorError("network error fetching x: TimeoutError"))
 
 
+def _atrias(monkeypatch: pytest.MonkeyPatch, fetch_month: Callable[..., Awaitable[Any]]) -> None:
+    """Atrias's key and month list as they answer, and ``fetch_month``."""
+
+    async def subscription_key(_session: Any) -> str:
+        return "0123abcd"
+
+    async def list_months(_session: Any, _context: Any, key: str) -> dict[str, str]:
+        assert key == "0123abcd"
+        return {"2026-09": "2026/GCV202609.txt", "2026-10": "2026/GCV202610.txt"}
+
+    monkeypatch.setattr(lc.calorific, "build_ssl_context", lambda: None)
+    monkeypatch.setattr(lc.calorific, "subscription_key", subscription_key)
+    monkeypatch.setattr(lc.calorific, "list_months", list_months)
+    monkeypatch.setattr(lc.calorific, "fetch_month", fetch_month)
+
+
+async def test_atrias_is_read_as_an_entry_on_a_station_reads_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The newest month listed is read; a certificate the integration's
+    context does not verify fails, as on 10 November 2026, and a host that
+    does not answer is transient."""
+    asked: list[str] = []
+
+    async def fetch_month(_session: Any, _context: Any, _key: str, path: str) -> dict[Any, float]:
+        asked.append(path)
+        return {calorific.Station(ean="541454827090000155", name="GOS AALST"): 11.52}
+
+    _atrias(monkeypatch, fetch_month)
+    check = await lc.check_atrias(None, sleep=_no_sleep)
+    assert (check.label, check.status, check.detail) == (
+        "atrias: calorific values",
+        "ok",
+        "2026-10: 1 stations",
+    )
+    assert asked == ["2026/GCV202610.txt"]
+
+    async def unverified(*_args: Any) -> dict[Any, float]:
+        try:
+            raise _certificate_error("api.atrias.be")
+        except aiohttp.ClientConnectorCertificateError as err:
+            url = "https://api.atrias.be/roots/download/x"
+            raise calorific.CalorificError(f"network error fetching {url}: {err}") from err
+
+    _atrias(monkeypatch, unverified)
+    assert (await lc.check_atrias(None, sleep=_no_sleep)).status == "fail"
+
+    async def down(*_args: Any) -> dict[Any, float]:
+        raise calorific.CalorificError("network error fetching x: TimeoutError")
+
+    _atrias(monkeypatch, down)
+    assert (await lc.check_atrias(None, sleep=_no_sleep)).status == "transient"
+
+
 def test_a_detail_is_shown_as_one_code_span() -> None:
     """A detail can quote what a supplier serves, and the report is posted
     as an issue: as it came, a mention, a link, an image and an issue
@@ -1373,6 +1427,9 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
     async def read_network_sheets(*_args: Any, **_kwargs: Any) -> Any:
         return {}, [lc.Check("cwape: 2026 gas network grids", "ok")]
 
+    async def check_atrias(*_args: Any, **_kwargs: Any) -> Any:
+        return lc.Check("atrias: calorific values", "ok")
+
     def check_protected_excise(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("federal: protected excise for 2026-10", "ok")
 
@@ -1393,6 +1450,7 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(lc, "check_law_against_tariff", check_law_against_tariff)
     monkeypatch.setattr(lc, "check_fluvius_sheet", check_fluvius_sheet)
     monkeypatch.setattr(lc, "read_network_sheets", read_network_sheets)
+    monkeypatch.setattr(lc, "check_atrias", check_atrias)
 
 
 def test_main_writes_the_fingerprint_and_returns_the_code(
@@ -1412,8 +1470,9 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert fingerprint.read_text() == "gone/gone_fix/flanders: fetch\n"
     # Without the archive's checkout there is no VAT table to read.
     out = capsys.readouterr().out
-    assert out.startswith("# Live check: 7 pass, 1 fail, 0 transient, 1 notices")
+    assert out.startswith("# Live check: 8 pass, 1 fail, 0 transient, 1 notices")
     assert "- [x] frank/catalog: no new products" in out
+    assert "- [x] atrias: calorific values" in out
     assert fleets[-1]["sheet_unread"] is False
     # The network sheets read before the fleet are what it is held against.
     assert fleets[-1]["sheets"] == {}

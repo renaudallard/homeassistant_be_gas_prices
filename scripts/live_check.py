@@ -110,6 +110,7 @@ from homeassistant.util import dt as dt_util  # noqa: E402
 
 from custom_components.be_gas_prices import (  # noqa: E402
     brugel,
+    calorific,
     cwape,
     excise_law,
     fluvius,
@@ -1238,6 +1239,35 @@ async def read_network_sheets(
     return sheets, checks
 
 
+async def check_atrias(
+    session: aiohttp.ClientSession,
+    *,
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> Check:
+    """The newest month of calorific values, read from Atrias as an entry
+    converting on a reception station reads it: the key from Atrias's site,
+    the month list and that month's file, through the client context the
+    integration builds with the intermediates api.atrias.be does not send.
+    A chain those do not verify fails (see certificate_refused)."""
+    label = "atrias: calorific values"
+    try:
+        context = calorific.build_ssl_context()
+        key = await fetch_with_retry(
+            functools.partial(calorific.subscription_key, session), sleep=sleep
+        )
+        months = await fetch_with_retry(
+            functools.partial(calorific.list_months, session, context, key), sleep=sleep
+        )
+        newest = max(months)
+        values = await fetch_with_retry(
+            functools.partial(calorific.fetch_month, session, context, key, months[newest]),
+            sleep=sleep,
+        )
+    except Exception as err:  # reported like a card
+        return _failure(label, err)
+    return Check(label, "ok", f"{newest}: {len(values)} stations")
+
+
 def against_sheets(
     cards: Iterable[Card],
     sheets: Mapping[str, tuple[str, SheetNetwork]],
@@ -1385,6 +1415,7 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             checks.append(sheet)
             sheets, read = await read_network_sheets(session, today)
             checks += read
+            checks.append(await check_atrias(session))
             checks += await check_fleet(
                 session,
                 all_extractors(),
