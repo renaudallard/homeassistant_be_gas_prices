@@ -45,9 +45,13 @@ printed on the bill is the default and this is for a household without one
 at hand.
 
 api.atrias.be does not send its intermediate certificate, so a plain TLS
-handshake fails verification. The public "Go Daddy Secure Certificate
-Authority - G2" intermediate ships beside this module and is added to an
-otherwise standard client context, rather than verification being turned off.
+handshake fails verification. GoDaddy's public intermediates ship beside this
+module and are added to an otherwise standard client context, rather than
+verification being turned off: "Go Daddy Secure Certificate Authority - G2",
+which issued the certificate up to November 2026, and "GoDaddy TLS
+Intermediate CA DV - R1v1", which issued the one served since 10 November
+2026, with its "GoDaddy TLS Root CA - R1" cross-signed by "Go Daddy Root
+Certificate Authority - G2", as no CA bundle carries the R1 root yet.
 """
 
 from __future__ import annotations
@@ -76,7 +80,7 @@ from .providers._pdf import (
 )
 from .providers.base import ExtractorError
 
-_INTERMEDIATE = Path(__file__).with_name("certs") / "godaddy_g2_intermediate.pem"
+_INTERMEDIATES = Path(__file__).with_name("certs") / "godaddy_intermediates.pem"
 _KEY_RE = re.compile(r"apimSubscriptionKey\s*:\s*['\"]([0-9a-fA-F]+)['\"]")
 _TIMEOUT = 30
 # Atrias answers a few kB: on 6 November 2026 the folder list held 9 kB (60
@@ -98,13 +102,13 @@ class Station:
 
 
 def build_ssl_context() -> ssl.SSLContext:
-    """A client context that also trusts the intermediate Atrias omits.
+    """A client context that also trusts the intermediates Atrias omits.
 
-    Blocking: it reads the CA bundle and the certificate from disk, so it is
+    Blocking: it reads the CA bundle and the certificates from disk, so it is
     run in the executor.
     """
     context = create_client_context()
-    context.load_verify_locations(cadata=_INTERMEDIATE.read_text(encoding="ascii"))
+    context.load_verify_locations(cadata=_INTERMEDIATES.read_text(encoding="ascii"))
     return context
 
 

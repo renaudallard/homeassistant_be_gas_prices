@@ -28,15 +28,22 @@
 from __future__ import annotations
 
 import threading
+from datetime import UTC, datetime
 from pathlib import Path
 
+import certifi
 import pytest
 from aiohttp import web
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.x509.verification import PolicyBuilder, Store, VerificationError
 
 from custom_components.be_gas_prices import calorific
 from custom_components.be_gas_prices.calorific import CalorificError, Station, parse_gcv_file
 from custom_components.be_gas_prices.providers import _pdf
 from tests.local_https import client_context, device, https_site, malformed_status_line, raw_site
+
+_FIXTURES = Path(__file__).parent / "fixtures" / "atrias"
 
 # The August 2026 file's shape: a byte order mark, quoted decimal commas, a
 # station out of use listed at zero.
@@ -180,3 +187,34 @@ async def test_a_redirect_from_atrias_is_checked_before_it_is_followed(
                 await calorific.fetch_month(site.session, client_context(), "0123abcd", "x.txt")
     assert lan.asked == []
     assert len(site.asked) == 3
+
+
+# certifi carries a root with a serial number of zero, which cryptography
+# loads with a warning.
+@pytest.mark.filterwarnings("ignore:Parsed a serial number which wasn't positive")
+def test_the_shipped_intermediates_complete_the_chain_atrias_serves() -> None:
+    """The certificate api.atrias.be served from 10 November 2026, with no
+    intermediate, verified through the shipped file against certifi's roots,
+    as Home Assistant's client context does. Its R1 root is in no bundle yet,
+    so the chain only closes through the cross-signed copy."""
+    leaf = x509.load_pem_x509_certificate((_FIXTURES / "api_leaf_2026_11.pem").read_bytes())
+    shipped = x509.load_pem_x509_certificates(calorific._INTERMEDIATES.read_bytes())
+    roots = x509.load_pem_x509_certificates(Path(certifi.where()).read_bytes())
+    verifier = (
+        PolicyBuilder()
+        .store(Store(roots))
+        .time(datetime(2026, 11, 10, 12, tzinfo=UTC))
+        .build_server_verifier(x509.DNSName("api.atrias.be"))
+    )
+    names = [
+        str(cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value)
+        for cert in verifier.verify(leaf, shipped)
+    ]
+    assert names == [
+        "api.atrias.be",
+        "GoDaddy TLS Intermediate CA DV - R1v1",
+        "GoDaddy TLS Root CA - R1",
+        "Go Daddy Root Certificate Authority - G2",
+    ]
+    with pytest.raises(VerificationError):
+        verifier.verify(leaf, [])

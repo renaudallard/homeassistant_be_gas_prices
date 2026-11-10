@@ -31,10 +31,15 @@ station from Atrias:
 Each answer is held to 256 KiB as it streams: on 6 November 2026 the folder
 list was 9 kB, a month's file 4 kB and the runtime config 668 bytes.
 
-`api.atrias.be` does not send its intermediate certificate. The public
-"Go Daddy Secure Certificate Authority - G2" intermediate ships in `certs/`
-and is added to an otherwise standard client context; verification is never
-turned off.
+`api.atrias.be` does not send its intermediate certificate. GoDaddy's public
+intermediates ship in `certs/godaddy_intermediates.pem` and are added to an
+otherwise standard client context; verification is never turned off. The file
+holds "Go Daddy Secure Certificate Authority - G2", which issued the
+certificate up to November 2026, and "GoDaddy TLS Intermediate CA DV - R1v1",
+which issued the one served since 10 November 2026. With it comes "GoDaddy TLS
+Root CA - R1" cross-signed by "Go Daddy Root Certificate Authority - G2", since
+no CA bundle carries the R1 root yet (certifi 2026.10.23 does not). They are
+GoDaddy's `gd_bundle_dv-r1-g2.crt.pem` from certs.godaddy.com/repository.
 
 ## The excise law (Justel)
 
