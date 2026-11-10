@@ -36,6 +36,7 @@ import importlib
 import json
 import os
 import re
+import ssl
 import subprocess
 import sys
 import threading
@@ -48,6 +49,7 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import aiohttp
 import pytest
 import yaml  # type: ignore[import-untyped]
 
@@ -1108,6 +1110,39 @@ async def test_failures_are_told_apart_and_set_the_exit_code(tmp_path: Path) -> 
     assert "| `slow/slow_fix/flanders: fetch` | `ExtractorError: network error fetching" in report
 
     assert lc.exit_code(await lc.check_fleet(None, healthy, TODAY, sleep=_no_sleep)) == 0
+
+
+def _certificate_error(host: str) -> aiohttp.ClientConnectorCertificateError:
+    """What aiohttp raises when a host's chain does not verify."""
+    key: Any = SimpleNamespace(host=host, port=443, is_ssl=True)
+    return aiohttp.ClientConnectorCertificateError(
+        key, ssl.SSLCertVerificationError(1, "unable to get local issuer certificate")
+    )
+
+
+async def test_a_certificate_that_does_not_verify_is_filed() -> None:
+    """The fetch helpers wrap a certificate error as a network error, which
+    reads as transient, but it does not go away on a retry: api.atrias.be
+    changed its chain on 10 November 2026 and stayed unverifiable until a
+    release shipped the new intermediate. It fails the run and is filed."""
+    attempts: list[str] = []
+
+    async def fetch(_session: Any, contract: str, _region: str) -> SupplierSnapshot:
+        attempts.append(contract)
+        url = "https://chain.test/card.pdf"
+        try:
+            raise _certificate_error("chain.test")
+        except aiohttp.ClientConnectorCertificateError as err:
+            raise ExtractorError(f"network error fetching {url}: {err}") from err
+
+    checks = await lc.check_fleet(None, [_extractor("chain", fetch)], TODAY, sleep=_no_sleep)
+    assert lc.exit_code(checks) == 1
+    assert lc.render_fingerprint(checks) == "chain/chain_fix/flanders: fetch\n"
+    assert attempts == ["chain_fix"] * 3
+    (row,) = [c for c in checks if c.status == "fail"]
+    assert row.detail.startswith("ExtractorError: network error fetching https://chain.test/")
+    assert "SSLCertVerificationError" in row.detail
+    assert not lc.certificate_refused(ExtractorError("network error fetching x: TimeoutError"))
 
 
 def test_a_detail_is_shown_as_one_code_span() -> None:

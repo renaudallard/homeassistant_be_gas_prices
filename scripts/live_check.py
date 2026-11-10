@@ -310,6 +310,21 @@ def targets(
     return out
 
 
+def certificate_refused(err: BaseException) -> bool:
+    """Whether ``err`` was raised from a TLS certificate the client could
+    not verify. The fetch helpers wrap it as a network error, which reads as
+    transient, but a host that changed its chain stays unverifiable until
+    the integration ships what verifies it."""
+    seen: set[int] = set()
+    cause: BaseException | None = err
+    while cause is not None and id(cause) not in seen:
+        if isinstance(cause, aiohttp.ClientConnectorCertificateError):
+            return True
+        seen.add(id(cause))
+        cause = cause.__cause__
+    return False
+
+
 def _failure(label: str, err: BaseException) -> Check:
     detail = f"{type(err).__name__}: {err}"
     if isinstance(err, CardNotReadableError):
@@ -318,6 +333,8 @@ def _failure(label: str, err: BaseException) -> Check:
         # archive has read them no change here can: reported, never filed.
         # The archive files a card its OCR could not read.
         return Check(label, "notice", detail)
+    if certificate_refused(err):
+        return Check(label, "fail", detail)
     return Check(label, "transient" if is_transient(err) else "fail", detail)
 
 

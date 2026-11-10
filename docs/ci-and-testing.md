@@ -189,7 +189,11 @@ cannot resolve Fluvius and Engie, the runner's own resolver is put back.
 
 A fetch is tried three times (10 and 30 second pauses, 300 seconds each). A
 failure that `is_transient_fetch_error` or a timeout explains on every
-attempt is TRANSIENT, reported and never filed. After three such fetches in
+attempt is TRANSIENT, reported and never filed. A certificate the client
+cannot verify is the exception: the fetch helpers wrap it as a network error,
+but it lasts until a release ships what verifies the host's chain, so a
+failure raised from aiohttp's `ClientConnectorCertificateError` fails the run
+and is filed (api.atrias.be changed its chain on 10 November 2026). After three such fetches in
 a row the supplier is given up on for the run: its remaining cards and its
 index publication are reported as transient without being fetched, so a host
 that never answers does not run the job into its timeout. Both scripts
