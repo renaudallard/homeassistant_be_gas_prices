@@ -45,6 +45,11 @@ This is the gas sibling of
 [Belgian Electricity Prices](https://github.com/renaudallard/homeassistant_be_electricity_prices)
 and [Belgian Water Prices](https://github.com/renaudallard/homeassistant_be_water_prices).
 
+To read a mechanical gas meter that has no smart output,
+[Android Meter](https://github.com/renaudallard/homeassistant_android_meter)
+turns an old Android phone stuck to it into a gas meter sensor in m³, which
+this integration prices like any other.
+
 > Targets Home Assistant **2026.2.3 or newer**, the version the test suite
 > installs.
 
