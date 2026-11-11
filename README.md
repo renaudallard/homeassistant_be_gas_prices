@@ -468,7 +468,10 @@ index table. A card published as page images is read there with the OCR
 engine, and the row says so; a card it cannot read whole is filed as
 `[archive-cards] the OCR could not read a card`. A new version of the
 engine or of a PDF reader reads the months it read again, from their kept
-PDFs.
+PDFs. A card no reader could read is kept as a PDF all the same and shown
+on the coverage sheet with no JSON beside it, a past month's card the
+supplier's archive serves and its reader refuses included, under its own
+month.
 The OCR reads a font only through the glyphs it
 has learnt, and no Ecofix card it learnt from sets a bold 4, 7, 8, 9, Q, X,
 Y or Z, which a gas formula set in bold would need; a card published as

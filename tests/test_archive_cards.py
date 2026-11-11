@@ -668,6 +668,135 @@ async def test_backfill_offers_again_a_card_an_earlier_ask_already_read(
     assert (tmp_path / "pdfs2" / "gas-2026-07" / f"{july}.pdf").read_bytes() == web.pages[july_url]
 
 
+_BASE = "https://cards.test/download"
+
+
+async def test_a_card_no_reader_could_read_is_kept_and_named(tmp_path: Path, web: _Session) -> None:
+    """A live card that downloaded and did not parse was dropped with the
+    run. It is kept under the month of the run and named on the sheet, a
+    cell with the PDF and no JSON, until a month of it parses."""
+    out, pdfs = tmp_path / "gas", tmp_path / "pdfs"
+    web.pages[CARD_URL] = b"%PDF-1.4 a layout no reader knows"
+    digest = _digest(web.pages[CARD_URL])
+    summary = await ac.archive(
+        out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep, pdf_dir=pdfs
+    )
+    assert summary.failed
+    assert not (out / ROW / "2026-09.json").exists()
+    assert json.loads((out / "unparsed.json").read_text()) == {
+        "acme/acme_fix/wallonia/2026-09": [{"url": CARD_URL, "pdf": digest}]
+    }
+    assert (pdfs / "gas-2026-09" / f"{digest}.pdf").read_bytes() == web.pages[CARD_URL]
+    (out / "pdfs.json").write_text(json.dumps({digest: f"gas-2026-09/{digest}.pdf"}))
+    ac._write_coverage(out, _BASE, None)
+    sheet = (out / "coverage" / "acme.md").read_text()
+    assert (
+        f"| acme_fix | wallonia | [pdf]({_BASE}/gas-2026-09/{digest}.pdf) (not parsed) |" in sheet
+    )
+
+    # The day the card parses, the month has a row and the entry goes.
+    web.pages[CARD_URL] = _card("2026-09", "0.08")
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep, pdf_dir=pdfs)
+    assert (out / ROW / "2026-09.json").exists()
+    assert not (out / "unparsed.json").exists()
+
+
+async def test_a_past_card_its_reader_refused_is_named_under_its_month(
+    tmp_path: Path, web: _Session
+) -> None:
+    """A reader answers None for a past month whose card it would not read,
+    so no error reaches the walk: Belvus's cards of January to April 2026
+    were dropped that way. Such a card is named under the month asked and
+    filed there; a card of another month read on the way is not, its own
+    row names it, and a card no row names is kept under the month of the
+    run."""
+    old_url = "https://acme.test/2026-08/card.pdf"
+    aside_url = "https://acme.test/notes.pdf"
+    web.pages[old_url] = b"%PDF-1.4 the older layout"
+    web.pages[aside_url] = b"%PDF-1.4 notes the reader reads and keeps no row of"
+
+    async def fetch_for_month(
+        session: Any, contract: str, _region: str, month: date
+    ) -> SupplierSnapshot | None:
+        url = old_url if month == date(2026, 8, 1) else CARD_URL
+        text = await _pdf.fetch_pdf_rendered(
+            session, url, variant="plain", timeout=30, render=lambda b: b.decode("ascii")
+        )
+        if month == date(2026, 7, 1):
+            await _pdf.fetch_pdf_rendered(
+                session, aside_url, variant="plain", timeout=30, render=lambda b: b.decode()
+            )
+        try:
+            snap = _parse(text, 1.0, contract)
+        except ExtractorError:
+            return None
+        return snap if snap.publication_label == f"{month:%Y-%m}" else None
+
+    out, pdfs = tmp_path / "gas", tmp_path / "pdfs"
+    extractor = _Acme().extractor(fetch_for_month=fetch_for_month)
+    summary = await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW,
+        sleep=_no_sleep,
+        backfill_months=2,
+        pdf_dir=pdfs,
+    )
+    assert (summary.stored, summary.backfilled, summary.absent) == (1, 0, 2)
+    old, aside = _digest(web.pages[old_url]), _digest(web.pages[aside_url])
+    # July read the live card and the notes: the live row names the one.
+    assert json.loads((out / "unparsed.json").read_text()) == {
+        "acme/acme_fix/wallonia/2026-08": [{"url": old_url, "pdf": old}],
+        "acme/acme_fix/wallonia/2026-07": [{"url": aside_url, "pdf": aside}],
+    }
+    assert (pdfs / "gas-2026-08" / f"{old}.pdf").exists()
+    assert (pdfs / "gas-2026-07" / f"{aside}.pdf").exists()
+
+    # The day the reader reads it, the month has a row and the entry goes.
+    web.pages[old_url] = _card("2026-08", "0.07")
+    await ac.archive(
+        out,
+        extractors=[extractor],
+        now=NOW,
+        sleep=_no_sleep,
+        backfill_months=2,
+        pdf_dir=tmp_path / "pdfs2",
+    )
+    assert (out / ROW / "2026-08.json").exists()
+    assert set(json.loads((out / "unparsed.json").read_text())) == {
+        "acme/acme_fix/wallonia/2026-07"
+    }
+
+
+async def test_bytes_no_row_names_go_under_the_month_of_the_run(
+    tmp_path: Path, web: _Session
+) -> None:
+    """An index publication read as a PDF is named by no row: its figures go
+    to indices/, and its bytes were dropped with the run. They are kept
+    under the month of the run, and are no card to name on the sheet."""
+    sheet_url = "https://acme.test/indexatieparameters.pdf"
+    web.pages[sheet_url] = b"%PDF-1.4 TTF 2026-08 31,5"
+
+    async def fetch_index(session: Any) -> dict[str, dict[str, float]]:
+        await _pdf.fetch_pdf_rendered(
+            session, sheet_url, variant="plain", timeout=30, render=lambda b: b.decode()
+        )
+        return {"TTF": {"2026-08": 31.5}}
+
+    out, pdfs = tmp_path / "gas", tmp_path / "pdfs"
+    await ac.archive(
+        out,
+        extractors=[_Acme().extractor(fetch_index=fetch_index)],
+        now=NOW,
+        sleep=_no_sleep,
+        pdf_dir=pdfs,
+    )
+    sheet = _digest(web.pages[sheet_url])
+    assert (pdfs / "gas-2026-09" / f"{sheet}.pdf").read_bytes() == web.pages[sheet_url]
+    assert json.loads((out / "indices" / "acme.json").read_text()) == {"TTF": {"2026-08": 31.5}}
+    assert not (out / "unparsed.json").exists()
+
+
 async def test_backfill_files_a_card_under_the_month_it_names(
     tmp_path: Path, web: _Session
 ) -> None:

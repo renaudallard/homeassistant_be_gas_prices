@@ -359,7 +359,20 @@ under `gas/`:
 - `texts/<YYYY-MM>/<sha256>.txt`: the text every parse read.
 - With `--pdfs DIR`, each new PDF to `DIR/gas-<YYYY-MM>/<sha256>.pdf`, which
   the workflow uploads as the assets of the release of that name;
-  `pdfs.json` says which release holds each digest.
+  `pdfs.json` says which release holds each digest. A PDF no row names goes
+  under the month of the run (`file_the_rest`), where it was dropped before.
+- `unparsed.json`: the cards that downloaded and no reader could read, by the
+  row each would have become, with the url and the digest of each
+  (`_write_unparsed`). A failed live fetch is named under the month of the
+  run; a past month's card its reader answered None for, which a reader does
+  so the month cache does not ask again every hour, under the month asked
+  and filed in that month's release (`_name_refused`), and only where no row
+  names its bytes, since a fetch may read another month's card on its way to
+  None. Belvus's cards of January to April 2026 were dropped so. Merged with
+  what earlier runs wrote; an entry goes once its month has a row, or once a
+  live row of the same contract and region reads its cards, and with the
+  rows' retention. The coverage sheet shows such a month as `pdf` and `(not
+  parsed)`, with no JSON.
 - `indices/<supplier>.json`: each `fetch_index` table, merged into what
   earlier runs kept.
 - `vat.json`: per card month, the residential VAT rate the rows state
