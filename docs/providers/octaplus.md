@@ -159,11 +159,15 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   sheet that is not base64, ASCII or not, is an `ExtractorError`.
 - The bytes go through `_pdf.render_pdf("layout", ...)`, so the card archiver
   sees them like any card fetched by a reader.
-- Names: the March 2026 listing named the fixed cards FIXEDD and ECOFIXEDD
-  (the Fixed one a revision "valable à partir du 16/03/2026"); a unique name
-  that differs only by a doubled letter is accepted. The sheet endpoint also
-  still serves the first March Fixed card under the plain name, but the
-  listing does not name it, so it is not read.
+- Names: the March 2026 listing named the fixed cards FIXEDD and ECOFIXEDD,
+  both revisions titled "Tarif : Fixed - valable à partir du 16/03/2026" and
+  "Tarif : Eco Fixed - valable à partir du 16/03/2026"; a unique name that
+  differs only by a doubled letter is accepted, and `parse_older` takes the
+  title's "valable à partir du" off when its date is in the card's month
+  (`_OLDER_FROM_RE`). Fixed is 6,39 c€/kWh on it and Eco Fixed 7,43. The sheet
+  endpoint also still serves the first March cards under the plain names,
+  5,50 and 6,46 c€/kWh with the same fees, but the listing does not name
+  them, so they are not read.
 - Products listed since 2023-01 (WL and VL alike): CLEAR and ECOCLEAR
   (2023-01 to 2025-12), FIXED and ECOFIXED (from 2023-07), SMARTVARIABLE
   (throughout), FLOW and ECOFLOW (2025-02 to 2025-12), FLUX (from 2025-07),

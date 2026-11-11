@@ -464,6 +464,9 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
 # "ZTP RLP * 1,01 + 2,16 €/MWh.", is set plain; its "ZTP RLP" is the monthly
 # value ("indexé mensuellement"), the price at the month before's.
 _OLDER_TITLE = "Tarif : "
+# The March 2026 fixed cards are a revision, "Tarif : Fixed - valable à partir
+# du 16/03/2026", and the archive holds no card for the days before it.
+_OLDER_FROM_RE = re.compile(r" - valable à partir du (\d{2})/(\d{2})/(\d{4})$")
 _OLDER_MONTH_RE = re.compile(
     r"^Clients résidentiels en (Flandre|Wallonie) - (\d{2})/(\d{4}) - Tarifs", re.MULTILINE
 )
@@ -484,13 +487,20 @@ def parse_older(
     contract signed on it is priced on it."""
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "OCTA+")
     code = _region_code(contract, region)
-    title = text.partition("\n")[0].removeprefix(_OLDER_TITLE)
-    if "".join(title.split()).upper() != contract.slug:
+    title = text.partition("\n")[0].removeprefix(_OLDER_TITLE).rstrip()
+    revision = _OLDER_FROM_RE.search(title)
+    product = title if revision is None else title[: revision.start()]
+    if "".join(product.split()).upper() != contract.slug:
         raise ExtractorError(f"OCTA+ {contract_id}: the card is for {title!r}")
     month = _OLDER_MONTH_RE.search(text)
     if month is None or _OLDER_REGIONS[month.group(1)] != region:
         raise ExtractorError(f"OCTA+ {contract_id}: no {region} card month found")
     card_month = month_date(month.group(3), int(month.group(2)), "OCTA+")
+    if revision is not None and (int(revision.group(3)), int(revision.group(2))) != (
+        card_month.year,
+        card_month.month,
+    ):
+        raise ExtractorError(f"OCTA+ {contract_id}: a revision of another month, {title!r}")
     flat = "".join(text.split())
     fee = _OLDER_FEE_RE.search(flat)
     price = _OLDER_PRICE_RE.search(flat)

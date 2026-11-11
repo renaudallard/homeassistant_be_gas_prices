@@ -703,6 +703,41 @@ def test_an_older_fixed_card_gives_its_price_and_fee() -> None:
         _older("octaplus_fixed", REGION_WALLONIA, "2026-02 G OCTA+FIXED RE VL FR.pdf")
 
 
+@pytest.mark.parametrize(
+    ("contract", "region", "name", "price", "fee"),
+    [
+        ("octaplus_fixed", REGION_FLANDERS, "2026-03 G OCTA+FIXEDD RE VL FR.pdf", 0.0639, 65.0),
+        (
+            "octaplus_ecofixed",
+            REGION_WALLONIA,
+            "2026-03 G OCTA+ECOFIXEDD RE WL FR.pdf",
+            0.0743,
+            130.0,
+        ),
+    ],
+)
+def test_the_march_2026_revision_is_read(
+    contract: str, region: str, name: str, price: float, fee: float
+) -> None:
+    """March 2026's fixed cards are a revision, "Tarif : Fixed - valable à
+    partir du 16/03/2026", and the archive holds no card for the days before
+    it; they were refused as a card for another product."""
+    snap = _older(contract, region, name)
+    assert snap.energy == FixedRates(price=approx(price), yearly_fixed_fee=fee)
+    assert snap.publication_label == "2026-03"
+
+
+def test_a_revision_of_another_month_is_refused() -> None:
+    text = fixture_text("octaplus", "2026-03 G OCTA+FIXEDD RE VL FR.pdf", "rows")
+    assert "valable à partir du 16/03/2026" in text
+    with pytest.raises(ExtractorError, match="a revision of another month"):
+        octaplus.parse_older(
+            "octaplus_fixed", REGION_FLANDERS, text.replace("16/03/2026", "16/04/2026", 1)
+        )
+    with pytest.raises(ExtractorError, match="the card is for"):
+        octaplus.parse_older("octaplus_ecofixed", REGION_FLANDERS, text)
+
+
 def test_an_older_variable_card_is_priced_at_its_monthly_column() -> None:
     """ "Coût du gaz 3,67 3,86" under "Prix mensuels Prix estimés": the first
     is "ZTP RLP * 1,01 + 2,16 €/MWh" at August 2025's 32,18, with 6 %."""
