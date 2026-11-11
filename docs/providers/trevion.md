@@ -87,7 +87,9 @@ month or its own, as the March card does for February's 33,30; a card
 naming any other month is left out. The older cards a page also lists are
 not downloaded. `published_index` is the pure reader. One dead link is
 skipped, and so is a later page the site no longer serves; a transient
-failure raises.
+failure raises. `published_since` gives the values from a month on, off
+the cards after it only: energie.be's table takes them as a stand-in for
+the months its own document has not reached (see energiebe.md).
 
 ## Archive
 

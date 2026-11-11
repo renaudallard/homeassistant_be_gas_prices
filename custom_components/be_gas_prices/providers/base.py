@@ -145,6 +145,22 @@ class SupplierSnapshot:
 # by index name and then by month ("YYYY-MM"), in EUR/MWh.
 IndexTable = dict[str, dict[str, float]]
 
+_STAND_IN = " stand-in"
+
+
+def stand_in_name(index: str) -> str:
+    """The series a table carries beside ``index`` while the supplier's own
+    publication lags: the same index as another supplier publishes it, for
+    the months after the supplier's own newest value (energie.be's TTF_RLP
+    from Trevion's). A month priced on it stays provisional."""
+    return f"{index}{_STAND_IN}"
+
+
+def is_stand_in(name: str) -> bool:
+    """Whether a table's series ``name`` is a stand-in (:func:`stand_in_name`)."""
+    return name.endswith(_STAND_IN)
+
+
 SnapshotFetcher = Callable[[aiohttp.ClientSession, str, str], Awaitable[SupplierSnapshot]]
 
 # Cheap-probe contract: the same return value across calls means the card is

@@ -68,6 +68,13 @@ line of its own, the price and the standing charge in one row, which the
 layout reading runs together out of order, and two network labels away
 from their figures. Such a card is read off its plain text, a second
 download.
+
+energie.be publishes TTF_RLP in a document of its own, which can run late:
+on 11 November 2026 it still ended with September. For the months after its
+newest value the table carries Trevion's TTF_RLP as a stand-in, the same
+index, which agreed with energie.be's within 0,05 EUR/MWh in every month
+from December 2024 to September 2026; a month priced on it stays
+provisional until energie.be publishes its own.
 """
 
 from __future__ import annotations
@@ -80,6 +87,7 @@ from typing import Any
 import aiohttp
 
 from ..const import REGION_FLANDERS, VAT_RATE_REDUCED
+from . import trevion
 from ._network import (
     FLUVIUS_LABELS,
     METERING,
@@ -111,6 +119,7 @@ from .base import (
     SupplierExtractor,
     SupplierSnapshot,
     TaxOverlay,
+    stand_in_name,
 )
 
 _CONTRACTS_URL = "https://www.energie.be/api/v1/data/contracts"
@@ -479,8 +488,24 @@ def parse_index_document(text: str) -> IndexTable:
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
-    """energie.be's published TTF_RLP values."""
-    return parse_index_document(await fetch_pdf_text(session, _INDEX_URL))
+    """energie.be's published TTF_RLP values, and Trevion's for the months
+    after energie.be's newest, as a stand-in (``stand_in_name``). Trevion
+    out of reach leaves energie.be's own values, which is what was read
+    before."""
+    table = parse_index_document(await fetch_pdf_text(session, _INDEX_URL))
+    own = table.get(_INDEX)
+    if not own:
+        return table
+    newest = max(own)
+    year, month = int(newest[:4]), int(newest[5:])
+    after = date(year + month // 12, month % 12 + 1, 1)
+    try:
+        stand_in = await trevion.published_since(session, after)
+    except ExtractorError:
+        stand_in = {}
+    if stand_in:
+        table[stand_in_name(_INDEX)] = stand_in
+    return table
 
 
 EXTRACTOR = SupplierExtractor(

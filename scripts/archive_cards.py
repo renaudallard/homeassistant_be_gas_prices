@@ -178,6 +178,7 @@ from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     SheetNetwork,
     SupplierExtractor,
     SupplierSnapshot,
+    is_stand_in,
 )
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json  # noqa: E402
 
@@ -1528,6 +1529,9 @@ async def archive(
                     continue
                 table = await walk(ex, functools.partial(ex.fetch_index, session), f"{ex.id} index")
                 if table is not None:
+                    # A stand-in is another supplier's publication, which
+                    # its own file keeps.
+                    table = {name: v for name, v in table.items() if not is_stand_in(name)}
                     index_path = out / _INDICES / f"{ex.id}.json"
                     merged = _merge_index(_read_json(index_path), table, cutoff)
                     if merged and _write_json(index_path, merged):

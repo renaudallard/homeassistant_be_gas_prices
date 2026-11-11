@@ -1048,6 +1048,30 @@ def test_a_quarterly_index_may_lag_its_quarter() -> None:
     assert [c.status for c in checks] == ["ok", "ok"]
 
 
+def test_an_index_a_stand_in_covers_is_a_notice() -> None:
+    """energie.be's TTF_RLP ended with September on 11 November 2026, and its
+    table carried Trevion's October: a notice, since the months after it are
+    billed on that, marked provisional. A stand-in as late fails all the
+    same."""
+    extractor = _extractor("acme")
+    card = lc.Card(extractor, "x_var", "flanders", _snapshot("acme", energy=_indexed("M")))
+    table = {"M": {"2026-09": 75.3}, "M stand-in": {"2026-10": 88.05}}
+    (check,) = [
+        c
+        for c in lc._index_checks(extractor, table, [card], date(2026, 11, 11))
+        if c.label == "acme: index M"
+    ]
+    assert check.status == "notice"
+    assert "up to 2026-10 (88.05 EUR/MWh), marked provisional" in check.detail
+    late = {"M": {"2026-08": 61.7}, "M stand-in": {"2026-09": 75.3}}
+    (check,) = [
+        c
+        for c in lc._index_checks(extractor, late, [card], date(2026, 11, 11))
+        if c.label == "acme: index M"
+    ]
+    assert check.status == "fail"
+
+
 def test_an_index_known_to_run_late_is_a_notice_until_its_allowance_lapses() -> None:
     """TotalEnergies' gas history still ended at August 2026 on 5 November:
     known, so reported and not filed, until 1 December. Another of its

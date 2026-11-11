@@ -66,7 +66,7 @@ the household's caliber cannot price it, like a card missing its DSO.
 | --- | --- |
 | `FixedRates` | its price |
 | `VariableRates` | the card's printed price; provisional where the card sets it by a formula on an index the supplier publishes no value of (Dots, Sparki), since the bill follows the formula |
-| `IndexedRates` | `factor x index(M) + base` once the supplier has published the index for M; before that, at the latest value it has published (the month is then *provisional*); with no value published up to M, the card's printed figure, or a signed or typed formula at the index that figure was set at |
+| `IndexedRates` | `factor x index(M) + base` once the supplier has published the index for M; before that, at the latest value it has published (the month is then *provisional*), or at a stand-in its table carries for the months its own publication has not reached, the same index as another supplier publishes it (`stand_in_name`; energie.be's TTF_RLP from Trevion's), provisional too; with no value published up to M, the card's printed figure, or a signed or typed formula at the index that figure was set at |
 
 An index is always the supplier's own: Engie's ZTPDAM (ICIS Heren), OCTA+'s
 ZTP RLP M, TotalEnergies's TTF_M_RLP each come from that supplier's

@@ -148,6 +148,7 @@ from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     SheetNetwork,
     SupplierExtractor,
     SupplierSnapshot,
+    stand_in_name,
 )
 from custom_components.be_gas_prices.vat_rates import residential_vat  # noqa: E402
 
@@ -404,8 +405,19 @@ def _index_checks(
         if _lag(today, month) > allowed:
             detail = f"the newest value is for {newest}, more than {allowed} months before {today}"
             known = _KNOWN_INDEX_DELAYS.get((ex.id, index))
+            borrowed = table.get(stand_in_name(index)) or {}
+            stood_in = max(borrowed) if borrowed else ""
+            stood_month = label_month(stood_in) if stood_in else None
             if known is not None and today < known[0]:
                 yield Check(label, "notice", f"{detail}; {known[1]}")
+            elif stood_month is not None and _lag(today, stood_month) <= allowed:
+                yield Check(
+                    label,
+                    "notice",
+                    f"{detail}; the months after it are billed on the same index as another "
+                    f"supplier publishes it, up to {stood_in} ({borrowed[stood_in]:g} EUR/MWh), "
+                    "marked provisional",
+                )
             else:
                 yield Check(label, "fail", detail)
             continue

@@ -63,7 +63,7 @@ from .manual_rate import manual_leg
 from .pricing import PriceBreakdown, compute_breakdown, energy_price, fixed_costs
 from .providers._rates import EnergyRates, IndexedRates, VariableRates, on_vat
 from .providers._resolve import resolve_for_delivery
-from .providers.base import IndexTable, SupplierSnapshot
+from .providers.base import IndexTable, SupplierSnapshot, stand_in_name
 from .vat_rates import residential_vat
 
 # The energy leg a card bills a household on at a residential VAT rate: the
@@ -76,11 +76,14 @@ class IndexValue:
     """The index value a month is priced at, and the month it belongs to.
 
     ``month`` differs from the month priced while the supplier has not yet
-    published that month's value, which makes the price provisional.
+    published that month's value, which makes the price provisional, and so
+    does ``stand_in``: a value of the same index another supplier published,
+    while the supplier's own publication lags (``stand_in_name``).
     """
 
     value: float
     month: str
+    stand_in: bool = False
 
 
 def month_key(day: date) -> str:
@@ -106,17 +109,23 @@ def fee_waiver(signed: SupplierSnapshot | None, start: date | None) -> tuple[dat
 
 def index_for(table: IndexTable | None, index: str, month: str) -> IndexValue | None:
     """The value ``index`` settles at for ``month``, or the latest published
-    before it, or None when the supplier has published none up to then."""
-    values = (table or {}).get(index)
-    if not values:
-        return None
-    if month in values:
-        return IndexValue(values[month], month)
-    earlier = [key for key in values if key < month]
+    before it, or None when the supplier has published none up to then.
+
+    The supplier's own value comes first; where it has none, the stand-in
+    the table carries for the months its publication has not reached
+    (``stand_in_name``), its own value winning a month both give."""
+    own = (table or {}).get(index) or {}
+    stand_in = (table or {}).get(stand_in_name(index)) or {}
+    if month in own:
+        return IndexValue(own[month], month)
+    if month in stand_in:
+        return IndexValue(stand_in[month], month, stand_in=True)
+    earlier = [(key, False) for key in own if key < month]
+    earlier += [(key, True) for key in stand_in if key < month and key not in own]
     if not earlier:
         return None
-    latest = max(earlier)
-    return IndexValue(values[latest], latest)
+    latest, borrowed = max(earlier)
+    return IndexValue((stand_in if borrowed else own)[latest], latest, stand_in=borrowed)
 
 
 def merged_index(held: IndexTable | None, fetched: IndexTable, month: str) -> IndexTable:
@@ -278,7 +287,9 @@ def bill_month(
         or (
             isinstance(energy, IndexedRates)
             and (
-                index.month != month if index is not None else not _settled_for(card, energy, month)
+                index.month != month or index.stand_in
+                if index is not None
+                else not _settled_for(card, energy, month)
             )
         ),
     )

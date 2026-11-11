@@ -701,6 +701,23 @@ async def test_a_card_no_reader_could_read_is_kept_and_named(tmp_path: Path, web
     assert not (out / "unparsed.json").exists()
 
 
+async def test_a_stand_in_is_not_kept_as_the_supplier_s_publication(
+    tmp_path: Path, web: _Session
+) -> None:
+    """energie.be's table carries Trevion's TTF_RLP for the months its own
+    document has not reached. Its index file keeps what energie.be publishes;
+    Trevion's file keeps Trevion's."""
+    out = tmp_path / "gas"
+
+    async def fetch_index(_session: Any) -> dict[str, dict[str, float]]:
+        return {"TTF_RLP": {"2026-08": 61.7}, "TTF_RLP stand-in": {"2026-09": 75.35}}
+
+    await ac.archive(
+        out, extractors=[_Acme().extractor(fetch_index=fetch_index)], now=NOW, sleep=_no_sleep
+    )
+    assert json.loads((out / "indices" / "acme.json").read_text()) == {"TTF_RLP": {"2026-08": 61.7}}
+
+
 async def test_a_past_card_its_reader_refused_is_named_under_its_month(
     tmp_path: Path, web: _Session
 ) -> None:

@@ -33,6 +33,7 @@ from datetime import date, timedelta
 import pytest
 
 from custom_components.be_gas_prices.bill import (
+    IndexValue,
     MonthBill,
     bill_month,
     card_leg,
@@ -294,6 +295,42 @@ def test_a_settled_month_missing_from_the_table_is_provisional() -> None:
     # its month's value, and only its month's: August priced on it is not.
     assert not bill("2026-09", None).provisional
     assert bill("2026-08", None).provisional
+
+
+def test_a_stand_in_prices_a_month_its_supplier_has_not_published() -> None:
+    """energie.be's TTF_RLP ended with September on 11 November 2026; its
+    table carries Trevion's October beside it. October is priced on that and
+    stays provisional; the supplier's own value wins a month both give."""
+    table = {"TTF_RLP": {"2026-09": 75.3}, "TTF_RLP stand-in": {"2026-09": 75.35, "2026-10": 88.05}}
+    assert index_for(table, "TTF_RLP", "2026-09") == IndexValue(75.3, "2026-09")
+    assert index_for(table, "TTF_RLP", "2026-10") == IndexValue(88.05, "2026-10", stand_in=True)
+    assert index_for(table, "TTF_RLP", "2026-11") == IndexValue(88.05, "2026-10", stand_in=True)
+    # Once energie.be publishes October, its own value prices it.
+    table["TTF_RLP"]["2026-10"] = 88.1
+    assert index_for(table, "TTF_RLP", "2026-10") == IndexValue(88.1, "2026-10")
+    assert index_for(table, "TTF_RLP", "2026-11") == IndexValue(88.1, "2026-10")
+
+    card = engie.parse_snapshot(
+        "engie_easy_variable",
+        REGION_WALLONIA,
+        fixture_text("engie", "G_EASY_R_GREY_C_I_12_W_F_202609.pdf"),
+    )
+    assert isinstance(card.energy, IndexedRates)
+    index = card.energy.index
+    october = bill_month(
+        month="2026-10",
+        card=card,
+        energy_for=card_leg,
+        table={index: {"2026-09": 61.768}, f"{index} stand-in": {"2026-10": 70.0}},
+        dso=DSO_ORES,
+        annual_kwh=10_000.0,
+        caliber=CALIBER_Q10,
+        kwh=1000.0,
+        days=30,
+        days_in_year=365,
+    )
+    assert october.index == IndexValue(70.0, "2026-10", stand_in=True)
+    assert october.provisional
 
 
 def test_a_signed_leg_is_final_only_on_a_settled_card_of_its_month() -> None:

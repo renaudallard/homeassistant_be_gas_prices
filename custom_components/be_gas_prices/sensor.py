@@ -95,6 +95,7 @@ def _price_attributes(data: CoordinatorData) -> dict[str, Any]:
     if data.index is not None:
         attrs["index_value"] = data.index.value
         attrs["index_month"] = data.index.month
+        attrs["index_stand_in"] = data.index.stand_in
     return attrs
 
 

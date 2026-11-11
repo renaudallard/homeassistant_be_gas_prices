@@ -406,17 +406,54 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
         )
 
 
+_INDEX_DOCUMENT = "Indexation_Parameters_5aad2d327b.pdf"
+
+
 async def test_fetch_index_reads_the_indexation_document() -> None:
-    with patch.object(
-        energiebe,
-        "fetch_pdf_text",
-        AsyncMock(
-            return_value=fixture_text("energiebe", "Indexation_Parameters_5aad2d327b.pdf", "plain")
-        ),
-    ) as fetched:
+    """The document still ended with September on 11 November 2026, so the
+    months after it are Trevion's, asked from October on, as a stand-in."""
+    stand_in = AsyncMock(return_value={"2026-10": 88.05})
+    with (
+        patch.object(
+            energiebe,
+            "fetch_pdf_text",
+            AsyncMock(return_value=fixture_text("energiebe", _INDEX_DOCUMENT, "plain")),
+        ) as fetched,
+        patch.object(energiebe.trevion, "published_since", stand_in),
+    ):
         table = await energiebe.fetch_index(AsyncMock())
     assert fetched.call_args.args[1].endswith("?key=Indexation")
     assert table["TTF_RLP"]["2026-09"] == pytest.approx(75.3)
+    assert "2026-10" not in table["TTF_RLP"]
+    assert table["TTF_RLP stand-in"] == {"2026-10": 88.05}
+    assert stand_in.call_args.args[1] == date(2026, 10, 1)
+
+
+async def test_trevion_out_of_reach_leaves_energie_be_s_own_values() -> None:
+    with (
+        patch.object(
+            energiebe,
+            "fetch_pdf_text",
+            AsyncMock(return_value=fixture_text("energiebe", _INDEX_DOCUMENT, "plain")),
+        ),
+        patch.object(
+            energiebe.trevion,
+            "published_since",
+            AsyncMock(side_effect=ExtractorError("HTTP 503 fetching x")),
+        ),
+    ):
+        table = await energiebe.fetch_index(AsyncMock())
+    assert set(table) == {"TTF_RLP"}
+    # Nothing from Trevion either when Trevion has no later month.
+    with (
+        patch.object(
+            energiebe,
+            "fetch_pdf_text",
+            AsyncMock(return_value=fixture_text("energiebe", _INDEX_DOCUMENT, "plain")),
+        ),
+        patch.object(energiebe.trevion, "published_since", AsyncMock(return_value={})),
+    ):
+        assert set(await energiebe.fetch_index(AsyncMock())) == {"TTF_RLP"}
 
 
 def _november(contract: str, name: str) -> SupplierSnapshot:

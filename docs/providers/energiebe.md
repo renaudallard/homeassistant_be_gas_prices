@@ -95,6 +95,18 @@ electricity cards that day.
 
 ## Index
 
+- energie.be's document runs late: on 11 November 2026 it still ended with
+  September (last modified 3 November) while every other supplier had
+  October, and its cards print only a VNR estimate. For the months after
+  its newest value, `fetch_index` adds Trevion's TTF_RLP as a stand-in
+  (`trevion.published_since`, the series `stand_in_name("TTF_RLP")`). The two
+  agreed within 0,05 EUR/MWh in each of the 22 months from December 2024 to
+  September 2026; the Energy Together brands' series differ by 0,1 in six of
+  them. A month priced on the stand-in stays provisional and the price
+  sensor's `index_stand_in` says so; energie.be's own value replaces it once
+  published. Trevion out of reach leaves energie.be's own values, and the
+  card archive keeps the stand-in out of `indices/energiebe.json`.
+
 - TTF_RLP: "de RLP-gewogen TTF dagprijzen op de TTF Day Ahead Market",
   the delivery month's mean in c EUR/kWh. Known after the month, so
   `settled` is False, and the card prints the formula at a VNR estimate

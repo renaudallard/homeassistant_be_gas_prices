@@ -237,6 +237,23 @@ async def test_fetch_index_takes_each_value_from_the_following_card() -> None:
     }
 
 
+async def test_published_since_reads_only_the_cards_after_the_month() -> None:
+    """energie.be asks for the months after its own newest, July 2026 here:
+    the August and September cards name them, and no earlier card is read."""
+    read = AsyncMock(side_effect=lambda _s, url: _by_url(url))
+    with (
+        patch.object(
+            trevion,
+            "fetch_text",
+            AsyncMock(return_value=fixture_page("trevion", "tariefkaarten.html")),
+        ),
+        patch.object(trevion, "fetch_pdf_text", read),
+    ):
+        values = await trevion.published_since(AsyncMock(), date(2026, 7, 1))
+    assert values == {"2026-07": 53.07, "2026-08": 61.72}
+    assert read.await_count == 2
+
+
 async def test_fetch_index_survives_a_dead_link_but_not_an_outage() -> None:
     def card_or_404(_session: object, url: str) -> str:
         if url.endswith("202609.pdf"):

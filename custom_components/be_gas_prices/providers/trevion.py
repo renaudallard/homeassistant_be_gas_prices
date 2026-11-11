@@ -223,7 +223,25 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     first month the price history can be backfilled from: each card names
     the month before's value, which also stands in while the next card is
     not out. The older cards a listing page also holds are not read."""
-    first = earliest_priced_month(dt_util.now().date())
+    values = await _named_values(session, earliest_priced_month(dt_util.now().date()))
+    if not values:
+        raise ExtractorError("Trevion: no card names a TTF_RLP value")
+    return {_INDEX: values}
+
+
+async def published_since(session: aiohttp.ClientSession, month: date) -> dict[str, float]:
+    """Trevion's TTF_RLP values from ``month`` on, off the cards after it
+    only: the stand-in energie.be's table carries for the months its own
+    publication has not reached. Over December 2024 to September 2026 the
+    two agreed within 0,05 EUR/MWh every month."""
+    following = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+    values = await _named_values(session, following)
+    return {key: value for key, value in values.items() if key >= f"{month:%Y-%m}"}
+
+
+async def _named_values(session: aiohttp.ClientSession, first: date) -> dict[str, float]:
+    """The TTF_RLP value each card from ``first``'s month on names, by the
+    month it is for."""
     cards = await _cards_back_to(session, first)
     values: dict[str, float] = {}
     for month, url in cards.items():
@@ -240,9 +258,7 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
         found = published_index(text)
         if found is not None:
             values[f"{found[0]:%Y-%m}"] = found[1]
-    if not values:
-        raise ExtractorError("Trevion: no card names a TTF_RLP value")
-    return {_INDEX: values}
+    return values
 
 
 # "Trevion Gas Flex Particulier", bracketed from October 2026: "Trevion Gas
