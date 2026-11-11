@@ -274,8 +274,8 @@ async def fetch_for_month(
     no card for it; a card naming another month is refused. A variable card
     is the newest version whose title names the month or an earlier one. A
     transient failure raises so the month cache retries it; any other
-    failure, a card from the older template included, is a month with no
-    card.
+    failure, a variable card from the older template included, is a month
+    with no card.
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     if contract is None or region not in REGIONS:
@@ -349,6 +349,8 @@ def parse_snapshot(
     contract = require_contract(_CONTRACTS_BY_ID, contract_id, "Bolt")
     _check_region(region)
     text = _join_value_lines(text)
+    if _OLDER_TITLE_RE.search(text) is not None and _HEADING_START_RE.search(text) is None:
+        return _parse_older(contract, region, text, source_url)
     card_month = _card_month(text, contract)
     fixed = contract.kind == "fixed"
     return SupplierSnapshot(
@@ -513,8 +515,11 @@ def _taxes(text: str, region: str) -> TaxOverlay:
 
 
 # "6 of 10 m3/h 4 3,56", "25m3/h 75,18": the caliber, a footnote digit on the
-# two smallest-caliber rows, the amount.
-_OSP_ROW_RE = re.compile(r"^(?:6 of 10|\d+) ?m3/h(?:[ \t]+\d)?[ \t]+(\d+,\d+)[ \t]*$", re.MULTILINE)
+# two smallest-caliber rows, stars on the older template's ("6 of 10 m3/h*
+# 3,56"), the amount.
+_OSP_ROW_RE = re.compile(
+    r"^(?:6 of 10|\d+) ?m3/h(?:[ \t]+\d|\*{1,2})?[ \t]+(\d+,\d+)[ \t]*$", re.MULTILINE
+)
 
 
 def _osp(text: str) -> dict[str, float]:
@@ -525,6 +530,103 @@ def _osp(text: str) -> dict[str, float]:
     block = text[start:] if end < 0 else text[start:end]
     amounts = [to_float(value) for value in _OSP_ROW_RE.findall(block)]
     return osp_table(amounts, supplier="Bolt")
+
+
+# ---- the older template ----------------------------------------------------
+
+# The two-page card of the fixed products up to March 2026: "Bolt Fixe - gaz"
+# over "Janvier 2026 - résidentiel", March's "01/03/2026-13/03/2026 -
+# résidentiel", the price as "Coût de l'énergie Simple c€4,15/kWh", the
+# levies before the network table, which is headed "Gaz- distribution et
+# transport (TTC)", and a star on the excise and connection rows, before the
+# unit up to December 2025 and after it from January 2026. Each table is of
+# the card's own year: November 2025 prints 2025's, January 2026 the one
+# April's card prints.
+_OLDER_TITLE_RE = re.compile(r"^(\S+(?: \S+){0,4}) - gaz[ \t]*$", re.MULTILINE)
+_OLDER_MONTH_RE = re.compile(
+    r"^(?:(\S+) (\d{4})|\d{2}/(\d{2})/(\d{4})-\d{2}/\d{2}/\d{4}) - résidentiel[ \t]*$",
+    re.MULTILINE,
+)
+_OLDER_PRICE_RE = re.compile(r"Coût de l.énergie Simple c€(\d+,\d+)/kWh")
+_OLDER_STAR = r"(?:[ \t]*\*{1,2})?"
+# The connection row ends on "Simple Fixe" from January 2026, the start of the
+# formula table beside it.
+_OLDER_TAX_END = r"(?:[ \t]+Simple Fixe)?[ \t]*$"
+
+
+def _older_tax_cell(text: str, label: str, region: str) -> float | None:
+    """The region's value on the older levy row ``label``, None for a dash."""
+    columns = (REGION_FLANDERS, REGION_WALLONIA, REGION_BRUSSELS)
+    values = _TAX_VALUE * len(columns)
+    pattern = rf"^{label}{_OLDER_STAR}[ \t]*\(c€/kWh\){_OLDER_STAR}{values}{_OLDER_TAX_END}"
+    match = re.search(pattern, text, re.MULTILINE)
+    if match is None:
+        raise ExtractorError(f"Bolt: levy row {label!r} not found")
+    return cell_value(match.group(1 + columns.index(region)))
+
+
+def _parse_older(
+    contract: _ContractDef, region: str, text: str, source_url: str
+) -> SupplierSnapshot:
+    title = _OLDER_TITLE_RE.search(text)
+    if title is None or title.group(1) != contract.heading:
+        found = title.group(1) if title is not None else "another product"
+        raise ExtractorError(f"Bolt {contract.contract_id}: the card is for {found}")
+    if contract.kind != "fixed":
+        # Version 10 of the variable cards, titled January 2025, prints that
+        # year's network table, which the months it stayed in force into 2026
+        # would be billed on.
+        raise ExtractorError("Bolt: the older variable card is not read")
+    month = _OLDER_MONTH_RE.search(text)
+    if month is None:
+        raise ExtractorError("Bolt: card month not found")
+    if month.group(1) is not None:
+        number = MONTH_NAMES.get(fold_accents(month.group(1)))
+        if number is None:
+            raise ExtractorError(f"Bolt: card month {month.group(1)!r} not understood")
+        card_month = month_date(month.group(2), number, "Bolt")
+    else:
+        card_month = month_date(month.group(4), int(month.group(3)), "Bolt")
+    price = _OLDER_PRICE_RE.search(text)
+    fee = _FEE_RE.search(text)
+    if price is None or fee is None:
+        raise ExtractorError("Bolt: price or platform fee not found")
+    dsos = read_dsos(
+        text,
+        _LABELS[region],
+        _COLUMNS,
+        supplier="Bolt",
+        after="distribution et transport",
+        before="Obligations de service publique",
+    )
+    require_region(dsos, region, "Bolt")
+    excise = _older_tax_cell(text, r"Accise fédérale", region)
+    if excise is None:
+        raise ExtractorError("Bolt: no excise for the region")
+    contribution = _older_tax_cell(text, r"Contribution sur l.énergie", region)
+    connection_fee = 0.0
+    if region == REGION_WALLONIA:
+        fee_cell = _older_tax_cell(text, r"Redevance de raccordement", region)
+        if fee_cell is None:
+            raise ExtractorError("Bolt: Walloon connection fee not found")
+        connection_fee = fee_cell / 100.0
+    return SupplierSnapshot(
+        supplier="bolt",
+        contract=contract.contract_id,
+        energy=FixedRates(
+            price=to_float(price.group(1)) / 100.0, yearly_fixed_fee=to_float(fee.group(1)) * 12.0
+        ),
+        dsos=dsos,
+        taxes=TaxOverlay(
+            excise_bands=excise_bands(excise / 100.0, None),
+            energy_contribution=(contribution or 0.0) / 100.0,
+            connection_fee=connection_fee,
+            osp_by_caliber=_osp(text) if region == REGION_BRUSSELS else None,
+        ),
+        source_url=source_url,
+        publication_label=f"{card_month:%Y-%m}",
+        valid_until=end_of_month(card_month.year, card_month.month),
+    )
 
 
 # ---- index values ------------------------------------------------------------

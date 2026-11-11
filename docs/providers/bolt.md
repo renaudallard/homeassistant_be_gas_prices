@@ -178,11 +178,23 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   (202610) is 404 for both.
 - `fetch_for_month` builds the URL from the month asked for; 404 is no card, a
   transient failure raises, and a card naming another month is refused.
-- Template: the current three-page card starts with April 2026. The January
-  and March 2026 cards (the ones checked before April) are an older two-page
-  layout ("Coût de l'énergie Simple c€4,57 /kWh", "Abonnement €10,99/mois")
-  that this module does not read, so such months return None and the month
-  cache falls back to the card archive.
+- Template: the current three-page card starts with April 2026. The fixed
+  cards of November 2025 to March 2026 are an older two-page layout, read
+  whole by `_parse_older`: "Bolt Fixe - gaz" over "Janvier 2026 -
+  résidentiel" (March's "01/03/2026-13/03/2026 - résidentiel", the first part
+  of the month), "Coût de l'énergie Simple c€4,15/kWh", "Abonnement
+  €10,99/mois", the levies before the network table headed "Gaz- distribution
+  et transport (TTC)", a star on the excise and connection rows before the
+  unit up to December 2025 and after it from January 2026, where the
+  connection row ends on the "Simple Fixe" of the formula table beside it,
+  and stars on the two smallest Brussels calibers. Each prints its own year's
+  network table: November 2025 Antwerpen's 2025 rates (2,10 c€/kWh, 18,56
+  €/an metering), January to March 2026 the ones the April card prints.
+  Prices 4,62 (November), 4,41, 4,15, 4,49 and 4,57 (March); 10,99 €/month
+  for Bolt Fixe and 5,99 for Plenty Fixe. The variable cards of that layout
+  (version 10, titled January 2025) are refused: their network table is
+  2025's, which the months they stayed in force into 2026 would be billed
+  on.
 - Seen on the current template: 10,99 €/month for Bolt Fixe on the April and
   June cards, 8,99 from July; prices 6,95 (April), 6,21 (June), 5,76 (July),
   7,31 (August), 8,02 (September).
@@ -227,6 +239,9 @@ pays pdfplumber's 45 s on a Raspberry Pi):
 
 - Bolt Fixe price and fee, month, VAT basis; Plenty Fixe fee; the Bolt Fixe
   card refused for Plenty Fixe.
+- The older fixed template, November 2025 and March 2026 cards: price, fee,
+  month, levies and tables in each region, each table of its own year, the
+  card held to its product, and the older variable card refused.
 - Flanders table (Antwerpen in full, West not read off the Gaselwest row),
   Wallonia table as printed (ORES and RESA in full), Brussels row and levy
   table.

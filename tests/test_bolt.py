@@ -134,6 +134,75 @@ def test_card_of_the_other_product_is_refused() -> None:
         bolt.parse_snapshot("bolt_plenty_fix", REGION_FLANDERS, _card(_FIX_202609))
 
 
+# The older two-page template of the fixed cards, November 2025 to March 2026.
+_OLDER_FIX = "fix_res_ng_fr_202511.pdf"
+_OLDER_PLENTY = "plenty_fix_res_ng_fr_202603.pdf"
+
+
+@pytest.mark.parametrize(
+    ("contract", "name", "month", "price", "fee"),
+    [
+        # "Coût de l'énergie Simple c€4,62/kWh", "Abonnement €10,99/mois".
+        ("bolt_fix", _OLDER_FIX, "2025-11", 0.0462, 10.99),
+        # March's card is for "01/03/2026-13/03/2026", "€5,99/mois".
+        ("bolt_plenty_fix", _OLDER_PLENTY, "2026-03", 0.0457, 5.99),
+    ],
+)
+def test_an_older_fixed_card_is_read_whole(
+    contract: str, name: str, month: str, price: float, fee: float
+) -> None:
+    """The fixed cards up to March 2026 are a two-page layout with another
+    title, the levies before the network table and footnote stars on the
+    excise and connection rows. They were refused as having no title; each
+    prints its own year's network table, so it is read whole."""
+    text = _card(name)
+    for region in (REGION_FLANDERS, REGION_WALLONIA, REGION_BRUSSELS):
+        snap = bolt.parse_snapshot(contract, region, text)
+        assert _fixed(snap) == pytest.approx((price, fee * 12))
+        assert snap.publication_label == month
+        assert _single_rate(snap.taxes) == pytest.approx(0.008724)
+        assert snap.taxes.energy_contribution == pytest.approx(0.001058)
+        assert snap.taxes.connection_fee == (
+            pytest.approx(0.000075) if region == REGION_WALLONIA else 0.0
+        )
+    flanders = bolt.parse_snapshot(contract, REGION_FLANDERS, text)
+    assert set(flanders.dsos) == FLUVIUS_KEYS
+    brussels = bolt.parse_snapshot(contract, REGION_BRUSSELS, text)
+    assert brussels.taxes.osp_by_caliber is not None
+    assert len(brussels.taxes.osp_by_caliber) == 8
+
+
+def test_the_older_table_is_of_its_own_year() -> None:
+    """November 2025's card prints 2025's Antwerpen rates, "2,10 14,24 0,87
+    75,60 0,1654 18,56", and March 2026's the 2026 ones the April card
+    prints, "2,257 15,68 0,905 83,22 0,1654 18,92"."""
+    november = bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, _card(_OLDER_FIX)).dsos
+    march = bolt.parse_snapshot("bolt_plenty_fix", REGION_FLANDERS, _card(_OLDER_PLENTY)).dsos
+    for dsos, (prop, fixed, metering) in (
+        (november, (0.021, 14.24, 18.56)),
+        (march, (0.02257, 15.68, 18.92)),
+    ):
+        antwerpen = dsos["fluvius_antwerpen"]
+        assert antwerpen.tiers["t1"].proportional == pytest.approx(prop)
+        assert antwerpen.tiers["t1"].fixed_per_year == pytest.approx(fixed)
+        assert antwerpen.metering_per_year == pytest.approx(metering)
+
+
+def test_an_older_card_is_held_to_its_product() -> None:
+    text = _card(_OLDER_FIX)
+    with pytest.raises(ExtractorError, match="the card is for Bolt Fixe"):
+        bolt.parse_snapshot("bolt_plenty_fix", REGION_FLANDERS, text)
+    # Version 10 of the variable cards is the same layout, titled January
+    # 2025, and its table is that year's: not read.
+    variable = text.replace("Bolt Fixe - gaz", "Bolt Variable - gaz", 1)
+    with pytest.raises(ExtractorError, match="older variable card is not read"):
+        bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, variable)
+    with pytest.raises(ExtractorError, match="levy row"):
+        bolt.parse_snapshot(
+            "bolt_fix", REGION_FLANDERS, text.replace("Accise fédérale **", "Accise", 1)
+        )
+
+
 def test_flanders_table_skips_the_old_fluvius_rows() -> None:
     snap = bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, _card(_FIX_202609))
     assert set(snap.dsos) == FLUVIUS_KEYS
