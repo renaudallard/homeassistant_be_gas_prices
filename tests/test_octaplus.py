@@ -36,6 +36,7 @@ from dataclasses import replace
 from datetime import date, datetime
 from typing import Any
 from unittest.mock import AsyncMock, patch
+from urllib.parse import quote_plus
 
 import pytest
 from freezegun import freeze_time
@@ -59,7 +60,7 @@ from custom_components.be_gas_prices.providers._pdf import render_through
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import ExtractorError, SupplierSnapshot
 from custom_components.be_gas_prices.running_costs import Household
-from tests import approx, fixture_page, fixture_text
+from tests import FIXTURES, approx, fixture_page, fixture_text
 
 _LISTING = "https://srv.octaplus.be/websiterest/getTarifArchive"
 _SHEET = "https://srv.octaplus.be/websiterest/getTariffSheet"
@@ -639,6 +640,49 @@ async def test_fetch_for_month_reads_a_sheet_the_archive_does_not_hold_as_none()
     assert (
         "RequestedPDF=2026-10+G+OCTA%2BBOOSTFIX+RE+WL+FR.pdf" in fetched.call_args_list[1].args[1]
     )
+
+
+def _sheets(*names: str) -> Callable[..., Any]:
+    """A fetch_text stand-in answering the sheet endpoint for each card
+    named, off its PDF fixture."""
+    import base64
+
+    async def fetch(_session: Any, url: str, **_kwargs: Any) -> str:
+        for name in names:
+            if quote_plus(name) in url:
+                payload = (FIXTURES / "octaplus" / name).read_bytes()
+                encoded = base64.b64encode(payload).decode()
+                sheet = f"data:application/pdf;base64,{encoded}"
+                return json.dumps({"Response": {"Ok": "True", "TariffSheet": sheet}})
+        raise ExtractorError(f"HTTP 404 fetching {url}")
+
+    return fetch
+
+
+@pytest.mark.parametrize(
+    ("day", "price", "name"),
+    [
+        (date(2026, 3, 15), 0.0550, "2026-03 G OCTA+FIXED RE VL FR.pdf"),
+        (date(2026, 3, 16), 0.0639, "2026-03 G OCTA+FIXEDD RE VL FR.pdf"),
+    ],
+)
+async def test_the_day_signed_picks_march_2026_s_card(day: date, price: float, name: str) -> None:
+    """The archive lists March 2026's Fixed card as the revision valid from
+    16 March and still serves the one of the days before under the plain
+    name: a household naming the day it signed is billed that day's."""
+    listed = "2026-03 G OCTA+FIXEDD RE VL FR.pdf"
+    fetched = AsyncMock(side_effect=_sheets(listed, "2026-03 G OCTA+FIXED RE VL FR.pdf"))
+    with (
+        patch.object(octaplus, "_archive_name", AsyncMock(return_value=listed)),
+        patch.object(octaplus, "fetch_text", fetched),
+    ):
+        snap = await octaplus.fetch_on_day(AsyncMock(), "octaplus_fixed", REGION_FLANDERS, day)
+    assert snap is not None
+    assert snap.publication_label == "2026-03"
+    assert snap.energy == FixedRates(price=approx(price), yearly_fixed_fee=65.0)
+    assert snap.source_url.endswith(quote_plus(name))
+    # The revision is read first; the earlier card only when the day is before it.
+    assert fetched.await_count == (2 if day.day < 16 else 1)
 
 
 def test_an_archive_name_with_a_doubled_letter_is_taken_when_it_is_the_only_one() -> None:

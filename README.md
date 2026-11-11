@@ -105,7 +105,12 @@ this integration prices like any other.
   day; without one, the month's card is the last one the card archive
   captured. An Elegant entry whose tariff card date is any day of its
   month, as the form once asked, is now priced on that day's card, so set
-  the day you signed.
+  the day you signed. Bolt's and OCTA+'s fixed cards changed in the middle
+  of March 2026, and the tariff card date picks the card there too: Bolt
+  Fixe and Plenty Fixe 4,57 c€/kWh up to 13 March and 6,42 from the 14th,
+  OCTA+ Fixed 5,50 up to 15 March and 6,39 from the 16th, Eco Fixed 6,46
+  and 7,43. Without a day, March is Bolt's first card and OCTA+'s second,
+  the one its archive lists.
 - **Changed contract during the year?** Record the switch and each contract is
   billed on its own supplier's cards for its own days. A contract that
   counted the year from its start still opens the year there. A switch

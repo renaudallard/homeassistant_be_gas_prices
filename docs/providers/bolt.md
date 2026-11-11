@@ -195,6 +195,13 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   (version 10, titled January 2025) are refused: their network table is
   2025's, which the months they stayed in force into 2026 would be billed
   on.
+- March 2026 has two fixed cards each: `fix_res_ng_fr_202603.pdf` for
+  "01/03/2026-13/03/2026" (4,57 c€/kWh) and `fix_res_ng_fr_202603_2.pdf` for
+  "14/03/2026 - 31/03/2026" (6,42), and Plenty Fixe's the same. The month is
+  the first; `fetch_on_day` gives a household that names the day it signed
+  the card in force that day, reading on to the "_2" card when the day is
+  not among the first's (`_older_span`). No other month from November 2025
+  to November 2026 answers for "_2".
 - Seen on the current template: 10,99 €/month for Bolt Fixe on the April and
   June cards, 8,99 from July; prices 6,95 (April), 6,21 (June), 5,76 (July),
   7,31 (August), 8,02 (September).

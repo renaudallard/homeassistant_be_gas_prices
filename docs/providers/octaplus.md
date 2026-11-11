@@ -167,7 +167,9 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   (`_OLDER_FROM_RE`). Fixed is 6,39 c€/kWh on it and Eco Fixed 7,43. The sheet
   endpoint also still serves the first March cards under the plain names,
   5,50 and 6,46 c€/kWh with the same fees, but the listing does not name
-  them, so they are not read.
+  them, so the month is the revision. `fetch_on_day` gives a household that
+  names the day it signed before the 16th the card under the plain name
+  (`_read_on`, the revision's day off its title).
 - Products listed since 2023-01 (WL and VL alike): CLEAR and ECOCLEAR
   (2023-01 to 2025-12), FIXED and ECOFIXED (from 2023-07), SMARTVARIABLE
   (throughout), FLOW and ECOFLOW (2025-02 to 2025-12), FLUX (from 2025-07),

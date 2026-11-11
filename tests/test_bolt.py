@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, date, datetime
+from typing import Any
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
@@ -200,6 +201,44 @@ def test_an_older_card_is_held_to_its_product() -> None:
     with pytest.raises(ExtractorError, match="levy row"):
         bolt.parse_snapshot(
             "bolt_fix", REGION_FLANDERS, text.replace("Accise fédérale **", "Accise", 1)
+        )
+
+
+@pytest.mark.parametrize(
+    ("day", "price", "suffix"),
+    [
+        (date(2026, 3, 13), 0.0457, "202603"),
+        (date(2026, 3, 14), 0.0642, "202603_2"),
+    ],
+)
+async def test_the_day_signed_picks_march_2026_s_card(day: date, price: float, suffix: str) -> None:
+    """Bolt split March 2026 in two fixed cards, "01/03/2026-13/03/2026"
+    under the month's name and "14/03/2026-31/03/2026" under "_2": a
+    household naming the day it signed is billed that day's."""
+    cards = {
+        "plenty_fix_res_ng_fr_202603.pdf": _OLDER_PLENTY,
+        "plenty_fix_res_ng_fr_202603_2.pdf": "plenty_fix_res_ng_fr_202603_2.pdf",
+    }
+
+    async def read(_session: Any, url: str, **_kwargs: Any) -> str:
+        name = url.rsplit("/", 1)[1]
+        if name not in cards:
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        return _card(cards[name])
+
+    with patch.object(bolt, "fetch_pdf_text_layout", AsyncMock(side_effect=read)):
+        snap = await bolt.fetch_on_day(AsyncMock(), "bolt_plenty_fix", REGION_WALLONIA, day)
+        assert snap is not None
+        assert _fixed(snap) == pytest.approx((price, 5.99 * 12))
+        assert snap.publication_label == "2026-03"
+        assert snap.source_url.endswith(f"plenty_fix_res_ng_fr_{suffix}.pdf")
+        # A day the first card is not for, with no second card, has none.
+        del cards["plenty_fix_res_ng_fr_202603_2.pdf"]
+        assert (
+            await bolt.fetch_on_day(
+                AsyncMock(), "bolt_plenty_fix", REGION_WALLONIA, date(2026, 3, 20)
+            )
+            is None
         )
 
 

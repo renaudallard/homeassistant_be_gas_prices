@@ -342,13 +342,63 @@ async def _read_month(
     name = await _archive_name(session, contract, code, year_month)
     if name is None:
         return None
+    snapshot, _revised = await _read_named(session, contract, region, name)
+    return snapshot
+
+
+async def _read_named(
+    session: aiohttp.ClientSession, contract: _ContractDef, region: str, name: str
+) -> tuple[SupplierSnapshot, date | None]:
+    """The archive's card ``name``, and the day it is valid from where it is
+    a revision ("valable à partir du 16/03/2026")."""
     url = _sheet_url(name)
     payload = _archive_pdf(await fetch_text(session, url, timeout=60), name)
     text = await render_pdf("layout", url, payload, extract_pdf_text_layout)
     if not text.startswith(_OLDER_TITLE):
-        return parse_snapshot(contract.contract_id, region, text, source_url=url)
+        return parse_snapshot(contract.contract_id, region, text, source_url=url), None
     rows = await render_pdf("rows", url, payload, extract_pdf_text_rows)
-    return parse_older(contract.contract_id, region, rows, source_url=url)
+    revised = _OLDER_FROM_RE.search(rows.partition("\n")[0].rstrip())
+    since = None
+    if revised is not None:
+        since = date(int(revised.group(3)), int(revised.group(2)), int(revised.group(1)))
+    return parse_older(contract.contract_id, region, rows, source_url=url), since
+
+
+async def fetch_on_day(
+    session: aiohttp.ClientSession,
+    contract_id: str,
+    region: str,
+    day: date,
+) -> SupplierSnapshot | None:
+    """The card in force on ``day``, or None.
+
+    The archive lists March 2026's fixed cards as revisions valid from
+    16 March, and still serves the cards of the days before under the plain
+    names it no longer lists: Fixed at 5,50 c€/kWh before the 16th and 6,39
+    from it, Eco Fixed at 6,46 and 7,43. Any other month is its card
+    (:func:`fetch_for_month`).
+    """
+    contract = _CONTRACTS_BY_ID.get(contract_id)
+    code = _REGION_TO_CODE.get(region)
+    if contract is None or code is None:
+        return None
+    month = day.replace(day=1)
+    return await month_card(_read_on(session, contract, code, region, day), month)
+
+
+async def _read_on(
+    session: aiohttp.ClientSession, contract: _ContractDef, code: str, region: str, day: date
+) -> SupplierSnapshot | None:
+    month = day.replace(day=1)
+    name = await _archive_name(session, contract, code, month)
+    if name is None:
+        return None
+    snapshot, since = await _read_named(session, contract, region, name)
+    plain = f"{month:%Y-%m} G OCTA+{contract.slug} RE {code} FR.pdf"
+    if since is None or day >= since or name == plain:
+        return snapshot
+    earlier, _revised = await _read_named(session, contract, region, plain)
+    return earlier
 
 
 def parse_snapshot(
@@ -640,6 +690,7 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
+    fetch_on_day=fetch_on_day,
     fetch_index=fetch_index,
     discover=discover,
     sweep_cost_s=4.5,

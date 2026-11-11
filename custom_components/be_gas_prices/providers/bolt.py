@@ -286,6 +286,40 @@ async def fetch_for_month(
     return await card_or_none(_read_in_force(session, contract, region, year_month))
 
 
+async def fetch_on_day(
+    session: aiohttp.ClientSession,
+    contract_id: str,
+    region: str,
+    day: date,
+) -> SupplierSnapshot | None:
+    """The card in force on ``day``, or None.
+
+    Bolt split March 2026 in two fixed cards: 1 to 13 March under the month's
+    name and 14 to 31 March under it with "_2". A fixed card naming the days
+    it is for is read on when ``day`` is not among them; any other card is
+    the month's (:func:`fetch_for_month`).
+    """
+    contract = _CONTRACTS_BY_ID.get(contract_id)
+    if contract is None or region not in REGIONS:
+        return None
+    month = day.replace(day=1)
+    if contract.folder != "fix":
+        return await fetch_for_month(session, contract_id, region, month)
+    return await month_card(_read_on(session, contract, region, day), month)
+
+
+async def _read_on(
+    session: aiohttp.ClientSession, contract: _ContractDef, region: str, day: date
+) -> SupplierSnapshot | None:
+    for suffix in (f"{day:%Y%m}", f"{day:%Y%m}_2"):
+        url = _card_url(contract, suffix)
+        text = await fetch_pdf_text_layout(session, url, timeout=_PDF_TIMEOUT)
+        span = _older_span(_join_value_lines(text))
+        if span is None or span[0] <= day <= span[1]:
+            return parse_snapshot(contract.contract_id, region, text, source_url=url)
+    return None
+
+
 async def _read_in_force(
     session: aiohttp.ClientSession, contract: _ContractDef, region: str, year_month: date
 ) -> SupplierSnapshot | None:
@@ -536,7 +570,7 @@ def _osp(text: str) -> dict[str, float]:
 
 # The two-page card of the fixed products up to March 2026: "Bolt Fixe - gaz"
 # over "Janvier 2026 - résidentiel", March's "01/03/2026-13/03/2026 -
-# résidentiel", the price as "Coût de l'énergie Simple c€4,15/kWh", the
+# résidentiel" and "14/03/2026 - 31/03/2026" (``fetch_on_day``), the price as "Coût de l'énergie Simple c€4,15/kWh", the
 # levies before the network table, which is headed "Gaz- distribution et
 # transport (TTC)", and a star on the excise and connection rows, before the
 # unit up to December 2025 and after it from January 2026. Each table is of
@@ -544,7 +578,8 @@ def _osp(text: str) -> dict[str, float]:
 # April's card prints.
 _OLDER_TITLE_RE = re.compile(r"^(\S+(?: \S+){0,4}) - gaz[ \t]*$", re.MULTILINE)
 _OLDER_MONTH_RE = re.compile(
-    r"^(?:(\S+) (\d{4})|\d{2}/(\d{2})/(\d{4})-\d{2}/\d{2}/\d{4}) - résidentiel[ \t]*$",
+    r"^(?:(\S+) (\d{4})|(\d{2})/(\d{2})/(\d{4})[ \t]*-[ \t]*(\d{2})/(\d{2})/(\d{4}))"
+    r" - résidentiel[ \t]*$",
     re.MULTILINE,
 )
 _OLDER_PRICE_RE = re.compile(r"Coût de l.énergie Simple c€(\d+,\d+)/kWh")
@@ -563,6 +598,22 @@ def _older_tax_cell(text: str, label: str, region: str) -> float | None:
     if match is None:
         raise ExtractorError(f"Bolt: levy row {label!r} not found")
     return cell_value(match.group(1 + columns.index(region)))
+
+
+def _older_span(text: str) -> tuple[date, date] | None:
+    """The days an older card is for, where it names them ("01/03/2026-
+    13/03/2026"), or None for a card of a whole month."""
+    match = _OLDER_MONTH_RE.search(text)
+    if match is None or match.group(3) is None:
+        return None
+    first, last = match.group(3, 4, 5), match.group(6, 7, 8)
+    try:
+        return (
+            date(int(first[2]), int(first[1]), int(first[0])),
+            date(int(last[2]), int(last[1]), int(last[0])),
+        )
+    except ValueError:
+        return None
 
 
 def _parse_older(
@@ -586,7 +637,7 @@ def _parse_older(
             raise ExtractorError(f"Bolt: card month {month.group(1)!r} not understood")
         card_month = month_date(month.group(2), number, "Bolt")
     else:
-        card_month = month_date(month.group(4), int(month.group(3)), "Bolt")
+        card_month = month_date(month.group(5), int(month.group(4)), "Bolt")
     price = _OLDER_PRICE_RE.search(text)
     fee = _FEE_RE.search(text)
     if price is None or fee is None:
@@ -699,6 +750,7 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
+    fetch_on_day=fetch_on_day,
     fetch_index=fetch_index,
     sweep_cost_s=45.0,
 )

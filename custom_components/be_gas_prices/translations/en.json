@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced. A product marked † is no longer sold: pick it only if your contract still runs on it. It is then priced on its last card, or, with a start date, on the card of the month you signed.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on a card reissued within its month (Elegant's fixed card, Bolt's and OCTA+'s fixed cards of March 2026), set the day you signed under Advanced. A product marked † is no longer sold: pick it only if your contract still runs on it. It is then priced on its last card, or, with a start date, on the card of the month you signed.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
@@ -51,7 +51,7 @@
               "signed_rate": "Enter the figures of my contract"
             },
             "data_description": {
-              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one. A TotalEnergies renewal is priced on the card of three months before it: give a day of that month.",
+              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, and Bolt's and OCTA+'s fixed cards changed in the middle of March 2026, so there the day picks which one. A TotalEnergies renewal is priced on the card of three months before it: give a day of that month.",
               "contract_end_date": "Only used for a renewal reminder.",
               "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
               "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."
@@ -177,7 +177,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on an Elegant card reissued within its month, set the day you signed under Advanced. A product marked † is no longer sold: pick it only if your contract still runs on it. It is then priced on its last card, or, with a start date, on the card of the month you signed. Picking another product leaves out the dates and figures held for the one you have now, unless you change them.",
+        "description": "Pick your product. The start date is optional: for a fixed or indexed contract, the price card of the month supply started gives the price you pay. If you signed on an earlier month's card, or on a card reissued within its month (Elegant's fixed card, Bolt's and OCTA+'s fixed cards of March 2026), set the day you signed under Advanced. A product marked † is no longer sold: pick it only if your contract still runs on it. It is then priced on its last card, or, with a start date, on the card of the month you signed. Picking another product leaves out the dates and figures held for the one you have now, unless you change them.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Contract start date"
@@ -196,7 +196,7 @@
               "signed_rate": "Enter the figures of my contract"
             },
             "data_description": {
-              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, so there the day picks which one. A TotalEnergies renewal is priced on the card of three months before it: give a day of that month.",
+              "tariff_card_date": "The day you signed, when your card is not the one of the month supply started. Elegant reissues its fixed card within a month, and Bolt's and OCTA+'s fixed cards changed in the middle of March 2026, so there the day picks which one. A TotalEnergies renewal is priced on the card of three months before it: give a day of that month.",
               "contract_end_date": "Only used for a renewal reminder.",
               "ytd_from_contract_start": "Off: the running cost and this year's consumption start on 1 January. On: they start at the contract start date when that is later.",
               "signed_rate": "For a contract whose price differs from the supplier's card, or whose card cannot be found. The next step asks for them."

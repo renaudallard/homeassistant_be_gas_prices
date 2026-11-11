@@ -32,7 +32,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart van Elegant die binnen de maand opnieuw werd uitgegeven, vul dan de dag van je handtekening in onder Geavanceerd. Een product met † wordt niet meer verkocht: kies het alleen als je contract er nog op loopt. Het wordt dan berekend op zijn laatste tariefkaart, of, met een startdatum, op de kaart van de maand waarin je tekende.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart die binnen de maand opnieuw werd uitgegeven (de vaste kaart van Elegant, de vaste kaarten van Bolt en OCTA+ van maart 2026), vul dan de dag van je handtekening in onder Geavanceerd. Een product met † wordt niet meer verkocht: kies het alleen als je contract er nog op loopt. Het wordt dan berekend op zijn laatste tariefkaart, of, met een startdatum, op de kaart van de maand waarin je tekende.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"
@@ -51,7 +51,7 @@
               "signed_rate": "De cijfers van mijn contract invullen"
             },
             "data_description": {
-              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke. Een verlenging bij TotalEnergies volgt de kaart van drie maanden ervoor: geef een dag van die maand.",
+              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit, en de vaste kaarten van Bolt en OCTA+ veranderden half maart 2026: de dag bepaalt dan welke. Een verlenging bij TotalEnergies volgt de kaart van drie maanden ervoor: geef een dag van die maand.",
               "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
               "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
               "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
@@ -177,7 +177,7 @@
       },
       "contract": {
         "title": "Contract",
-        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart van Elegant die binnen de maand opnieuw werd uitgegeven, vul dan de dag van je handtekening in onder Geavanceerd. Een product met † wordt niet meer verkocht: kies het alleen als je contract er nog op loopt. Het wordt dan berekend op zijn laatste tariefkaart, of, met een startdatum, op de kaart van de maand waarin je tekende. Kies je een ander product, dan vallen de datums en bedragen van je huidige product weg, tenzij je ze wijzigt.",
+        "description": "Kies je product. De startdatum is optioneel: voor een vast of geïndexeerd contract geeft de tariefkaart van de maand waarin de levering begon de prijs die je betaalt. Heb je getekend op de kaart van een eerdere maand, of op een kaart die binnen de maand opnieuw werd uitgegeven (de vaste kaart van Elegant, de vaste kaarten van Bolt en OCTA+ van maart 2026), vul dan de dag van je handtekening in onder Geavanceerd. Een product met † wordt niet meer verkocht: kies het alleen als je contract er nog op loopt. Het wordt dan berekend op zijn laatste tariefkaart, of, met een startdatum, op de kaart van de maand waarin je tekende. Kies je een ander product, dan vallen de datums en bedragen van je huidige product weg, tenzij je ze wijzigt.",
         "data": {
           "contract": "Contract",
           "contract_start_date": "Startdatum contract"
@@ -196,7 +196,7 @@
               "signed_rate": "De cijfers van mijn contract invullen"
             },
             "data_description": {
-              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit: de dag bepaalt dan welke. Een verlenging bij TotalEnergies volgt de kaart van drie maanden ervoor: geef een dag van die maand.",
+              "tariff_card_date": "De dag waarop je tekende, als je kaart niet die van de maand is waarin de levering begon. Elegant geeft zijn vaste kaart binnen de maand opnieuw uit, en de vaste kaarten van Bolt en OCTA+ veranderden half maart 2026: de dag bepaalt dan welke. Een verlenging bij TotalEnergies volgt de kaart van drie maanden ervoor: geef een dag van die maand.",
               "contract_end_date": "Dient alleen voor een herinnering aan de verlenging.",
               "ytd_from_contract_start": "Uit: de lopende kosten en het verbruik van dit jaar beginnen op 1 januari. Aan: ze beginnen op de startdatum van het contract als die later valt.",
               "signed_rate": "Voor een contract waarvan de prijs afwijkt van de kaart van de leverancier, of waarvan de kaart niet te vinden is. De volgende stap vraagt ernaar."
