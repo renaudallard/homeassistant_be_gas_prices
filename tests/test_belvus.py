@@ -43,6 +43,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
 )
 from custom_components.be_gas_prices.providers import belvus
+from custom_components.be_gas_prices.providers._energy_together import parse_card
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import ExtractorError, SupplierSnapshot
 from tests import fixture_page, fixture_text
@@ -153,11 +154,55 @@ def test_levies_are_read_as_printed() -> None:
         assert taxes.card_vat_rate is None
 
 
-def test_january_card_reprints_the_2025_table_and_is_refused() -> None:
+APRIL = "Tariefkaart_FlexOnline_GAS_2026-04.pdf"
+APRIL_SMART = "Tariefkaart_SmartPlus_GAS_2026-04.pdf"
+
+
+@pytest.mark.parametrize(
+    ("name", "month", "price"),
+    [
+        # "(TTF_RLP x 1,04) + €3,50/MWh" at December 2025's 27,652: 3,23.
+        (JANUARY, "2026-01", 3.23),
+        # The April card's table is mangled; at March's 51,264: 5,68.
+        (APRIL, "2026-04", 5.68),
+    ],
+)
+def test_a_card_whose_table_is_not_read_gives_its_energy_leg(
+    name: str, month: str, price: float
+) -> None:
     """The January to March 2026 cards print 2025's table, with "FLUVIUS
-    LIMBURG 2,09 13,32 70,72 70,72" and databeheer 18,56."""
-    with pytest.raises(ExtractorError, match="not degressive"):
-        _parse(JANUARY)
+    LIMBURG 2,09 13,32 70,72 70,72" and databeheer 18,56, and April's is
+    mangled. They were refused, and a contract signed in those months was
+    billed another month's formula. They give the formula, its last price
+    and the fee, which is what a contract signed on them is billed; the
+    network of the month comes from another card."""
+    snap = _parse(name)
+    assert snap.publication_label == month
+    assert snap.dsos == {}
+    assert snap.taxes.excise_bands == ()
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(1.04 / 1000 * VAT)
+    assert energy.base == pytest.approx(3.5 / 1000 * VAT)
+    assert energy.price == pytest.approx(price / 100 * VAT)
+    assert energy.yearly_fixed_fee == pytest.approx(50.0)
+    # The shared reader still refuses the table itself.
+    with pytest.raises(ExtractorError, match=r"not degressive|order this reader maps"):
+        parse_card(
+            _card(name),
+            supplier="belvus",
+            label="Belvus",
+            contract="belvus_flex_online",
+            product="FlexOnline",
+            source_url="url",
+        )
+
+
+def test_the_april_smart_plus_card_names_no_product_and_is_refused() -> None:
+    """Its text names neither the product nor the month, only "Tariefkaart
+    Particulier Gas 1", so nothing holds it to the card asked for."""
+    with pytest.raises(ExtractorError, match="card month not found"):
+        _parse(APRIL_SMART, "belvus_smart_plus")
 
 
 def test_card_of_another_product_is_refused() -> None:
@@ -174,7 +219,7 @@ def test_index_value_is_the_month_before_the_card() -> None:
     assert belvus.index_value(_card(SEPTEMBER)) == ("2026-08", pytest.approx(61.729))
     assert belvus.index_value(_card(AUGUST)) == ("2026-07", pytest.approx(53.075))
     # "laatst gekende waarde van Belpex TTF-DAM 12/2025: €27,652/MWh"; the
-    # card's table is refused, its footnote is still the card's own.
+    # card's table is not read, its footnote is still the card's own.
     assert belvus.index_value(_card(JANUARY)) == ("2025-12", pytest.approx(27.652))
     # From October 2026: "laatst gekende waarde van TTF RLP-M 9/2026: €75,35/MWh".
     assert belvus.index_value(_card(OCTOBER)) == ("2026-09", pytest.approx(75.35))

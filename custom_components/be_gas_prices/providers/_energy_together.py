@@ -302,6 +302,7 @@ def parse_card(
     contract: str,
     product: str,
     source_url: str,
+    network: bool = True,
 ) -> SupplierSnapshot:
     """One card of the template, as pypdf extracts it.
 
@@ -310,6 +311,10 @@ def parse_card(
     that names none. A card naming another product is refused, since the
     brands link one card from several product groups and a wrong link would
     otherwise price the wrong product.
+
+    With ``network`` off the card gives its energy leg alone, with no DSO
+    row or levy, as an older card whose network table cannot be read does:
+    only a contract signed on it is priced on it.
     """
     month, printed = card_month(text, label)
     if printed != product_key(product):
@@ -318,8 +323,8 @@ def parse_card(
         supplier=supplier,
         contract=contract,
         energy=_energy(text, label),
-        dsos=_dsos(text, label),
-        taxes=_taxes(text, label),
+        dsos={} if not network else _dsos(text, label),
+        taxes=TaxOverlay(excise_bands=()) if not network else _taxes(text, label),
         source_url=source_url,
         publication_label=f"{month:%Y-%m}",
         valid_until=end_of_month(month.year, month.month),

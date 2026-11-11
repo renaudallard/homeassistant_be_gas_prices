@@ -43,7 +43,11 @@ September it has a layout of its own with the same wording and figures,
 including the Fluvius labels printed out of order. :mod:`._energy_together`
 reads both. The archive's January to March 2026 cards reprint a 2025
 distribution table with a broken row and the April card a mangled one, so
-the reader refuses those four months.
+those four months give their energy leg alone, the formula, its last price
+and the fee, which a contract signed on them is billed: Smart Plus's formula
+was (TTF_RLP x 1,1) + 13,98 EUR/MWh then, as now, and Flex Online's
+(TTF_RLP x 1,04) + 3,5. April's Smart Plus card names neither its product
+nor its month in its text and is refused.
 
 Belvus publishes no index values. The realised value of a month is printed
 on the next month's card, as the one its "**" price is computed on
@@ -131,12 +135,14 @@ def _contract(contract_id: str, region: str) -> _ContractDef:
     return contract
 
 
+# The cards whose distribution table is 2025's or mangled (module docstring).
+_NETWORK_UNREAD = frozenset(date(2026, month, 1) for month in range(1, 5))
+
+
 def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) -> SupplierSnapshot:
     """Parse one card's text as pypdf extracts it, in either layout."""
     contract = _contract(contract_id, region)
-    # The January to March 2026 cards reprint the 2025 distribution table
-    # for months Fluvius billed on its 2026 tariffs, which the shared reader
-    # refuses.
+    month, _product = card_month(text, "Belvus")
     return parse_card(
         text,
         supplier="belvus",
@@ -144,6 +150,7 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
         contract=contract_id,
         product=contract.file,
         source_url=source_url,
+        network=month not in _NETWORK_UNREAD,
     )
 
 

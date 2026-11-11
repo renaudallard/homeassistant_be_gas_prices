@@ -77,14 +77,23 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
 - `fetch_for_month` builds the folder URL; a 404 is a month with no card, a
   transient failure raises, a card naming another month is refused, a month
   ahead of today (Home Assistant's clock) is not asked for.
-- January to March 2026: refused. They reprint a 2025 distribution table
-  (Antwerpen 2,1 14,24 0,87 75,6, databeheer 18,56) with the broken row
-  "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72". The Energy Together reader
-  refuses the card: the row is what tells the 2025 table, which would bill
-  a 2026 month on the previous year's network tariffs, and whose rows do not
-  follow the positions the reader maps.
-- April 2026: refused. Same 2025 table, and the label wraps as "FLUVIUS" /
-  "MIDDENVLAANDEREN", so the label order check fails.
+- January to March 2026: the energy leg alone. They reprint a 2025
+  distribution table (Antwerpen 2,1 14,24 0,87 75,6, databeheer 18,56) with
+  the broken row "FLUVIUS LIMBURG 2,09 13,32 70,72 70,72". The Energy
+  Together reader refuses that table: the row is what tells the 2025 table,
+  which would bill a 2026 month on the previous year's network tariffs, and
+  whose rows do not follow the positions the reader maps. The formula, its
+  last price and the fee are read (`parse_card(network=False)`, the months
+  in `_NETWORK_UNREAD`), with no DSO row or levy, which is what a contract
+  signed on them is billed; the network of such a month comes from another
+  card, as for any card missing the household's row. Flex Online was
+  (TTF_RLP x 1,04) + 3,50 EUR/MWh and 50 EUR a year, Smart Plus
+  (TTF_RLP x 1,1) + 13,98 and 130, as since.
+- April 2026: Flex Online the energy leg alone, as above. Same 2025 table,
+  and the label wraps as "FLUVIUS" / "MIDDENVLAANDEREN", so the label order
+  check fails. Smart Plus refused: its text names neither the product nor the
+  month, only the page header "Tariefkaart Particulier Gas 1", so nothing
+  holds it to the card asked for.
 - May to October 2026 read.
 
 ## Known quirks and card errors
@@ -99,8 +108,9 @@ reader does). Tests: `tests/test_belvus.py`, fixtures in
 
 `tests/test_belvus.py`: the energy leg in both layouts with the formula
 check, the card month, both layouts mapping the labels alike (and giving the
-same table), the levies as printed, the January card refused, product and
-region refusals, `index_value` (September, August, January, a wrong month),
+same table), the levies as printed, the January and April Flex Online cards
+read for their energy leg alone, the April Smart Plus card refused, product
+and region refusals, `index_value` (September, August, January, a wrong month),
 the listing, `fetch` (the newest month of either page, /diensten failing),
 `fetch_for_month` (folder URL, other month, 404, transient, future,
 Brussels time) and `fetch_index` (the cards from January of last year on
