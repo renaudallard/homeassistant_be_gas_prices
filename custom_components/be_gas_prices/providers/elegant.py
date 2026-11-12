@@ -94,7 +94,14 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import fold_accents, month_date, require_contract, to_float
+from ._parse import (
+    fold_accents,
+    formula_gives,
+    month_date,
+    require_contract,
+    stated_unit,
+    to_float,
+)
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text_layout,
@@ -418,6 +425,37 @@ _VAT_RE = re.compile(r"Prijzen inclusief (\d+)\s*% btw")
 _FEE_RE = re.compile(r"Vaste vergoeding \(€/jaar\)\(\d+\)\s+(\d+,\d+)")
 _PRICE_RE = re.compile(r"\(c€/kWh\)\s+(\d+,\d+)\s+Maandelijkse prijzen")
 _FORMULA_RE = re.compile(r"\((\d+,\d+)\s*x\s*TTFDAM\s*\+\s*(\d+,\d+)\)\s*x\s*(\d+,\d+)")
+# The formula's heading, "Formule(2) (c€/kWh)", is the line above it, and the
+# footnote it points to names the TTFDAM value the monthly price is worked out
+# at: "namelijk de waarde van oktober 2026. Deze bedroeg 8,838 c€/kWh", the one
+# such sentence on a card. On every card from December 2025 to November 2026
+# both say c€/kWh. The heading starts 20 characters ahead of the formula on
+# every one of them and is the only "Formule" on a card, so its reach is
+# wide: pdfplumber joins whatever a card prints beside the heading onto its
+# line, and a label there would otherwise push it out of reach. The
+# sentence's unit ends 728 to 733 characters behind the formula, past the
+# first footnote, whose length the card is free to change: as the sentence
+# is printed once, the reach picks nothing out and is about twice that, so a
+# longer footnote is still read. Each pattern takes a unit only, slash and
+# all, so neither the footnote mark nor the figure's own digits pass for
+# one. The figure is taken whole: tried back digit by digit, a long run of
+# them was read again from each.
+_FORMULA_UNIT_RE = re.compile(r"Formule(?:\(\d+\))?\s*\(([^()/\n]*/[^()\n]*)\)")
+_FORMULA_UNIT_REACH = 300
+_INDEX_UNIT_RE = re.compile(r"Deze bedroeg\s+(?>\d+(?:[.,]\d+)*)\s*([^\s./]*/[^\s.]*)")
+_INDEX_UNIT_REACH = 1500
+_UNIT = "c€/kWh"
+# A formula restated under a heading left as it was still reads, so the
+# formula also has to give back the monthly price at the TTFDAM value the
+# footnote names. On the 22 Flex and ComfortFlex rows of December 2025 to
+# November 2026 it does within 0,145%, the rounding of a price printed to
+# the hundredth down to the lowest of them, 3,47. Only a price under 1
+# c€/kWh rounds by more than the tolerance. A formula on another scale, or
+# its factor alone ten times off, misses by 78% or more (January 2026's
+# factor read as a tenth of itself), and its base alone by 4,4% or more
+# (November 2026's 0,470 read as a tenth of itself).
+_INDEX_VALUE_RE = re.compile(r"Deze bedroeg\s+(\d+[.,]\d+)")
+_FORMULA_TOLERANCE = 5e-3
 
 
 def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
@@ -432,10 +470,11 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
     formula = _FORMULA_RE.search(text)
     if formula is None:
         raise ExtractorError("Elegant: TTFDAM formula not found")
+    _require_units(text, formula.span())
     # c EUR/kWh against an index in c EUR/kWh: per EUR/MWh of index the factor
     # takes another tenth. The VAT is the multiplier the formula prints.
     vat = to_float(formula.group(3))
-    return IndexedRates(
+    rates = IndexedRates(
         factor=to_float(formula.group(1)) * vat / 1000.0,
         base=to_float(formula.group(2)) * vat / 100.0,
         index=_INDEX,
@@ -443,6 +482,41 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
         yearly_fixed_fee=to_float(fee.group(1)),
         formula=formula.group(0),
     )
+    _require_price(text, formula.end(), rates)
+    return rates
+
+
+def _require_units(text: str, formula: tuple[int, int]) -> None:
+    """Refuse a formula whose card states it, or the TTFDAM it multiplies, in
+    another unit than c€/kWh, or in none: read on the c€/kWh scale, a
+    restated formula would come out ten times off and still parse."""
+    for stated, unit in (
+        ("formula", stated_unit(text, _FORMULA_UNIT_RE, formula, before=_FORMULA_UNIT_REACH)),
+        (_INDEX, stated_unit(text, _INDEX_UNIT_RE, formula, after=_INDEX_UNIT_REACH)),
+    ):
+        if unit != _UNIT:
+            raise ExtractorError(
+                f"Elegant: the card states its {stated} in {unit or 'no unit'}, expected {_UNIT}"
+            )
+
+
+def _require_price(text: str, end: int, rates: IndexedRates) -> None:
+    """Refuse a formula that does not give the monthly price back at the
+    TTFDAM value the footnote names, in the reach behind the formula's
+    ``end`` where _require_units read its unit: a formula restated under a
+    heading left as it was would come out ten times off and still parse."""
+    stated = _INDEX_VALUE_RE.search(text, end, end + _INDEX_UNIT_REACH)
+    if stated is None:
+        raise ExtractorError(f"Elegant: the card names no {_INDEX} value to check its formula on")
+    # c EUR/kWh as printed, EUR/MWh as the factor takes it.
+    value = to_float(stated.group(1)) * 10.0
+    if not formula_gives(
+        rates.price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE
+    ):
+        raise ExtractorError(
+            f"Elegant: {rates.formula} gives {rates.at(value) * 100:.2f} c€/kWh at {_INDEX} "
+            f"{value:.2f} €/MWh, not the {rates.price * 100:.2f} printed"
+        )
 
 
 # "Fluvius Antwerpen 15,68 2,26 83,22 0,91": per tier "vast (€/jaar)" then

@@ -46,6 +46,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
 )
 from custom_components.be_gas_prices.providers import elegant
+from custom_components.be_gas_prices.providers._parse import to_float
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import ExtractorError
 from tests import approx, fixture_page, fixture_text
@@ -83,6 +84,93 @@ def test_variable_cards_price_at_the_last_known_value(contract: str, name: str) 
     assert snap.publication_label == "2026-09"
     assert snap.valid_until == date(2026, 9, 30)
     assert snap.taxes.card_vat_rate == pytest.approx(0.06)
+
+
+@pytest.mark.parametrize(
+    ("printed", "restated"),
+    [
+        ("Formule(2) (c€/kWh)", "Formule(2) (€/MWh)"),
+        ("Formule(2) (c€/kWh)", "Formule(2)"),
+        ("Deze bedroeg 6,166 c€/kWh", "Deze bedroeg 61,66 €/MWh"),
+        ("Deze bedroeg 6,166 c€/kWh", "Deze bedroeg 6,166"),
+    ],
+)
+def test_a_card_stating_another_unit_is_refused(printed: str, restated: str) -> None:
+    """The formula's heading and the TTFDAM value its footnote names are in
+    c€/kWh on every card. Read on that scale, a card stating either in
+    another unit, or in none, would come out ten times off."""
+    text = _card(_FLEX)
+    assert text.count(printed) == 1
+    energy = elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, text).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(1.025 * 1.06 / 1000)
+    assert energy.base == pytest.approx(0.470 * 1.06 / 100)
+    with pytest.raises(ExtractorError, match="expected c€/kWh"):
+        elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, text.replace(printed, restated))
+
+
+def test_a_longer_first_footnote_still_reads_the_index_unit() -> None:
+    """The footnote naming the TTFDAM value comes after the one on the fixed
+    fee. That one growing by a few lines moves the sentence further from the
+    formula, but it is still the card's only such sentence and still read."""
+    text = _card(_FLEX)
+    end = "zes maanden verschuldigd is."
+    assert text.count(end) == 1
+    longer = text.replace(end, end + " De vaste vergoeding wordt maandelijks aangerekend." * 6)
+    energy = elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, longer).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(1.025 * 1.06 / 1000)
+
+
+def test_a_heading_further_from_its_formula_is_still_read() -> None:
+    """The heading starts 20 characters ahead of the formula on every card.
+    A line of 20 characters or more printed between them, as a label beside
+    the heading would be, pushed it out of the reach it once had."""
+    text = _card(_FLEX)
+    heading = "Formule(2) (c€/kWh)\n"
+    assert text.count(heading) == 1
+    beside = text.replace(heading, heading + "x" * 200 + "\n")
+    energy = elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, beside).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(1.025 * 1.06 / 1000)
+
+
+@pytest.mark.parametrize(
+    "restated",
+    [
+        # The whole formula in €/MWh, under the heading left as it was.
+        "(10,250 x TTFDAM + 4,70) x 1,06",
+        # The factor, then the base, alone ten times off.
+        "(10,250 x TTFDAM + 0,470) x 1,06",
+        "(1,0250 x TTFDAM + 0,047) x 1,06",
+    ],
+)
+def test_a_formula_that_misses_its_monthly_price_is_refused(restated: str) -> None:
+    """The heading states the formula's unit, which a formula restated under
+    it leaves true: at the 6,166 c€/kWh its footnote names, the formula has
+    to give back the monthly 7,20."""
+    text = _card(_FLEX)
+    printed = "(1,0250 x TTFDAM + 0,470) x 1,06"
+    assert text.count(printed) == 1
+    with pytest.raises(
+        ExtractorError, match=r"gives .* at TTFDAM 61.66 €/MWh, not the 7.20 printed"
+    ):
+        elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, text.replace(printed, restated))
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("7,23", True), ("7,24", False)])
+def test_the_formula_check_allows_half_a_percent(printed: str, kept: bool) -> None:
+    """At 6,166 the formula gives 7,1974: 7,23 is 0,45% off and still reads,
+    7,24 is 0,59% off and does not. The widest gap on the archive is
+    0,145%, January 2026's 3,47."""
+    text = _card(_FLEX).replace("(c€/kWh) 7,20 Maandelijkse", f"(c€/kWh) {printed} Maandelijkse")
+    if kept:
+        energy = elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, text).energy
+        assert isinstance(energy, IndexedRates)
+        assert energy.price == pytest.approx(to_float(printed) / 100)
+    else:
+        with pytest.raises(ExtractorError, match="gives"):
+            elegant.parse_snapshot("elegant_flex", REGION_FLANDERS, text)
 
 
 def test_zeker_vast_is_fixed() -> None:

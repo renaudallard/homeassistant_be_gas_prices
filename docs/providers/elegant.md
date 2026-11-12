@@ -45,7 +45,22 @@ DSO labels from their figures.
   line below it (the VREG estimate) is not read.
 - Formula: "(1,0250 x TTFDAM + 0,470) x 1,06" in c€/kWh against the index
   in c€/kWh, VAT inside. `factor = 1,0250 x 1,06 / 1000` per EUR/MWh,
-  `base = 0,470 x 1,06 / 100`.
+  `base = 0,470 x 1,06 / 100`. The card states both units: the heading on
+  the line above, "Formule(2) (c€/kWh)", and the TTFDAM value its footnote
+  names, "Deze bedroeg 8,838 c€/kWh". Every card from December 2025 to
+  November 2026 prints c€/kWh in both places, and only that is accepted: a
+  card stating another unit in either, or none, is refused rather than read
+  ten times off. Heading and sentence are each printed once a card, so
+  both are looked for well past where they stand today: the heading within
+  300 characters ahead of the formula (it starts 20 ahead), so a label
+  printed beside it does not push it out of reach, and the sentence within
+  1500 behind it (728 to 733), so a longer footnote above it is still read.
+- Recompute: a formula restated under a heading left as it was still
+  matches, so at the TTFDAM value the footnote names the formula has to
+  give back the monthly price within 0,5%, or the card is refused. Every
+  card from December 2025 to November 2026 does within 0,145%, the rounding
+  of January 2026's 3,47. A formula on another scale, or its factor ten
+  times off, misses by 78% or more, its base alone by 4,4% or more.
 - VAT: "Prijzen inclusief 6% btw".
 - DSO table, after "Nettarieven": per tier "vast (€/jaar)" then
   "var (c€/kWh)", T1 and T2 only: `Fluvius Antwerpen 15,68 2,26 83,22 0,91`.
@@ -122,7 +137,11 @@ month returns no offers.
 ## What the tests pin
 
 - Flex and ComfortFlex: price, fee, factor, base, the formula check at
-  61,66, month, VAT.
+  61,66, month, VAT. A card restating the heading's unit or the
+  footnote's, or dropping either, refused; a longer first footnote, or a
+  label beside the heading, still read. A formula restated under its
+  heading, or its factor or base alone, refused; the recompute's 0,5% at
+  its edge (7,23 read, 7,24 refused).
 - Zeker & Vast as fixed.
 - DSO table: all eight areas, Antwerpen in full, Midden-Vl., transport and
   metering from their lines.
