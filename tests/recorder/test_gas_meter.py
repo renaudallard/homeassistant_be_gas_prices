@@ -48,6 +48,7 @@ from homeassistant.components.recorder.statistics import (
 )
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
@@ -226,6 +227,27 @@ async def test_an_outage_s_gas_lands_on_its_first_day_back(
     assert spread[date(2026, 1, 7)] == pytest.approx(36.0)
     assert spread[date(2026, 1, 8)] == pytest.approx(36.0)
     assert sum(spread.values()) == pytest.approx(sum(days.values()))
+
+
+async def test_a_meter_not_loaded_yet_is_judged_on_its_registry_entry(
+    hass: HomeAssistant,
+) -> None:
+    """At startup the meter's integration may not have written a state yet:
+    the class its registry entry kept says whether it carries an outage."""
+    registry = er.async_get(hass)
+    carrying = registry.async_get_or_create(
+        "sensor", "dsmr", "gas", capabilities={"state_class": "total_increasing"}
+    )
+    cycling = registry.async_get_or_create(
+        "sensor", "dsmr", "gas_cycle", capabilities={"state_class": "total"}
+    )
+    assert hass.states.get(carrying.entity_id) is None
+    assert gas_meter.carries_outages(hass, carrying.entity_id)
+    assert not gas_meter.carries_outages(hass, cycling.entity_id)
+    assert not gas_meter.carries_outages(hass, "sensor.nowhere")
+    # A state, once written, is what the meter says now.
+    hass.states.async_set(carrying.entity_id, "1", {"state_class": "total"})
+    assert not gas_meter.carries_outages(hass, carrying.entity_id)
 
 
 async def test_a_unit_nothing_converts_is_refused(recorder_mock: Any, hass: HomeAssistant) -> None:

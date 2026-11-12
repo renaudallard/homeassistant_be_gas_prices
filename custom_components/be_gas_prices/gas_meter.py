@@ -48,6 +48,7 @@ from typing import Any, Literal
 from homeassistant.components.sensor import ATTR_STATE_CLASS, SensorStateClass
 from homeassistant.const import UnitOfEnergy, UnitOfVolume
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from homeassistant.util.hass_dict import HassKey
 from homeassistant.util.unit_conversion import EnergyConverter, VolumeConverter
@@ -223,13 +224,18 @@ def carries_outages(hass: HomeAssistant, entity_id: str) -> bool:
     The recorder resumes a total_increasing sensor's sum from the last
     value it compiled, so the first day back holds the gas of the days it
     has no rows for. Another meter may have lost it: a total starting a new
-    cycle, or a statistic some integration imports.
+    cycle, or a statistic some integration imports. Until the meter's own
+    integration has loaded there is no state yet, and the class is read
+    from what the entity registry kept of it.
     """
     state = hass.states.get(entity_id)
-    return (
-        state is not None
-        and state.attributes.get(ATTR_STATE_CLASS) == SensorStateClass.TOTAL_INCREASING
-    )
+    if state is not None:
+        state_class = state.attributes.get(ATTR_STATE_CLASS)
+    else:
+        entry = er.async_get(hass).async_get(entity_id)
+        capabilities = None if entry is None else entry.capabilities
+        state_class = None if capabilities is None else capabilities.get(ATTR_STATE_CLASS)
+    return state_class == SensorStateClass.TOTAL_INCREASING
 
 
 def spread_outages(days: Mapping[date, float]) -> dict[date, float]:
