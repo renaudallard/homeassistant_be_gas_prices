@@ -219,6 +219,18 @@ billed on the last card it was sold on.
   the hours so far, up to 15 missing days scaled across; more missing and it
   is unknown. Gas is too seasonal for a shorter window to be scaled to a
   year.
+- The rolling year and the projection read the meter's days with each
+  outage shared out (`gas_meter.spread_outages`), for a `total_increasing`
+  meter (`carries_outages`). The recorder resumes such a sensor's sum from
+  the last five-minute row it compiled, so the first day back holds the gas
+  of the days without rows before it, and its figure is split evenly over
+  them and itself; scaled across instead, that gas counted twice. A first
+  day back at 0 is a sum the recorder started over, once the outage
+  outlasted `purge_keep_days` and the last five-minute row was purged:
+  that gas is lost and the days stay missing. A total that starts a new
+  cycle, or an imported statistic, is read as recorded. A day the share
+  lands on without a factor leaves the days as recorded. The months are
+  billed as recorded.
 - A measured rolling year replaces the typed annual volume for the tier and
   the excise slices.
 - `projected_year_end_cost`: the year so far as billed, plus last year's

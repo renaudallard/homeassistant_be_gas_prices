@@ -168,6 +168,7 @@ def running_costs(
     energy_for: LegFor,
     table: IndexTable | None,
     fee_waived: tuple[date, date] | None = None,
+    spread_days: Mapping[date, float] | None = None,
 ) -> RunningCosts:
     """Bill every month from ``window_start`` to ``today`` on its own card.
 
@@ -176,8 +177,13 @@ def running_costs(
     ``months_on_current_card``. ``energy_for`` picks the energy leg a card
     bills this household on: its own, or the signing card's.
     ``fee_waived`` is the days the contract pays no supplier fee
-    (``bill.fee_waiver``).
+    (``bill.fee_waiver``). ``spread_days`` is what the rolling year and the
+    year-end projection read instead of ``kwh_days``: the same days with
+    the gas of each outage shared out over it (``spread_outages``). The
+    months are billed as the meter recorded them.
     """
+    if spread_days is None:
+        spread_days = kwh_days
     year_days = days_in_year(today.year)
     bills: list[MonthBill] = []
     on_current: list[str] = []
@@ -222,7 +228,7 @@ def running_costs(
             bill = _bill(current_card)
         bills.append(bill)
     ytd_kwh = sum(bill.kwh for bill in bills)
-    remaining = _remaining_days_last_year(kwh_days, today)
+    remaining = _remaining_days_last_year(spread_days, today)
     projected_kwh = None if remaining is None else ytd_kwh + remaining
     year_end = None
     if remaining is not None and bills:
@@ -246,7 +252,7 @@ def running_costs(
         months=tuple(bills),
         months_on_current_card=tuple(on_current),
         ytd_kwh=ytd_kwh,
-        rolling_year_kwh=rolling_year_kwh(kwh_days, today),
+        rolling_year_kwh=rolling_year_kwh(spread_days, today),
         projected_year_kwh=projected_kwh,
         projected_year_end_cost=year_end,
     )

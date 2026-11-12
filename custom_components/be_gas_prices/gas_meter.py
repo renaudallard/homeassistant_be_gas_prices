@@ -39,10 +39,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta
 from functools import partial
+from itertools import pairwise
 from typing import Any, Literal
 
+from homeassistant.components.sensor import ATTR_STATE_CLASS, SensorStateClass
 from homeassistant.const import UnitOfEnergy, UnitOfVolume
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
@@ -212,6 +215,43 @@ async def daily_consumption(
     end_dt = dt_util.start_of_local_day(end + timedelta(days=1)).astimezone(UTC)
     changes = await _changes(hass, statistic_id, kind, start_dt, end_dt, "day")
     return {dt_util.as_local(hour).date(): max(0.0, change) for hour, change in changes.items()}
+
+
+def carries_outages(hass: HomeAssistant, entity_id: str) -> bool:
+    """Whether the meter's statistics carry its count across an outage.
+
+    The recorder resumes a total_increasing sensor's sum from the last
+    value it compiled, so the first day back holds the gas of the days it
+    has no rows for. Another meter may have lost it: a total starting a new
+    cycle, or a statistic some integration imports.
+    """
+    state = hass.states.get(entity_id)
+    return (
+        state is not None
+        and state.attributes.get(ATTR_STATE_CLASS) == SensorStateClass.TOTAL_INCREASING
+    )
+
+
+def spread_outages(days: Mapping[date, float]) -> dict[date, float]:
+    """``days`` with the gas of each outage shared out over its days.
+
+    For a meter that :func:`carries_outages`, the first day back holds the
+    gas of the days missing before it as well as its own, and its figure is
+    split evenly over them and itself. One at 0 is a meter whose sum the
+    recorder started over, after an outage longer than it keeps its
+    five-minute rows: that gas is lost and the days stay missing. So do the
+    days before the first one on record.
+    """
+    out = dict(days)
+    for before, after in pairwise(sorted(days)):
+        missed = (after - before).days - 1
+        value = days[after]
+        if missed <= 0 or value <= 0.0:
+            continue
+        share = value / (missed + 1)
+        for n in range(1, missed + 2):
+            out[before + timedelta(days=n)] = share
+    return out
 
 
 async def hourly_changes(

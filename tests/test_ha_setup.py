@@ -1574,6 +1574,42 @@ def _a_year_of_gas() -> dict[date, float]:
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(
+    ("state_class", "volume"),
+    [("total_increasing", 3650.0), ("total", 3650.0 * 365 / 355)],
+)
+async def test_an_outage_counts_once_on_a_meter_that_carries_it(
+    hass: HomeAssistant, fetch: AsyncMock, state_class: str, volume: float
+) -> None:
+    """A total_increasing meter's first day back holds the gas of the ten
+    days it has no rows for, shared over them; another meter may have lost
+    it, and its missing days are scaled as before."""
+    days = _a_year_of_gas()
+    for n in range(1, 11):
+        del days[date(2026, 1, n)]
+    days[date(2026, 1, 11)] = 110.0
+    hass.states.async_set("sensor.gas", "1234", {"state_class": state_class})
+    with (
+        patch(
+            "custom_components.be_gas_prices.coordinator.discover_energy_gas_meter",
+            AsyncMock(return_value=("sensor.gas", 1)),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.statistic_kind",
+            AsyncMock(return_value="energy"),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            AsyncMock(return_value=days),
+        ),
+    ):
+        entry = await _setup(hass)
+    data = entry.runtime_data.data
+    assert data.rolling_year_kwh == pytest.approx(volume)
+    assert data.annual_kwh == pytest.approx(volume)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: AsyncMock) -> None:
     """Home Assistant waits on it: the meter is read by the refresh setup
     starts in the background once it is done, once, though the past months'

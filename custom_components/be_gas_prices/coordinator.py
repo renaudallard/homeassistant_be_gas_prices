@@ -101,8 +101,10 @@ from .daily_ranking import DailyRanking, ranking_minute
 from .gas_meter import (
     MeterKind,
     RecorderUnavailable,
+    carries_outages,
     daily_consumption,
     discover_energy_gas_meter,
+    spread_outages,
     statistic_kind,
 )
 from .issues import sync_issues
@@ -706,6 +708,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         earlier_kwh = 0.0
         measured = False
         kwh_days: dict[date, float] | None = None
+        spread_days: dict[date, float] | None = None
         held: dict[str, Any] = {}
         # Which meter, from the Energy dashboard's settings and not the
         # recorder, so the several-meters card stands and figures held for
@@ -740,16 +743,21 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             # no part of this year's cost.
             self.unpriced_periods = []
             self.unpriced_this_month = []
-            kwh_days = (
-                to_kwh(meter_days, self._factor_for(kind), date(today.year, 1, 1))
-                if meter_days
-                else None
-            )
+            factor = self._factor_for(kind)
+            billed_from = date(today.year, 1, 1)
+            kwh_days = to_kwh(meter_days, factor, billed_from) if meter_days else None
+            if kwh_days is not None and self.meter and carries_outages(self.hass, self.meter):
+                # The year reads each outage's gas off the first day back,
+                # shared over its days. A day the share lands on that has no
+                # factor leaves the days as the meter recorded them.
+                spread_days = to_kwh(spread_outages(meter_days), factor, billed_from)
         waived = self._fee_waived()
         if kwh_days is not None:
+            if spread_days is None:
+                spread_days = kwh_days
             # A measured year picks the tier and the excise slices; the typed
             # estimate stands in until the meter has one.
-            rolling = rolling_year_kwh(kwh_days, today)
+            rolling = rolling_year_kwh(spread_days, today)
             if rolling is not None:
                 measured = True
                 household = Household(
@@ -765,6 +773,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
                 energy_for=self._energy_for,
                 table=self._index_table,
                 fee_waived=waived,
+                spread_days=spread_days,
             )
             periods = periods_this_year(self._data, today)
             earlier_kwh = sum(

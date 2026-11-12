@@ -49,10 +49,12 @@ from homeassistant.components.recorder.statistics import (
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.components.recorder.common import (
     async_wait_recording_done,
+    do_adhoc_statistics,
 )
 
 from custom_components.be_gas_prices import backfill, gas_meter, providers
@@ -183,6 +185,47 @@ async def test_a_meter_that_falls_counts_no_gas_that_day(
     assert hours[day2] == pytest.approx(0.5)
     assert hours[day2 + timedelta(hours=12)] == pytest.approx(-19.5)
     assert sum(hours.values()) == pytest.approx(-8.0)
+
+
+async def test_an_outage_s_gas_lands_on_its_first_day_back(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """24 m3 a day, the meter unavailable through 6 and 7 January: the
+    recorder resumes the sum from the last value it compiled, so 8 January
+    holds the 48 m3 it missed, which spread_outages shares out again."""
+    await _zone(hass)
+    assert await async_setup_component(hass, "sensor", {})
+    attributes = {
+        "device_class": "gas",
+        "state_class": "total_increasing",
+        "unit_of_measurement": "m³",
+    }
+    start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 1, 5)))
+    for hour in range(5 * 24):
+        slot = start + timedelta(hours=hour, minutes=55)
+        freezer.move_to(slot + timedelta(seconds=30))
+        down = hour // 24 in (1, 2)
+        hass.states.async_set(METER, "unavailable" if down else str(5000.0 + hour), attributes)
+        await async_wait_recording_done(hass)
+        freezer.move_to(slot + timedelta(minutes=5, seconds=10))
+        do_adhoc_statistics(hass, start=slot)
+        await async_wait_recording_done(hass)
+    assert gas_meter.carries_outages(hass, METER)
+    days = await gas_meter.daily_consumption(
+        hass, METER, "volume", date(2026, 1, 5), date(2026, 1, 9)
+    )
+    # The 5th starts the sum at its first value; the 6th has a row for the
+    # hour it went down in, the 7th none.
+    assert days == {
+        date(2026, 1, 5): pytest.approx(23.0),
+        date(2026, 1, 6): 0.0,
+        date(2026, 1, 8): pytest.approx(72.0),
+        date(2026, 1, 9): pytest.approx(24.0),
+    }
+    spread = gas_meter.spread_outages(days)
+    assert spread[date(2026, 1, 7)] == pytest.approx(36.0)
+    assert spread[date(2026, 1, 8)] == pytest.approx(36.0)
+    assert sum(spread.values()) == pytest.approx(sum(days.values()))
 
 
 async def test_a_unit_nothing_converts_is_refused(recorder_mock: Any, hass: HomeAssistant) -> None:

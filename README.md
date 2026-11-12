@@ -265,6 +265,16 @@ year needs 350 of the 365 days before today on record and the year-end
 projection every remaining day of last year, so all four stay `unknown`
 until the meter has about a year of history.
 
+A meter that went quiet for a few days (Home Assistant stopped, the reader
+offline) has no statistics for them, and the recorder puts their gas on the
+first day it reads again. For a `total_increasing` meter the rolling year
+and the projection share that day's figure out evenly over the missing days
+and itself, so the gas counts once and those days are on record. A meter
+offline, while Home Assistant runs, for longer than the recorder keeps its
+five-minute statistics (`purge_keep_days`, 10 by default) starts its sum
+over and that gas is lost: the days stay missing. The monthly costs keep
+the gas on the day the recorder put it.
+
 Startup reads no meter. Home Assistant waits on each integration's first
 refresh, with 300 s for all of them together, and a year of meter statistics
 can take seconds on a database on a NAS. So after a restart the cost and

@@ -56,6 +56,7 @@ from custom_components.be_gas_prices.const import (
     SUPPLIER_CUSTOM,
     VAT_RATE_REDUCED,
 )
+from custom_components.be_gas_prices.gas_meter import spread_outages
 from custom_components.be_gas_prices.providers import engie, sparki
 from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import (
@@ -532,6 +533,65 @@ def test_rolling_year_scales_a_few_missing_days_and_refuses_more() -> None:
     assert rolling_year_kwh(gappy, today) == pytest.approx(3650.0)
     short = {day: value for day, value in full.items() if day.month != 1}
     assert rolling_year_kwh(short, today) is None
+
+
+def test_an_outage_s_gas_is_shared_over_its_days() -> None:
+    """The first day back holds the gas of the two days before it."""
+    days = {date(2026, 1, n): 10.0 for n in range(1, 11) if n not in (4, 5)}
+    days[date(2026, 1, 6)] = 30.0
+    spread = spread_outages(days)
+    assert spread == {date(2026, 1, n): pytest.approx(10.0) for n in range(1, 11)}
+    assert sum(spread.values()) == pytest.approx(sum(days.values()))
+
+
+def test_an_outage_whose_gas_was_lost_stays_missing() -> None:
+    """A first day back at 0 is a sum the recorder started over, and the
+    days before the first one on record are none of an outage's."""
+    days = {date(2026, 1, n): 10.0 for n in range(3, 11) if n not in (5, 6)}
+    days[date(2026, 1, 7)] = 0.0
+    assert spread_outages(days) == days
+
+
+def test_rolling_year_counts_an_outage_once() -> None:
+    """Ten days without rows in January, their gas on the 11th: scaled, the
+    year counted it twice; shared out, it is the year the meter turned."""
+    today = date(2026, 9, 29)
+    days = {today - timedelta(days=n): 10.0 for n in range(1, 366)}
+    for n in range(1, 11):
+        del days[date(2026, 1, n)]
+    days[date(2026, 1, 11)] = 110.0
+    assert rolling_year_kwh(days, today) == pytest.approx(3650.0 * 365 / 355)
+    assert rolling_year_kwh(spread_outages(days), today) == pytest.approx(3650.0)
+
+
+def test_year_end_projection_reads_an_outage_off_its_first_day_back() -> None:
+    today = date(2026, 12, 20)
+    card = _flow()
+    days = {
+        date(2025, 1, 1) + timedelta(days=n): 30.0
+        for n in range((today - date(2025, 1, 1)).days + 1)
+    }
+    del days[date(2025, 12, 24)], days[date(2025, 12, 25)]
+    days[date(2025, 12, 26)] = 90.0
+
+    def costs(spread_days: dict[date, float] | None) -> RunningCosts:
+        return running_costs(
+            kwh_days=days,
+            today=today,
+            window_start=date(2026, 1, 1),
+            household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
+            current_card=card,
+            month_card=lambda month: None,
+            energy_for=card_leg,
+            table=TABLE,
+            spread_days=spread_days,
+        )
+
+    assert costs(None).projected_year_kwh is None
+    spread = costs(spread_outages(days))
+    assert spread.projected_year_kwh == pytest.approx(spread.ytd_kwh + 11 * 30.0)
+    # The months are billed as the meter recorded them.
+    assert spread.months == costs(None).months
 
 
 def test_running_costs_bill_each_month_on_its_own_card() -> None:
