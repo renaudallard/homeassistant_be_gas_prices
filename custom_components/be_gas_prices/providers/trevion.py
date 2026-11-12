@@ -83,7 +83,14 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import LINE_BREAK, fold_accents, month_date, require_contract, to_float
+from ._parse import (
+    LINE_BREAK,
+    fold_accents,
+    formula_gives,
+    month_date,
+    require_contract,
+    to_float,
+)
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text,
@@ -350,6 +357,22 @@ _PRICE_RE = re.compile(
 _FORMULA_RE = re.compile(
     r"\(\s*(\d+,\d+)\s*x\s*TTF_RLP\s*\+\s*(\d+,\d+)\s*\)\s*x\s*(\d+,\d+)",
 )
+# The value the printed price is worked out at, "deze van augustus 2026
+# (61,72 €/MWh)". Only the value and its unit are read here: the month
+# beside it is the half of the sentence that is not reliable, and the price
+# is worked out at the value whatever month it names. Every card from July
+# 2025 to November 2026 states it in €/MWh, with a comma but for August
+# 2026's "53.07".
+_PRICED_AT_RE = re.compile(
+    r"laatst gekende waarde is deze van[^(]{0,40}\(\s*(\d+[.,]\d+)\s*([^\s()]{1,12})\s*\)"
+)
+_INDEX_UNIT = "€/MWh"
+# The card states no unit for its formula, so the formula has to give back the
+# price it prints at that value. Every card from July 2025 to November 2026
+# passes within 0,12%, the price being printed to 0,01 c€/kWh (May 2026's
+# 5,51 for 5,5035 is the farthest). A base read ten times off misses by more
+# than 4,7% on them, a factor by far more.
+_FORMULA_TOLERANCE = 0.005
 
 
 def _energy(text: str) -> IndexedRates:
@@ -360,7 +383,7 @@ def _energy(text: str) -> IndexedRates:
     # c EUR/kWh against TTF_RLP in EUR/MWh, grossed by the multiplier the
     # formula prints rather than by the card's stated rate.
     vat = to_float(formula.group(3))
-    return IndexedRates(
+    rates = IndexedRates(
         factor=to_float(formula.group(1)) * vat / 100.0,
         base=to_float(formula.group(2)) * vat / 100.0,
         index=_INDEX,
@@ -368,6 +391,22 @@ def _energy(text: str) -> IndexedRates:
         yearly_fixed_fee=to_float(price.group(2)),
         formula=formula.group(0),
     )
+    known = _PRICED_AT_RE.search(text)
+    if known is None:
+        raise ExtractorError("Trevion: no last known TTF_RLP value")
+    if known.group(2) != _INDEX_UNIT:
+        raise ExtractorError(
+            f"Trevion: last known TTF_RLP value stated in {known.group(2)}, expected {_INDEX_UNIT}"
+        )
+    value = to_float(known.group(1))
+    if not formula_gives(
+        rates.price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE
+    ):
+        raise ExtractorError(
+            f"Trevion: {rates.formula} gives {rates.at(value) * 100:.4f} c€/kWh"
+            f" at TTF_RLP {value}, not the {rates.price * 100:.2f} printed"
+        )
+    return rates
 
 
 # "Fluvius Antwerpen 15,68 2,26 83,22 0,91 0,165 18,92": per tier the fixed

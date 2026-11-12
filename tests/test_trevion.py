@@ -103,6 +103,85 @@ def test_september_card_prices_at_the_last_known_value() -> None:
     assert snap.taxes.card_vat_rate == pytest.approx(0.06)
 
 
+@pytest.mark.parametrize(
+    ("printed", "restated"),
+    [
+        # The base, then the factor, ten times off: a formula restated in
+        # another unit reads that way.
+        ("TTF_RLP + 0,50)", "TTF_RLP + 0,05)"),
+        ("(0,102 x TTF_RLP", "(1,02 x TTF_RLP"),
+    ],
+)
+def test_a_formula_that_misses_the_printed_price_is_refused(printed: str, restated: str) -> None:
+    """The card states no unit for its formula, so at the last known value
+    it names the formula has to give back the price it prints."""
+    text = _card(_SEPTEMBER)
+    energy = trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.base == pytest.approx(0.50 * 1.06 / 100)
+    assert text.count(printed) == 1
+    with pytest.raises(ExtractorError, match="gives"):
+        trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text.replace(printed, restated))
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("7,23", True), ("7,24", False)])
+def test_the_formula_check_allows_half_a_percent(printed: str, kept: bool) -> None:
+    """At 61,72 the formula gives 7,2032 for the 7,20 printed: 7,23 is 0,37%
+    off and still reads, 7,24 is 0,51% off and does not."""
+    text = _card(_SEPTEMBER).replace("7,20 39", f"{printed} 39")
+    if kept:
+        energy = trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text).energy
+        assert isinstance(energy, IndexedRates)
+        assert energy.price == pytest.approx(float(printed.replace(",", ".")) / 100)
+    else:
+        with pytest.raises(ExtractorError, match="gives"):
+            trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text)
+
+
+@pytest.mark.parametrize(
+    ("edits", "message"),
+    [
+        # The value in c€/kWh, then with the factor restated to match it:
+        # that formula still gives the printed price back at 6,172.
+        (
+            [("(61,72 €/MWh)", "(6,172 c€/kWh)")],
+            "last known TTF_RLP value stated in c€/kWh, expected €/MWh",
+        ),
+        (
+            [("(61,72 €/MWh)", "(6,172 c€/kWh)"), ("(0,102 x TTF_RLP", "(1,02 x TTF_RLP")],
+            "last known TTF_RLP value stated in c€/kWh, expected €/MWh",
+        ),
+        ([("laatst gekende waarde", "laatst bekende waarde")], "no last known TTF_RLP value"),
+    ],
+)
+def test_a_card_without_the_last_known_value_in_eur_per_mwh_is_refused(
+    edits: list[tuple[str, str]], message: str
+) -> None:
+    """Every card so far names the value in EUR/MWh; one in another unit is
+    no value the formula can be checked at."""
+    text = _card(_SEPTEMBER)
+    for printed, restated in edits:
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    with pytest.raises(ExtractorError, match=message):
+        trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text)
+
+
+@pytest.mark.parametrize(
+    "named",
+    ["aug. 2026", "augustus 20226", "augustus", "augustus 2026", "augustus 2026 "],
+)
+def test_the_formula_check_reads_the_value_whatever_month_it_names(named: str) -> None:
+    """The month beside the value is the half of the sentence that is not
+    reliable; the price is worked out at the value, which the check needs
+    alone. A dot for the comma is read too, as August 2026 printed it."""
+    card = _card(_SEPTEMBER)
+    expected = trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, card)
+    for value in ("61,72", "61.72"):
+        text = card.replace("augustus 2026 (61,72 €/MWh)", f"{named} ({value} €/MWh)")
+        assert trevion.parse_snapshot(_CONTRACT, REGION_FLANDERS, text) == expected
+
+
 def test_blank_lines_after_the_price_and_excise_headings_are_read_past_in_time() -> None:
     """The price and excise patterns once split a run of blank lines after
     their headings every way before failing: 16 000 after each, in front of

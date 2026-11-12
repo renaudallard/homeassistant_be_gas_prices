@@ -46,6 +46,16 @@ October 2026 cleanly.
   c€/kWh against TTF_RLP in EUR/MWh. The "x 1,06" is read and applied; the
   formula is not grossed again. `factor = 0,102 x 1,06 / 100`,
   `base = 0,50 x 1,06 / 100`.
+- Formula check: the card states no unit for its formula, so at the last
+  known value it names ("(61,72 €/MWh)", in €/MWh on every archived card,
+  with a comma or a dot) the formula as read has to give back `price`
+  within 0,5%, or the card is refused. Only the value is read for it, not
+  the month beside it, which is not reliable (see below). A card naming no
+  such value, or naming it in another unit, is refused too. The 16 archived
+  cards pass within 0,12%; a base ten times off misses by more than 4,7% on
+  each of them, a factor by far more. The price heading's "(c€/kWh)" is
+  part of its pattern, so a price restated in another unit together with its
+  formula is not read either.
 - VAT: "Incl. 6% BTW" gives `card_vat_rate`.
 - DSO table, between "Netbeheerder" and "Bijzondere accijns": per tier the
   fixed term then the proportional one, then transport and databeheer:
@@ -110,6 +120,7 @@ August 2505, so August 2025 is not served.
   quarter's rate.
 - The May 2026 card prints 5,51 where its formula at the value it names
   (46,00) gives 5,5035; the June card prints 5,60 where 46,94 gives 5,6052.
+  May's 0,12% is the widest gap the formula check meets on the archive.
 - The value named is cut rather than rounded at times (61,72 for 61,729).
 - The January 2026 card prints the 2025 Fluvius table: Antwerpen 14,24 /
   2,10 / 75,60 / 0,87 and a data management fee of 18,56, where the
@@ -124,6 +135,10 @@ August 2505, so August 2025 is not served.
   month, VAT, the Antwerpen row in full, the Halle-Vilvoorde typo row,
   Kempen as printed, excise and contribution.
 - March card: pre-August excise and contribution.
+- The formula check: the September card with its base or factor ten times
+  off, or its price just past 0,5%, is refused; so is a last known value in
+  c€/kWh, also with the factor restated to match, or no such sentence. A
+  sentence naming its month otherwise, or no month, still reads.
 - `published_index` on the September, August and March cards.
 - Listing: one href per month, the reissue, no Professioneel card.
 - `fetch`, `fetch_index` (the full table, the cards of page 2 back to
