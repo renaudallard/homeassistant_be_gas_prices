@@ -78,6 +78,23 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   1000 for EUR/kWh and grossed by the residential 6%, which reproduces the
   printed price: (65,38 x 1,049 + 10,10) / 10 x 1,06 = 8,34. The index is
   filed as "TTF". `price` is the printed "Prix mensuel".
+- Units: the formula's is read from its column heading, "Formule tarifaire
+  (€/MWh, HTVA)", looked for within 300 characters ahead of the factor (it
+  starts 123 ahead, 124 in June 2026). Every variable card from June to
+  November 2026 prints exactly that, and a card stating another unit, or
+  none, is refused. Read as EUR/MWh, a formula restated in c€/kWh, as
+  OCTA+'s were in November 2026, would bill a base a tenth of what it is.
+  The "€/MWh" after the TTF value, the unit of the index, is part of the
+  formula's pattern, so a card restating that value matches no formula.
+- Recompute: a formula restated under the heading left as it was still
+  matches, so at the TTF value printed before it the formula has to give
+  back the "Prix mensuel" within 10%, or the card is refused. Every card
+  from June to November 2026 does within 0,08%, apart from the second June
+  cards of Bolt Variable and Bolt Variable Online: each prints 5,16, version
+  11's price, where its own formula gives 5,60 (8,6% more), and reads as
+  printed. A base alone a tenth of itself misses by 11,5% or more, no base
+  by 12,8% or more, a factor ten times off or a whole formula on another
+  scale by 69% or more, and a base with its sign turned by 25% or more.
 - DSO table, "Distribution et transport TTC", read between that heading and
   "Taxes et redevances": columns Petite consommation <= 5.000 kWh (Variable
   c€/kWh, Fixe €/an), Consommation moyenne > 5.000 et <= 150.000 kWh (the
@@ -259,7 +276,8 @@ pays pdfplumber's 45 s on a Raspberry Pi):
   `fetch_for_month` URL, another month refused, 404 as None, transient
   failure raised.
 - Variable cards: the formula against the printed price, the four fees, the
-  tables in each region, another product refused, no `valid_until`.
+  tables in each region, another product refused, no `valid_until`; a
+  formula heading restated in c€/kWh or TVAC, or without its unit, refused.
 - The version walk: September takes version 13; July takes the June card,
   version 12, passing over a missing number; a title not read stops the
   walk; a transient failure raises; a listing linking version 1000 costs 36

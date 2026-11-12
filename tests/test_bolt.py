@@ -344,7 +344,8 @@ def test_levy_row_missing_a_value_fails_loud() -> None:
 def test_june_card_without_flanders_reads_wallonia_and_brussels() -> None:
     """Version 12 prints no Fluvius rows, and its levy rows hold two values,
     Wallonia's and Brussels'. Its formula is read as printed; its printed
-    price, 5,16, is version 11's formula at the same TTF."""
+    price, 5,16, is version 11's formula at the same TTF; its own formula
+    gives 5,60, 8,6% more, still within what the formula check allows."""
     text = _card(_VAR_12)
     with pytest.raises(ExtractorError, match="DSO rows not found"):
         bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)
@@ -508,6 +509,58 @@ def test_variable_card_prints_the_fixed_card_tables() -> None:
 def test_variable_card_of_the_other_product_is_refused() -> None:
     with pytest.raises(ExtractorError, match="the card is for Bolt Variable"):
         bolt.parse_snapshot("bolt_variable_online", REGION_FLANDERS, _card(_VAR_14))
+
+
+@pytest.mark.parametrize(
+    ("restated", "refusal"),
+    [
+        # In c€/kWh, as OCTA+ restated its formulas in November 2026: read as
+        # EUR/MWh, the base would be a tenth of what it is.
+        ("Formule tarifaire (c€/kWh, HTVA)", "formula unit 'c€/kWh, HTVA'"),
+        # Including VAT, the formula would be grossed a second time.
+        ("Formule tarifaire (€/MWh, TVAC)", "formula unit '€/MWh, TVAC'"),
+        # No unit, where every card states one.
+        ("Formule tarifaire", "formula unit None"),
+    ],
+)
+def test_variable_card_stating_another_formula_unit_is_refused(restated: str, refusal: str) -> None:
+    text = _card(_VAR_14)
+    energy = _indexed(bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text))
+    assert energy.factor == pytest.approx(1.049 / 1000 * 1.06)
+    assert energy.base == pytest.approx(10.10 / 1000 * 1.06)
+    heading = "Formule tarifaire (€/MWh, HTVA)"
+    assert text.count(heading) == 1
+    with pytest.raises(ExtractorError, match=refusal):
+        bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text.replace(heading, restated))
+
+
+@pytest.mark.parametrize(
+    "restated",
+    [
+        # The whole formula in c€/kWh, as OCTA+ restated its own in November
+        # 2026, under the heading left as it was.
+        "TTF *0,1049 + 1,010",
+        # The factor alone ten times off.
+        "TTF *10,49 + 10,10",
+        "TTF *0,1049 + 10,10",
+        # The base with its sign turned.
+        "TTF *1,049 - 10,10",
+        # The base alone a tenth of itself, as a formula restated in c€/kWh
+        # on a TTF in c€/kWh would read, and no base at all.
+        "TTF *1,049 + 1,010",
+        "TTF *1,049 + 0,00",
+    ],
+)
+def test_variable_card_formula_that_misses_its_printed_price_is_refused(restated: str) -> None:
+    """The heading states the formula's unit, which a formula restated
+    under it leaves true: at the TTF value printed before it, 65,38, the
+    formula has to give back the "Prix mensuel" 8,34."""
+    text = _card(_VAR_14)
+    printed = "TTF *1,049 + 10,10"
+    assert text.count(printed) == 1
+    assert _indexed(bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)).formula == printed
+    with pytest.raises(ExtractorError, match=r"gives .* at TTF 65.38 €/MWh, not the 8.34 printed"):
+        bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text.replace(printed, restated))
 
 
 async def test_fetch_takes_the_variable_version_the_listing_links() -> None:

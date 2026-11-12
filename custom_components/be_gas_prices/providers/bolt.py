@@ -130,10 +130,12 @@ from ._parse import (
     SIGN_CHARS,
     cell_value,
     fold_accents,
+    formula_gives,
     month_date,
     parse_sign,
     require_contract,
     search_once_per_line,
+    stated_unit,
     to_float,
 )
 from ._pdf import (
@@ -446,32 +448,70 @@ def _fixed(text: str) -> FixedRates:
 
 # "Simple 65,38 €/MWh TTF *1,049 + 10,10" under "Type de compteur TTF Q3 2026
 # Formule tarifaire (€/MWh, HTVA)": the TTF value the printed price is set at,
-# then the formula.
+# then the formula. The "€/MWh" the pattern requires is the TTF value's, the
+# unit of the index the factor multiplies, so a card restating that value
+# in another unit is refused here already.
 _FORMULA_RE = re.compile(
-    r"^Simple\s+\d+,\d+\s*€/MWh\s+"
+    r"^Simple\s+(\d+,\d+)\s*€/MWh\s+"
     r"(TTF\s*\*\s*(\d+,\d+)\s*([" + SIGN_CHARS + r"])\s*(\d+,\d+))\s*$",
     re.MULTILINE,
 )
+# The formula's own unit is the heading of its column, which is read
+# rather than assumed: a formula restated in c€/kWh, as OCTA+'s were in
+# November 2026, would still match, its base read a tenth of what it is.
+# The heading starts 123 characters ahead of the factor, 124 on the June
+# 2026 cards ("TTF * 1,09"), with a line of the paragraph beside the table
+# in between. Every variable card from June to November 2026 prints it
+# "(€/MWh, HTVA)", and only that spelling is taken. The reach leaves room
+# for two more lines of that paragraph, and no other heading of the card
+# reads "Formule tarifaire (".
+_FORMULA_UNIT_RE = re.compile(r"Formule\s+tarifaire\s*\(([^()\n]*)\)")
+_FORMULA_UNIT = "€/MWh, HTVA"
+_FORMULA_UNIT_REACH = 300
+# A formula restated under a heading left as it was still reads, so the
+# formula also has to give back the "Prix mensuel" at the TTF value printed
+# before it. On every variable card from June to November 2026 it does
+# within 0,08%, the rounding of a price printed to the hundredth, but for
+# the second June card of Bolt Variable and Bolt Variable Online: each
+# prints 5,16, version 11's price at the same TTF, beside its own "TTF *
+# 1,09 + 10,90", which gives 5,60, 8,6% more. Formula and price both read as
+# printed there. A base alone a tenth of itself, as a formula restated in
+# c€/kWh on a TTF in c€/kWh would read, moves the price by 11,5% at the
+# least, and no base by 12,8%, so the bound sits between those and that
+# June card. A formula restated whole on another scale, or its factor alone
+# ten times off, misses by 69% or more, its base with the sign turned by 25%
+# or more.
+_FORMULA_TOLERANCE = 0.1
 
 
 def _indexed(text: str) -> IndexedRates:
     formula = _FORMULA_RE.search(text)
     if formula is None:
         raise ExtractorError("Bolt: variable card formula not found")
+    unit = stated_unit(text, _FORMULA_UNIT_RE, formula.span(3), before=_FORMULA_UNIT_REACH)
+    if unit != _FORMULA_UNIT:
+        raise ExtractorError(f"Bolt: formula unit {unit!r}, expected {_FORMULA_UNIT!r}")
     price, fee = _price_and_fee(text)
     # The card states no VAT rate; the residential one the law sets is what
     # reproduces its printed price. EUR/MWh to EUR/kWh, grossed.
     vat = 1.0 + VAT_RATE_REDUCED
-    base = parse_sign(formula.group(3)) * to_float(formula.group(4))
-    return IndexedRates(
-        factor=to_float(formula.group(2)) / 1000.0 * vat,
+    base = parse_sign(formula.group(4)) * to_float(formula.group(5))
+    rates = IndexedRates(
+        factor=to_float(formula.group(3)) / 1000.0 * vat,
         base=base / 1000.0 * vat,
         index=_INDEX,
         price=price,
         yearly_fixed_fee=fee,
-        formula=formula.group(1),
+        formula=formula.group(2),
         vat_grossed=("factor", "base"),
     )
+    value = to_float(formula.group(1))
+    if not formula_gives(price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE):
+        raise ExtractorError(
+            f"Bolt: {rates.formula} gives {rates.at(value) * 100:.2f} c€/kWh at TTF "
+            f"{value} €/MWh, not the {price * 100:.2f} printed"
+        )
+    return rates
 
 
 # Per tier the proportional term then the fixed one, then transport and the
