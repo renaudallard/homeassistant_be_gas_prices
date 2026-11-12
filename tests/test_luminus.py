@@ -358,6 +358,75 @@ def test_forward_term_weighted_in_fails_loud() -> None:
         luminus.parse_snapshot("luminus_comfyflex", REGION_WALLONIA, text)
 
 
+@pytest.mark.parametrize(
+    ("printed", "restated"),
+    [
+        # The base, then the factor, ten times off: a formula restated in
+        # another unit reads that way.
+        ("+  1,5650", "+  0,1565"),
+        ("0,1001  x", "1,0010  x"),
+    ],
+)
+def test_a_formula_that_misses_the_printed_price_is_refused(printed: str, restated: str) -> None:
+    """The card states no unit for its formula, so at the index value it
+    opens with the formula has to give back the price it prints."""
+    text = _card(_MAXXFLEX_W)
+    energy = luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, text).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.base == pytest.approx(0.015650 * 1.06)
+    assert text.count(printed) == 1
+    with pytest.raises(ExtractorError, match="gives"):
+        luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, text.replace(printed, restated))
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("8,21", True), ("8,22", False)])
+def test_the_formula_check_allows_half_a_percent(printed: str, kept: bool) -> None:
+    """At 61,438 the formula gives 8,1778 for the 8,18 printed: 8,21 is
+    0,39% off and still reads, 8,22 is 0,51% off and does not."""
+    text = _card(_MAXXFLEX_W).replace("Énergie (c€/kWh) 8,18", f"Énergie (c€/kWh) {printed}")
+    if kept:
+        energy = luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, text).energy
+        assert isinstance(energy, IndexedRates)
+        assert energy.price == pytest.approx(float(printed.replace(",", ".")) / 100)
+    else:
+        with pytest.raises(ExtractorError, match="gives"):
+            luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, text)
+
+
+@pytest.mark.parametrize(
+    ("edits", "message"),
+    [
+        # The value in c€/kWh, then with the factor restated to match it:
+        # that formula still gives the printed price back at 6,1438.
+        ([("61,438 €/MWh", "6,1438 c€/kWh")], "TTF DAH M value stated in c€/kWh, expected €/MWh"),
+        (
+            [("61,438 €/MWh", "6,1438 c€/kWh"), ("0,1001  x", "1,0010  x")],
+            "TTF DAH M value stated in c€/kWh, expected €/MWh",
+        ),
+        ([("Index (HTVA) :  TTF DAH M", "Index (HTVA) :  TTF DAHW")], "no TTF DAH M value"),
+    ],
+)
+def test_a_card_without_the_formulas_index_value_is_refused(
+    edits: list[tuple[str, str]], message: str
+) -> None:
+    """The value is stated in EUR/MWh on every card so far, and for the
+    index the formula names; one in another unit or for another index is
+    not one the formula can be checked at."""
+    text = _card(_MAXXFLEX_W)
+    for printed, restated in edits:
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    with pytest.raises(ExtractorError, match=message):
+        luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, text)
+
+
+def test_the_index_value_is_read_with_a_dot() -> None:
+    card = _card(_MAXXFLEX_W)
+    text = card.replace("61,438 €/MWh", "61.438 €/MWh")
+    expected = luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, card)
+    assert luminus.parse_snapshot("luminus_maxxflex", REGION_WALLONIA, text) == expected
+
+
 def test_walloon_card_without_connection_fee_fails_loud() -> None:
     text = _card(_COMFYFLEX_W).replace("\n0,0075\n", "\n-\n")
     with pytest.raises(ExtractorError, match="connection fee"):

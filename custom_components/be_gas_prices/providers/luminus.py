@@ -111,6 +111,7 @@ from ._parse import (
     SIGN_CHARS,
     cell_value,
     fold_accents,
+    formula_gives,
     in_tag,
     month_date,
     parse_sign,
@@ -381,6 +382,8 @@ _VAT_RE = re.compile(r"La TVA sur les prix indiqués[^%]{0,80}?(\d+(?:,\d+)?)\s*
 
 # "Prix du jour" then "Énergie (c€/kWh) 7,00": the price at the last known
 # index. The "Estimation annuelle" row below it is a forecast and not read.
+# The label's unit is part of the pattern, so a price restated in another
+# unit together with its formula is not read.
 _PRICE_RE = re.compile(r"^Énergie \(c€/kWh\)\s+(\d+,\d+)\s*$", re.MULTILINE)
 _FEE_RE = re.compile(r"^Redevance fixe \(€/an\)\s+(\d+,\d+)\s*$", re.MULTILINE)
 
@@ -389,10 +392,25 @@ _FEE_RE = re.compile(r"^Redevance fixe \(€/an\)\s+(\d+,\d+)\s*$", re.MULTILINE
 # products "0,1004 x TTF DAHW + 0,0000 x TTF 1-0-3 + 2,0204". Searched for
 # from "Index (HTVA)", where no number starts.
 _S = f"[{SIGN_CHARS}]"
+_NAME = r"(TTF [A-Z]+(?: [A-Z]+)*)"
 _FORMULA_RE = re.compile(
-    rf"{NUMBER_START}(\d+,\d+) x (TTF [A-Z]+(?: [A-Z]+)*) "
-    rf"(?:({_S}) (\d+,\d+) x TTF 1-0-3 )?({_S}) (\d+,\d+)"
+    rf"{NUMBER_START}(\d+,\d+) x {_NAME} (?:({_S}) (\d+,\d+) x TTF 1-0-3 )?({_S}) (\d+,\d+)"
 )
+# What the paragraph opens with: the value the printed price is worked out
+# at, "Index (HTVA) : TTF DAH M = 61,438 €/MWh", some quarterly cards adding
+# the TTF 1-0-3 value their formula weights zero. Every indexed card from
+# November 2023 to November 2026 names the formula's own index first and
+# states it in €/MWh with a comma; a dot is read too.
+_INDEX_VALUE_RE = re.compile(rf"Index \(HTVA\) ?: {_NAME} = (\d+[.,]\d+) ([^\s;,]+)")
+_INDEX_UNIT = "€/MWh"
+# The card states no unit for its formula, so the formula has to give back the
+# price it prints at that value. It is checked on what is kept, the formula
+# grossed by the printed rate against the price including VAT. Every indexed
+# card from November 2023 to November 2026 passes within 0,14%, the price
+# being printed to 0,01 c€/kWh and the coefficients rounded (BasicFlex's
+# 3,37 in Flanders in April 2024 is the farthest). A base read ten times off
+# misses by more than 3,8% on them, a factor by far more.
+_FORMULA_TOLERANCE = 0.005
 # The indices a formula can name, as the card spells them, with the title of
 # their table in the index PDF and the period each one averages over.
 _INDICES: dict[str, tuple[str, IndexPeriod]] = {
@@ -423,7 +441,7 @@ def _energy(text: str, kind: TariffKind, vat: float) -> FixedRates | IndexedRate
     # cannot resolve. Every card so far weights it zero.
     if formula.group(4) is not None and to_float(formula.group(4)) != 0.0:
         raise ExtractorError(f"Luminus: formula carries a TTF 1-0-3 term: {formula.group(0)}")
-    return IndexedRates(
+    rates = IndexedRates(
         factor=to_float(formula.group(1)) / 100.0 * vat,
         base=parse_sign(formula.group(5)) * to_float(formula.group(6)) / 100.0 * vat,
         index=index,
@@ -432,6 +450,24 @@ def _energy(text: str, kind: TariffKind, vat: float) -> FixedRates | IndexedRate
         formula=formula.group(0),
         period=_INDICES[index][1],
     )
+    # The heading nearest ahead of the formula is the one its paragraph
+    # opens with.
+    stated = _INDEX_VALUE_RE.match(flat, flat.rfind("Index (HTVA)", start, formula.start()))
+    if stated is None or stated.group(1) != index:
+        raise ExtractorError(f"Luminus: no {index} value ahead of the formula")
+    if stated.group(3) != _INDEX_UNIT:
+        raise ExtractorError(
+            f"Luminus: {index} value stated in {stated.group(3)}, expected {_INDEX_UNIT}"
+        )
+    value = to_float(stated.group(2))
+    if not formula_gives(
+        rates.price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE
+    ):
+        raise ExtractorError(
+            f"Luminus: {rates.formula} gives {rates.at(value) * 100:.4f} c€/kWh incl. VAT"
+            f" at {index} {value}, not the {rates.price * 100:.2f} printed"
+        )
+    return rates
 
 
 # "Variable (c€/kWh) Fixe (€/an)" for each of the three tiers, then transport,

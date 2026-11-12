@@ -67,6 +67,17 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
     RLP M + 0,5609".
   - c€/kWh excluding VAT for an index in EUR/MWh: factor = A / 100 x 1,06,
     base = C / 100 x 1,06. An index name other than the three above fails.
+- Formula check: the card states no unit for its formula, only for the index
+  value that opens the paragraph ("Index (HTVA) : TTF DAH M = 61,438 €/MWh",
+  in €/MWh with a comma on every archived card; a dot is read too). That
+  value has to be for the formula's own index and in €/MWh, or the card is
+  refused, naming the unit it states; and the formula as read has to give
+  back `price` at it within 0,5%, or the card is refused. Every archived
+  indexed card passes within 0,14%, the price being printed to 0,01 c€/kWh
+  and the coefficients rounded; a base ten times off misses by more than
+  3,8% on each of them, a factor by far more. The price label's "(c€/kWh)"
+  is part of its pattern, so a price restated in another unit together with
+  its formula is not read either.
 - DSO table, after "Coûts de distribution": per tier "Variable (c€/kWh)"
   then "Fixe (€/an)" for T1 (<= 5.000 kWh), T2 (<= 150.000) and T3
   (> 150.000), then "Coûts de transport (c€/kWh)".
@@ -242,6 +253,12 @@ September 2026 online cards, both regions:
   `test_february_2026_card_without_the_tarif_heading_is_read`.
 - Fail loud: `test_forward_term_weighted_in_fails_loud`,
   `test_walloon_card_without_connection_fee_fails_loud`.
+- Formula check: `test_a_formula_that_misses_the_printed_price_is_refused`
+  (base and factor ten times off),
+  `test_the_formula_check_allows_half_a_percent`,
+  `test_a_card_without_the_formulas_index_value_is_refused` (the value in
+  c€/kWh, also with the factor restated to match, or for another index),
+  `test_the_index_value_is_read_with_a_dot`.
 - Index: `test_index_pdf_places_each_figure_under_its_year`,
   `test_index_table_holds_the_values_the_cards_name`,
   `test_card_index_names_are_the_published_ones`,
