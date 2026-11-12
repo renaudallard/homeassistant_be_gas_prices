@@ -104,6 +104,7 @@ from ._parse import (
     fold_accents,
     parse_sign,
     require_contract,
+    stated_unit,
     table_row,
     to_float,
 )
@@ -311,6 +312,17 @@ _FORMULA_RE = re.compile(
     rf"^((\d+[.,]\d+)\s*\*\s*TTF_?M_RLP\s*([{SIGN_CHARS}])\s*(\d+[.,]\d+)) Formule tarifaire$",
     re.MULTILINE,
 )
+# The formula's unit is the heading of the consumption column it is printed
+# in, "(c€/kWh)" on a line of its own on every variable card from October
+# 2025 to November 2026, 38 to 43 characters ahead of the factor, and only
+# that spelling is taken. The fee column's "(€/an)" is set between the two,
+# so only a heading per kWh or per MWh is looked for: no other line of the
+# card is one. The reach leaves room for two more rows of the table. A
+# formula restated per MWh would otherwise be read with its factor and base
+# ten times too large. The card states no unit for TTF_M_RLP.
+_FORMULA_UNIT_RE = re.compile(r"^\(([^()\n]*/[kM]Wh)\)$", re.MULTILINE)
+_FORMULA_UNIT = "c€/kWh"
+_FORMULA_UNIT_REACH = 120
 _INDICATIVE_RE = re.compile(r"Compteur Simple\s*:\s*(\d+,\d+)")
 
 
@@ -327,6 +339,9 @@ def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | Index
     formula = _FORMULA_RE.search(text)
     if fee is None or formula is None:
         raise ExtractorError("TotalEnergies: variable price block or formula not found")
+    unit = stated_unit(text, _FORMULA_UNIT_RE, formula.span(2), before=_FORMULA_UNIT_REACH)
+    if unit != _FORMULA_UNIT:
+        raise ExtractorError(f"TotalEnergies: formula unit {unit!r}, expected {_FORMULA_UNIT!r}")
     # The indicative price is the formula at the previous month's value.
     # The first October 2026 issue left it blank ("Compteur Simple : € cent/
     # kWh"), and its estimate, the only price it then prints, stands in.

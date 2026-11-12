@@ -86,6 +86,15 @@ takes about 10 s per card on a Raspberry Pi 4 (`sweep_cost_s`).
     `0.1007*TTFM_RLP+0,67`, and February 2026 uses comma decimals. The
     regex accepts all three.
   - Factor and base are divided by 100 and grossed up by the VAT rate.
+  - The formula's unit is read from the heading of the consumption column,
+    `(c€/kWh)` on a line of its own, looked for within 120 characters ahead
+    of the factor (38 to 43 on every variable card from October 2025 to
+    November 2026). Only a heading per kWh or per MWh is taken: the fee
+    column's `(€/an)` is set between the two and is not the formula's.
+    `c€/kWh` is the only spelling accepted, and a card stating another unit,
+    or none, is refused. A formula restated per MWh would otherwise be read
+    with its factor and base ten times too large. The card states no unit
+    for TTF_M_RLP.
   - `Compteur Simple : 7,33 € cent/kWh`, printed under "A titre indicatif, ...
     la dernière valeur connue du TTF_M_RLP (du mois précédent)", is
     `IndexedRates.price`. `settled` is False, because TTF_M_RLP is only known
@@ -256,6 +265,8 @@ the October 2026 `2026_10_GAZ-VARIABLE_GAS_WAL_FR.pdf` and
 - refusals: another product's card, another region's card, Impact outside
   Wallonia, an unknown contract, and a card missing the VAT, the formula,
   the estimate, an excise row or a DSO row;
+- the formula's unit: a consumption heading restated in €/MWh, or dropped
+  with the fee column's `(€/an)` left nearest, is refused;
 - the index history: values of all three indices, the quarter filling, an
   empty current quarter, the depth from 06/2024, and refusal of a reordered
   header;

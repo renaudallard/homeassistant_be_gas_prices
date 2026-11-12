@@ -428,6 +428,34 @@ def test_card_missing_a_mandatory_figure_fails_loud(printed: str, damaged: str) 
         totalenergies.parse_snapshot("totalenergies_mycomfort_variable", REGION_WALLONIA, text)
 
 
+@pytest.mark.parametrize(
+    ("restated", "refusal"),
+    [
+        # Per MWh, the factor and the base would both be read ten times too
+        # large.
+        ("(€/MWh)", "formula unit '€/MWh'"),
+        # No unit, where every card states one: the fee column's "(€/an)",
+        # then the nearest heading, is not the formula's.
+        ("", "formula unit None"),
+    ],
+)
+def test_variable_card_stating_another_unit_is_refused(restated: str, refusal: str) -> None:
+    text = _card("MYCOMFORT_GAS_WAL_FR.pdf")
+    energy = _mycomfort(REGION_WALLONIA, "MYCOMFORT_GAS_WAL_FR.pdf").energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.factor == pytest.approx(0.001007 * 1.06)
+    assert energy.base == pytest.approx(0.00704 * 1.06)
+    # The consumption column's heading, then the fee column's.
+    headings = "\n(c€/kWh)\n(€/an)\n"
+    assert text.count(headings) == 1
+    with pytest.raises(ExtractorError, match=refusal):
+        totalenergies.parse_snapshot(
+            "totalenergies_mycomfort_variable",
+            REGION_WALLONIA,
+            text.replace(headings, f"\n{restated}\n(€/an)\n"),
+        )
+
+
 def test_index_history_reads_the_three_indices_by_delivery_month() -> None:
     table = totalenergies.parse_index_history(_card(_HISTORY))
     assert set(table) == {"TTF_M_RLP", "ZTP_M_RLP", "ZTP_Q_RLP"}
