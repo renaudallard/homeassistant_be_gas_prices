@@ -39,6 +39,23 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
   at the VNR estimate. `price` is the second figure, 7,5961 (a known index,
   not a forecast). factor = 0,105 / 100 x 1,06, base = 0,675 / 100 x 1,06,
   grossed by the rate the header prints ("INCL. BTW 6%").
+- Formula check: the card states no unit for its formula, so at the index
+  its prices are worked out at ("Vorige maand bedroeg deze index 61,82",
+  which the right-hand column "ONBEPAALDE DUUR" cuts into before or after
+  "index", read with a comma or a dot) the formula as read has to give back
+  `price` within 0,1%, or the card is refused. A base ten times off moves
+  the price by more than 5,6% on every archived card, a factor by far more,
+  and a misread rate or price misses too. A card without that sentence is
+  refused.
+- Formula unit: the first figure, the formula worked out excl. VAT, is
+  printed in "c€/kWh" on every card since January 2025, and a card printing
+  it in another unit is refused. A formula restated in €/kWh together with
+  its four figures would still give its price back; this is what refuses
+  it. G@S+'s "€/kWh" misprint is taken on this figure as on the next while
+  the figure is 1 or more: every card prints 3,5472 to 9,9308, a euro per
+  kWh would be ten times the dearest, and a figure restated in €/kWh falls
+  under one. The index is printed without a unit, so a restatement of the
+  index alone cannot be seen.
 - Fee: "Vaste vergoeding 66,04 €/jaar 70,00 €/jaar", the second (incl. VAT).
 - DSO table, "NETBEHEERDER" to "Belastingen, heffingen": T1 VAST (EUR/year),
   VARIABEL (c EUR/kWh), T2 VAST, VARIABEL, T3 VAST, VARIABEL, TARIEF
@@ -105,12 +122,14 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
 - Tolerated: "17.59" with a dot (Halle-Vilvoorde T1 fixed) and a stray
   line "7" inside the table (both on every 2026 card), "75 ,60" (Antwerpen
   T2 fixed, every 2025 card, joined before the table is read), "7,5431
-  €/kWh" for c EUR/kWh (G@S+, August and September 2026), a missing space
-  before the unit ("4,3154c€/kWh"), and a header printing "€/kWh" over
-  proportional terms in c EUR/kWh (January 2025 to April 2026).
+  €/kWh" for c EUR/kWh (G@S+'s second figure, August to November 2026, and
+  the first figure too while it is 1 or more), a missing space before the
+  unit ("4,3154c€/kWh"), and a header printing "€/kWh" over proportional
+  terms in c EUR/kWh (January 2025 to April 2026).
 - September 2025 Aardgas Variabel prints 4,2817 incl. VAT for 4,0403 excl.,
   which is 4,2827; read as printed. Every other card matches its formula at
-  the named index to the fourth decimal.
+  the named index to the fourth decimal. That 0,023% is the widest gap the
+  formula check meets on the archive.
 - March 2025 says "Deze transportkost van 1,44 €/MWh (excl BTW), 1,53 €/MWh
   (incl BTW)" above a table printing 1,62. The table is read.
 - The parameters page heads the column "Argus ZTP-RLP" but says the value is
@@ -125,6 +144,12 @@ Module: `custom_components/be_gas_prices/providers/ebem.py`. Tests:
 - `test_aardgas_variabel_is_priced_at_the_previous_months_index`,
   `test_gas_plus_shares_the_pdf_with_its_own_formula`, `test_august_card`:
   formula, price, fee, VAT and the check at the "vorige maand" index.
+- `test_a_formula_that_misses_the_printed_price_is_refused` (base and factor
+  ten times off, G@S+'s price in euros),
+  `test_the_formula_check_allows_a_tenth_of_a_percent`,
+  `test_a_formula_worked_out_in_euros_is_refused`,
+  `test_a_card_without_the_previous_months_index_is_refused`,
+  `test_the_previous_months_index_is_read_with_a_dot`.
 - `test_a_card_without_the_product_block_is_refused`, `test_only_flanders`.
 - `test_dso_table`: the Antwerpen row in full, "17.59", Kempen's 2,12.
 - `test_levies_as_printed`, `test_december_2025_card_and_its_split_figure`.

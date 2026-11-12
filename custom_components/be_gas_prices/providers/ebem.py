@@ -83,6 +83,7 @@ from ._parse import (
     NUMBER_START,
     SIGN_CHARS,
     fold_accents,
+    formula_gives,
     month_date,
     parse_sign,
     require_contract,
@@ -270,8 +271,33 @@ _VAT_RE = re.compile(r"INCL\.\s*BTW\s*(\d+)\s*%")
 _UNIT = r"\s*c?€/kWh\s+"
 _ENERGY_RE = re.compile(
     NUMBER_START + r"(\d+,\d+)\s*ZTP\s*([" + SIGN_CHARS + r"])\s*(\d+,\d+)\s+"
-    r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)"
+    r"(\d+,\d+)\s*(c?€/kWh)\s+(\d+,\d+)" + _UNIT + r"(\d+,\d+)" + _UNIT + r"(\d+,\d+)"
 )
+# The card states no unit for the formula itself. Its first figure is the
+# formula worked out, excluding VAT, and every card from January 2025 to
+# November 2026 prints it in c€/kWh: the only unit the formula is read in.
+# A formula restated in €/kWh together with its prices would still give them
+# back, so this unit is what refuses it. G@S+'s misprint of its second
+# figure's unit could as well land on the first, so "€/kWh" is taken there
+# for a figure the size of a price in c€/kWh: one or more. Every card from
+# January 2025 to November 2026 prints 3,5472 to 9,9308 there, and a euro
+# per kWh would be ten times the dearest of them, so a figure restated in
+# €/kWh falls under one.
+_FORMULA_UNIT = "c€/kWh"
+_CENT_SIZED = 1.0
+# "Vorige maand bedroeg deze index 61,82", the index the first two prices are
+# worked out at. The card's right-hand column ("ONBEPAALDE DUUR") cuts into
+# the sentence, before or after "index", so words may lie between it and the
+# value but no figure. Every card prints the value with a comma; a dot is
+# read too, as the same card prints "17.59" in its network table.
+_PREVIOUS_INDEX_RE = re.compile(r"Vorige maand bedroeg deze\D{0,40}(\d+[.,]\d+)")
+# The formula grossed by the printed rate has to give back the price
+# including VAT at that index, so a misread rate or price is refused too.
+# Every card from January 2025 to November 2026 passes within 0,023%:
+# September 2025's Aardgas Variabel prints 4,2817 for 4,2827, the others are
+# right to the fourth decimal. A base read ten times off misses by more than
+# 5,6% on them, a factor by far more.
+_FORMULA_TOLERANCE = 0.001
 # "Vaste vergoeding 66,04 €/jaar 70,00 €/jaar", excluding then including VAT.
 _FEE_RE = re.compile(r"Vaste vergoeding\s+(\d+,\d+)\s*€/jaar\s+(\d+,\d+)\s*€/jaar")
 
@@ -281,17 +307,33 @@ def _energy(block: str, vat: float) -> IndexedRates:
     fee = _FEE_RE.search(block)
     if energy is None or fee is None:
         raise ExtractorError("EBEM: energy price row or fixed fee not found")
+    if energy.group(5) != _FORMULA_UNIT and to_float(energy.group(4)) < _CENT_SIZED:
+        raise ExtractorError(
+            f"EBEM: formula worked out in {energy.group(5)}, expected {_FORMULA_UNIT}"
+        )
     base = parse_sign(energy.group(2)) * to_float(energy.group(3))
-    return IndexedRates(
+    rates = IndexedRates(
         # c EUR/kWh per EUR/MWh of ZTP, excluding VAT, grossed by the card's
         # printed rate.
         factor=to_float(energy.group(1)) / 100.0 * vat,
         base=base / 100.0 * vat,
         index=_INDEX,
-        price=to_float(energy.group(5)) / 100.0,
+        price=to_float(energy.group(6)) / 100.0,
         yearly_fixed_fee=to_float(fee.group(2)),
         formula=f"{energy.group(1)} ZTP {energy.group(2)}{energy.group(3)} c€/kWh excl. BTW",
     )
+    previous = _PREVIOUS_INDEX_RE.search(block)
+    if previous is None:
+        raise ExtractorError("EBEM: previous month's index not found")
+    value = to_float(previous.group(1))
+    if not formula_gives(
+        rates.price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE
+    ):
+        raise ExtractorError(
+            f"EBEM: {rates.formula} gives {rates.at(value) * 100:.4f} c€/kWh incl. BTW"
+            f" at index {value}, not the {rates.price * 100:.4f} printed"
+        )
+    return rates
 
 
 # "NETBEHEERDER | T1 VAST VARIABEL | T2 VAST VARIABEL | T3 VAST VARIABEL |

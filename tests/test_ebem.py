@@ -45,6 +45,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T3,
 )
 from custom_components.be_gas_prices.providers import ebem
+from custom_components.be_gas_prices.providers._parse import to_float
 from custom_components.be_gas_prices.providers._rates import IndexedRates
 from custom_components.be_gas_prices.providers.base import ExtractorError
 from tests import fixture_page, fixture_text
@@ -113,6 +114,83 @@ def test_august_card() -> None:
     # "6,6122 c EUR/kWh" incl. VAT at July's 52,98.
     assert energy.price == pytest.approx(0.066122)
     assert energy.at(52.98) == pytest.approx(0.066122, abs=5e-7)
+
+
+@pytest.mark.parametrize(
+    ("contract", "printed", "restated"),
+    [
+        # The base, then the factor, ten times off: a formula restated in
+        # another unit reads that way.
+        ("ebem_variable", "0,105 ZTP +0,675", "0,105 ZTP +0,0675"),
+        ("ebem_variable", "0,105 ZTP +0,675", "1,05 ZTP +0,675"),
+        # G@S+'s cent figure under "€/kWh" printed in euros.
+        ("ebem_gas_plus", "7,5431 €/kWh", "0,075431 €/kWh"),
+    ],
+)
+def test_a_formula_that_misses_the_printed_price_is_refused(
+    contract: str, printed: str, restated: str
+) -> None:
+    """The card states no unit for its formula, so at the previous month's
+    index it has to give back the price printed beside it."""
+    text = _card(SEPTEMBER)
+    energy = ebem.parse_snapshot(contract, REGION_FLANDERS, text).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.at(61.82) == pytest.approx(energy.price, abs=5e-7)
+    assert text.count(printed) == 1
+    with pytest.raises(ExtractorError, match="gives"):
+        ebem.parse_snapshot(contract, REGION_FLANDERS, text.replace(printed, restated))
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("7,6029", True), ("7,6045", False)])
+def test_the_formula_check_allows_a_tenth_of_a_percent(printed: str, kept: bool) -> None:
+    """7,5961 is right to the fourth decimal; 0,09% off still reads, 0,11%
+    off does not. The widest gap on the archive is 0,023%."""
+    text = _card(SEPTEMBER).replace("7,5961 c€/kWh", f"{printed} c€/kWh")
+    if kept:
+        energy = ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, text).energy
+        assert isinstance(energy, IndexedRates)
+        assert energy.price == pytest.approx(to_float(printed) / 100)
+    else:
+        with pytest.raises(ExtractorError, match="gives"):
+            ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, text)
+
+
+def test_a_formula_worked_out_in_euros_is_refused() -> None:
+    """The formula and all four figures restated in €/kWh give each other
+    back, so only the unit of the formula's own figure shows it."""
+    printed = "0,105 ZTP +0,675 7,1661 c€/kWh 7,5961 c€/kWh 7,2070 c€/kWh 7,6394 c€/kWh"
+    restated = "0,00105 ZTP +0,00675 0,071661 €/kWh 0,075961 €/kWh 0,072070 €/kWh 0,076394 €/kWh"
+    text = _card(SEPTEMBER)
+    assert text.count(printed) == 1
+    with pytest.raises(ExtractorError, match=r"worked out in €/kWh, expected c€/kWh"):
+        ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, text.replace(printed, restated))
+
+
+def test_the_euro_misprint_is_tolerated_on_the_first_figure() -> None:
+    """G@S+ prints its second figure under "€/kWh" for c€/kWh. The same slip
+    on the first figure, still a figure in cents, reads as the card does."""
+    text = _card(SEPTEMBER)
+    printed = "7,1161 c€/kWh 7,5431 €/kWh"
+    assert text.count(printed) == 1
+    misprinted = text.replace(printed, "7,1161 €/kWh 7,5431 €/kWh")
+    assert ebem.parse_snapshot("ebem_gas_plus", REGION_FLANDERS, misprinted) == (
+        ebem.parse_snapshot("ebem_gas_plus", REGION_FLANDERS, text)
+    )
+
+
+def test_a_card_without_the_previous_months_index_is_refused() -> None:
+    text = _card(SEPTEMBER).replace("Vorige maand bedroeg", "Vorige maand was")
+    with pytest.raises(ExtractorError, match="previous month's index"):
+        ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, text)
+
+
+def test_the_previous_months_index_is_read_with_a_dot() -> None:
+    """The network table prints "17.59" with a dot, so the index may too."""
+    card = _card(SEPTEMBER)
+    assert card.count("index 61,82.") == 1
+    text = card.replace("index 61,82.", "index 61.82.")
+    expected = ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, card)
+    assert ebem.parse_snapshot("ebem_variable", REGION_FLANDERS, text) == expected
 
 
 def test_a_card_without_the_product_block_is_refused() -> None:
