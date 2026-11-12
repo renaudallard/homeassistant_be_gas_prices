@@ -61,6 +61,23 @@ configured region's card is read.
   excluding VAT against an index in EUR/MWh. It is grossed up here by the
   card's rate: `factor = 0,1020 x 1,06 / 100`, `base = 1,4055 x 1,06 / 100`.
   The printed price is the formula at the value the card names.
+  Since October 2025 the formula is followed by "Le résultat de ces
+  formules est un montant exprimé en c€/kWh.", and only c€/kWh is accepted
+  there: a card stating another unit is refused. It is the only statement of
+  the formula's own unit, since a formula and its price restated together
+  still agree, so a card for October 2025 on without it, or with it more
+  than a few lines below the formula, is refused too. The cards of April
+  2024 to September 2025 have no such sentence and state no unit near the
+  formula, and a card for those months is read without it.
+  Every card, with the sentence or without, is also held to its printed
+  price: the formula at the value the footnote names ("du mois = 61,7680
+  €/MWh", "connue (Août 2026: 61,5370 €/MWh)", a decimal comma or dot) has
+  to give it back within 0,05%, as every archived card does within 0,012%,
+  while a factor ten times off misses it by 53% or more and a base by 4,1%
+  or more. That covers the older cards, and the index the sentence says
+  nothing of: a card restating it alone in c€/kWh, its factor ten times
+  larger, misses its price or names no value in €/MWh. Either way it is
+  refused rather than read ten times off.
 - DSO table, after "Coûts de réseaux": per tier the fixed term then the
   proportional one, then in Flanders data management, in Brussels the two
   metering fees, then transport. Brussels prints the yearly-read fee and the
@@ -84,14 +101,14 @@ Two kinds of variable product:
 
 - EASY Variable indexes on ZTP101, the mean of month-ahead quotes taken in
   the month before delivery. It is known when the card is printed and the
-  card prices the month on it ("ZTP101 (Heren) du mois = 61,7680 EUR/MWh,
+  card prices the month on it ("ZTP101 (Heren) du mois = 61,7680 €/MWh,
   d'application pour Septembre 2026"), so its price is `settled`, provided
   the month named is the card's own. The October 2026 card first went out
   on September's value, and such a card is not settled.
 - FLOW, EMPOWER, DIRECT ONLINE, BASIC ONLINE and Empty House index on
   ZTPDAM, the mean of the delivery month's day-ahead and weekend
   assessments, known only once the month is over. The printed price is the
-  formula at the last known value ("Aout 2026: 61,5370 EUR/MWh").
+  formula at the last known value ("Août 2026: 61,5370 €/MWh").
 
 `fetch_index` reads Engie's gas indexation page
 (`/fr/energie/electricite-gaz/prix-conditions/parametres-indexation/parametres-indexation-gaz`):
@@ -138,6 +155,16 @@ Billed as printed:
 - Flanders: the Kempen row with data management. Brussels: the Sibelga row
   and the nine levy amounts.
 - Refusals: another region's card, an unknown contract, a lost formula.
+- The formula's unit: a card restating the result sentence refused; one
+  with a line between the formula and its sentence read. A card for
+  September 2026 with its sentence dropped or moved past the reach refused,
+  as is one whose formula and price are restated in €/MWh with the sentence
+  dropped. On the September 2025 card, the older layout without it and
+  still read, a factor or base ten times off, or a ZTPDAM value in another
+  unit, refused. On a card with it, the
+  index alone restated in c€/kWh with its factor ten times larger refused,
+  whether the card names the value in €/MWh or in c€/kWh. The tolerance at
+  its edge, and a value printed with a dot.
 - The index page, contract regions, and `fetch_for_month` (the offset in
   Brussels time, a card for another month, a transient failure, a future
   month).

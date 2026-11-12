@@ -46,12 +46,12 @@ Two kinds of variable product:
   - EASY Variable indexes on ZTP101, the average of month-ahead quotes taken
     in the month BEFORE delivery. Its value is known when the card is
     printed, and the card prices the month on it ("ZTP101 (Heren) du mois =
-    61,7680 EUR/MWh, d'application pour Septembre 2026"), so its price is
+    61,7680 €/MWh, d'application pour Septembre 2026"), so its price is
     settled when the month it names is the card's own.
   - FLOW, EMPOWER, DIRECT ONLINE, BASIC ONLINE and the empty-house tariff
     index on ZTPDAM, the mean of the delivery month's day-ahead and weekend
     assessments, known only at month end. Their printed price is the formula
-    at the last known value ("Aout 2026: 61,5370 EUR/MWh").
+    at the last known value ("Août 2026: 61,5370 €/MWh").
 
 Both indices are published on Engie's indexation page, month by month.
 """
@@ -89,10 +89,12 @@ from ._network import (
 from ._parse import (
     LINE_BREAK,
     fold_accents,
+    formula_gives,
     html_rows,
     month_date,
     require_contract,
     search_once_per_line,
+    stated_unit,
     to_float,
 )
 from ._pdf import MONTH_NAMES, fetch_pdf_text, fetch_text
@@ -331,6 +333,41 @@ _MONTHLY_RE = re.compile(rf"Prix mensuels{LINE_BREAK}(\d+,\d+){LINE_BREAK}(\d+,\
 _FORMULA_RE = re.compile(
     r"Prélèvement\s*:\s*(\d+,\d+)\s*\+\s*\(\s*(\d+,\d+)\s*x\s*(ZTP101|ZTPDAM)\s*\(Heren\)"
 )
+# Since October 2025 the formula is followed by "Le résultat de ces formules
+# est un montant exprimé en c€/kWh.", printed once a card, whose unit ends 61
+# or 62 characters behind it on all 228 archived rows for October 2025 on. It
+# is the only statement of the formula's own unit: a formula and its price
+# both restated in €/MWh still agree at the index value. So a card for that
+# month or later printing none is refused as one stating another. The reach
+# leaves a few lines of room, as a sentence beyond it now refuses a correct
+# card; a card prints only one. The 147 rows of April 2024 to September 2025
+# have no such sentence and state no unit near the formula, and a card for
+# those months is read as they were.
+_RESULT_UNIT_RE = re.compile(
+    r"Le\s+résultat\s+de\s+ces\s+formules\s+est\s+un\s+montant\s+exprimé\s+en\s+([^\s.]+)"
+)
+_RESULT_UNIT = "c€/kWh"
+_RESULT_REACH = 300
+_RESULT_SINCE = date(2025, 10, 1)
+# The index value the printed price is worked out at, once on every card, in
+# the formula's footnote: "paramètre ZTP101 (Heren) du mois = 26,7440 €/MWh"
+# and "dernière valeur du ZTPDAM (Heren) connue (Décembre 2024: 44,7170
+# €/MWh)". Every card's formula is held to its printed price at that value,
+# whether or not the card carries the sentence: the sentence says nothing of
+# the index, and a card restating the index alone, in c€/kWh with its factor
+# ten times larger, would still say c€/kWh there. The cards print the value
+# with a comma; a dot, which other Belgian cards print in some figures, reads
+# the same.
+_INDEX_VALUE_RES = {
+    "ZTP101": re.compile(r"ZTP101\s*\(Heren\)\s*du\s+mois\s*=\s*(\d+(?:[.,]\d+)?)\s*€/MWh"),
+    "ZTPDAM": re.compile(r"ZTPDAM\s*\(Heren\)\s*connue\s*\([^():]*:\s*(\d+(?:[.,]\d+)?)\s*€/MWh\)"),
+}
+# On the 375 archived rows of April 2024 to November 2026 the formula at that
+# value gives the printed price back within 0,012%, the rounding of a price
+# printed to three decimals, at most 0,015% down to the lowest of them, 3,357.
+# Only a price under 1 c€/kWh rounds by more than the tolerance. A factor ten
+# times off misses it by 53% or more, a base by 4,1% or more.
+_RECOMPUTE_TOLERANCE = 5e-4
 
 
 # "Le prix ci-dessus a été calculé sur la base du paramètre ZTP101 (Heren) du
@@ -369,11 +406,15 @@ def _energy(
     if monthly is None or formula is None:
         raise ExtractorError("Engie: variable price block or formula not found")
     index = formula.group(3)
+    factor = to_float(formula.group(2)) / 100.0 * vat
+    base = to_float(formula.group(1)) / 100.0 * vat
+    price = to_float(monthly.group(1)) / 100.0
+    _require_scale(text, formula, factor, base, price, card_month)
     return IndexedRates(
-        factor=to_float(formula.group(2)) / 100.0 * vat,
-        base=to_float(formula.group(1)) / 100.0 * vat,
+        factor=factor,
+        base=base,
         index=index,
-        price=to_float(monthly.group(1)) / 100.0,
+        price=price,
         yearly_fixed_fee=to_float(monthly.group(2)),
         formula=formula.group(0),
         # ZTP101 is set in the month before delivery and the card prices its
@@ -381,6 +422,38 @@ def _energy(
         # is over.
         settled=index == "ZTP101" and _priced_on_its_month(text, card_month),
     )
+
+
+def _require_scale(
+    text: str,
+    formula: re.Match[str],
+    factor: float,
+    base: float,
+    price: float,
+    card_month: date,
+) -> None:
+    """Refuse a formula its card states in another unit than c€/kWh, or in
+    none on a card for October 2025 on, or one that does not give the printed
+    price back at the index value the card names in €/MWh: read on the c€/kWh
+    scale against an index in €/MWh, a restated formula or index would come
+    out ten times off and still parse."""
+    unit = stated_unit(text, _RESULT_UNIT_RE, formula.span(), after=_RESULT_REACH)
+    if unit != _RESULT_UNIT and (unit is not None or card_month >= _RESULT_SINCE):
+        raise ExtractorError(
+            f"Engie: the card states its formula in {unit or 'no unit'}, expected {_RESULT_UNIT}"
+        )
+    index = formula.group(3)
+    stated = _INDEX_VALUE_RES[index].search(text)
+    if stated is None:
+        raise ExtractorError(
+            f"Engie: the card names no {index} value in €/MWh to check its formula on"
+        )
+    value = to_float(stated.group(1))
+    if not formula_gives(price, factor, value, base, tolerance=_RECOMPUTE_TOLERANCE):
+        raise ExtractorError(
+            f"Engie: the formula gives {(factor * value + base) * 100:.3f} c€/kWh at "
+            f"{index} {value} €/MWh where the card prints {price * 100:.3f}"
+        )
 
 
 # The table columns as each regional card's header lays them out: per tier the

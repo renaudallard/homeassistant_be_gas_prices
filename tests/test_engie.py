@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from datetime import date, datetime
 from unittest.mock import AsyncMock, patch
@@ -99,7 +100,7 @@ def test_easy_variable_is_settled_on_ztp101() -> None:
 
 def test_flow_is_priced_at_the_last_known_ztpdam() -> None:
     """ZTPDAM is only known at month end, so the printed price is the formula
-    at the last value ("Aout 2026: 61,5370 EUR/MWh") and not settled."""
+    at the last value ("Août 2026: 61,5370 €/MWh") and not settled."""
     snap = engie.parse_snapshot(
         "engie_flow", REGION_WALLONIA, _card("G_FLOW_R_GREY_C_I_24_W_F_202609.pdf")
     )
@@ -289,6 +290,163 @@ def test_card_that_lost_its_formula_fails_loud() -> None:
     text = _card("G_FLOW_R_GREY_C_I_24_W_F_202609.pdf").replace("Prélèvement", "Prelev")
     with pytest.raises(ExtractorError):
         engie.parse_snapshot("engie_flow", REGION_WALLONIA, text)
+
+
+_FLOW_2609 = "G_FLOW_R_GREY_C_I_24_W_F_202609.pdf"
+_FLOW_FORMULA = "Prélèvement: 0,9335 + (0,1020 x ZTPDAM (Heren)"
+_RESULT_SENTENCE = "\nLe résultat de ces formules est un montant exprimé en c€/kWh."
+_FLOW_FACTOR_TEN_TIMES = ("(0,1020 x ZTPDAM", "(1,0200 x ZTPDAM")
+_FLOW_INDEX_IN_CENTS = ("connue (Août 2026: 61,5370\n€/MWh)", "connue (Août 2026: 6,15370\nc€/kWh)")
+
+
+def _flow_energy(text: str) -> IndexedRates:
+    energy = engie.parse_snapshot("engie_flow", REGION_WALLONIA, text).energy
+    assert isinstance(energy, IndexedRates)
+    return energy
+
+
+def test_a_formula_stated_in_another_unit_is_refused() -> None:
+    """Since October 2025 the cards say the formula gives c€/kWh. Read on
+    that scale, a formula restated in another unit would come out ten times
+    off."""
+    text = _card(_FLOW_2609)
+    assert text.count(_RESULT_SENTENCE) == 1
+    assert _flow_energy(text).formula == _FLOW_FORMULA
+    restated = text.replace(_RESULT_SENTENCE, _RESULT_SENTENCE.replace("c€/kWh", "€/MWh"))
+    with pytest.raises(ExtractorError, match="states its formula in €/MWh, expected c€/kWh"):
+        _flow_energy(restated)
+
+
+def test_a_result_sentence_a_line_lower_is_read() -> None:
+    """A line put between the formula and its sentence leaves the sentence
+    within the reach it is looked for in, and the card reads."""
+    text = _card(_FLOW_2609)
+    line = "\nLe prix du gaz de votre Contrat est indexé mensuellement. Le"
+    assert text.count(line) == 1
+    moved = text.replace(_RESULT_SENTENCE, line + _RESULT_SENTENCE)
+    assert _flow_energy(moved).formula == _FLOW_FORMULA
+
+
+@pytest.mark.parametrize("where", ["dropped", "past its reach"])
+def test_a_card_since_october_2025_without_its_sentence_is_refused(where: str) -> None:
+    """Every card for October 2025 on prints the result sentence, the only
+    statement of the formula's own unit. A card for those months whose
+    sentence is gone, or no longer under the formula, is refused rather than
+    read as the older cards are."""
+    text = _card(_FLOW_2609)
+    assert text.count(_RESULT_SENTENCE) == 1
+    restated = text.replace(_RESULT_SENTENCE, "")
+    if where == "past its reach":
+        restated += _RESULT_SENTENCE
+    with pytest.raises(ExtractorError, match="states its formula in no unit, expected c€/kWh"):
+        _flow_energy(restated)
+
+
+def test_a_formula_and_price_restated_without_the_sentence_are_refused() -> None:
+    """The formula and its price restated in €/MWh, the sentence dropped: the
+    formula still gives the price back at the value the card names, so only
+    the card's month, September 2026, tells the sentence is missing."""
+    text = _card(_FLOW_2609)
+    for printed, restated in (
+        ("Prélèvement: 0,9335 + (0,1020 x", "Prélèvement: 9,335 + (1,020 x"),
+        ("Prix mensuels\n7,643\n", "Prix mensuels\n76,43\n"),
+        (_RESULT_SENTENCE, ""),
+    ):
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    with pytest.raises(ExtractorError, match="states its formula in no unit, expected c€/kWh"):
+        _flow_energy(text)
+
+
+_FLOW_2509 = "G_FLOW_R_GREY_C_I_24_W_F_202509.pdf"
+
+
+@pytest.mark.parametrize(
+    ("printed", "restated", "error"),
+    [
+        ("Prélèvement: 1,0620 +", "Prélèvement: 10,620 +", r"the card prints 4\.521"),
+        ("(0,1000 x ZTPDAM", "(1,0000 x ZTPDAM", r"the card prints 4\.521"),
+        (
+            "connue (Août 2025: 32,0330\n€/MWh)",
+            "connue (Août 2025: 3,20330\nc€/kWh)",
+            "no ZTPDAM value",
+        ),
+    ],
+)
+def test_a_card_stating_no_unit_is_held_to_its_printed_price(
+    printed: str, restated: str, error: str
+) -> None:
+    """The cards of April 2024 to September 2025 have no such sentence, and
+    the September 2025 card reads without it. Its formula has to give the
+    printed 4,521 back at the ZTPDAM value the card names: a factor or base
+    ten times off does not, and a card naming no value in €/MWh cannot be
+    checked."""
+    text = _card(_FLOW_2509)
+    assert "Le résultat" not in text
+    assert text.count(printed) == 1
+    energy = _flow_energy(text)
+    assert energy.formula == "Prélèvement: 1,0620 + (0,1000 x ZTPDAM (Heren)"
+    assert energy.at(32.033) == pytest.approx(0.04521, abs=5e-6)
+    with pytest.raises(ExtractorError, match=error):
+        _flow_energy(text.replace(printed, restated))
+
+
+@pytest.mark.parametrize(
+    ("restatements", "error"),
+    [
+        pytest.param(
+            [_FLOW_FACTOR_TEN_TIMES], r"the card prints 7\.643", id="value still in €/MWh"
+        ),
+        pytest.param(
+            [_FLOW_FACTOR_TEN_TIMES, _FLOW_INDEX_IN_CENTS], "no ZTPDAM value", id="value in c€/kWh"
+        ),
+    ],
+)
+def test_a_card_restating_only_the_index_is_refused(
+    restatements: list[tuple[str, str]], error: str
+) -> None:
+    """The result sentence says nothing of the index. A card that restated
+    the index alone in c€/kWh, its factor ten times larger, would still say
+    c€/kWh there; held to its printed 7,643 at the ZTPDAM value it names in
+    €/MWh, it misses it, and naming the value in c€/kWh instead leaves
+    nothing to check the formula on."""
+    text = _card(_FLOW_2609)
+    for printed, restated in restatements:
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    assert _RESULT_SENTENCE in text
+    with pytest.raises(ExtractorError, match=error):
+        _flow_energy(text)
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("7,646", True), ("7,647", False)])
+def test_the_printed_price_is_held_within_five_hundredths_of_a_percent(
+    printed: str, kept: bool
+) -> None:
+    """The formula gives 7,6429 at 61,537: a price printed 7,646 is within
+    0,05% of it, 7,647 is not. Every archived card is within 0,012%."""
+    text = _card(_FLOW_2609)
+    assert text.count("Prix mensuels\n7,643\n") == 1
+    text = text.replace("Prix mensuels\n7,643\n", f"Prix mensuels\n{printed}\n")
+    if kept:
+        assert _flow_energy(text).price == pytest.approx(float(printed.replace(",", ".")) / 100)
+    else:
+        with pytest.raises(
+            ExtractorError, match=re.escape(f"the card prints {printed.replace(',', '.')}")
+        ):
+            _flow_energy(text)
+
+
+def test_an_index_value_printed_with_a_dot_is_read() -> None:
+    """The cards print the index value with a decimal comma. One printed
+    with a dot, as other Belgian cards print some figures, is the same
+    value and the formula is still checked on it."""
+    text = _card(_FLOW_2609)
+    assert text.count("2026: 61,5370\n€/MWh)") == 1
+    dotted = text.replace("2026: 61,5370\n€/MWh)", "2026: 61.5370\n€/MWh)")
+    assert _flow_energy(dotted).formula == _FLOW_FORMULA
+    with pytest.raises(ExtractorError, match=r"the card prints 7\.643"):
+        _flow_energy(dotted.replace(*_FLOW_FACTOR_TEN_TIMES))
 
 
 def test_index_page_reads_both_indices_by_delivery_month() -> None:
