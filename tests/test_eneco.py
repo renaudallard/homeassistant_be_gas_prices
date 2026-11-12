@@ -28,7 +28,9 @@ archive issues back to December 2024."""
 
 from __future__ import annotations
 
+import re
 import time
+from collections.abc import Callable
 from datetime import date, datetime
 from functools import cache
 from unittest.mock import AsyncMock, patch
@@ -50,6 +52,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
 )
 from custom_components.be_gas_prices.providers import eneco
+from custom_components.be_gas_prices.providers._parse import to_float
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import (
     ExtractorError,
@@ -289,6 +292,119 @@ def test_card_that_lost_its_formula_fails_loud() -> None:
     text = _card(_FLEX_2609).replace("TTFDAW-RLP-M +", "TTF +")
     with pytest.raises(ExtractorError, match="formula"):
         eneco.parse_snapshot("eneco_aardgas_flex", REGION_FLANDERS, text, "")
+
+
+_FLEX_FORMULA_ROW = "(0,1 X TTFDAW-RLP-M + 1,074) X 1,06 Tariefformule\n"
+_NETWORK_TITLE = "(doorgestort aan jouw netbeheerder)\nNetbeheerder\n"
+
+
+def _flex_energy(text: str) -> IndexedRates:
+    energy = eneco.parse_snapshot("eneco_aardgas_flex", REGION_FLANDERS, text, "").energy
+    assert isinstance(energy, IndexedRates)
+    return energy
+
+
+@pytest.mark.parametrize(
+    ("restate", "error"),
+    [
+        pytest.param(
+            lambda text: text.replace(
+                _FLEX_FORMULA_ROW, "VERBRUIK \n(€/MWh)\n" + _FLEX_FORMULA_ROW
+            ),
+            "states its formula in €/MWh",
+            id="under a heading of its own in another unit",
+        ),
+        pytest.param(
+            lambda text: text.replace(_FLEX_FORMULA_ROW, "").replace(
+                _NETWORK_TITLE, _NETWORK_TITLE + _FLEX_FORMULA_ROW
+            ),
+            "states its formula in no unit",
+            id="out of the price table",
+        ),
+    ],
+)
+def test_a_formula_away_from_its_heading_is_refused(
+    restate: Callable[[str], str], error: str
+) -> None:
+    """The formula is the last row under "VERBRUIK (€cent/kWh)". A card
+    restating that heading loses its Maandprijs and is refused already; a
+    formula stated under another unit, or out of the price table, would
+    still have been read on the €cent scale."""
+    text = _card(_FLEX_2609)
+    assert text.count(_FLEX_FORMULA_ROW) == 1
+    assert text.count(_NETWORK_TITLE) == 1
+    energy = _flex_energy(text)
+    assert energy.factor == pytest.approx(0.001 * 1.06)
+    assert energy.base == pytest.approx(0.01074 * 1.06)
+    with pytest.raises(ExtractorError, match=re.escape(error)):
+        _flex_energy(restate(text))
+
+
+def test_a_price_table_with_one_more_row_still_reads() -> None:
+    """The heading is looked for far enough ahead of the formula that the
+    table can take another row or two above it."""
+    text = _card(_FLEX_2609)
+    assert text.count("7,67 Maandprijs\n") == 1
+    longer = text.replace(
+        "7,67 Maandprijs\n", "7,67 Maandprijs\n7,59 Maandprijs bij domiciliëring\n"
+    )
+    energy = _flex_energy(longer)
+    assert energy.factor == pytest.approx(0.001 * 1.06)
+    assert energy.price == pytest.approx(0.0767)
+
+
+_FACTOR_TEN_TIMES = ("(0,1 X TTFDAW-RLP-M", "(1 X TTFDAW-RLP-M")
+_INDEX_IN_CENTS = ("(08/2026: €61,6374/MWh)", "(08/2026: 6,16374 c€/kWh)")
+
+
+@pytest.mark.parametrize(
+    ("restatements", "error"),
+    [
+        pytest.param([_FACTOR_TEN_TIMES], "the card prints 7.67", id="factor"),
+        pytest.param([("+ 1,074)", "+ 10,74)")], "the card prints 7.67", id="base"),
+        pytest.param(
+            [_FACTOR_TEN_TIMES, ("+ 1,074)", "+ 10,74)")],
+            "the card prints 7.67",
+            id="whole formula",
+        ),
+        pytest.param(
+            [_FACTOR_TEN_TIMES, _INDEX_IN_CENTS],
+            "names no TTFDAW-RLP-M value in €/MWh",
+            id="index in c€/kWh",
+        ),
+    ],
+)
+def test_a_formula_or_index_restated_misses_its_maandprijs(
+    restatements: list[tuple[str, str]], error: str
+) -> None:
+    """The card states the index's unit only in the small print naming the
+    value its Maandprijs is worked out at, 61,6374 €/MWh, which the formula
+    has to give 7,67 back at. One restating the index alone in c€/kWh, its
+    factor ten times larger, would still read under the €cent heading and
+    bill about nine times too much."""
+    text = _card(_FLEX_2609)
+    assert _flex_energy(text).at(61.6374) == pytest.approx(0.0767, abs=5e-5)
+    for printed, restated in restatements:
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    with pytest.raises(ExtractorError, match=re.escape(error)):
+        _flex_energy(text)
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("7,64", True), ("7,63", False)])
+def test_the_maandprijs_is_held_within_half_a_percent(printed: str, kept: bool) -> None:
+    """The formula gives 7,672 at 61,6374: a Maandprijs of 7,64 is within
+    0,5% of it, 7,63 is not. Every archived card is within 0,13%."""
+    text = _card(_FLEX_2609)
+    assert text.count("7,67 Maandprijs") == 1
+    text = text.replace("7,67 Maandprijs", f"{printed} Maandprijs")
+    if kept:
+        assert _flex_energy(text).price == pytest.approx(to_float(printed) / 100)
+    else:
+        with pytest.raises(
+            ExtractorError, match=re.escape(f"the card prints {printed.replace(',', '.')}")
+        ):
+            _flex_energy(text)
 
 
 def test_pre_2025_card_reads_for_wallonia_only() -> None:

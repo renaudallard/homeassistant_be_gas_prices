@@ -107,9 +107,11 @@ from ._parse import (
     LINE_BREAK,
     SIGN_CHARS,
     cell_value,
+    formula_gives,
     month_date,
     parse_sign,
     require_contract,
+    stated_unit,
     to_float,
 )
 from ._pdf import (
@@ -313,6 +315,29 @@ _VARIABLE_RE = re.compile(
 _FORMULA_RE = re.compile(
     rf"\(\s*(\d+(?:,\d+)?)\s*X\s*{_INDEX}\s*([{SIGN_CHARS}])\s*(\d+,\d+)\s*\)\s*X\s*(\d+,\d+)"
 )
+# The formula is the last row under the price table's heading, below the
+# estimate and the Maandprijs: "VERBRUIK (€cent/kWh)", spelt that way and
+# printed once on every Flex card since November 2023 and every Flex One
+# card, starts 69 to 73 characters ahead of it. The reach holds the formula
+# to that table and leaves room for two more rows in it ("9,99 Maandprijs
+# bij domiciliëring" is 34 characters). A formula restated on another scale
+# no longer gives the Maandprijs back, wherever it stands (_require_price).
+_FORMULA_UNIT_RE = re.compile(r"VERBRUIK\s*\(([^()\n]*)\)")
+_FORMULA_UNIT = "€cent/kWh"
+# The index value the Maandprijs is worked out at, once on every card, in the
+# small print: "de laatst gekende waarde van TTFDAW-RLP-M (10/2026:
+# €88,2882/MWh)". The card states the index's unit only there, so a card
+# restating the index alone, in c€/kWh with its factor ten times larger,
+# would still read under its heading. Held to its Maandprijs at the value in
+# €/MWh, it misses it.
+_INDEX_VALUE_RE = re.compile(r"\(\d{2}/\d{4}:\s*€\s*(\d+(?:[.,]\d+)*)\s*/MWh\)")
+# On the 80 Flex and Flex One rows of November 2023 to November 2026 the
+# formula at that value gives the Maandprijs back within 0,124%, the rounding
+# of a price printed to the hundredth, at most 0,133% down to the lowest of
+# them, 3,77. Only a price under 1 c€/kWh rounds by more than the tolerance.
+# A factor ten times off misses it by 65% or more, and a base alone by 2,2%
+# or more (Flex One's 0,225 read as a tenth of itself).
+_RECOMPUTE_TOLERANCE = 5e-3
 
 
 def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
@@ -328,17 +353,47 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
     formula = _FORMULA_RE.search(text)
     if monthly is None or formula is None:
         raise ExtractorError("Eneco: variable price block or formula not found")
+    # The heading also anchors the Maandprijs, so a card restating it fails
+    # above. A formula under a heading of its own would still be read on the
+    # €cent scale.
+    unit = stated_unit(text, _FORMULA_UNIT_RE, formula.span(), before=150)
+    if unit != _FORMULA_UNIT:
+        raise ExtractorError(
+            f"Eneco: the card states its formula in {unit or 'no unit'}, expected {_FORMULA_UNIT}"
+        )
     # The formula gives c EUR/kWh for an index in EUR/MWh and carries its own
     # VAT multiplier ("X 1,06"), applied here once and not grossed again.
     scale = to_float(formula.group(4)) / 100.0
+    factor = to_float(formula.group(1)) * scale
+    base = parse_sign(formula.group(2)) * to_float(formula.group(3)) * scale
+    price = to_float(monthly.group(2)) / 100.0
+    _require_price(text, factor, base, price)
     return IndexedRates(
-        factor=to_float(formula.group(1)) * scale,
-        base=parse_sign(formula.group(2)) * to_float(formula.group(3)) * scale,
+        factor=factor,
+        base=base,
         index=_INDEX,
-        price=to_float(monthly.group(2)) / 100.0,
+        price=price,
         yearly_fixed_fee=to_float(monthly.group(1)),
         formula=formula.group(0),
     )
+
+
+def _require_price(text: str, factor: float, base: float, price: float) -> None:
+    """Refuse a formula that does not give the Maandprijs back at the index
+    value the card names in €/MWh: read on the €cent scale against an index
+    in €/MWh, a restated formula or index would come out ten times off and
+    still parse."""
+    stated = _INDEX_VALUE_RE.search(text)
+    if stated is None:
+        raise ExtractorError(
+            f"Eneco: the card names no {_INDEX} value in €/MWh to check its formula on"
+        )
+    value = to_float(stated.group(1))
+    if not formula_gives(price, factor, value, base, tolerance=_RECOMPUTE_TOLERANCE):
+        raise ExtractorError(
+            f"Eneco: the formula gives {(factor * value + base) * 100:.2f} €cent/kWh at "
+            f"{_INDEX} {value} €/MWh where the card prints {price * 100:.2f}"
+        )
 
 
 # "Vaste term (€/jaar), Proportionele term (€cent/kWh)" for T1 then T2, then

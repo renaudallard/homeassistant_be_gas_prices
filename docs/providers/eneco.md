@@ -66,7 +66,21 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   - Formula: "(0,1 X TTFDAW-RLP-M + 1,074) X 1,06". The multiplier is the
     VAT and is applied once: factor = 0,1 x 1,06 / 100, base = 1,074 x 1,06 /
     100 (EUR/kWh, index in EUR/MWh). Any index name other than TTFDAW-RLP-M
-    fails the parse.
+    fails the parse. It is the last row under the heading, which every Flex
+    card since November 2023 and every Flex One card prints as
+    "(€cent/kWh)", and only that is accepted: a formula under a VERBRUIK
+    heading in another unit, or away from the table, is refused rather than
+    read on the €cent scale. A card restating the heading itself loses its
+    Maandprijs and is refused already.
+  - The formula is also held to the Maandprijs: at the index value the
+    footnote names in €/MWh ("(10/2026: €88,2882/MWh)") it has to give it
+    back within 0,5%. Every archived card does so within 0,124%, the
+    rounding of a price printed to the hundredth, while a factor ten times
+    off misses it by 65% or more and a base by 2,2% or more. The footnote is
+    the only place the card states the index's unit, so this is what
+    catches a card restating the index alone in c€/kWh, its factor ten
+    times larger: it misses its Maandprijs, or names no value in €/MWh.
+    Either way it is refused rather than billed about nine times too high.
 - VAT: "Alle prijzen en tarieven zijn inclusief 6% btw" into `card_vat_rate`.
 - DSO table, after "Netbeheerder": columns T1 vaste term (€/jaar), T1
   proportionele term (€cent/kWh), T2 vaste term, T2 proportionele term,
@@ -167,6 +181,12 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Walloon DSO rows and levies: `test_wallonia_table_collapses_the_ores_sub_areas`,
   `test_wallonia_levies`; stale levies as printed:
   `test_pre_august_levies_are_read_as_printed`.
+- A formula under another unit's heading or out of the price table:
+  `test_a_formula_away_from_its_heading_is_refused`; one more row in the
+  table still reads: `test_a_price_table_with_one_more_row_still_reads`.
+- A factor, base, whole formula or index restated:
+  `test_a_formula_or_index_restated_misses_its_maandprijs`; the tolerance:
+  `test_the_maandprijs_is_held_within_half_a_percent`.
 - Fail loud: transport note, formula, Brussels, unknown contract. A
   Walloon card without its connection fee reads:
   `test_card_without_the_walloon_connection_fee_is_read`.
