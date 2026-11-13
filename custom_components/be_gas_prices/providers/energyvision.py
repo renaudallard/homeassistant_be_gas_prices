@@ -43,6 +43,14 @@ the delivery month's and then the month before's, and ``inline-files``
 last, taking the first that holds an upload; the cards are asked in the
 same order from November 2026 (``_UPLOAD_FOLDERS_FROM``).
 
+A card uploaded again within its month can carry another price: the
+one-year fixed card of November 2026 went up on the 4th at 9,95 c EUR/kWh
+and again on the 10th, stamped "V10/11/2026", at 9,20. From November 2026 a
+past month's card is the newest upload made by its last day, which is what
+the listing showed while the month ran, and a contract signed on a given
+day is priced on the newest one made by that day (``fetch_on_day``), each
+upload dated by its Last-Modified read in Belgium.
+
 In Brussels the company sells as Brusol, on brusol.be, and only GSG,
 alongside its "Goedkope Stroom" electricity, which is "exclusief
 voorbehouden aan eigenaars van Brusol-zonnepanelen". The Brussels card is
@@ -107,7 +115,8 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta, tzinfo
+from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
 
 import aiohttp
@@ -168,6 +177,8 @@ _BRUSOL_PAGE_URL = (
     f"{_BRUSOL_SITE}/nl/elektriciteit-en-gas/schrijf-je-in-voor-goedkope-stroom-van-brusol"
 )
 _INDEX = "ZTP-RLP-M"
+# The zone a card's upload day is read in, whatever Home Assistant's is.
+_BELGIUM = "Europe/Brussels"
 
 
 @dataclass(frozen=True)
@@ -261,9 +272,9 @@ def _linked_card(html: str, contract: _ContractDef, token: str, page: str) -> tu
 _MAX_SUFFIX = 9
 
 
-async def _newest_upload(session: aiohttp.ClientSession, url: str) -> tuple[str, str | None] | None:
-    """The newest upload of the card filed at ``url`` and its
-    Last-Modified, or None where none answers.
+async def _uploads(session: aiohttp.ClientSession, url: str) -> list[tuple[str, str | None]]:
+    """Every upload of the card filed at ``url`` that answers, the first
+    one first, each with its Last-Modified.
 
     Drupal stores a card uploaded again as ``<name>_0.pdf``, then ``_1``
     and so on, and keeps the earlier files. The listing's script takes the
@@ -275,7 +286,7 @@ async def _newest_upload(session: aiohttp.ClientSession, url: str) -> tuple[str,
     """
     stem = url.removesuffix(".pdf")
     names = (url, *(f"{stem}_{n}.pdf" for n in range(_MAX_SUFFIX + 1)))
-    newest: tuple[str, str | None] | None = None
+    found: list[tuple[str, str | None]] = []
     for asked, name in enumerate(names):
         try:
             modified = await head_or_raise(session, name)
@@ -286,8 +297,8 @@ async def _newest_upload(session: aiohttp.ClientSession, url: str) -> tuple[str,
             if asked >= 2:
                 break
             continue
-        newest = (name, modified)
-    return newest
+        found.append((name, modified))
+    return found
 
 
 async def _current_upload(
@@ -303,9 +314,9 @@ async def _current_upload(
     first = dt_util.now().date().replace(day=1)
     for month in (first, (first - timedelta(days=1)).replace(day=1)):
         for url in _month_urls(contract, card, month):
-            found = await _newest_upload(session, url)
-            if found is not None:
-                return found
+            found = await _uploads(session, url)
+            if found:
+                return found[-1]
     raise ExtractorError(
         f"EnergyVision: no {contract.code} {card.token} card for {first:%Y-%m} or the month before"
     )
@@ -382,28 +393,76 @@ def _month_urls(contract: _ContractDef, card: _Card, month: date) -> tuple[str, 
     return folders if card.upload_folders else (*folders, inline)
 
 
+def _made_by(uploads: list[tuple[str, str | None]], day: date, belgium: tzinfo) -> list[str]:
+    """The uploads made by the end of ``day`` in Belgium, the newest first:
+    the cards the listing had shown by then. The first upload alone where
+    every one came later, a card published after its month began; all of
+    them where one bears no date to tell by."""
+    made: list[str] = []
+    for url, modified in uploads:
+        try:
+            stamp = parsedate_to_datetime(modified or "")
+        except ValueError:
+            return [url for url, _ in reversed(uploads)]
+        if stamp.astimezone(belgium).date() <= day:
+            made.append(url)
+    return made[::-1] or [url for url, _ in uploads[:1]]
+
+
+async def _fetch_in_force(
+    session: aiohttp.ClientSession, contract_id: str, region: str, day: date
+) -> SupplierSnapshot | None:
+    """The card of ``day``'s month in force on ``day``, or None.
+
+    A name that does not resolve, a card that does not parse and a card for
+    another month all move on to the next candidate; a transient failure
+    raises so the month cache retries the month.
+
+    From November 2026 EnergyVision's listing shows the newest upload of a
+    month's card, and it has uploaded one again within its month at another
+    price: the one-year fixed card of November 2026 on the 10th. So there
+    the uploads of the first folder that holds any are read, those made by
+    ``day``, the newest first. An earlier month, sold off the list the
+    listing's script carries, and a Brusol card, which its page links by
+    name, are asked by the plain name as they always were.
+    """
+    contract = _CONTRACTS_BY_ID.get(contract_id)
+    card = None if contract is None else contract.cards.get(region)
+    if contract is None or card is None:
+        return None
+    first = day.replace(day=1)
+    by_upload = card.page is None and first >= _UPLOAD_FOLDERS_FROM
+    belgium = await dt_util.async_get_time_zone(_BELGIUM) or UTC
+    for url in _month_urls(contract, card, first):
+        names = [url]
+        if by_upload:
+            names = _made_by(await _uploads(session, url), day, belgium)
+        for name in names:
+            snapshot = await month_card(_read(session, contract_id, region, name), first)
+            if snapshot is not None:
+                return snapshot
+    return None
+
+
 async def fetch_for_month(
     session: aiohttp.ClientSession,
     contract_id: str,
     region: str,
     year_month: date,
 ) -> SupplierSnapshot | None:
-    """The card published for ``year_month``, or None.
+    """The card published for ``year_month``, or None: the one in force on
+    its last day (:func:`_fetch_in_force`), which is the card :func:`fetch`
+    read while the month ran."""
+    last = end_of_month(year_month.year, year_month.month)
+    return await _fetch_in_force(session, contract_id, region, last)
 
-    A name that does not resolve, a card that does not parse and a card for
-    another month all move on to the next candidate; a transient failure
-    raises so the month cache retries the month.
-    """
-    contract = _CONTRACTS_BY_ID.get(contract_id)
-    card = None if contract is None else contract.cards.get(region)
-    if contract is None or card is None:
-        return None
-    first = date(year_month.year, year_month.month, 1)
-    for url in _month_urls(contract, card, first):
-        snapshot = await month_card(_read(session, contract_id, region, url), first)
-        if snapshot is not None:
-            return snapshot
-    return None
+
+async def fetch_on_day(
+    session: aiohttp.ClientSession, contract_id: str, region: str, day: date
+) -> SupplierSnapshot | None:
+    """The card in force on ``day``, for a contract signed that day in a
+    month whose card was uploaded again (:func:`_fetch_in_force`)."""
+    return await _fetch_in_force(session, contract_id, region, day)
 
 
 _INDEX_PDF_RE = re.compile(
@@ -661,6 +720,7 @@ EXTRACTOR = SupplierExtractor(
     fetch=fetch,
     probe=probe,
     fetch_for_month=fetch_for_month,
+    fetch_on_day=fetch_on_day,
     fetch_index=fetch_index,
     sweep_cost_s=4.5,
 )

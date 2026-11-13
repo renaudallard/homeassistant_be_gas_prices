@@ -711,6 +711,132 @@ async def test_a_brusol_lookup_that_fails_falls_back_to_the_linked_card() -> Non
     assert snap.publication_label == "2026-10"
 
 
+_FILES = "https://www.energyvision.be/sites/default/files/"
+# The Flemish one-year fixed card of November 2026 as energyvision.be held
+# it on 13 November: uploaded on the 4th at 9,95 c EUR/kWh, twice, and again
+# on the 10th, stamped "V10/11/2026", at 9,20.
+_NOVEMBER_FIXED = {
+    "2026-11/EV-1126-GS1JVG-nl.pdf": "Wed, 04 Nov 2026 11:28:55 GMT",
+    "2026-11/EV-1126-GS1JVG-nl_0.pdf": "Wed, 04 Nov 2026 11:29:02 GMT",
+    "2026-11/EV-1126-GS1JVG-nl_1.pdf": "Tue, 10 Nov 2026 15:26:10 GMT",
+}
+
+
+def _dated(stamps: dict[str, str]) -> AsyncMock:
+    """A HEAD answering each file of ``stamps`` with its Last-Modified and
+    404 for any other."""
+
+    def head(_session: object, url: str) -> str:
+        name = url.removeprefix(_FILES)
+        if name not in stamps:
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        return stamps[name]
+
+    return AsyncMock(side_effect=head)
+
+
+async def _november_fixed(_session: object, url: str) -> str:
+    """The first November card under the plain name and ``_0``, the second
+    under ``_1``."""
+    return _card(f"EV-1126-GS1JVG-nl{'_1' if url.endswith('_1.pdf') else ''}.pdf")
+
+
+@pytest.mark.parametrize(
+    ("day", "upload", "price"),
+    [
+        # Signed before the card was up: the month's first card.
+        (date(2026, 11, 2), "", 0.0995),
+        (date(2026, 11, 4), "_0", 0.0995),
+        (date(2026, 11, 9), "_0", 0.0995),
+        (date(2026, 11, 10), "_1", 0.092),
+        (date(2026, 11, 30), "_1", 0.092),
+    ],
+)
+async def test_a_card_uploaded_again_is_read_by_the_day_signed(
+    day: date, upload: str, price: float
+) -> None:
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(_NOVEMBER_FIXED)),
+        patch.object(energyvision, "fetch_pdf_text_layout", _november_fixed),
+    ):
+        snap = await energyvision.fetch_on_day(AsyncMock(), _GS1JVG, REGION_FLANDERS, day)
+    assert snap is not None
+    assert snap.source_url == f"{_FILES}2026-11/EV-1126-GS1JVG-nl{upload}.pdf"
+    assert isinstance(snap.energy, FixedRates)
+    assert snap.energy.price == pytest.approx(price)
+    assert snap.publication_label == "2026-11"
+    assert energyvision.EXTRACTOR.fetch_on_day is energyvision.fetch_on_day
+
+
+async def test_a_past_month_s_card_is_the_newest_upload_of_its_month() -> None:
+    """What the listing showed while the month ran, and what fetch read
+    then: the last upload made within it. One made after the month, as the
+    October cards got on 1 and 2 November, is no card of the month's."""
+    stamps = _NOVEMBER_FIXED | {"2026-11/EV-1126-GS1JVG-nl_2.pdf": "Wed, 02 Dec 2026 09:14:14 GMT"}
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(stamps)),
+        patch.object(energyvision, "fetch_pdf_text_layout", _november_fixed),
+    ):
+        snap = await energyvision.fetch_for_month(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 11, 1)
+        )
+    assert snap is not None
+    assert snap.source_url == f"{_FILES}2026-11/EV-1126-GS1JVG-nl_1.pdf"
+    assert isinstance(snap.energy, FixedRates)
+    assert snap.energy.price == pytest.approx(0.092)
+
+
+async def test_an_upload_s_day_is_the_one_in_belgium() -> None:
+    """23:30 GMT on the 9th is half past midnight on the 10th in Belgium."""
+    stamps = _NOVEMBER_FIXED | {"2026-11/EV-1126-GS1JVG-nl_1.pdf": "Mon, 09 Nov 2026 23:30:00 GMT"}
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(stamps)),
+        patch.object(energyvision, "fetch_pdf_text_layout", _november_fixed),
+    ):
+        ninth = await energyvision.fetch_on_day(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 11, 9)
+        )
+        tenth = await energyvision.fetch_on_day(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 11, 10)
+        )
+    assert ninth is not None and ninth.source_url.endswith("EV-1126-GS1JVG-nl_0.pdf")
+    assert tenth is not None and tenth.source_url.endswith("EV-1126-GS1JVG-nl_1.pdf")
+
+
+async def test_an_upload_that_does_not_read_leaves_the_one_before_it() -> None:
+    async def text(session: object, url: str) -> str:
+        if url.endswith("_1.pdf"):
+            raise ExtractorError("EnergyVision: energy price not found")
+        return await _november_fixed(session, url)
+
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(_NOVEMBER_FIXED)),
+        patch.object(energyvision, "fetch_pdf_text_layout", text),
+    ):
+        snap = await energyvision.fetch_for_month(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 11, 1)
+        )
+    assert snap is not None
+    assert snap.source_url == f"{_FILES}2026-11/EV-1126-GS1JVG-nl_0.pdf"
+
+
+async def test_a_month_before_november_2026_is_asked_by_its_plain_name() -> None:
+    """Sold off the list the listing's script carries, and October's cards
+    were uploaded again on 1 and 2 November: no upload is asked for."""
+    head = AsyncMock()
+    fetched = AsyncMock(return_value=_card("EV-0926-GS1JVG-nl.pdf"))
+    with (
+        patch.object(energyvision, "head_or_raise", head),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        snap = await energyvision.fetch_on_day(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 9, 20)
+        )
+    assert snap is not None and snap.publication_label == "2026-09"
+    head.assert_not_called()
+    assert fetched.call_args.args[1] == f"{_FILES}inline-files/EV-0926-GS1JVG-nl.pdf"
+
+
 async def test_fetch_for_month_refuses_a_card_for_another_month() -> None:
     with patch.object(
         energyvision, "fetch_pdf_text_layout", AsyncMock(return_value=_card("EV-0926-GSG-nl.pdf"))

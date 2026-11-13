@@ -126,7 +126,24 @@ the layout reader is used here too. Index name: `ZTP-RLP-M`.
   GSG. From November 2026 the delivery month's upload folder and the month
   before's are tried first, as the listing tries them; the upload folders
   also hold drafts of the earlier months, which stay on `inline-files`.
-  Where a month was uploaded again the plain name is the first upload.
+  Where a month before November 2026 was uploaded again the plain name is
+  the first upload, and it is the one read: October's cards were uploaded
+  again on 1 and 2 November, after their month.
+- From November 2026 a card uploaded again within its month can carry
+  another price. The Flemish and Walloon GS1JVG cards of November 2026 went
+  up on the 4th (plain name and `_0`, the same file, 9,95 c€/kWh) and again
+  on the 10th (`_1`, titled "Tariefkaart november 2026 V10/11/2026", 9,20).
+  The uploads of the first folder that holds any are listed with HEAD
+  requests as the current card's are, and dated by their Last-Modified read
+  in Belgium (`_made_by`):
+  - `fetch_for_month` reads the newest upload made by the month's last
+    day, which is what the listing showed, and `fetch` read, while the
+    month ran; an upload made after the month is none of its cards.
+  - `fetch_on_day` reads the newest upload made by the day signed, the
+    tariff card date, and the first upload where every one came later (a
+    card published after its month began).
+  - An upload that does not read or names another month leaves the one
+    before it; an upload without a Last-Modified leaves the newest.
 - Brusol: the delivery-month folder is tried first, then the month before.
   August 2026 is in both, and the later upload (2026-08) carries the new
   excise; every other month from January 2026 is in exactly one, January

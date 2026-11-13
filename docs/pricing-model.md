@@ -82,8 +82,9 @@ its own month only; another month priced on it is provisional.
 Which card's leg (`bill.contract_leg`): the card of month M by default, or
 the signing card when the entry names a contract start date or a tariff card
 date and the contract is fixed or indexed. Where the supplier reissues its
-card within a month (Elegant's Zeker & Vast), the signing card is the one in
-force on the tariff card date, once that day is past. A variable price is
+card within a month (Elegant's Zeker & Vast, EnergyVision's uploads from
+November 2026), the signing card is the one in force on the tariff card
+date, once that day is past. A variable price is
 the supplier's for each month, so the card of month M sets it whatever the
 signing date. A signing card no one serves any more (neither the supplier's
 archive nor the project's, which keeps thirty-six months) leaves each month on

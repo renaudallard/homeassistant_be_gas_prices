@@ -110,7 +110,10 @@ this integration prices like any other.
   Fixe and Plenty Fixe 4,57 c€/kWh up to 13 March and 6,42 from the 14th,
   OCTA+ Fixed 5,50 up to 15 March and 6,39 from the 16th, Eco Fixed 6,46
   and 7,43. Without a day, March is Bolt's first card and OCTA+'s second,
-  the one its archive lists.
+  the one its archive lists. EnergyVision uploaded its one-year fixed card
+  of November 2026 again on the 10th: 9,95 c€/kWh up to 9 November and 9,20
+  from the 10th. The tariff card date picks the upload made by that day;
+  without one, a month is priced on its last upload.
 - **Changed contract during the year?** Record the switch and each contract is
   billed on its own supplier's cards for its own days. A contract that
   counted the year from its start still opens the year there. A switch
@@ -337,8 +340,8 @@ manifest.
    started, and can be neither in the future nor before a change of
    contract recorded on the entry. The folded **Advanced** section holds
    what most households leave alone: a **tariff card date**, the day you
-   signed, when you signed on another month's card or on an Elegant card
-   reissued within its month, not a day to come (a TotalEnergies renewal is
+   signed, when you signed on another month's card or on a card reissued
+   within its month (Elegant, EnergyVision), not a day to come (a TotalEnergies renewal is
    priced on the card of three months before it, so give a day of that
    month), the **end date** for a renewal reminder, counting this year's
    cost from the contract start, and
