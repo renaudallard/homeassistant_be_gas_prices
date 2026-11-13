@@ -123,11 +123,14 @@ _listing: tuple[datetime, list[_Document]] | None = None
 _locks: dict[str, asyncio.Lock] = {}
 
 
-def cached_network(day: date, dso: str) -> SheetNetwork | None:
+def cached_network(day: date, dso: str, *, stand_in: bool = True) -> SheetNetwork | None:
     """``dso``'s network on the grid valid on ``day``, else on the latest
-    that began before it, never one that begins after, or ``None``."""
+    that began before it, never one that begins after, or ``None``. Without
+    ``stand_in``, on the grid valid on ``day`` or ``None``."""
     held = valid_on(_grids.get(dso, {}).values(), day)
-    return None if held is None else held.network
+    if held is None or (not stand_in and day > held.valid_to):
+        return None
+    return held.network
 
 
 def valid_on(held: Iterable[GridNetwork], day: date) -> GridNetwork | None:

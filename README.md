@@ -365,9 +365,10 @@ manifest.
    operator's published tariff sheet** to take the T1 and T2 terms and the
    metering off the regulator's sheet of each delivery year instead,
    Fluvius's for your area, Brugel's or the CWaPE's grid for ORES or RESA:
-   they follow each 1 January change by themselves, a month no sheet held
-   covers takes what the project's card archive kept of it, and what you
-   typed only stands in until either is read; the transport, which no sheet
+   they follow each 1 January change by themselves, a month whose own
+   year's sheet is not read takes what the project's card archive kept of
+   it, then last year's sheet, and what you typed only stands in until one
+   of them is read; the transport, which no sheet
    prints, stays as typed. That card has the two lower
    tiers only, so its yearly consumption stops at 150 000 kWh, and a
    measured year past it cannot be priced.

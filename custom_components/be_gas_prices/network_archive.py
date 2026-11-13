@@ -32,8 +32,9 @@ the metering the sheet of the month's own year gives, excluding VAT, in
 ``network.json`` (``scripts/archive_cards.py``): a month still read is
 written again, one no longer read keeps what was written.
 
-It answers only for a month an entry's own reading of the sheets does not
-give (network_sheet.held_network), ahead of the figures typed. Read daily by
+It answers only for a month an entry's own reading of that year's sheet
+does not give (network_sheet.held_network), ahead of an earlier year's sheet
+held and of the figures typed. Read daily by
 an entry with a contract taking its network from a sheet that lets the card
 archive be read, held for the process, and kept in such an entry's store so a
 restart without the network still knows it.

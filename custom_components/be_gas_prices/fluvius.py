@@ -216,9 +216,12 @@ def parse_sheet(payload: bytes, year: int) -> float | None:
     return round(numbers[0], 2)
 
 
-def cached_area_network(year: int, dso: str) -> SheetNetwork | None:
+def cached_area_network(year: int, dso: str, *, stand_in: bool = True) -> SheetNetwork | None:
     """``dso``'s network for ``year``, else the latest earlier year's held,
-    never a later one, or ``None`` before any of its sheets is read."""
+    never a later one, or ``None`` before any of its sheets is read. Without
+    ``stand_in``, the year's own sheet or ``None``."""
+    if not stand_in:
+        return _area.get((year, dso))
     held = [held_year for held_year, area in _area if area == dso and held_year <= year]
     return _area[(max(held), dso)] if held else None
 

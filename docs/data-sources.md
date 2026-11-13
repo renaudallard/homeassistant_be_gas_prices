@@ -147,8 +147,12 @@ sheet is held. The transport stays as typed: no sheet prints it. Each sheet
 is read in the tick for the current year, the year before's standing in
 until the year's is published, and for an earlier custom contract of the
 year at its DSO; nothing of it is kept over a restart, and a failure waits
-six hours. For a month no sheet held covers, what the card archive kept of
-it stands in (`network.json`, below), ahead of the figures typed.
+six hours. For a month whose own year's sheet is not held, what the card
+archive kept of that month's sheet stands in (`network.json`, below), then
+the latest earlier sheet held, all ahead of the figures typed
+(`network_sheet.held_network`). The earlier year's sheet comes after the
+archive's row because the read of the year's sheet may have failed on the
+installation while the archive's run read it.
 
 Every sheet prints a fixed term a year and a rate per kWh per tier, then the
 public service, pension, levy and regulatory balance rates per kWh, which
@@ -242,7 +246,8 @@ its network from a sheet and the card archive option on
 (`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/network.json`,
 a failure waiting six hours), keeps it in such an entry's Store, a month
 from 2000 to next year alone, and answers only for a month the entry's own
-reading of the sheets does not give, ahead of the figures typed.
+reading of that year's sheet does not give, ahead of an earlier year's sheet
+and of the figures typed.
 
 ## The recorder
 

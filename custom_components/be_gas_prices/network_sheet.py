@@ -29,8 +29,9 @@ A custom entry types its DSO's figures, or ticks the box that takes them off
 the regulator's sheet of each delivery year instead: Fluvius's sheet for its
 area in Flanders (fluvius.py), Brugel's in Brussels (brugel.py) or its
 operator's grid as the CWaPE publishes it in Wallonia (cwape.py). For a month
-no sheet held covers, what the card archive kept of it stands in
-(network_archive.py), and the typed figures stand in while neither is held.
+whose own year's sheet is not held, what the card archive kept of that
+month's sheet stands in (network_archive.py), then the latest earlier sheet
+held, and the typed figures while none of them is.
 """
 
 from __future__ import annotations
@@ -79,15 +80,34 @@ async def ensure_network_sheet(
         await cwape.ensure_network(session, year, dso)
 
 
-def held_network(delivery: date, dso: str) -> SheetNetwork | None:
-    """``dso``'s network for the month of ``delivery`` off the sheet held for
-    it, else what the card archive kept of that month's sheet
-    (network_archive.py), or ``None`` while neither is."""
-    held: SheetNetwork | None = None
+def _sheet(delivery: date, dso: str, *, stand_in: bool) -> SheetNetwork | None:
+    """``dso``'s network off the sheet held for the year of ``delivery``,
+    or with ``stand_in`` off the latest earlier one held."""
     if dso in FLUVIUS_KEYS:
-        held = fluvius.cached_area_network(delivery.year, dso)
-    elif dso in BRUSSELS_DSO_KEYS:
-        held = brugel.cached_network(delivery.year)
-    elif dso in WALLONIA_DSO_KEYS:
-        held = cwape.cached_network(delivery, dso)
-    return held if held is not None else network_archive.network_for(delivery, dso)
+        return fluvius.cached_area_network(delivery.year, dso, stand_in=stand_in)
+    if dso in BRUSSELS_DSO_KEYS:
+        return brugel.cached_network(delivery.year, stand_in=stand_in)
+    if dso in WALLONIA_DSO_KEYS:
+        return cwape.cached_network(delivery, dso, stand_in=stand_in)
+    return None
+
+
+def held_network(delivery: date, dso: str) -> SheetNetwork | None:
+    """``dso``'s network for the month of ``delivery``: off its own year's
+    sheet where that is held, else what the card archive kept of that
+    month's sheet (network_archive.py), else off the latest earlier sheet
+    held, which stands in until the year's is read, or ``None`` while none
+    of them is. An earlier year's sheet comes last: the year's own read may
+    have failed here while the archive's run read it."""
+    return next(
+        (
+            held
+            for held in (
+                _sheet(delivery, dso, stand_in=False),
+                network_archive.network_for(delivery, dso),
+                _sheet(delivery, dso, stand_in=True),
+            )
+            if held is not None
+        ),
+        None,
+    )

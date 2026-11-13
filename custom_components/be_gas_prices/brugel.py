@@ -88,9 +88,12 @@ _failed_at: dict[int, datetime] = {}
 _locks: dict[int, asyncio.Lock] = {}
 
 
-def cached_network(year: int) -> SheetNetwork | None:
+def cached_network(year: int, *, stand_in: bool = True) -> SheetNetwork | None:
     """The year's network, else the latest earlier year's held, never a
-    later one, or ``None`` before any sheet is read."""
+    later one, or ``None`` before any sheet is read. Without ``stand_in``,
+    the year's own sheet or ``None``."""
+    if not stand_in:
+        return _held.get(year)
     held = [held_year for held_year in _held if held_year <= year]
     return _held[max(held)] if held else None
 

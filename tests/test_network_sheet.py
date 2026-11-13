@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -33,6 +33,7 @@ from custom_components.be_gas_prices.const import (
     TIER_T2,
 )
 from custom_components.be_gas_prices.providers._resolve import resolve_for_delivery
+from custom_components.be_gas_prices.providers.base import SheetNetwork
 from custom_components.be_gas_prices.providers.custom import build_snapshot
 from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json, snapshot_to_json
 
@@ -253,3 +254,46 @@ def test_the_archive_stands_in_for_a_month_no_sheet_held_covers() -> None:
     }
     overlay = resolve_for_delivery(card, _NOV).dsos[DSO_ORES]
     assert overlay.tiers[TIER_T1].proportional == pytest.approx(0.05 * 1.06)
+
+
+def test_an_earlier_year_s_sheet_comes_after_the_archive_s_month() -> None:
+    """The read of the year's sheet failed here and left the year before's
+    held, while the card archive's run read the year's: the month is billed
+    on the archive's row, the sheet of its own year, and the earlier sheet
+    only stands in where the archive has none either."""
+    from custom_components.be_gas_prices import network_archive
+
+    january = date(2027, 1, 1)
+    earlier = _hold_antwerpen()
+    assert network_sheet.held_network(january, "fluvius_antwerpen") == earlier
+    row = {
+        "t1_fixed": 15.0,
+        "t1_proportional": 0.022,
+        "t2_fixed": 80.0,
+        "t2_proportional": 0.009,
+        "metering_per_year": 18.0,
+    }
+    network_archive.hold({"months": {"2027-01": {"fluvius_antwerpen": row}}})
+    assert network_sheet.held_network(january, "fluvius_antwerpen") == SheetNetwork(**row)
+    # Its own year's sheet held, 2026 is billed on it whatever the archive has.
+    network_archive.hold({"months": {"2026-11": {"fluvius_antwerpen": row}}})
+    assert network_sheet.held_network(_NOV, "fluvius_antwerpen") == earlier
+    # February has no row: the earlier sheet stands in.
+    assert network_sheet.held_network(date(2027, 2, 1), "fluvius_antwerpen") == earlier
+
+
+def test_each_reader_tells_its_own_year_s_sheet_from_a_stand_in() -> None:
+    terms = _hold_antwerpen()
+    assert fluvius.cached_area_network(2026, "fluvius_antwerpen", stand_in=False) == terms
+    assert fluvius.cached_area_network(2027, "fluvius_antwerpen", stand_in=False) is None
+    brugel._held[2026] = terms
+    assert brugel.cached_network(2026, stand_in=False) == terms
+    assert brugel.cached_network(2027, stand_in=False) is None
+    assert brugel.cached_network(2027) == terms
+    grid = cwape.parse_grid((_FIXTURES / "cwape" / "ores_gaz_2026.xlsx").read_bytes())
+    assert grid is not None
+    cwape._grids[DSO_ORES] = {"grid": grid}
+    assert cwape.cached_network(grid.valid_to, DSO_ORES, stand_in=False) == grid.network
+    after = grid.valid_to + timedelta(days=1)
+    assert cwape.cached_network(after, DSO_ORES, stand_in=False) is None
+    assert cwape.cached_network(after, DSO_ORES) == grid.network
