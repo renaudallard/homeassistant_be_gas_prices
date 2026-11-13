@@ -347,7 +347,8 @@ def test_june_card_without_flanders_reads_wallonia_and_brussels() -> None:
     """Version 12 prints no Fluvius rows, and its levy rows hold two values,
     Wallonia's and Brussels'. Its formula is read as printed; its printed
     price, 5,16, is version 11's formula at the same TTF; its own formula
-    gives 5,60, 8,6% more, still within what the formula check allows."""
+    gives 5,60, 8,6% more, which the formula check allows the cards titled
+    June 2026."""
     text = _card(_VAR_12)
     with pytest.raises(ExtractorError, match="DSO rows not found"):
         bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)
@@ -563,6 +564,39 @@ def test_variable_card_formula_that_misses_its_printed_price_is_refused(restated
     assert _indexed(bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)).formula == printed
     with pytest.raises(ExtractorError, match=r"gives .* at TTF 65.38 €/MWh, not the 8.34 printed"):
         bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text.replace(printed, restated))
+
+
+@pytest.mark.parametrize("restated", ["TTF *1,049 + 1,010", "TTF *1,049 + 0,00"])
+def test_a_base_slip_is_refused_at_a_high_ttf_too(restated: str) -> None:
+    """The share a base read a tenth of itself moves the price by shrinks as
+    the TTF printed rises: 11,5% at 65,38 and 9,6% at 80,00, where a bound
+    of 10% let it through. The same card as it would print at 80,00, (80 x
+    1,049 + 10,10) / 10 x 1,06 = 9,97, reads; with its base slipped it is
+    refused."""
+    text = _card(_VAR_14)
+    for printed, at_80 in (("Simple 65,38 €/MWh", "Simple 80,00 €/MWh"), ("8,34", "9,97")):
+        assert printed in text
+        text = text.replace(printed, at_80)
+    snap = bolt.parse_snapshot("bolt_variable", REGION_FLANDERS, text)
+    assert _indexed(snap).price == pytest.approx(0.0997)
+    with pytest.raises(ExtractorError, match=r"gives .* at TTF 80.0 €/MWh, not the 9.97 printed"):
+        bolt.parse_snapshot(
+            "bolt_variable", REGION_FLANDERS, text.replace("TTF *1,049 + 10,10", restated)
+        )
+
+
+def test_only_a_june_2026_card_may_miss_its_printed_price_by_more() -> None:
+    """Version 12's printed price is version 11's, 8,6% under its own
+    formula. The same gap on a card of another month is a card misread."""
+    text = _card(_VAR_12)
+    assert bolt.parse_snapshot("bolt_variable", REGION_WALLONIA, text).publication_label == (
+        "2026-06"
+    )
+    assert "Juin 2026" in text
+    with pytest.raises(ExtractorError, match=r"not the 5\.16 printed"):
+        bolt.parse_snapshot(
+            "bolt_variable", REGION_WALLONIA, text.replace("Juin 2026", "Juillet 2026")
+        )
 
 
 async def test_fetch_takes_the_variable_version_the_listing_links() -> None:

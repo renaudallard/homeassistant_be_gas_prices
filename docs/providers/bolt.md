@@ -88,13 +88,17 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   formula's pattern, so a card restating that value matches no formula.
 - Recompute: a formula restated under the heading left as it was still
   matches, so at the TTF value printed before it the formula has to give
-  back the "Prix mensuel" within 10%, or the card is refused. Every card
+  back the "Prix mensuel" within 0,5%, or the card is refused. Every card
   from June to November 2026 does within 0,08%, apart from the second June
   cards of Bolt Variable and Bolt Variable Online: each prints 5,16, version
   11's price, where its own formula gives 5,60 (8,6% more), and reads as
-  printed. A base alone a tenth of itself misses by 11,5% or more, no base
-  by 12,8% or more, a factor ten times off or a whole formula on another
-  scale by 69% or more, and a base with its sign turned by 25% or more.
+  printed, the cards titled June 2026 alone being held to 10%. The bound
+  stays close to the rounding because the share a slip moves the price by
+  shrinks as the printed TTF rises: a base alone a tenth of itself misses
+  by 11,5% at November 2026's 65,38 and by under 10% from 77 on, no base
+  by 12,8% and under 10% from 87 on. A factor ten times off or a whole
+  formula on another scale misses by 69% or more, and a base with its sign
+  turned by 25% or more.
 - DSO table, "Distribution et transport TTC", read between that heading and
   "Taxes et redevances": columns Petite consommation <= 5.000 kWh (Variable
   c€/kWh, Fixe €/an), Consommation moyenne > 5.000 et <= 150.000 kWh (the

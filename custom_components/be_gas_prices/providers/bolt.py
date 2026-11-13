@@ -393,7 +393,7 @@ def parse_snapshot(
     return SupplierSnapshot(
         supplier="bolt",
         contract=contract_id,
-        energy=_fixed(text) if fixed else _indexed(text),
+        energy=_fixed(text) if fixed else _indexed(text, card_month),
         dsos=_dsos(text, region),
         taxes=_taxes(text, region),
         source_url=source_url,
@@ -472,20 +472,21 @@ _FORMULA_UNIT_REACH = 300
 # A formula restated under a heading left as it was still reads, so the
 # formula also has to give back the "Prix mensuel" at the TTF value printed
 # before it. On every variable card from June to November 2026 it does
-# within 0,08%, the rounding of a price printed to the hundredth, but for
-# the second June card of Bolt Variable and Bolt Variable Online: each
-# prints 5,16, version 11's price at the same TTF, beside its own "TTF *
-# 1,09 + 10,90", which gives 5,60, 8,6% more. Formula and price both read as
-# printed there. A base alone a tenth of itself, as a formula restated in
-# c€/kWh on a TTF in c€/kWh would read, moves the price by 11,5% at the
-# least, and no base by 12,8%, so the bound sits between those and that
-# June card. A formula restated whole on another scale, or its factor alone
-# ten times off, misses by 69% or more, its base with the sign turned by 25%
-# or more.
-_FORMULA_TOLERANCE = 0.1
+# within 0,08%, the rounding of a price printed to the hundredth. The share
+# a slip moves the price by shrinks as the TTF printed rises: a base alone
+# a tenth of itself, as a formula restated in c€/kWh on a TTF in c€/kWh
+# would read, is 11,5% off at the 65,38 of November 2026 and under 10% from
+# 77 on, so the bound stays close to the rounding.
+_FORMULA_TOLERANCE = 0.005
+# The cards titled June 2026 are held to a wider one: the second June card
+# of Bolt Variable and Bolt Variable Online prints 5,16, version 11's price
+# at the same TTF, beside its own "TTF * 1,09 + 10,90", which gives 5,60,
+# 8,6% more. Formula and price both read as printed there.
+_JUNE_2026 = date(2026, 6, 1)
+_JUNE_2026_TOLERANCE = 0.1
 
 
-def _indexed(text: str) -> IndexedRates:
+def _indexed(text: str, card_month: date) -> IndexedRates:
     formula = _FORMULA_RE.search(text)
     if formula is None:
         raise ExtractorError("Bolt: variable card formula not found")
@@ -507,7 +508,8 @@ def _indexed(text: str) -> IndexedRates:
         vat_grossed=("factor", "base"),
     )
     value = to_float(formula.group(1))
-    if not formula_gives(price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE):
+    tolerance = _JUNE_2026_TOLERANCE if card_month == _JUNE_2026 else _FORMULA_TOLERANCE
+    if not formula_gives(price, rates.factor, value, rates.base, tolerance=tolerance):
         raise ExtractorError(
             f"Bolt: {rates.formula} gives {rates.at(value) * 100:.2f} c€/kWh at TTF "
             f"{value} €/MWh, not the {price * 100:.2f} printed"
