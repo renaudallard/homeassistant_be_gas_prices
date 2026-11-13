@@ -195,7 +195,7 @@ def test_a_card_printing_no_gas_excise_gives_no_excise_figure() -> None:
     place of the gas one, which is not read: nothing to measure."""
     snapshot = _snapshot("gamma")
     card = _card(replace(snapshot, taxes=replace(snapshot.taxes, excise_bands=())))
-    names = {figure.name for figure in lc.figures(card)}
+    names = {figure.name for figure in lc.figures(card, TODAY)}
     assert "transport" in names
     assert not any("excise" in name for name in names)
 
@@ -204,7 +204,7 @@ def test_the_social_tariff_gives_the_fleet_no_figure() -> None:
     """Its network part is the CREG's flat one and its excise the protected
     customer's: counted with the operators' terms, every one would be a
     departure."""
-    assert list(lc.figures(_card(_snapshot("social")))) == []
+    assert list(lc.figures(_card(_snapshot("social")), TODAY)) == []
 
 
 def test_a_figure_rounded_to_fewer_digits_is_the_same_figure() -> None:
@@ -888,9 +888,9 @@ def test_the_third_tier_is_compared_like_the_other_two() -> None:
         _card(_with_t3(_snapshot("gamma"))),
         _card(_snapshot("delta")),
     ]
-    names = {figure.name for figure in lc.figures(cards[0])}
+    names = {figure.name for figure in lc.figures(cards[0], TODAY)}
     assert {"T3 fixed", "T3 proportional"} <= names
-    assert not any(figure.name.startswith("T3") for figure in lc.figures(cards[3]))
+    assert not any(figure.name.startswith("T3") for figure in lc.figures(cards[3], TODAY))
     assert _failing(lc.consensus(cards)) == {}
     tenfold = _card(_with_t3(_snapshot("delta"), proportional=0.055))
     assert _failing(lc.consensus([*cards[:3], tenfold])) == {
@@ -1157,6 +1157,48 @@ def test_a_card_in_force_until_replaced_is_never_late() -> None:
     snapshot = _snapshot("acme", label="2026-06", valid_until=None)
     check = lc._freshness("acme/acme_var/flanders", snapshot, TODAY)
     assert (check.status, check.detail) == ("ok", "2026-06, in force until replaced")
+
+
+def test_a_card_with_no_end_date_is_compared_in_the_month_it_is_in_force() -> None:
+    """Bolt's variable card of June 2026 was the one in force in July and
+    August: under its own month it was alone, and nothing was compared. A
+    dated card of June is stale and stays with June's."""
+    fleet = [_card(_snapshot(sid)) for sid in ("alpha", "beta", "gamma")]
+    kept = _card(_snapshot("delta", label="2026-06", t1_prop=0.0212, valid_until=None))
+    assert {figure.month for figure in lc.figures(kept, TODAY)} == {"2026-09"}
+    assert list(_failing(lc.consensus([*fleet, kept], TODAY))) == [
+        "delta: fluvius_kempen T1 proportional for 2026-09"
+    ]
+    dated = _card(
+        _snapshot("delta", label="2026-06", t1_prop=0.0212, valid_until=date(2026, 6, 30))
+    )
+    assert {figure.month for figure in lc.figures(dated, TODAY)} == {"2026-06"}
+    assert _failing(lc.consensus([*fleet, dated], TODAY)) == {}
+    # The sheets are held against the same groups.
+    sheets = {"fluvius_kempen": ("fluvius", _network(t1_prop=0.0088 / 1.06))}
+    agreeing = _card(_snapshot("delta", label="2026-06", valid_until=None))
+    (check,) = lc.against_sheets([*fleet[:1], agreeing], sheets, TODAY)
+    assert "where alpha, delta print" in check.detail
+
+
+@pytest.mark.parametrize(
+    ("label", "today", "month"),
+    [
+        # The month before, in the days a supplier may still be late: with
+        # the cards of that month, which the late ones still print.
+        ("2026-09", date(2026, 10, 5), "2026-09"),
+        ("2026-09", date(2026, 10, 6), "2026-10"),
+        ("2026-08", date(2026, 10, 5), "2026-10"),
+        # Published ahead: not in force yet.
+        ("2026-11", date(2026, 10, 28), "2026-11"),
+        ("2026-12", date(2027, 1, 6), "2027-01"),
+    ],
+)
+def test_a_card_with_no_end_date_moves_once_a_dated_one_would_be_stale(
+    label: str, today: date, month: str
+) -> None:
+    card = _card(_snapshot("acme", label=label, valid_until=None))
+    assert {figure.month for figure in lc.figures(card, today)} == {month}
 
 
 def _indexed(index: str, period: str = "month") -> IndexedRates:

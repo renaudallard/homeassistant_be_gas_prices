@@ -30,7 +30,9 @@ Fetches every registered (supplier, contract, region) from the supplier's own
 publication with the extractor the integration uses, retrying a failure that
 says nothing about the card, and checks what came back:
 
-  - the card is for the current month, unless it has no end date;
+  - the card is for the current month, unless it has no end date: such a
+    card is in force until replaced, and its regulated figures are compared
+    with the cards of the run's month;
   - every supplier's index publication (its ``fetch_index``) reads, lists
     every index its cards are priced on, and has a recent value for each;
   - every supplier's list of the products it sells (its ``discover``) names
@@ -355,24 +357,30 @@ def _failure(label: str, err: BaseException) -> Check:
     return Check(label, "transient" if is_transient(err) else "fail", detail)
 
 
+def _behind(month: tuple[int, int], today: date) -> bool:
+    """Whether a card for ``month`` is behind today's: any earlier month,
+    but for the one before in the first days of a month."""
+    return _lag(today, month) > (1 if today.day <= _GRACE_DAYS else 0)
+
+
 def _freshness(label: str, snapshot: SupplierSnapshot, today: date) -> Check:
     """Whether the card is for the current month. A card for a later month
     is a supplier publishing early, which is fine. A card with no end date
     applies until the supplier replaces it, and the fetch reads the one the
-    supplier links today, so it cannot be late."""
+    supplier links today, so it cannot be late; its figures are held against
+    the cards of the run's month (:func:`_figure_month`)."""
     name = f"{label}: card month"
     if snapshot.valid_until is None:
         return Check(name, "ok", f"{snapshot.publication_label}, in force until replaced")
     month = label_month(snapshot.publication_label)
     if month is None:
         return Check(name, "fail", f"unreadable publication label {snapshot.publication_label!r}")
-    lag = _lag(today, month)
-    allowed = 1 if today.day <= _GRACE_DAYS else 0
-    if lag > allowed:
+    if _behind(month, today):
         return Check(
             name,
             "fail",
-            f"the card is for {snapshot.publication_label}, {lag} month(s) before {today}",
+            f"the card is for {snapshot.publication_label}, {_lag(today, month)} month(s) "
+            f"before {today}",
         )
     return Check(name, "ok", snapshot.publication_label)
 
@@ -669,8 +677,27 @@ def voter(ex: SupplierExtractor) -> str:
     return str(getattr(fetch, "__module__", ex.id))
 
 
-def figures(card: Card) -> Iterator[Figure]:
-    """Every regulated figure the card prints.
+def _figure_month(snapshot: SupplierSnapshot, today: date) -> str:
+    """The month a card's figures are compared in: the one it is labelled
+    for, or the run's month for a card with no end date whose own month a
+    dated card would be stale for (:func:`_behind`).
+
+    Such a card is the one in force today, so the cards of today's month are
+    what it is held against. Under its own label, in a month the supplier
+    did not reissue it, it had no other card to be compared with and was
+    not checked at all. In the first days of a month it stays with the cards
+    of the month before, which the suppliers publishing late still print,
+    and one labelled for a month to come stays there, as a dated card does.
+    """
+    month = label_month(snapshot.publication_label)
+    if snapshot.valid_until is None and month is not None and _behind(month, today):
+        return f"{today:%Y-%m}"
+    return snapshot.publication_label
+
+
+def figures(card: Card, today: date) -> Iterator[Figure]:
+    """Every regulated figure the card prints, filed under the month it is
+    compared in on a run of ``today`` (:func:`_figure_month`).
 
     A card priced excluding VAT (a professional one) is on another basis, and
     on another excise scale, so it is left out rather than converted. So is
@@ -710,9 +737,10 @@ def figures(card: Card) -> Iterator[Figure]:
     if card.region == REGION_BRUSSELS:
         for caliber, amount in (taxes.osp_by_caliber or {}).items():
             rows.append((REGION_BRUSSELS, f"levy {caliber}", "EUR/year", amount))
+    month = _figure_month(snapshot, today)
     for scope, name, unit, value in rows:
         yield Figure(
-            month=snapshot.publication_label,
+            month=month,
             scope=scope,
             name=name,
             unit=unit,
@@ -973,12 +1001,13 @@ def consensus(
 ) -> list[Check]:
     """Every card that departs from what the fleet prints, figure by figure,
     among the cards of the same month. ``today``, Brussels's by default, is
-    what the known card errors lapse against; ``sheet_unread`` says the
-    year's Fluvius sheet did not answer."""
+    what the known card errors lapse against, and its month the one a card
+    with no end date is compared in; ``sheet_unread`` says the year's
+    Fluvius sheet did not answer."""
     today = today or datetime.now(BRUSSELS).date()
     groups: dict[tuple[str, str, str], list[Figure]] = {}
     for card in cards:
-        for figure in figures(card):
+        for figure in figures(card, today):
             groups.setdefault((figure.month, figure.scope, figure.name), []).append(figure)
     checks: list[Check] = []
     for key in sorted(groups):
@@ -1317,7 +1346,7 @@ def against_sheets(
     not print, says nothing of the sheet."""
     groups: dict[tuple[str, str, str], list[Figure]] = {}
     for card in cards:
-        for figure in figures(card):
+        for figure in figures(card, today):
             if figure.scope in sheets and figure.name in _SHEET_FIGURES:
                 groups.setdefault((figure.month, figure.scope, figure.name), []).append(figure)
     checks: list[Check] = []

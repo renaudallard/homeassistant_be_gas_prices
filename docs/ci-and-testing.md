@@ -155,8 +155,17 @@ Fetches every registered (supplier, contract, region) with the extractor the
 integration uses and checks:
 
 - the card is for the current month, allowing the previous month in the first
-  five days of a month; a card with no end date (`valid_until` None) applies
-  until the supplier replaces it and is not checked;
+  five days of a month; a card with no end date (`valid_until` None, Bolt's
+  variable cards) applies until the supplier replaces it, so it is never
+  late. Its regulated figures are compared with the cards of the run's
+  month once a dated card of its month would be stale (`_figure_month`): in
+  a month Bolt does not reissue it, as in July and August 2026 on the June
+  card, it was alone under its own month and nothing was compared. In the
+  first five days it stays with the cards of the month before, and a card
+  labelled for a month to come stays there. Replayed on 20 July and 20
+  August 2026, the June cards add no row and join Bolt's known notices; a
+  card still not reissued on 6 January prints last year's network and fails
+  on it;
 - every DSO row of a residential card prices T2, the tier of most
   households (`T2 rows`): the parser drops a T2 whose rate is not below
   T1's, which leaves them unpriced and the fleet nothing to compare. Dots'
