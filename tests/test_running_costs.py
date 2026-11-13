@@ -539,17 +539,29 @@ def test_an_outage_s_gas_is_shared_over_its_days() -> None:
     """The first day back holds the gas of the two days before it."""
     days = {date(2026, 1, n): 10.0 for n in range(1, 11) if n not in (4, 5)}
     days[date(2026, 1, 6)] = 30.0
-    spread = spread_outages(days)
+    spread = spread_outages(days, date(2026, 1, 1))
     assert spread == {date(2026, 1, n): pytest.approx(10.0) for n in range(1, 11)}
     assert sum(spread.values()) == pytest.approx(sum(days.values()))
 
 
 def test_an_outage_whose_gas_was_lost_stays_missing() -> None:
-    """A first day back at 0 is a sum the recorder started over, and the
-    days before the first one on record are none of an outage's."""
+    """A first day back at 0 is a sum the recorder started over."""
     days = {date(2026, 1, n): 10.0 for n in range(3, 11) if n not in (5, 6)}
     days[date(2026, 1, 7)] = 0.0
-    assert spread_outages(days) == days
+    assert spread_outages(days, date(2026, 1, 3)) == days
+
+
+def test_a_first_day_on_record_after_the_read_began_is_left_out() -> None:
+    """The recorder measures it against the last sum before the read: it
+    holds the gas of an outage that began before the first day read, over
+    days nobody can count. The outages after it are shared out as ever."""
+    days = {date(2026, 1, n): 10.0 for n in range(5, 15) if n not in (9, 10)}
+    days[date(2026, 1, 5)] = 170.0
+    days[date(2026, 1, 11)] = 30.0
+    spread = spread_outages(days, date(2026, 1, 1))
+    assert spread == {date(2026, 1, n): pytest.approx(10.0) for n in range(6, 15)}
+    # Read from that day itself, it is a day like any other.
+    assert spread_outages(days, date(2026, 1, 5))[date(2026, 1, 5)] == 170.0
 
 
 def test_rolling_year_counts_an_outage_once() -> None:
@@ -561,7 +573,50 @@ def test_rolling_year_counts_an_outage_once() -> None:
         del days[date(2026, 1, n)]
     days[date(2026, 1, 11)] = 110.0
     assert rolling_year_kwh(days, today) == pytest.approx(3650.0 * 365 / 355)
-    assert rolling_year_kwh(spread_outages(days), today) == pytest.approx(3650.0)
+    assert rolling_year_kwh(spread_outages(days, min(days)), today) == pytest.approx(3650.0)
+
+
+@pytest.mark.parametrize("inside", [0, 1, 4, 10])
+def test_rolling_year_counts_an_outage_it_begins_in_once(inside: int) -> None:
+    """A ten-day outage a year ago with ``inside`` of its days in the
+    rolling year, 0 being a first day back on today's date last year. Read
+    from that date, the first day on record held the whole outage and its
+    missing days were scaled on top. Read from meter_start, the day before
+    the outage is on record and its gas is shared out."""
+    today = date(2026, 11, 13)
+    twin = date(2025, 11, 13)
+    first_back = twin + timedelta(days=inside)
+    start = meter_start(today)
+    days = {
+        day: 10.0
+        for n in range((today - start).days)
+        if not first_back - timedelta(days=10) <= (day := start + timedelta(days=n)) < first_back
+    }
+    days[first_back] = 110.0
+    late = {day: value for day, value in days.items() if day >= twin}
+    # The whole outage on one day, and the missing days scaled on top.
+    assert rolling_year_kwh(late, today) == pytest.approx(
+        (3750.0 - 10.0 * inside) * 365 / (365 - inside)
+    )
+    assert rolling_year_kwh(spread_outages(days, start), today) == pytest.approx(3650.0)
+
+
+def test_an_outage_reaching_past_the_days_read_is_not_counted_whole() -> None:
+    """Twenty days without rows, the last four in the rolling year: no day
+    is on record ahead of the first day back, so its lump is left out and
+    the rolling year scales five missing days instead of counting twenty-one
+    days' gas on one."""
+    today = date(2026, 11, 13)
+    start = meter_start(today)
+    first_back = date(2025, 11, 17)
+    days = {
+        day: 10.0
+        for n in range((today - start).days)
+        if (day := start + timedelta(days=n)) > first_back
+    }
+    days[first_back] = 210.0
+    assert rolling_year_kwh(days, today) == pytest.approx((3600.0 + 210.0) * 365 / 361)
+    assert rolling_year_kwh(spread_outages(days, start), today) == pytest.approx(3650.0)
 
 
 def test_year_end_projection_reads_an_outage_off_its_first_day_back() -> None:
@@ -588,7 +643,7 @@ def test_year_end_projection_reads_an_outage_off_its_first_day_back() -> None:
         )
 
     assert costs(None).projected_year_kwh is None
-    spread = costs(spread_outages(days))
+    spread = costs(spread_outages(days, date(2025, 1, 1)))
     assert spread.projected_year_kwh == pytest.approx(spread.ytd_kwh + 11 * 30.0)
     # The months are billed as the meter recorded them.
     assert spread.months == costs(None).months
@@ -707,13 +762,17 @@ def test_year_end_projection_counts_the_rest_of_today() -> None:
 @pytest.mark.parametrize(
     ("today", "start"),
     [
-        (date(2026, 10, 1), date(2025, 10, 1)),
-        (date(2028, 6, 15), date(2027, 6, 15)),
-        (date(2028, 2, 29), date(2027, 2, 28)),
-        (date(2029, 1, 20), date(2028, 1, 20)),
+        (date(2026, 10, 1), date(2025, 9, 15)),
+        (date(2028, 6, 15), date(2027, 5, 30)),
+        (date(2028, 2, 29), date(2027, 2, 12)),
+        (date(2029, 1, 20), date(2028, 1, 4)),
     ],
 )
-def test_the_meter_is_read_from_today_s_date_last_year(today: date, start: date) -> None:
+def test_the_meter_is_read_from_sixteen_days_before_today_s_date_last_year(
+    today: date, start: date
+) -> None:
+    """The days ahead of today's date last year put the day before an
+    outage that date falls in on record."""
     assert meter_start(today) == start
 
 

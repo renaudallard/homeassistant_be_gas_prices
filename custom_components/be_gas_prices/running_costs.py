@@ -117,11 +117,14 @@ def _last_year(day: date) -> date:
 
 
 def meter_start(today: date) -> date:
-    """The first day the costs read off the meter: today's date last year,
-    before this year's 1 January, the rolling year and the days the year-end
-    projection reads last year. A day before it has no use, so it is not
-    read."""
-    return _last_year(today)
+    """The first day the costs read off the meter. Today's date last year
+    comes before this year's 1 January, the rolling year and the days the
+    year-end projection reads last year; the days ahead of it are read for
+    the outage that date may fall in, whose gas is shared out from the day
+    on record before it (``gas_meter.spread_outages``). An outage reaching
+    further back than those days leaves the rolling year more missing days
+    than it takes."""
+    return _last_year(today) - timedelta(days=MEASURED_YEAR_GAP_DAYS + 1)
 
 
 def rolling_year_kwh(days: Mapping[date, float], today: date) -> float | None:

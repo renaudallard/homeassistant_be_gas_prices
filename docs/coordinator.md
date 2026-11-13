@@ -84,9 +84,10 @@ cards (`issues.sync_issues`).
    prices again on them when done (`async_reprice`), without asking the
    supplier or Atrias again.
 5. **The meter** (`_read_meter`): the configured sensor, else the first gas
-   source of the Energy dashboard, read as daily changes from today's date
-   last year (`running_costs.meter_start`), which covers this year, the
-   rolling year and the year-end projection; nothing before is read.
+   source of the Energy dashboard, read as daily changes from sixteen days
+   before today's date last year (`running_costs.meter_start`), which
+   covers this year, the rolling year and the year-end projection, and the
+   day before an outage that date falls in; nothing before is read.
    Setup's own tick reads no meter: Home Assistant waits on it, with 300 s
    for every integration together, and a year of statistics can take
    seconds on a database on a NAS. That tick publishes the figures the last

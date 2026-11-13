@@ -269,7 +269,10 @@ A meter that went quiet for a few days (Home Assistant stopped, the reader
 offline) has no statistics for them, and the recorder puts their gas on the
 first day it reads again. For a `total_increasing` meter the rolling year
 and the projection share that day's figure out evenly over the missing days
-and itself, so the gas counts once and those days are on record. A meter
+and itself, so the gas counts once and those days are on record. That
+holds for an outage a year ago that today's date falls in as well: the
+meter is read from sixteen days earlier, and an outage reaching further
+back than that leaves its days missing. A meter
 offline, while Home Assistant runs, for longer than the recorder keeps its
 five-minute statistics (`purge_keep_days`, 10 by default) starts its sum
 over and that gas is lost: the days stay missing. The monthly costs keep

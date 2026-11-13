@@ -750,7 +750,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
                 # The year reads each outage's gas off the first day back,
                 # shared over its days. A day the share lands on that has no
                 # factor leaves the days as the meter recorded them.
-                spread_days = to_kwh(spread_outages(meter_days), factor, billed_from)
+                spread_days = to_kwh(
+                    spread_outages(meter_days, meter_start(today)), factor, billed_from
+                )
         waived = self._fee_waived()
         if kwh_days is not None:
             if spread_days is None:

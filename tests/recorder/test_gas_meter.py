@@ -223,10 +223,20 @@ async def test_an_outage_s_gas_lands_on_its_first_day_back(
         date(2026, 1, 8): pytest.approx(72.0),
         date(2026, 1, 9): pytest.approx(24.0),
     }
-    spread = gas_meter.spread_outages(days)
+    spread = gas_meter.spread_outages(days, date(2026, 1, 5))
     assert spread[date(2026, 1, 7)] == pytest.approx(36.0)
     assert spread[date(2026, 1, 8)] == pytest.approx(36.0)
     assert sum(spread.values()) == pytest.approx(sum(days.values()))
+    # Read from inside the outage, the first day back is measured against
+    # the sum before the read and holds the outage whole, with no day on
+    # record ahead of it to share it from: it is left out.
+    late = await gas_meter.daily_consumption(
+        hass, METER, "volume", date(2026, 1, 7), date(2026, 1, 9)
+    )
+    assert late == {date(2026, 1, 8): pytest.approx(72.0), date(2026, 1, 9): pytest.approx(24.0)}
+    assert gas_meter.spread_outages(late, date(2026, 1, 7)) == {
+        date(2026, 1, 9): pytest.approx(24.0)
+    }
 
 
 async def test_a_meter_not_loaded_yet_is_judged_on_its_registry_entry(

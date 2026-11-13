@@ -227,8 +227,13 @@ billed on the last card it was sold on.
   them and itself; scaled across instead, that gas counted twice. A first
   day back at 0 is a sum the recorder started over, once the outage
   outlasted `purge_keep_days` and the last five-minute row was purged:
-  that gas is lost and the days stay missing. A total that starts a new
-  cycle, or an imported statistic, is read as recorded. A day the share
+  that gas is lost and the days stay missing. The meter is read from
+  sixteen days before today's date last year (`meter_start`), so that the
+  day before an outage that date falls in is on record; with none on
+  record ahead of it, the first day read holds an outage that began before
+  the read, over days nobody can count, and is left out as a missing day.
+  A total that starts a new cycle, or an imported statistic, is read as
+  recorded. A day the share
   lands on without a factor leaves the days as recorded. The months are
   billed as recorded.
 - A measured rolling year replaces the typed annual volume for the tier and

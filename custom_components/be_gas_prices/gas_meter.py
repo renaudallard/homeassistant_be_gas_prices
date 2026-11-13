@@ -238,17 +238,26 @@ def carries_outages(hass: HomeAssistant, entity_id: str) -> bool:
     return state_class == SensorStateClass.TOTAL_INCREASING
 
 
-def spread_outages(days: Mapping[date, float]) -> dict[date, float]:
-    """``days`` with the gas of each outage shared out over its days.
+def spread_outages(days: Mapping[date, float], since: date) -> dict[date, float]:
+    """``days``, read from ``since`` on, with the gas of each outage shared
+    out over its days.
 
     For a meter that :func:`carries_outages`, the first day back holds the
     gas of the days missing before it as well as its own, and its figure is
     split evenly over them and itself. One at 0 is a meter whose sum the
     recorder started over, after an outage longer than it keeps its
-    five-minute rows: that gas is lost and the days stay missing. So do the
-    days before the first one on record.
+    five-minute rows: that gas is lost and the days stay missing.
+
+    The recorder measures the first day it returns against the last sum
+    before the read, so a first day on record after ``since`` is the day
+    back of an outage that began before the read, holding gas of days
+    nobody can count, unless it is the meter's very first, a part of a day:
+    it is left out, a missing day like the others.
     """
     out = dict(days)
+    first = min(days, default=since)
+    if first > since:
+        del out[first]
     for before, after in pairwise(sorted(days)):
         missed = (after - before).days - 1
         value = days[after]
