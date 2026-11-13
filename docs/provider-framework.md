@@ -154,7 +154,9 @@ and module (`functools.wraps`): the live check asks
 the extractor reads the card there, and counts each supplier's figures once
 by its module. `scripts/card_finder.py` reports from the same candidates
 where the card went, the marked ones included. The card archive reads the
-registry, so it files a moved card at the month it names.
+registry, so it files a moved card at the month it names. Its replay of a
+stored row asks the supplier's own `fetch`, like the live check: a row filed
+from a moved card is kept as it was and reported as not replayable.
 
 ## Tests
 

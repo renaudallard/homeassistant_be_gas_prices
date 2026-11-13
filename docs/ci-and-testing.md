@@ -485,10 +485,24 @@ names in turn, comes to the card the row read. A GET for a card the row
 read, asked under another folder, answers 404 as the site did when the row
 was read: Brusol files each card under the month it uploaded it and the
 parse asks the delivery month's folder first. A card that arrived inside JSON (OCTA+'s archive) stores a
-`{{card:<sha256>}}` reference and gets its bytes back from the release. A
-row the parser now refuses, or reads as another month's, is removed, so no
-installation bills on the old reading; one that asks for something it never
-read, or whose contract the supplier withdrew, is left as it was.
+`{{card:<sha256>}}` reference and gets its bytes back from the release.
+
+The parse is the supplier's own `fetch` (`inspect.unwrap`), as in the live
+check: the registry's search for a card that moved is for the pages as they
+are today, and on a row's texts it could only read the row's own card and
+turn it down for the month of the capture day. A row whose own card, the
+source its snapshot names as `source_url`, the parse read and now refuses,
+or reads as another month's, is removed, so no installation bills on the
+old reading. A row whose parse gave up before it read that card is left as
+it was and reported as not replayable, with the reason (`_card_read`,
+`_settle_refusal`): the card was never judged, only the way to it failed. A
+card's text reaches a parser offline only through the memo or the render
+hook, which both note it, so a card the parser refuses was read and its row
+goes. On 3 November 2026 the resolver had just been taught Elegant's renamed
+files, asked the listing stored with October's rows for names it never
+held, and the replay removed three good rows of a closed month. A row that
+asks for something it never read, or whose contract the supplier withdrew,
+is left as it was too.
 
 A card the text readers refuse as page images is read with the OCR engine,
 [ocr_price_cards](https://github.com/renaudallard/ocr_price_cards), from its

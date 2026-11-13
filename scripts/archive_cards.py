@@ -105,6 +105,7 @@ import base64
 import binascii
 import functools
 import hashlib
+import inspect
 import json
 import re
 import sys
@@ -413,8 +414,8 @@ class _Summary:
     ocr_failed: list[str] = field(default_factory=list)
     given_up: list[str] = field(default_factory=list)
     unreplayable: list[str] = field(default_factory=list)
-    # Rows the parser now refuses outright: a misread an installation would
-    # otherwise go on billing, so they are removed.
+    # Rows whose own card the parser read and now refuses outright: a misread
+    # an installation would otherwise go on billing, so they are removed.
     refused: list[str] = field(default_factory=list)
 
 
@@ -1193,7 +1194,8 @@ class _Offline:
     uploaded it, and the parse asks the delivery month's folder first.
     Anything else the parse asks for is refused as a network error, which
     the readers wrap the way they wrap a real one, and the row is left as it
-    was and reported.
+    was and reported. A parse that gives up on these answers before it has
+    read the row's card leaves the row as it was too (``_settle_refusal``).
     """
 
     def __init__(self, cards: Iterable[str] = ()) -> None:
@@ -1238,6 +1240,40 @@ async def _kept_pdf(
     if hashlib.sha256(payload).hexdigest() != digest:
         raise ExtractorError(f"the kept copy of card {digest} does not match its digest")
     return payload
+
+
+def _card_read(row: dict[str, Any], memo: _RecordingMemo, cards: _Cards) -> bool:
+    """Whether a replayed parse read the row's own card, the document its
+    snapshot names as its source.
+
+    Offline, a card's text reaches a parser two ways only: served from the
+    memo, which notes the key, or handed to the render hook, which notes the
+    call. A row whose sources do not include the card it names gives
+    nothing to go by, so anything the parse read counts as its card.
+    """
+    read = {key.rpartition("\0")[2] for key in memo.touched}
+    read.update(url for _variant, url, _digest, _text in cards.calls)
+    named = {s["url"] for s in row["_sources"] if isinstance(s, dict)}
+    own = row.get("source_url")
+    return own in read if own in named else bool(read)
+
+
+def _settle_refusal(path: Path, label: str, why: str, card_read: bool, summary: _Summary) -> None:
+    """Settle a row whose replay gave no card of its month.
+
+    The parser cannot refuse a card it has not read. Where it had read the
+    row's own card, it refuses that card, or reads it as another month's,
+    and the row is removed: an installation would go on billing the old
+    reading. Where it had not, the way to the card failed and the card was
+    never judged: a resolver taught a supplier's new file names asks the
+    stored listing for names it never held, which removed Elegant's three
+    rows of October 2026 on 3 November. Such a row stays as it was.
+    """
+    if card_read:
+        path.unlink()
+        summary.refused.append(f"{label}: {why}")
+    else:
+        summary.unreplayable.append(f"{label}: the row's card was not read: {why}")
 
 
 async def _replay_row(
@@ -1329,22 +1365,31 @@ async def _replay_row(
                 first = date(int(path.stem[:4]), int(path.stem[5:]), 1)
                 snapshot = await extractor.fetch_for_month(offline, contract, region, first)
             else:
-                snapshot = await extractor.fetch(offline, contract, region)
+                # The supplier's own fetch, not the registry's: the search
+                # for a card that moved (providers/_moved.py) is for the
+                # pages as they are today. On a row's texts it would read
+                # the row's card on its own, turn it down for the month of
+                # the capture day, and leave the row looking refused.
+                snapshot = await inspect.unwrap(extractor.fetch)(offline, contract, region)
         except ExtractorError as err:
             if is_transient(err):
                 # Something the row never read, asked of the offline
                 # session: the row stays as it was.
                 summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
             else:
-                path.unlink()
-                summary.refused.append(f"{label}: {err}")
+                _settle_refusal(path, label, str(err), _card_read(row, memo, cards), summary)
             return
         except Exception as err:  # reported, and the row stays as it was
             summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
             return
     if snapshot is None or _card_month(snapshot, seen_on) != path.stem:
-        path.unlink()
-        summary.refused.append(f"{label}: the parse no longer gives this month's card")
+        _settle_refusal(
+            path,
+            label,
+            "the parse no longer gives this month's card",
+            _card_read(row, memo, cards),
+            summary,
+        )
         return
     summary.replayed += 1
     fresh = _row(

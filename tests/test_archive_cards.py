@@ -33,6 +33,7 @@ the memo, the render hook and the digests are the real ones.
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import inspect
 import json
@@ -67,6 +68,7 @@ from custom_components.be_gas_prices.providers._network import excise_bands
 from custom_components.be_gas_prices.providers._rates import Contract, FixedRates
 from custom_components.be_gas_prices.providers._validity import end_of_month
 from custom_components.be_gas_prices.providers.base import (
+    CardNotListedError,
     CardNotReadableError,
     DsoOverlay,
     DsoTier,
@@ -899,6 +901,140 @@ async def test_a_row_the_parser_now_refuses_is_removed(
     assert summary.refused and summary.refused[0].startswith("acme/acme_fix/wallonia/2026-09")
 
 
+class _Renamed(_Acme):
+    """A supplier whose resolver was taught the new name of its card, as
+    Elegant's was on 3 November 2026: it asks the listing for a name the
+    stored one never held, and does not come to the card."""
+
+    async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+        if "card-2026.pdf" not in await _pdf.fetch_text(session, LISTING_URL):
+            raise CardNotListedError("Acme: no Fix card on the listing")
+        return await super().fetch(session, contract, region)
+
+
+async def _replay_kept(
+    out: Path, extractor: SupplierExtractor, monkeypatch: pytest.MonkeyPatch
+) -> str:
+    """Replay September's row through ``extractor`` and return the one line
+    it is reported not replayable with, the row left as it was."""
+    before = (out / ROW / "2026-09.json").read_bytes()
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out, only=frozenset({"nobody"}), extractors=[extractor], now=NOW, sleep=_no_sleep
+    )
+    assert (out / ROW / "2026-09.json").read_bytes() == before
+    assert (summary.replayed, summary.refused) == (0, [])
+    (line,) = summary.unreplayable
+    return str(line)
+
+
+async def test_a_row_whose_card_the_resolver_no_longer_finds_is_kept(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The parse gave up on the stored listing before it read the card, so
+    the card was never judged: the row of a closed month is not removed for
+    it, as Elegant's three rows of October 2026 were."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    line = await _replay_kept(out, _Renamed().extractor(), monkeypatch)
+    assert line == (
+        "acme/acme_fix/wallonia/2026-09: the row's card was not read: "
+        "Acme: no Fix card on the listing"
+    )
+
+
+async def test_a_replay_asks_the_supplier_s_own_fetch(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The registry wraps a fetch in the search for a card that moved. On a
+    row's texts the search reads the card the stored listing names and
+    turns it down for the month of the capture day, which made the row look
+    refused. The replay asks the supplier's own fetch."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    renamed = _Renamed()
+
+    @functools.wraps(renamed.fetch)
+    async def fetch_or_moved(session: Any, contract: str, region: str) -> SupplierSnapshot:
+        try:
+            return await renamed.fetch(session, contract, region)
+        except CardNotListedError:
+            await _pdf.fetch_pdf_rendered(
+                session, CARD_URL, variant="plain", timeout=30, render=renamed.render
+            )
+            raise
+
+    searching = replace(renamed.extractor(), fetch=fetch_or_moved)
+    assert "the row's card was not read" in await _replay_kept(out, searching, monkeypatch)
+
+
+@pytest.mark.parametrize("reads_card", [False, True])
+async def test_a_mirrored_row_goes_only_when_its_card_was_read(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch, reads_card: bool
+) -> None:
+    """A supplier's archive answers None for a month it has no card for.
+    Replayed, that removes the row when the card was read and is no longer
+    this month's, and keeps it when the stored answer was not understood
+    and the card never read."""
+    index_url, month_url = "https://acme.test/archive?month=2026-08", "https://acme.test/08.pdf"
+    web.pages[index_url] = b"offers"
+    web.pages[month_url] = _card("2026-08", "0.07")
+    understood = [True]
+
+    async def fetch_for_month(
+        session: Any, contract: str, _region: str, _month: date
+    ) -> SupplierSnapshot | None:
+        await _pdf.fetch_text(session, index_url)
+        if not (understood[0] or reads_card):
+            return None
+        text = await _pdf.fetch_pdf_rendered(
+            session, month_url, variant="plain", timeout=30, render=lambda b: b.decode("ascii")
+        )
+        if not understood[0]:
+            return None
+        return replace(_parse(text, 1.0, contract), source_url=month_url)
+
+    out = tmp_path / "gas"
+    extractor = _Acme().extractor(fetch_for_month=fetch_for_month)
+    await ac.archive(out, extractors=[extractor], now=NOW, sleep=_no_sleep, backfill_months=1)
+    august = out / ROW / "2026-08.json"
+    before = august.read_bytes()
+    understood[0] = False
+    summary = await ac.archive(out, extractors=[extractor], now=NOW, sleep=_no_sleep, reparse=True)
+    label = "acme/acme_fix/wallonia/2026-08"
+    if reads_card:
+        assert not august.exists()
+        assert summary.refused == [f"{label}: the parse no longer gives this month's card"]
+    else:
+        assert august.read_bytes() == before
+        assert summary.refused == []
+        assert summary.unreplayable == [
+            f"{label}: the row's card was not read: the parse no longer gives this month's card"
+        ]
+
+
+async def test_a_row_naming_no_source_as_its_card_goes_on_any_refusal(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Which source is the card cannot be told for such a row, so whatever
+    the parse read before it refused counts as the card."""
+    out = tmp_path / "gas"
+    await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
+    path = out / ROW / "2026-09.json"
+    row = json.loads(path.read_text())
+    path.write_text(json.dumps({**row, "source_url": "https://acme.test/elsewhere.pdf"}))
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out,
+        only=frozenset({"nobody"}),
+        extractors=[_Renamed().extractor()],
+        now=NOW,
+        sleep=_no_sleep,
+    )
+    assert not path.exists()
+    assert len(summary.refused) == 1
+
+
 @pytest.mark.parametrize(
     "contracts",
     [
@@ -1013,8 +1149,10 @@ class _Refiled(_Acme):
     """A supplier that files each card under the month it uploaded it, as
     Brusol does, so the parse asks the month's own folder first."""
 
+    folders = (_THIS_FOLDER, _LAST_FOLDER)
+
     async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
-        for url in (_THIS_FOLDER, _LAST_FOLDER):
+        for url in self.folders:
             try:
                 text = await _pdf.fetch_pdf_rendered(
                     session, url, variant="plain", timeout=30, render=self.render
@@ -1055,6 +1193,24 @@ async def test_a_replay_answers_a_card_asked_under_another_folder_with_a_404(
     row = json.loads((out / ROW / "2026-09.json").read_text())
     assert row["energy"]["price"] == pytest.approx(0.16)
     assert len(web.asked) == asked
+
+
+async def test_a_card_gone_from_every_folder_asked_is_no_refusal(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The replay answers 404 for the row's card asked under a folder it was
+    not read from. A parse that then runs out of folders has not read the
+    card either, and the row stays."""
+    out = tmp_path / "gas"
+    web.missing.add(_THIS_FOLDER)
+    web.pages[_LAST_FOLDER] = _card("2026-09", "0.08")
+    await ac.archive(out, extractors=[_Refiled().extractor()], now=NOW, sleep=_no_sleep)
+
+    class _OtherFolders(_Refiled):
+        folders = (_THIS_FOLDER, "https://acme.test/2026-10/card.pdf")
+
+    line = await _replay_kept(out, _OtherFolders().extractor(), monkeypatch)
+    assert line.endswith("the row's card was not read: Acme: no card in either folder")
 
 
 async def test_a_card_handed_over_inside_json_is_kept_once_and_put_back_for_a_replay(
