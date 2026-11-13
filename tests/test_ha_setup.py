@@ -3419,6 +3419,42 @@ async def test_the_price_history_stamp_moves_with_the_tier(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_the_cost_history_stamp_moves_with_an_earlier_contract(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """A contract left on 9 September is billed on its own supplier's cards
+    and index values, which the entry's own stamp does not hold: August's
+    value landing for it, or one of its months' cards, draws the cost
+    history again. An entry with no earlier contract has nothing to add."""
+    assert (await _setup(hass)).runtime_data.earlier_contracts_signature() == ""
+    earlier = {
+        CONF_SUPPLIER: "engie",
+        CONF_CONTRACT: "engie_easy_fixed",
+        CONF_REGION: REGION_WALLONIA,
+        CONF_DSO: DSO_ORES,
+        "until": "2026-09-09",
+    }
+    switched = MockConfigEntry(
+        domain=DOMAIN, title="Engie Flow", data={**DATA, CONF_PREVIOUS_CONTRACTS: [earlier]}
+    )
+    switched.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(switched.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    coordinator = switched.runtime_data
+    before = coordinator.earlier_contracts_signature()
+    assert before
+    own = coordinator.card_months_signature()
+    today = dt_util.now().date()
+    coordinator._periods._tables["engie"] = (today, {"ZTP101": {"2026-08": 61.9}})
+    landed = coordinator.earlier_contracts_signature()
+    assert landed != before
+    key = f"engie/engie_easy_fixed/{REGION_WALLONIA}/2026-08"
+    coordinator._months._rows[key] = MonthCard(fetch.return_value, "supplier", dt_util.utcnow())
+    assert coordinator.earlier_contracts_signature() != landed
+    assert coordinator.card_months_signature() == own
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_stamp_moves_with_the_law(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:

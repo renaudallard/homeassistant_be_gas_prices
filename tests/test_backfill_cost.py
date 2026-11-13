@@ -147,11 +147,15 @@ def test_an_hour_no_bill_covers_writes_nothing() -> None:
 
 async def test_the_cost_is_written_again_only_when_its_inputs_move() -> None:
     """Stamped once written: the same cards and meter write nothing more, a
-    new meter writes again, and a run that wrote nothing is not stamped."""
+    new meter writes again, as does a card or an index value landing for an
+    earlier contract of the year, and a run that wrote nothing is not
+    stamped."""
+    earlier = [""]
     coordinator = SimpleNamespace(
         cost_backfill_stamp=None,
         meter="sensor.gas",
         card_months_signature=lambda: "cards",
+        earlier_contracts_signature=lambda: earlier[0],
         async_save=AsyncMock(),
     )
     written = AsyncMock(return_value={})
@@ -164,5 +168,11 @@ async def test_the_cost_is_written_again_only_when_its_inputs_move() -> None:
         assert written.await_count == 2
         coordinator.meter = "sensor.other"
         await backfill_cost_once(MagicMock(), coordinator)  # type: ignore[arg-type]
-    assert written.await_count == 3
-    assert coordinator.async_save.await_count == 2
+        assert written.await_count == 3
+        # Without an earlier contract the stamp is the one older releases wrote.
+        assert coordinator.cost_backfill_stamp == f"{dt_util.now().year}:cards:sensor.other"
+        earlier[0] = "october"
+        await backfill_cost_once(MagicMock(), coordinator)  # type: ignore[arg-type]
+        await backfill_cost_once(MagicMock(), coordinator)  # type: ignore[arg-type]
+    assert written.await_count == 4
+    assert coordinator.async_save.await_count == 3

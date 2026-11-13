@@ -43,7 +43,7 @@ from homeassistant.util import dt as dt_util
 
 from . import excise_law, fluvius, law_archive, network_archive, tarbel, vat_rates
 from .const import CONF_DSO, CONF_STATION, DOMAIN
-from .contract_periods import periods_this_year
+from .contract_periods import PeriodBilling, periods_this_year
 from .daily_ranking import DailyRanking
 from .month_cards import MonthCardCache
 from .network_sheet import held_network, takes_network_sheet
@@ -79,6 +79,7 @@ class _StoreMixin:
     _held: dict[str, Any] | None
     _index_table: IndexTable | None
     _months: MonthCardCache
+    _periods: PeriodBilling
     _release: str | None
     _snapshot: SupplierSnapshot | None
     _stand_in: bool
@@ -270,6 +271,15 @@ class _StoreMixin:
             ]
             for contract in self._sheet_contracts(today)
         ]
+
+    def earlier_contracts_signature(self) -> str:
+        """What the earlier contracts of the year are priced from, digested,
+        or "" without one a card prices (``PeriodBilling.priced_from``). The
+        cost history bills their days, so it is drawn again when a card or
+        an index value of theirs lands; the price history starts at the
+        last change of contract and has no use for it."""
+        held = self._periods.priced_from(self._data, dt_util.now().date())
+        return _digest(held) if held else ""
 
     def card_months_signature(self) -> str:
         """What the year's past months are priced from: the entry's

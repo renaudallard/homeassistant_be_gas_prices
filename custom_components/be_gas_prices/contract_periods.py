@@ -75,6 +75,7 @@ from .providers.base import (
 from .providers.custom import build_snapshot as build_custom_snapshot
 from .running_costs import Household, RunningCosts, running_costs
 from .running_costs import months_between as _months_between
+from .snapshot_codec import snapshot_to_json
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -281,6 +282,22 @@ class Unpriced:
     until: date
 
 
+def _card_keys(
+    period: Mapping[str, Any], start: date, end: date, extractor: SupplierExtractor
+) -> list[str]:
+    """Where the month card cache keeps the cards an earlier contract that
+    supplied from ``start`` to ``end`` is billed on: its months', and its
+    signing month's and signing day's."""
+    wanted = _months_between(start, end)
+    last = last_month_sold(extractor, str(period[CONF_CONTRACT]))
+    if last is not None:
+        # No card was published after it: its last one prices the months it
+        # was no longer sold, and stands in for a month whose own card
+        # cannot price the household.
+        wanted = [month for month in wanted if month < last] + [last]
+    return wanted + [key for key in signing_keys(period, extractor) if key not in wanted]
+
+
 class PeriodBilling:
     """Prices the earlier contracts of the year on their own suppliers' cards.
 
@@ -385,15 +402,7 @@ class PeriodBilling:
                     continue
                 contract = str(period[CONF_CONTRACT])
                 region = str(period[CONF_REGION])
-                wanted = _months_between(start, end)
-                last = last_month_sold(extractor, contract)
-                if last is not None:
-                    # No card was published after it: its last one prices
-                    # the months it was no longer sold, and stands in for a
-                    # month whose own card cannot price the household.
-                    wanted = [month for month in wanted if month < last] + [last]
-                wanted += [key for key in signing_keys(period, extractor) if key not in wanted]
-                for month in wanted:
+                for month in _card_keys(period, start, end, extractor):
                     if card_key_due(month, today):
                         try:
                             await self._months.card(
@@ -403,6 +412,46 @@ class PeriodBilling:
                             _LOGGER.debug(
                                 "%s card for %s not read: %s", extractor.label, month, err
                             )
+
+    def priced_from(self, data: dict[str, Any], today: date) -> list[Any]:
+        """What the earlier contracts of the year are priced from, as held
+        now: for each one a card prices, the cards of its months and of its
+        signing, today's card where it stands in for one, and its
+        supplier's index values. Empty without such a contract. A typed
+        card is the entry's settings."""
+        from .providers import get as get_extractor
+
+        held: list[Any] = []
+        for period, start, end in periods_this_year(data, today):
+            try:
+                extractor = get_extractor(str(period[CONF_SUPPLIER]))
+            except ExtractorError:
+                continue
+            if extractor.id == SUPPLIER_CUSTOM:
+                continue
+            contract = str(period[CONF_CONTRACT])
+            region = str(period[CONF_REGION])
+            rows = {
+                key: self._months.get(extractor.id, contract, region, key)
+                for key in _card_keys(period, start, end, extractor)
+            }
+            current = self._cards.get((extractor.id, contract, region))
+            table = self._tables.get(extractor.id)
+            held.append(
+                [
+                    extractor.id,
+                    contract,
+                    region,
+                    {
+                        key: snapshot_to_json(row.snapshot)
+                        for key, row in rows.items()
+                        if row is not None and row.snapshot is not None
+                    },
+                    None if current is None else snapshot_to_json(current[1]),
+                    None if table is None else table[1],
+                ]
+            )
+        return held
 
     async def bill(
         self,

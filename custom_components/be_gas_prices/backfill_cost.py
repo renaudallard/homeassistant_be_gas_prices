@@ -165,6 +165,11 @@ async def backfill_cost_once(hass: HomeAssistant, coordinator: GasCoordinator) -
     and again when what the year is priced from or the meter changes."""
     today = dt_util.now().date()
     stamp = f"{today.year}:{coordinator.card_months_signature()}:{coordinator.meter}"
+    earlier = coordinator.earlier_contracts_signature()
+    if earlier:
+        # Left out without an earlier contract, so every other entry's
+        # stamp stays what it was.
+        stamp = f"{stamp}:{earlier}"
     if coordinator.cost_backfill_stamp == stamp:
         return
     try:

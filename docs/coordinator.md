@@ -270,3 +270,9 @@ tick's and a service call's, moved the rows twice: one join of a sensor runs
 at a time, and it holds until the recorder has committed what it queued.
 When the recorder does not answer one of those reads nothing is written. It is stamped in the Store on what the price
 history is stamped on and the meter, so it runs again when either moves.
+With an earlier contract of the year the stamp also holds what that
+contract is priced from (`PeriodBilling.priced_from`: its months' cards, its
+signing card, today's card of it and its supplier's index values), which the
+entry's own stamp does not: the month a contract was left in stays
+provisional until its supplier publishes that month's index, and its hours
+are drawn again when the value lands.
