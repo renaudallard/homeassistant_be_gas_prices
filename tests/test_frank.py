@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import date
 from unittest.mock import AsyncMock, patch
@@ -459,6 +460,38 @@ async def test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused(
     ):
         await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
     assert queried.await_count == 1
+
+
+@pytest.mark.parametrize(
+    ("printed", "worded"),
+    [
+        # The footnote worded another way, its mark left.
+        ("0,00*", "Gedurende het eerste jaar van het contract betaal je geen"),
+        ("0,00*", "korting op je abonnement"),
+        # The mark gone with it.
+        ("0,00", "korting op je abonnement"),
+        # A subscription printed, under a footnote no longer read.
+        ("2,17*", "korting op je abonnement"),
+    ],
+)
+@freeze_time("2026-11-04 12:00:00+01:00")
+async def test_a_subscription_under_a_footnote_not_read_is_refused(
+    monkeypatch: pytest.MonkeyPatch, printed: str, worded: str
+) -> None:
+    """Read as it stands, "0,00*" with its waiver reworded billed every JN
+    household, those past their first year too, no subscription at all."""
+    monkeypatch.setattr(frank, "_NAMED_FEES", {})
+    card = _card(JN_NOVEMBER)
+    waiver = "maandelijkse korting op de abonnementskosten"
+    assert card.count("0,00*") == 1 and waiver in " ".join(card.split())
+    text = re.sub(r"maandelijkse\s+korting\s+op\s+de\s+abonnementskosten", worded, card)
+    text = text.replace("0,00*", printed)
+    with (
+        patch.object(frank, "fetch_text", AsyncMock(return_value=_assets_nov())),
+        patch.object(frank, "fetch_pdf_text_layout", AsyncMock(return_value=text)),
+        pytest.raises(ExtractorError, match="with a footnote not read"),
+    ):
+        await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
 
 
 def test_the_plus_card_reads_as_the_standard_tier_from_november_2026() -> None:

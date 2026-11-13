@@ -78,7 +78,11 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   sets `fee_waived_months` to 12, so a contract signed on the card pays none
   of it over its first twelve months (`bill.fee_waiver`). A waiver naming
   another tier's card, the card's own month or a later one, or no month,
-  fails the fetch. Frank uploaded the month's JN card twice on 30 October;
+  fails the fetch. So does a subscription of 0, or one bearing a footnote
+  mark, on a card no waiver was read from: with the footnote worded another
+  way, "0,00*" would be billed as no subscription to every JN household,
+  those past their first year included. No other card in the archive
+  prints a 0 or a mark there. Frank uploaded the month's JN card twice on 30 October;
   the earlier upload printed 2,17 and no waiver, and the later one is read.
 - Korting is withdrawn from 1 November 2026 (`withdrawn`): Frank uploaded no
   November card for it while the other tiers had theirs on 30 October, and
@@ -192,7 +196,8 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   `test_a_withdrawn_tier_is_not_fetched_but_its_past_months_are`.
 - JN's waiver: `test_the_november_jn_card_bills_the_subscription_it_waives`
   (the October card's fee, read once, and the waiver stored),
-  `test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused`.
+  `test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused`,
+  `test_a_subscription_under_a_footnote_not_read_is_refused`.
 - `test_the_plus_card_reads_as_the_standard_tier_from_november_2026`.
 - The catalog: `test_the_terms_page_links_the_gas_tiers_sold` (the pages of
   September and November 2026), `test_a_gas_card_no_contract_reads_is_named`,

@@ -434,9 +434,18 @@ async def _with_waived_fee(
     first months: billed at the one the earlier card it names prints, and
     waived for those months of a contract signed on it. A card waiving none
     is returned as it is; one naming no earlier card of its own tier fails,
-    since the subscription billed after the waiver would be a guess."""
+    since the subscription billed after the waiver would be a guess. So
+    does a card whose subscription is 0 or bears a footnote mark ("0,00*")
+    while no waiver was read: a footnote worded another way, which would
+    bill every household no subscription at all."""
     waiver = _FEE_WAIVER_RE.search(text)
     if waiver is None:
+        fee = _FEE_RE.search(text)
+        if snap.energy.yearly_fixed_fee == 0.0 or (fee is not None and fee.group(2)):
+            raise ExtractorError(
+                f"Frank Energie: the {contract.label} card prints its subscription "
+                "with a footnote not read"
+            )
         return snap
     named = _FEE_CARD_RE.search(text)
     month = None if named is None else MONTH_NAMES.get(named.group(2).lower())
@@ -471,7 +480,8 @@ async def _with_waived_fee(
 
 
 _VAT_RE = re.compile(r"incl\.\s*(\d+)\s*%\s*btw")
-_FEE_RE = re.compile(r"Abonnementskost \(EUR/maand\)\s+(\d+,\d+)")
+# "0,00*" on the JN card of November 2026, whose footnote waives it.
+_FEE_RE = re.compile(r"Abonnementskost \(EUR/maand\)\s+(\d+,\d+)(\s*\*)?")
 _FORMULA_RE = re.compile(
     r"Formule Gasprijs:\s*\(\s*(\d+,\d+)\s*x\s*" + r"\s+".join(_INDEX.split()) + r"\s*"
     r"(" + _DASH + r")\s*(\d+(?:,\d+)?)\s*\)\s*x\s*(\d+,\d+)\s*in EURct/kWh"
