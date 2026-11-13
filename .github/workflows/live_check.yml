@@ -107,10 +107,12 @@ jobs:
         # A card the archiver walked earlier and still holds is not rendered
         # again: the check downloads and parses it and takes the render from
         # what the archive stored. Its VAT table is the rate the fleet's law
-        # figures are measured on, as installations bill them. The cards
-        # repository is public, so this needs no token and works on a fork's
-        # pull request too; without it every card is rendered, which only
-        # takes longer, and the figures are measured on 6 %.
+        # figures are measured on, as installations bill them, and its rows
+        # of the month before are what each card's energy leg is held
+        # against. The cards repository is public, so this needs no token
+        # and works on a fork's pull request too; without it every card is
+        # rendered, which only takes longer, the figures are measured on
+        # 6 % and no energy leg is compared.
         run: |
           if git clone -q --depth=1 \
               https://github.com/renaudallard/be_price_cards.git tmp/cards \

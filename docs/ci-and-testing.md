@@ -179,7 +179,29 @@ integration uses and checks:
 - the regulated figures agree across the fleet, month by month: per DSO the
   T1 and T2 terms, transport and metering; the federal excise and energy
   contribution; the VAT rate a card states for its customers; the Walloon
-  connection fee; the Brussels levy by caliber.
+  connection fee; the Brussels levy by caliber;
+- the energy leg of each card against its own row of the month before in the
+  `--texts` checkout (`against_month_before`, `<supplier>/<contract>/<region>:
+  energy leg against the month before`). No two suppliers share a price, a
+  fee or a formula, so the fleet says nothing of them, and this is the only
+  check of TotalEnergies' gas card, which prints no index value its parser
+  could work the price out from. A fixed fee within a factor 1,5 of twelve
+  times that month's or of a twelfth of it (a fee a month read as a year's),
+  or a price, a factor or a base within a factor 1,5 of ten, a hundred or a
+  thousand times it, either way (EUR/MWh, c€/kWh and EUR/kWh taken for one
+  another), fails; a formula on another index name is a notice. The row is
+  the one of the month before the card's own label. A card with none (a
+  product's first month, a month the archive missed, a run without
+  `--texts`) gets no row, a figure that is zero on either card or changed
+  sign is not compared, a product that changed kind is held to its fee only,
+  and an archive row that does not read is a notice. Over the archive's
+  2 824 pairs of consecutive months, November 2023 to November 2026, nothing
+  fails: the widest moves were a fee times 4 and to 0,34 of the month
+  before, a price times 1,73 and to 0,73, a base times 2,3 and to 0,51 and a
+  factor by 3 %. Six cards are noticed: OCTA+'s Ecoflux in June and July
+  2026 and Luminus's BasicFlex in November 2026. The archive replays its
+  rows with each new parser, so this shows a card that changed under the
+  parser, not a parser change that misreads every month alike.
 
 Before the check, the runner resolves names through nsec.arnor.org over
 DNS-over-TLS: Fluvius serves its zone from its own two nameservers, which
@@ -292,8 +314,9 @@ How the cross-check decides:
 
 `--texts DIR` points at the `gas/` directory of a `be_price_cards` checkout:
 a card whose bytes the archive holds is served its stored text instead of
-being rendered, which is most of a run's time. `--fingerprint FILE` receives
-the failing labels.
+being rendered, which is most of a run's time, its `vat.json` is the VAT
+table the fleet is measured on, and its rows are what each card's energy leg
+is held against. `--fingerprint FILE` receives the failing labels.
 
 The report's tables show each detail as one code span (`_code_span`): a
 detail can quote what a supplier serves, an error about its card or an

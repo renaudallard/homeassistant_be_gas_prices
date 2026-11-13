@@ -60,7 +60,12 @@ says nothing about the card, and checks what came back:
     network from (Fluvius's area sheets, Brugel's, the CWaPE's grids for ORES
     and RESA) read as the integration reads it, and each of its T1, T2 and
     metering figures on the month's VAT measured against what the fleet
-    prints for the DSO.
+    prints for the DSO;
+  - the energy leg, which no two suppliers share, against the card's own row
+    of the month before in the ``--texts`` checkout: a supplier's fixed fee
+    about twelve times that month's or a twelfth of it, or a price, factor
+    or base about ten, a hundred or a thousand times off it, is a unit read
+    wrong and fails, and a formula on another index is a notice.
 
 A card published as page images is parsed on the card archive's OCR reading
 of its bytes (``--texts``); one the archive has not read yet is a notice.
@@ -74,7 +79,8 @@ the check itself crashed.
 
 ``--texts DIR`` reads the gas card archive (the gas/ directory of a checkout of
 be_price_cards): a card whose bytes it already holds is served its stored
-text instead of being rendered again, which is most of a run's time.
+text instead of being rendered again, which is most of a run's time, and its
+rows are what each card's energy leg is held against.
 """
 
 from __future__ import annotations
@@ -105,7 +111,11 @@ sys.path.insert(0, str(ROOT / "scripts"))
 # scripts/ is not a package, so it is put on sys.path above rather than
 # imported by dotted path; mypy cannot follow that.
 import card_finder  # type: ignore[import-not-found]  # noqa: E402
-from card_texts import StoredTexts, in_daemon_thread  # type: ignore[import-not-found]  # noqa: E402
+from card_texts import (  # type: ignore[import-not-found]  # noqa: E402
+    ROWS,
+    StoredTexts,
+    in_daemon_thread,
+)
 from homeassistant.util import dt as dt_util  # noqa: E402
 
 from custom_components.be_gas_prices import (  # noqa: E402
@@ -138,7 +148,10 @@ from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
     memoise_text_fetches,
     render_through,
 )
-from custom_components.be_gas_prices.providers._rates import IndexedRates  # noqa: E402
+from custom_components.be_gas_prices.providers._rates import (  # noqa: E402
+    EnergyRates,
+    IndexedRates,
+)
 from custom_components.be_gas_prices.providers._resolve import (  # noqa: E402
     law_contribution,
     law_excise,
@@ -150,6 +163,7 @@ from custom_components.be_gas_prices.providers.base import (  # noqa: E402
     SupplierSnapshot,
     stand_in_name,
 )
+from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json  # noqa: E402
 from custom_components.be_gas_prices.vat_rates import residential_vat  # noqa: E402
 
 BRUSSELS = ZoneInfo("Europe/Brussels")
@@ -972,9 +986,11 @@ async def check_fleet(
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
     sheet_unread: bool = False,
     sheets: Mapping[str, tuple[str, SheetNetwork]] | None = None,
+    archive: Path | None = None,
 ) -> list[Check]:
     """Every check of the run, in report order, the fleet held against the
-    network ``sheets`` read before it (:func:`read_network_sheets`).
+    network ``sheets`` read before it (:func:`read_network_sheets`) and
+    against the rows of the card ``archive``'s checkout, where one is given.
 
     The suppliers are checked side by side and each one's cards in turn,
     which keeps the load on any one site what an installation puts on it.
@@ -997,6 +1013,7 @@ async def check_fleet(
     fleet = [card for _part, cards in parts for card in cards]
     checks.extend(consensus(fleet, today, sheet_unread=sheet_unread))
     checks.extend(against_sheets(fleet, sheets or {}, today))
+    checks.extend(against_month_before(fleet, archive))
     return checks
 
 
@@ -1321,6 +1338,100 @@ def against_sheets(
     return checks
 
 
+# ---- the energy leg against the card of the month before --------------------
+
+# What a unit read wrong multiplies a figure by: a fee a month taken for a
+# fee a year, and a price or a formula's term in EUR/MWh, c EUR/kWh or
+# EUR/kWh taken for another of the three.
+_FEE_SLIPS: tuple[float, ...] = (12.0,)
+_UNIT_SLIPS: tuple[float, ...] = (10.0, 100.0, 1000.0)
+# How far from a slip a ratio may be and still be read as one: the figure
+# can have moved on its own in the same month. From November 2023 to November
+# 2026 no card of the archive moved its fee by more than 4 times or to less
+# than 0,34 of the month before, its price by more than 1,74 or to less than
+# 0,72, its base by more than 2,3 or to less than 0,51, and its factor by
+# more than 3 %.
+_SLIP_BAND = 1.5
+
+
+def _month_before(month: tuple[int, int]) -> str:
+    year, number = month
+    return f"{year - (number == 1):04d}-{(number - 2) % 12 + 1:02d}"
+
+
+def _slip(new: float, old: float, slips: tuple[float, ...]) -> float | None:
+    """The slip ``new`` is off ``old`` by, either way, or None. A figure
+    that is zero or changed sign has no ratio to read one from."""
+    if new * old <= 0.0:
+        return None
+    ratio = max(new / old, old / new)
+    return next((slip for slip in slips if slip / _SLIP_BAND <= ratio <= slip * _SLIP_BAND), None)
+
+
+def _energy_leg(label: str, now: EnergyRates, then: EnergyRates, month: str) -> Check:
+    """One card's energy leg against its own of ``month``, the month before.
+
+    The fee is compared whatever the two cards are; a price, and a formula's
+    terms, only between two cards of one kind, since a product that went
+    from a fixed price to a formula has no earlier figure of its own.
+    """
+    pairs = [("fixed fee", "EUR/year", _FEE_SLIPS, now.yearly_fixed_fee, then.yearly_fixed_fee)]
+    if type(now) is type(then):
+        pairs.append(("price", "EUR/kWh", _UNIT_SLIPS, now.price, then.price))
+    if isinstance(now, IndexedRates) and isinstance(then, IndexedRates):
+        pairs.append(("factor", "EUR/kWh per EUR/MWh", _UNIT_SLIPS, now.factor, then.factor))
+        pairs.append(("base", "EUR/kWh", _UNIT_SLIPS, now.base, then.base))
+    slipped = [
+        f"the {name} is {new:.6g} {unit} where the {month} card has {old:.6g}, "
+        f"about {slip:g} times {'more' if abs(new) > abs(old) else 'less'}"
+        for name, unit, slips, new, old in pairs
+        if (slip := _slip(new, old, slips)) is not None
+    ]
+    if slipped:
+        return Check(label, "fail", "; ".join(slipped) + ": a unit read wrong")
+    if isinstance(now, IndexedRates) and isinstance(then, IndexedRates) and now.index != then.index:
+        return Check(
+            label, "notice", f"priced on {now.index} where the {month} card is on {then.index}"
+        )
+    return Check(label, "ok", month)
+
+
+def against_month_before(cards: Iterable[Card], archive: Path | None) -> list[Check]:
+    """Each card's energy leg against the same contract and region's row of
+    the month before the card's, in the card archive's checkout.
+
+    Nothing else looks at the energy leg: no two suppliers share a price, a
+    fee or a formula, so the fleet has nothing to say of them, and
+    TotalEnergies' gas card prints no index value its parser could work its
+    price out from. A card has no row without a checkout, or where the
+    archive holds none for that month, as for a product's first month. A row
+    that does not read is a notice: the archive's to mend, and nothing was
+    compared.
+    """
+    if archive is None:
+        return []
+    checks: list[Check] = []
+    for card in cards:
+        month = label_month(card.snapshot.publication_label)
+        if month is None:
+            continue
+        before = _month_before(month)
+        where = f"{card.extractor.id}/{card.contract}/{card.region}"
+        path = archive / ROWS / where / f"{before}.json"
+        if not path.is_file():
+            continue
+        label = f"{where}: energy leg against the month before"
+        try:
+            then = snapshot_from_json(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, ValueError) as err:
+            checks.append(
+                Check(label, "notice", f"the archive's {before} row does not read: {err}")
+            )
+            continue
+        checks.append(_energy_leg(label, card.snapshot.energy, then.energy, before))
+    return checks
+
+
 def exit_code(checks: Iterable[Check]) -> int:
     statuses = {check.status for check in checks}
     if "fail" in statuses:
@@ -1390,8 +1501,9 @@ def render_report(checks: list[Check]) -> str:
         "Notices",
         "Figures the integration does not bill as printed, figures the cards "
         "disagree on with no majority to measure them against, cards published "
-        "as page images the card archive has not read yet, and index publications "
-        "known to run late. Reported, never filed.",
+        "as page images the card archive has not read yet, index publications "
+        "known to run late, and formulas that moved to another index. Reported, "
+        "never filed.",
         by_status["notice"],
     )
     lines += ["## All checks", ""]
@@ -1434,6 +1546,7 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
                 today,
                 sheet_unread=sheet.status == "transient",
                 sheets=sheets,
+                archive=texts,
             )
             checks += await check_catalogs(session, all_extractors())
             # Report only, last: where a covered card failed to fetch or is
@@ -1462,7 +1575,8 @@ def main() -> int:
         metavar="DIR",
         help=(
             "the gas directory of a be_price_cards checkout; cards it holds are not "
-            "rendered again, and its VAT table is the one the fleet is measured on"
+            "rendered again, its VAT table is the one the fleet is measured on, and "
+            "its rows are what each card's energy leg is held against"
         ),
     )
     parser.add_argument(

@@ -68,6 +68,7 @@ from custom_components.be_gas_prices.providers.base import (
     SupplierSnapshot,
     TaxOverlay,
 )
+from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import fixture_page
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -553,6 +554,136 @@ def test_a_fleet_without_a_majority_or_of_another_year_says_nothing_of_a_sheet()
     assert lc.against_sheets(split, sheets, date(2026, 9, 29)) == []
     whole = [_card(_snapshot(sid)) for sid in ("alpha", "beta", "gamma")]
     assert lc.against_sheets(whole, sheets, date(2027, 1, 2)) == []
+
+
+def _archived(archive: Path, snapshot: SupplierSnapshot, month: str) -> Path:
+    """The archive's row of ``month`` for the card ``_card`` makes of
+    ``snapshot``, in a checkout of its own."""
+    row = archive / "cards" / snapshot.supplier / f"{snapshot.supplier}_fix" / "flanders"
+    row.mkdir(parents=True, exist_ok=True)
+    (row / f"{month}.json").write_text(json.dumps(snapshot_to_json(snapshot)), encoding="utf-8")
+    return archive
+
+
+def _energy_row(archive: Path, energy: Any, label: str = "2026-09") -> tuple[str, str]:
+    """The status and detail of acme's card on ``energy`` against the rows
+    ``archive`` holds for it."""
+    (check,) = lc.against_month_before(
+        [_card(_snapshot("acme", energy=energy, label=label))], archive
+    )
+    assert check.label == "acme/acme_fix/flanders: energy leg against the month before"
+    return check.status, check.detail
+
+
+@pytest.mark.parametrize(
+    ("fee", "status"),
+    [
+        (50.0, "ok"),
+        # The widest moves a fee made in a month of the archive, 4 times and
+        # to a third, are a supplier's own.
+        (200.0, "ok"),
+        (17.0, "ok"),
+        (600.0, "fail"),
+        (50.0 / 12, "fail"),
+        # A fee a month taken for a year's on a card that also raised it.
+        (840.0, "fail"),
+        # No fee, where there was one: nothing to read a slip from.
+        (0.0, "ok"),
+    ],
+)
+def test_a_fee_a_month_read_as_a_year_s_fails(tmp_path: Path, fee: float, status: str) -> None:
+    """No two suppliers share a fee, so the fleet says nothing of it: the
+    card's own of the month before does."""
+    archive = _archived(tmp_path, _snapshot("acme"), "2026-08")
+    assert _energy_row(archive, FixedRates(price=0.08, yearly_fixed_fee=fee))[0] == status
+
+
+def test_a_price_or_a_formula_s_term_in_another_unit_fails(tmp_path: Path) -> None:
+    """EUR/MWh, c EUR/kWh and EUR/kWh are ten, a hundred and a thousand
+    apart, and no price, factor or base moved by half of that in a month."""
+    fixed = _archived(tmp_path / "fixed", _snapshot("acme"), "2026-08")
+    assert _energy_row(fixed, FixedRates(price=0.14, yearly_fixed_fee=50.0)) == ("ok", "2026-08")
+    assert _energy_row(fixed, FixedRates(price=0.8, yearly_fixed_fee=50.0)) == (
+        "fail",
+        "the price is 0.8 EUR/kWh where the 2026-08 card has 0.08, about 10 times more: "
+        "a unit read wrong",
+    )
+    formula = _indexed("M")
+    indexed = _archived(tmp_path / "indexed", _snapshot("acme", energy=formula), "2026-08")
+    assert _energy_row(indexed, replace(formula, base=0.023, price=0.085))[0] == "ok"
+    for slipped in (
+        replace(formula, factor=1.0),
+        replace(formula, factor=0.0001),
+        replace(formula, base=1.0),
+        replace(formula, base=0.00001),
+        replace(formula, price=0.0005),
+    ):
+        assert _energy_row(indexed, slipped)[0] == "fail"
+    assert _energy_row(indexed, replace(formula, factor=1.0, base=0.0001))[1] == (
+        "the factor is 1 EUR/kWh per EUR/MWh where the 2026-08 card has 0.001, about 1000 "
+        "times more; the base is 0.0001 EUR/kWh where the 2026-08 card has 0.01, about 100 "
+        "times less: a unit read wrong"
+    )
+    # A base that went from a surcharge to a discount has no ratio to read.
+    assert _energy_row(indexed, replace(formula, base=-0.001))[0] == "ok"
+
+
+def test_a_formula_on_another_index_is_a_notice(tmp_path: Path) -> None:
+    """Luminus's BasicFlex moved from TTF DAH RLP M to TTF DAH M in November
+    2026: the supplier's to decide, and worth a look."""
+    archive = _archived(tmp_path, _snapshot("acme", energy=_indexed("M RLP")), "2026-08")
+    assert _energy_row(archive, _indexed("M")) == (
+        "notice",
+        "priced on M where the 2026-08 card is on M RLP",
+    )
+    assert _energy_row(archive, replace(_indexed("M"), factor=0.01))[0] == "fail"
+
+
+def test_a_card_with_no_row_the_month_before_gets_no_energy_row(tmp_path: Path) -> None:
+    """A product's first month, a month the archive missed and a run without
+    a checkout have nothing to compare; the row is the one of the month
+    before the card's own, across a year's end too."""
+    card = _card(_snapshot("acme"))
+    assert lc.against_month_before([card], None) == []
+    assert lc.against_month_before([card], tmp_path) == []
+    _archived(tmp_path, _snapshot("acme"), "2026-07")
+    assert lc.against_month_before([card], tmp_path) == []
+    _archived(tmp_path, _snapshot("acme"), "2025-12")
+    assert _energy_row(tmp_path, FixedRates(price=0.08), label="2026-01") == ("ok", "2025-12")
+    unlabelled = _card(_snapshot("acme", label="September"))
+    assert lc.against_month_before([unlabelled], tmp_path) == []
+
+
+def test_a_product_that_changed_kind_is_held_to_its_fee_only(tmp_path: Path) -> None:
+    """A fixed price that became a formula has no earlier price of its own."""
+    archive = _archived(tmp_path, _snapshot("acme"), "2026-08")
+    formula = replace(_indexed("M"), price=0.8, yearly_fixed_fee=50.0)
+    assert _energy_row(archive, formula) == ("ok", "2026-08")
+    assert _energy_row(archive, replace(formula, yearly_fixed_fee=600.0))[0] == "fail"
+
+
+def test_an_archive_row_that_does_not_read_is_a_notice(tmp_path: Path) -> None:
+    archive = _archived(tmp_path, _snapshot("acme"), "2026-08")
+    row = archive / "cards" / "acme" / "acme_fix" / "flanders" / "2026-08.json"
+    for content in ("{", "[]", '{"schema": 0}'):
+        row.write_text(content, encoding="utf-8")
+        status, detail = _energy_row(archive, FixedRates(price=0.08))
+        assert status == "notice"
+        assert detail.startswith("the archive's 2026-08 row does not read: ")
+
+
+async def test_the_fleet_s_energy_legs_are_held_against_the_archive(tmp_path: Path) -> None:
+    async def fetch(_session: Any, _contract: str, _region: str) -> SupplierSnapshot:
+        return _snapshot("acme", energy=FixedRates(price=0.08, yearly_fixed_fee=600.0))
+
+    archive = _archived(tmp_path, _snapshot("acme"), "2026-08")
+    label = "acme/acme_fix/flanders: energy leg against the month before"
+    checks = await lc.check_fleet(None, [_extractor("acme", fetch)], TODAY, sleep=_no_sleep)
+    assert label not in {c.label for c in checks}
+    checks = await lc.check_fleet(
+        None, [_extractor("acme", fetch)], TODAY, sleep=_no_sleep, archive=archive
+    )
+    assert list(_failing(checks)) == [label]
 
 
 async def test_each_network_sheet_is_read_before_the_fleet(
@@ -1500,6 +1631,8 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
     assert fleets[-1]["sheet_unread"] is False
     # The network sheets read before the fleet are what it is held against.
     assert fleets[-1]["sheets"] == {}
+    # Without a checkout no card's energy leg has a row to be held against.
+    assert fleets[-1]["archive"] is None
 
     async def sheet_down(*_args: Any, **_kwargs: Any) -> Any:
         return lc.Check("fluvius: 2026 gas tariff sheet", "transient", "network error")
@@ -1522,9 +1655,11 @@ def test_the_run_holds_the_archive_s_vat_table_before_the_fleet(
     """The VAT table comes from the checkout ``--texts`` names, and is held
     by the time the fleet is measured."""
     rates: list[float] = []
+    archives: list[Path] = []
 
-    async def check_fleet(*_args: Any, **_kwargs: Any) -> list[Any]:
+    async def check_fleet(*_args: Any, **kwargs: Any) -> list[Any]:
         rates.append(lc.residential_vat(date(2026, 9, 1)))
+        archives.append(kwargs["archive"])
         return []
 
     _offline(monkeypatch)
@@ -1536,6 +1671,8 @@ def test_the_run_holds_the_archive_s_vat_table_before_the_fleet(
     )
     assert lc.main() == 0
     assert rates == [0.21]
+    # The same checkout holds the rows the energy legs are held against.
+    assert archives == [texts]
     assert "- [x] archive: VAT table" in capsys.readouterr().out
 
 
