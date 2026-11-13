@@ -34,7 +34,10 @@ says nothing about the card, and checks what came back:
     card is in force until replaced, and its regulated figures are compared
     with the cards of the run's month;
   - every supplier's index publication (its ``fetch_index``) reads, lists
-    every index its cards are priced on, and has a recent value for each;
+    every index its cards are priced on, and has a recent value for each
+    and one for every month since its first;
+  - an index several suppliers publish reads alike at each of them, month by
+    month;
   - every supplier's list of the products it sells (its ``discover``) names
     the contracts registered for it, no more and no fewer;
   - the regulated figures agree across the fleet: per DSO the T1, T2 and
@@ -184,10 +187,13 @@ _GRACE_DAYS = 5
 # priced on may be. A monthly index is published in the first days after its
 # month, so early in a month the newest value can be two months back, and one
 # month back after that: in October 2026 every one gained September's value
-# by the 5th. A quarterly one comes after its quarter, whose last month is
-# then four months back.
-_INDEX_MAX_LAG = {"month": 1, "quarter": 4}
-# Days into a month a monthly index may still lack the month before.
+# by the 5th. A quarterly one is filed under each month of its quarter and
+# published in the first days after it, so its newest value is one to three
+# months back through the next quarter and four early in the one after: in
+# October 2026 Luminus's and Eneco's gained the third quarter's between the
+# 2nd and the 7th.
+_INDEX_MAX_LAG = {"month": 1, "quarter": 3}
+# Days into a month an index may still lack the value that came due with it.
 _INDEX_GRACE_DAYS = 10
 # Publications that run further behind by design: TotalEnergies' history
 # ends two months back (docs/providers/totalenergies.md).
@@ -209,6 +215,40 @@ _KNOWN_INDEX_DELAYS: dict[tuple[str, str], tuple[date, str]] = {
 # the job into its timeout before anything is reported or committed. Give up
 # on it for the run instead.
 GIVE_UP_AFTER = 3
+# How far apart two suppliers' values of one index may be, in EUR/MWh: they
+# print it to one, two or three decimals, rounded or cut off.
+_INDEX_TOLERANCE = 0.1
+# Days into a month the value of the month just closed may still move:
+# Bolt's for October 2026 read 87,87 on 1 November and 88,06 on the 2nd.
+_INDEX_SETTLE_DAYS = 2
+# The series that are one index under several suppliers, by supplier and the
+# name it publishes it under. A name proves nothing: OCTA+'s TTF RLP M and
+# TotalEnergies' TTF_M_RLP gave 61,729 and 61,662 for August 2026. Each
+# group is the series of the card archive's indices on 13 November 2026
+# that, two by two, are within the tolerance in every month both give, six
+# months or more, and that three suppliers' readers or more publish, since
+# two series that part do not say which one left. That leaves one group:
+# over December 2024 to October 2026 its members were never more than 0,1
+# apart. Two more series give the same values today and are left out for
+# the months they did not: Bolt's TTF, which until August 2025 was the
+# series Elegant publishes as TTFDAM (36,223 for June 2025 against 36,39),
+# and OCTA+'s TTF RLP M, for its 50,272 of February 2025 against 51,27.
+_SAME_INDEX: tuple[frozenset[tuple[str, str]], ...] = (
+    frozenset(
+        (supplier, "TTF_RLP")
+        for supplier in (
+            "belvus",
+            "energiebe",
+            "evident",
+            "hoa_energy",
+            "power2you",
+            "prijspunten",
+            "servolt",
+            "smappee_smiles",
+            "trevion",
+        )
+    ),
+)
 # The months either side of the current one in which the law and FPS
 # Finance's tariff are held against each other wherever both give a rate.
 _LAW_AGAINST_TARIFF_MONTHS = 12
@@ -385,14 +425,26 @@ def _freshness(label: str, snapshot: SupplierSnapshot, today: date) -> Check:
     return Check(name, "ok", snapshot.publication_label)
 
 
+def _gaps(series: Mapping[str, float]) -> list[str]:
+    """The months between a series' first and newest value that it gives no
+    value for. A name that does not read as a month is the caller's to
+    refuse."""
+    held = {m[0] * 12 + m[1] - 1 for m in map(label_month, series) if m is not None}
+    return [f"{i // 12:04d}-{i % 12 + 1:02d}" for i in range(min(held), max(held)) if i not in held]
+
+
 def _index_checks(
     ex: SupplierExtractor, table: dict[str, dict[str, float]], cards: list[Card], today: date
 ) -> Iterator[Check]:
     """The index publication against the cards priced on it.
 
-    Only the indices a card names are held to a recent value: a publication
-    also lists indices no product uses any more, and their last value can be
-    years old without anything being wrong.
+    Only the indices a card names are held to a recent value and to one for
+    every month since their first: a publication also lists indices no
+    product uses any more, and their last value can be years old without
+    anything being wrong. A month without a value in the middle of a series
+    is priced on an earlier month's, as one not published yet is: Trevion's
+    February 2026 was missing from 20 to 24 October 2026, its March card
+    naming the wrong month.
     """
     if not any(table.values()):
         yield Check(f"{ex.id}: index publication", "fail", "the publication lists no value")
@@ -417,13 +469,23 @@ def _index_checks(
             continue
         newest = max(series)
         month = label_month(newest)
-        if month is None:
-            yield Check(label, "fail", f"unreadable month {newest!r}")
+        unreadable = sorted(name for name in series if label_month(name) is None)
+        if month is None or unreadable:
+            yield Check(label, "fail", f"unreadable month {unreadable[0]!r}")
+            continue
+        gaps = _gaps(series)
+        if gaps:
+            more = f" and {len(gaps) - 6} more" if len(gaps) > 6 else ""
+            yield Check(
+                label,
+                "fail",
+                f"no value for {', '.join(gaps[:6])}{more}, between {min(series)} and {newest}",
+            )
             continue
         allowed = _INDEX_MAX_LAG[period]
+        if today.day <= _INDEX_GRACE_DAYS:
+            allowed += 1
         if period == "month":
-            if today.day <= _INDEX_GRACE_DAYS:
-                allowed += 1
             allowed = max(allowed, _INDEX_LAG_BY_SUPPLIER.get(ex.id, 0))
         if _lag(today, month) > allowed:
             detail = f"the newest value is for {newest}, more than {allowed} months before {today}"
@@ -447,17 +509,104 @@ def _index_checks(
         yield Check(label, "ok", f"{newest}: {series[newest]:g} EUR/MWh")
 
 
+def _settling(month: str, today: date) -> bool:
+    """Whether ``month``'s value may still move today: the month just
+    closed, or the running one, in the first days of a month."""
+    parsed = label_month(month)
+    return parsed is not None and today.day <= _INDEX_SETTLE_DAYS and _lag(today, parsed) <= 1
+
+
+def _same_index(
+    label: str,
+    series: Mapping[str, float],
+    others: Mapping[str, Mapping[str, float]],
+    today: date,
+) -> Check | None:
+    """One supplier's series against the same index as ``others`` publish
+    it, by supplier: the months in which it is further than the tolerance
+    from every one of them, where two or more give the month. None when no
+    month can be compared. A month whose value may still move is a notice."""
+    compared = 0
+    apart: list[str] = []
+    for month in sorted(series, reverse=True):
+        given = [values[month] for values in others.values() if month in values]
+        if len(given) < 2:
+            continue
+        compared += 1
+        # 33,2 and 33,3 are the tolerance apart, and a hair more as floats.
+        if all(abs(series[month] - value) > _INDEX_TOLERANCE + 1e-9 for value in given):
+            apart.append(month)
+    if not compared:
+        return None
+    if not apart:
+        return Check(label, "ok", f"{compared} months, with {', '.join(sorted(others))}")
+    settled = [month for month in apart if not _settling(month, today)]
+    month = (settled or apart)[0]
+    elsewhere = ", ".join(
+        f"{values[month]:g} at {supplier}"
+        for supplier, values in sorted(others.items())
+        if month in values
+    )
+    detail = f"{month}: {series[month]:g} EUR/MWh where it is {elsewhere}"
+    if len(apart) > 1:
+        detail += f"; {len(apart) - 1} more months apart, back to {apart[-1]}"
+    if not settled:
+        return Check(label, "notice", detail + "; the month's value can still move")
+    return Check(label, "fail", detail)
+
+
+def against_same_index(
+    tables: Iterable[tuple[SupplierExtractor, Mapping[str, Mapping[str, float]]]], today: date
+) -> list[Check]:
+    """Each series of a group of :data:`_SAME_INDEX` against the others of
+    its group, as the suppliers publish them today.
+
+    A value ten times off, a month filed under another, or a publication
+    that took another series under the same name all read as a recent value,
+    and no card says otherwise. The other suppliers do, where three or more
+    publish the index: brands on one reader are one publication read once,
+    so they count once, and never against each other (:func:`voter`). A
+    series with no group has nothing to be held against.
+    """
+    published = sorted(tables, key=lambda pair: pair[0].id)
+    checks: list[Check] = []
+    for group in _SAME_INDEX:
+        members = [
+            (ex, index, table[index])
+            for ex, table in published
+            for index in sorted(table)
+            if (ex.id, index) in group and table[index]
+        ]
+        for ex, index, series in members:
+            others: dict[str, tuple[str, Mapping[str, float]]] = {}
+            for other, _index, values in members:
+                if voter(other) != voter(ex):
+                    others.setdefault(voter(other), (other.id, values))
+            check = _same_index(
+                f"{ex.id}: index {index} against the same index elsewhere",
+                series,
+                dict(others.values()),
+                today,
+            )
+            if check is not None:
+                checks.append(check)
+    return checks
+
+
 async def _check_supplier(
     session: aiohttp.ClientSession,
     ex: SupplierExtractor,
     wanted: list[tuple[str, str]],
     today: date,
     sleep: Callable[[float], Awaitable[Any]],
-) -> tuple[list[Check], list[Card]]:
-    """One supplier's cards in turn, then its index publication. What is
-    left once the supplier is given up on is reported as transient."""
+) -> tuple[list[Check], list[Card], dict[str, dict[str, float]]]:
+    """One supplier's cards in turn, then its index publication, which is
+    handed back for the fleet's (empty where it has none or it did not
+    read). What is left once the supplier is given up on is reported as
+    transient."""
     checks: list[Check] = []
     cards: list[Card] = []
+    table: dict[str, dict[str, float]] = {}
     patience = Patience()
     skipped = f"not fetched: gave up on {ex.id} after {GIVE_UP_AFTER} network failures in a row"
     for contract, region in wanted:
@@ -490,7 +639,7 @@ async def _check_supplier(
             checks.append(_failure(f"{ex.id}: index publication", err))
         else:
             checks.extend(_index_checks(ex, table, cards, today))
-    return checks, cards
+    return checks, cards, table
 
 
 async def check_catalogs(
@@ -1038,16 +1187,15 @@ async def check_fleet(
     wanted: dict[str, list[tuple[str, str]]] = {}
     for ex, contract, region in targets(registry, today):
         wanted.setdefault(ex.id, []).append((contract, region))
+    checked = [ex for ex in registry if ex.id in wanted]
     with memoise_text_fetches({}):
         parts = await asyncio.gather(
-            *(
-                _check_supplier(session, ex, wanted[ex.id], today, sleep)
-                for ex in registry
-                if ex.id in wanted
-            )
+            *(_check_supplier(session, ex, wanted[ex.id], today, sleep) for ex in checked)
         )
-    checks = [check for part, _cards in parts for check in part]
-    fleet = [card for _part, cards in parts for card in cards]
+    checks = [check for part, _cards, _table in parts for check in part]
+    fleet = [card for _part, cards, _table in parts for card in cards]
+    tables = [(ex, table) for ex, (_part, _cards, table) in zip(checked, parts, strict=True)]
+    checks.extend(against_same_index(tables, today))
     checks.extend(consensus(fleet, today, sheet_unread=sheet_unread))
     checks.extend(against_sheets(fleet, sheets or {}, today))
     checks.extend(against_month_before(fleet, archive))
@@ -1539,8 +1687,8 @@ def render_report(checks: list[Check]) -> str:
         "Figures the integration does not bill as printed, figures the cards "
         "disagree on with no majority to measure them against, cards published "
         "as page images the card archive has not read yet, index publications "
-        "known to run late, and formulas that moved to another index. Reported, "
-        "never filed.",
+        "known to run late, index values that can still move, and formulas that "
+        "moved to another index. Reported, never filed.",
         by_status["notice"],
     )
     lines += ["## All checks", ""]

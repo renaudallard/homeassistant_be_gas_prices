@@ -177,11 +177,48 @@ integration uses and checks:
   with the others, below;
 - every `fetch_index` reads, lists each index its cards are priced on, and
   has a recent value for it: the month before, or two months back in the
-  first ten days of a month (TotalEnergies' history always two), four
-  months back for a quarterly index. A publication already looked at that
-  runs later still is a notice until its allowance lapses
-  (`_KNOWN_INDEX_DELAYS`: TotalEnergies' TTF_M_RLP history, still the 17
-  September 2026 upload in November, to 1 December), and fails from then on;
+  first ten days of a month (TotalEnergies' history always two). A
+  quarterly index is filed under each month of its quarter and published
+  in the first days after it, so its newest value may be three months back,
+  or four in the first ten days of a month: a quarter's value still missing
+  on the 11th of the month after it fails, where it used to pass until that
+  month was over (in October 2026 Luminus's and Eneco's came between the
+  2nd and the 7th). A publication already looked at that runs later still
+  is a notice until its allowance lapses (`_KNOWN_INDEX_DELAYS`:
+  TotalEnergies' TTF_M_RLP history, still the 17 September 2026 upload in
+  November, to 1 December), and fails from then on. A series with a month
+  missing between its first and newest value fails on the same row (`no
+  value for ...`), since that month is priced on an earlier one's value,
+  like a month not published yet. None of the archive's
+  35 series has one on 13 November 2026, and the only one its history
+  shows is Trevion's February 2026, from 20 to 24 October, when the reader
+  left out the March card that names it. The archive keeps a month a
+  supplier stopped listing, so a hole in today's publication only shows on
+  a run;
+- an index three suppliers' readers or more publish reads alike at each of
+  them (`against_same_index`, `<supplier>: index <name> against the same
+  index elsewhere`): a value ten times off, a month filed under another, or
+  another series under the same name all read as a recent value. The groups
+  are written out (`_SAME_INDEX`), since a name proves nothing (OCTA+'s TTF
+  RLP M and TotalEnergies' TTF_M_RLP gave 61,729 and 61,662 for August
+  2026): the series of the archive that, two by two, are within 0,1 EUR/MWh
+  in every month both give. That is one group, TTF_RLP at Belvus,
+  energie.be, Trevion and the six Energy Together brands, which share a
+  reader and count once: never more than 0,1 apart from December 2024 to
+  October 2026 (88,059, 88,05 and 88,0 for October). A value more than 0,1
+  from every other reader's, in a month two or more of them give, fails; on
+  the first two days of a month, for the month just closed, it is a notice,
+  since that value can still move (Bolt's for October 2026 read 87,87 on 1
+  November and 88,06 on the 2nd). On each of the 16 versions the archive
+  kept of its tables, 1 October to 4 November 2026, every row passes. Bolt's
+  TTF and OCTA+'s TTF RLP M give the same values today and are left out for
+  the months they did not: Bolt's was the series Elegant publishes as
+  TTFDAM until August 2025, and OCTA+'s February 2025 reads 50,272 for
+  51,27. Three more pairs agree in every month (EBEM's ZTP-RLP0 and
+  Elegant's TTFDAM with TotalEnergies' ZTP_M_RLP and TTF_M_RLP, Eneco's
+  TTFDAW-RLP-M with Luminus's TTF DAH RLP M), but two series that part do
+  not say which one left. A series in no group has no such row, so a value
+  ten times off in Luminus's TTF DAH M still passes;
 - every supplier's list of the products it sells (`discover`: Frank's terms
   page, Eneco's and Mega's card listings, OCTA+'s tariff page) names the
   contracts registered for it, a withdrawn one left out: a product no contract is fails `<supplier>/catalog: no new products`,

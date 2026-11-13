@@ -1264,13 +1264,170 @@ def test_a_monthly_index_lags_a_month_after_the_first_days(
     assert checks[-1].status == status
 
 
-def test_a_quarterly_index_may_lag_its_quarter() -> None:
+@pytest.mark.parametrize(
+    ("newest", "today", "status"),
+    [
+        # The second quarter's value as the newest: the third's is due in
+        # the first days of October.
+        ("2026-06", date(2026, 9, 30), "ok"),
+        ("2026-06", date(2026, 10, 2), "ok"),
+        ("2026-06", date(2026, 10, 10), "ok"),
+        ("2026-06", date(2026, 10, 11), "fail"),
+        ("2026-06", date(2026, 10, 31), "fail"),
+        # The third's, through the fourth quarter and a year's turn.
+        ("2026-09", date(2026, 12, 31), "ok"),
+        ("2026-09", date(2027, 1, 10), "ok"),
+        ("2026-09", date(2027, 1, 11), "fail"),
+    ],
+)
+def test_a_quarterly_index_lags_its_quarter_and_ten_days(
+    newest: str, today: date, status: str
+) -> None:
+    """A quarter's value is filed under its months and comes in the first
+    days after it. It passed for the whole month after it was due."""
     extractor = _extractor("acme")
     card = lc.Card(
         extractor, "acme_fix", "flanders", _snapshot("acme", energy=_indexed("Q", "quarter"))
     )
-    checks = list(lc._index_checks(extractor, {"Q": {"2026-06": 30.0}}, [card], date(2026, 10, 2)))
-    assert [c.status for c in checks] == ["ok", "ok"]
+    checks = list(lc._index_checks(extractor, {"Q": {newest: 30.0}}, [card], today))
+    assert [c.status for c in checks] == ["ok", status]
+
+
+def test_a_month_missing_inside_an_index_fails() -> None:
+    """Trevion's February 2026 was missing for four days in October 2026:
+    the newest value was recent, and the month could not be priced."""
+    extractor = _extractor("acme")
+    card = lc.Card(extractor, "x_var", "flanders", _snapshot("acme", energy=_indexed("M")))
+    today = date(2026, 3, 20)
+
+    def row(months: tuple[str, ...]) -> tuple[str, str]:
+        table = {"M": dict.fromkeys(months, 30.0), "RETIRED": {"2019-01": 20.0, "2019-07": 21.0}}
+        (check,) = [
+            c
+            for c in lc._index_checks(extractor, table, [card], today)
+            if c.label == "acme: index M"
+        ]
+        return check.status, check.detail
+
+    assert row(("2025-11", "2025-12", "2026-01", "2026-02")) == ("ok", "2026-02: 30 EUR/MWh")
+    assert row(("2025-11", "2026-01", "2026-02")) == (
+        "fail",
+        "no value for 2025-12, between 2025-11 and 2026-02",
+    )
+    assert row(("2025-01", "2025-10", "2026-02")) == (
+        "fail",
+        "no value for 2025-02, 2025-03, 2025-04, 2025-05, 2025-06, 2025-07 and 5 more, "
+        "between 2025-01 and 2026-02",
+    )
+    assert row(("2026-01", "2026-02", "February")) == ("fail", "unreadable month 'February'")
+
+
+def _publishing(*suppliers: str, **values: dict[str, float]) -> list[tuple[Any, Any]]:
+    """The TTF_RLP tables of ``suppliers`` as the fleet gathers them, each
+    on ``values`` for it or on the shared ones; the Energy Together brands
+    on their one reader."""
+    shared = {"2026-08": 61.72, "2026-09": 75.35, "2026-10": 88.05}
+    together = {"evident", "hoa_energy"}
+    return [
+        (
+            _extractor(sid, module="providers.energy_together" if sid in together else None),
+            {"TTF_RLP": values.get(sid, shared)},
+        )
+        for sid in suppliers
+    ]
+
+
+def _same_index_rows(tables: list[tuple[Any, Any]], today: date) -> dict[str, tuple[str, str]]:
+    suffix = ": index TTF_RLP against the same index elsewhere"
+    checks = lc.against_same_index(tables, today)
+    assert all(c.label.endswith(suffix) for c in checks)
+    return {c.label.removesuffix(suffix): (c.status, c.detail) for c in checks}
+
+
+def test_an_index_several_suppliers_publish_reads_alike_at_each() -> None:
+    """TTF_RLP for October 2026 read 88,059 at Belvus, 88,05 at Trevion and
+    88,0 at the Energy Together brands: printed to fewer digits, the same."""
+    today = date(2026, 11, 13)
+    printed = {
+        "belvus": {"2026-02": 33.296, "2026-10": 88.059},
+        "trevion": {"2026-02": 33.3, "2026-10": 88.05},
+        "evident": {"2026-02": 33.2, "2026-10": 88.0},
+        "hoa_energy": {"2026-02": 33.2, "2026-10": 88.0},
+        "energiebe": {"2026-02": 33.3},
+    }
+    rows = _same_index_rows(_publishing(*printed, **printed), today)
+    assert {status for status, _detail in rows.values()} == {"ok"}
+    assert rows["trevion"] == ("ok", "2 months, with belvus, energiebe, evident")
+    # February alone: October has one other reader's value for energie.be
+    # once the brands, on one reader, count once.
+    assert rows["energiebe"][1] == "1 months, with belvus, evident, trevion"
+
+
+def test_a_value_that_leaves_its_index_s_group_fails() -> None:
+    """Ten times off, it is still a recent value, and no card says
+    otherwise: the other suppliers' values do."""
+    today = date(2026, 11, 13)
+    tenfold = {"2026-08": 61.72, "2026-09": 75.35, "2026-10": 880.5}
+    rows = _same_index_rows(_publishing("belvus", "evident", "trevion", trevion=tenfold), today)
+    assert rows == {
+        "belvus": ("ok", "3 months, with evident, trevion"),
+        "evident": ("ok", "3 months, with belvus, trevion"),
+        "trevion": ("fail", "2026-10: 880.5 EUR/MWh where it is 88.05 at belvus, 88.05 at evident"),
+    }
+    late = {"2026-09": 61.72, "2026-10": 75.35}
+    rows = _same_index_rows(_publishing("belvus", "evident", "trevion", trevion=late), today)
+    assert rows["trevion"] == (
+        "fail",
+        "2026-10: 75.35 EUR/MWh where it is 88.05 at belvus, 88.05 at evident; "
+        "1 more months apart, back to 2026-09",
+    )
+
+
+def test_the_month_just_closed_can_still_move_in_the_first_two_days() -> None:
+    """Bolt's value for October 2026 read 87,87 on 1 November and 88,06 on
+    the 2nd: a notice on those days, and only for that month."""
+    moving = {"2026-08": 61.72, "2026-09": 75.35, "2026-10": 87.87}
+    tables = _publishing("belvus", "evident", "trevion", trevion=moving)
+    status, detail = _same_index_rows(tables, date(2026, 11, 2))["trevion"]
+    assert status == "notice"
+    assert detail.endswith("; the month's value can still move")
+    assert _same_index_rows(tables, date(2026, 11, 3))["trevion"][0] == "fail"
+    older = {"2026-08": 61.72, "2026-09": 75.0, "2026-10": 87.87}
+    tables = _publishing("belvus", "evident", "trevion", trevion=older)
+    status, detail = _same_index_rows(tables, date(2026, 11, 2))["trevion"]
+    assert (status, detail.partition(":")[0]) == ("fail", "2026-09")
+
+
+def test_an_index_two_readers_or_fewer_publish_has_nothing_to_be_held_against() -> None:
+    """Two series that part do not say which one left, the brands of one
+    platform are one reading, and a series in no group is another index
+    under the same name until the archive shows otherwise."""
+    today = date(2026, 11, 13)
+    off = {"2026-10": 880.5}
+    assert _same_index_rows(_publishing("belvus", "trevion", trevion=off), today) == {}
+    brands = _publishing("belvus", "evident", "hoa_energy", belvus=off)
+    assert _same_index_rows(brands, today) == {}
+    rows = _same_index_rows(_publishing("belvus", "evident", "trevion", "acme", acme=off), today)
+    assert sorted(rows) == ["belvus", "evident", "trevion"]
+
+
+async def test_the_fleet_s_index_publications_are_held_against_each_other() -> None:
+    def publishing(sid: str, value: float) -> SupplierExtractor:
+        async def fetch(_session: Any, _contract: str, _region: str) -> SupplierSnapshot:
+            return _snapshot(sid, energy=_indexed("TTF_RLP"))
+
+        async def fetch_index(_session: Any) -> dict[str, dict[str, float]]:
+            return {"TTF_RLP": {"2026-08": value}}
+
+        return _extractor(sid, fetch, fetch_index=fetch_index)
+
+    fleet = [
+        publishing("belvus", 61.729),
+        publishing("energiebe", 61.7),
+        publishing("trevion", 6.172),
+    ]
+    checks = await lc.check_fleet(None, fleet, TODAY, sleep=_no_sleep)
+    assert list(_failing(checks)) == ["trevion: index TTF_RLP against the same index elsewhere"]
 
 
 def test_an_index_a_stand_in_covers_is_a_notice() -> None:
