@@ -81,6 +81,7 @@ class _StoreMixin:
     _months: MonthCardCache
     _periods: PeriodBilling
     _release: str | None
+    _reread_last_card: bool
     _snapshot: SupplierSnapshot | None
     _stand_in: bool
     _store: Store[dict[str, Any]]
@@ -139,6 +140,9 @@ class _StoreMixin:
             # The archive's OCR reading, as the store says: stored as such
             # again whatever the next check finds, and waited on like one.
             self.card_read_by_ocr = blob.get("read_by_ocr") is True
+            # A withdrawn contract fetches no card, so the one another
+            # release stored is read again once, as its month cards are.
+            self._reread_last_card = blob.get("release") != self._release
         # The fetches of this card that failed in a row, and whether it was
         # found unreadable, with or without a card in hand: counted on from
         # there, the first tick after a restart does not delete a Repairs

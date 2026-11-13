@@ -1207,6 +1207,110 @@ async def test_a_withdrawn_contract_keeps_pricing_on_its_last_card(
         assert issues.async_get_issue(DOMAIN, f"{name}_{entry.entry_id}") is None
 
 
+def _stored_flux(release: str) -> dict[str, Any]:
+    """The store of a Flux entry as ``release`` wrote it, its card read
+    before the fields grossed on a typed 6 % were named."""
+    card = _flux_card()
+    assert isinstance(card.energy, IndexedRates) and card.energy.vat_grossed
+    return {
+        "snapshot": snapshot_to_json(replace(card, energy=replace(card.energy, vat_grossed=()))),
+        "fetched_at": "2026-09-30T08:00:00+00:00",
+        "release": release,
+    }
+
+
+def _september_flux(*answers: Any) -> AsyncMock:
+    """OCTA+'s archive answering ``answers`` in turn for September 2026, the
+    last month Flux was sold, the last one from then on, and with no card
+    for any other month."""
+    left = list(answers)
+
+    async def fetch_for_month(_session: Any, _contract: str, _region: str, month: date) -> Any:
+        if month != date(2026, 9, 1):
+            return None
+        answer = left.pop(0) if len(left) > 1 else left[0]
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    return AsyncMock(side_effect=fetch_for_month)
+
+
+async def _set_up_flux(
+    hass: HomeAssistant, hass_storage: dict[str, Any], release: str, archive: AsyncMock
+) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="OCTA+ Flux", data={**_FLUX, CONF_CARD_ARCHIVE: False}
+    )
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {"version": 1, "key": key, "data": _stored_flux(release)}
+    stub = replace(_octaplus_stub(), fetch_for_month=archive)
+    with patch.dict(providers.EXTRACTORS, {"octaplus": stub}):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    return entry
+
+
+def _grossed(entry: MockConfigEntry) -> tuple[str, ...]:
+    energy = entry.runtime_data._snapshot.energy
+    assert isinstance(energy, IndexedRates)
+    return energy.vat_grossed
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+@pytest.mark.parametrize("stored_by_this_release", [False, True])
+async def test_a_withdrawn_contract_s_card_is_read_again_after_an_update(
+    hass: HomeAssistant, hass_storage: dict[str, Any], stored_by_this_release: bool
+) -> None:
+    """A withdrawn contract fetches no card, so the one an older release
+    stored stayed as that release read it, short of the fields the month's
+    VAT rate is applied to. It is read again once after an update, from
+    OCTA+'s archive here; one this release stored is left as it is."""
+    current = str((await async_get_integration(hass, DOMAIN)).version)
+    release = current if stored_by_this_release else "0.3.9"
+    entry = await _set_up_flux(hass, hass_storage, release, _september_flux(_flux_card()))
+    assert _grossed(entry) == (() if stored_by_this_release else ("factor", "base"))
+    assert not entry.runtime_data._reread_last_card
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_s_card_not_read_again_is_kept_and_asked_again(
+    hass: HomeAssistant, hass_storage: dict[str, Any], freezer: FrozenDateTimeFactory
+) -> None:
+    """OCTA+'s archive down at the first read: the stored card keeps
+    pricing, and the card is asked for again until it is read."""
+    down = ExtractorError("network error fetching x: reset")
+    archive = _september_flux(down, down, down, _flux_card())
+    entry = await _set_up_flux(hass, hass_storage, "0.3.9", archive)
+    assert _grossed(entry) == ()
+    assert entry.runtime_data._reread_last_card
+    price = hass.states.get("sensor.octa_flux_current_price")
+    assert price is not None and price.state != "unavailable"
+    with patch.dict(
+        providers.EXTRACTORS,
+        {"octaplus": replace(_octaplus_stub(), fetch_for_month=archive)},
+    ):
+        for _ in range(4):
+            freezer.tick(timedelta(hours=1))
+            await entry.runtime_data.async_refresh()
+    assert _grossed(entry) == ("factor", "base")
+    assert not entry.runtime_data._reread_last_card
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_s_card_nobody_serves_any_more_is_kept(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    """No card of its last month is to be found: the stored one keeps
+    pricing, and the card is not asked for on every tick."""
+    entry = await _set_up_flux(hass, hass_storage, "0.3.9", _september_flux(None))
+    assert _grossed(entry) == ()
+    assert not entry.runtime_data._reread_last_card
+    price = hass.states.get("sensor.octa_flux_current_price")
+    assert price is not None and price.state != "unavailable"
+
+
 @pytest.mark.freeze_time("2027-10-15 10:00:00+02:00")
 @pytest.mark.parametrize("use_archive", [True, False])
 async def test_a_withdrawn_contract_with_no_card_held_takes_its_last_month_s(

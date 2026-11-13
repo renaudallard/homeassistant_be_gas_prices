@@ -176,6 +176,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         # card archive, which is due when it changes or ages.
         self._stand_in = False
         self._force_refresh = False
+        self._reread_last_card = False
         self._failures = 0
         # The day the run of failures _failures counts began.
         self._failing_since: date | None = None

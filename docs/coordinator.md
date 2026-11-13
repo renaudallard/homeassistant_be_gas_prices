@@ -49,7 +49,12 @@ cards (`issues.sync_issues`).
    the supplier withdrew fetches nothing: the card held, or when none is
    the card of the last month it was sold (`last_month_sold`), from the
    card archive where the entry reads it, else from the supplier's own
-   archive, prices it and never goes stale.
+   archive, prices it and never goes stale. A card another release stored
+   is asked for there once more after an update (`_reread_last_card`), as
+   the month cards are, since that release may have read it short of what
+   this one reads (the fields the month's VAT rate is applied to, named
+   since 0.3.10); it stays where no card is found, and a failure that may
+   recover is asked again on the next tick.
 2. **Index values** (`_refresh_index`), twice a day, from the supplier's own
    publication. A failure keeps the table held, or with none held and a
    failure a retry may cure (network, storage, HTTP 5xx, 403, 408, 429) is
