@@ -1227,7 +1227,7 @@ class _Offline:
     Anything else the parse asks for is refused as a network error, which
     the readers wrap the way they wrap a real one, and the row is left as it
     was and reported. A parse that gives up on these answers before it has
-    read the row's card leaves the row as it was too (``_settle_refusal``).
+    read the row's card leaves the row as it was too (``_why_kept``).
     """
 
     def __init__(self, cards: Iterable[str] = ()) -> None:
@@ -1290,22 +1290,38 @@ def _card_read(row: dict[str, Any], memo: _RecordingMemo, cards: _Cards) -> bool
     return own in read if own in named else bool(read)
 
 
-def _settle_refusal(path: Path, label: str, why: str, card_read: bool, summary: _Summary) -> None:
-    """Settle a row whose replay gave no card of its month.
+def _why_kept(
+    row: dict[str, Any], memo: _RecordingMemo, cards: _Cards, withdrawn: bool
+) -> str | None:
+    """Why a row whose replay gave no card of its month stays as it was, or
+    None when it goes.
 
-    The parser cannot refuse a card it has not read. Where it had read the
-    row's own card, it refuses that card, or reads it as another month's,
-    and the row is removed: an installation would go on billing the old
+    A withdrawn contract's row always stays: nothing can fetch its card
+    again, and it still prices the months a contract signed on it runs.
+
+    Otherwise the parser cannot refuse a card it has not read. Where it had
+    read the row's own card, it refuses that card, or reads it as another
+    month's, and the row goes: an installation would go on billing the old
     reading. Where it had not, the way to the card failed and the card was
     never judged: a resolver taught a supplier's new file names asks the
     stored listing for names it never held, which removed Elegant's three
-    rows of October 2026 on 3 November. Such a row stays as it was.
+    rows of October 2026 on 3 November.
     """
-    if card_read:
+    if withdrawn:
+        return "the contract is withdrawn"
+    if not _card_read(row, memo, cards):
+        return "the row's card was not read"
+    return None
+
+
+def _settle_refusal(path: Path, label: str, why: str, kept: str | None, summary: _Summary) -> None:
+    """Remove a row whose replay gave no card of its month, or report it
+    with the reason it is ``kept`` for (:func:`_why_kept`)."""
+    if kept is None:
         path.unlink()
         summary.refused.append(f"{label}: {why}")
     else:
-        summary.unreplayable.append(f"{label}: the row's card was not read: {why}")
+        summary.unreplayable.append(f"{label}: {kept}: {why}")
 
 
 async def _replay_row(
@@ -1318,7 +1334,11 @@ async def _replay_row(
     """Parse one stored row again from the texts it names, offline, and
     rewrite it when the parse came out differently. A card whose text other
     readers, render code or OCR engine made is read again from its kept
-    bytes. The caller pins the clock to the row's capture day."""
+    bytes. The caller pins the clock to the row's capture day.
+
+    A row whose parse gives no card of its month is removed or kept as
+    :func:`_why_kept` says; a withdrawn contract's is always kept.
+    """
     out = cards.archive
     supplier, contract, region = path.parts[-4:-1]
     label = f"{supplier}/{contract}/{region}/{path.stem}"
@@ -1327,15 +1347,16 @@ async def _replay_row(
     if row is None or extractor is None:
         summary.unreplayable.append(f"{label}: no readable row or no extractor registered")
         return
-    if not any(
-        c.id == contract and region in c.regions and c.withdrawn is None
-        for c in extractor.contracts
-    ):
-        # A contract the supplier withdrew, or no longer sells in the region:
-        # its rows still price the months an earlier contract on it supplied,
-        # so they stay as they are.
+    sold = [c for c in extractor.contracts if c.id == contract and region in c.regions]
+    if not sold:
+        # A contract the supplier no longer sells in the region: the parser
+        # refuses the region outright, and its rows still price the months
+        # an earlier contract on it supplied, so they stay as they are.
         summary.unreplayable.append(f"{label}: the contract is no longer sold there")
         return
+    # A withdrawn contract's row is parsed again like any other, so that a
+    # parser fix reaches it, and is kept whatever the parse makes of it.
+    withdrawn = sold[0].withdrawn is not None
     try:
         seen_on = date.fromisoformat(row["_seen_on"])
         sources = [s for s in row["_sources"] if isinstance(s, dict)]
@@ -1390,7 +1411,11 @@ async def _replay_row(
     offline: Any = _Offline(s["url"] for s in sources if "pdf" in s)
     with memoise_text_fetches(memo), render_through(cards.render):
         try:
-            if via == "archive":
+            # A withdrawn contract's fetch refuses it outright: only the
+            # supplier's archive reads its cards. So a row captured while it
+            # was sold is asked of the archive as well, which offline comes
+            # to the row's own card or to nothing.
+            if via == "archive" or withdrawn:
                 if extractor.fetch_for_month is None:
                     summary.unreplayable.append(f"{label}: the supplier keeps no archive now")
                     return
@@ -1409,19 +1434,15 @@ async def _replay_row(
                 # session: the row stays as it was.
                 summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
             else:
-                _settle_refusal(path, label, str(err), _card_read(row, memo, cards), summary)
+                kept = _why_kept(row, memo, cards, withdrawn)
+                _settle_refusal(path, label, str(err), kept, summary)
             return
         except Exception as err:  # reported, and the row stays as it was
             summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
             return
     if snapshot is None or _card_month(snapshot, seen_on) != path.stem:
-        _settle_refusal(
-            path,
-            label,
-            "the parse no longer gives this month's card",
-            _card_read(row, memo, cards),
-            summary,
-        )
+        kept = _why_kept(row, memo, cards, withdrawn)
+        _settle_refusal(path, label, "the parse no longer gives this month's card", kept, summary)
         return
     summary.replayed += 1
     fresh = _row(

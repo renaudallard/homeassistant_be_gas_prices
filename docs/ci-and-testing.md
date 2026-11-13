@@ -507,8 +507,23 @@ hook, which both note it, so a card the parser refuses was read and its row
 goes. On 3 November 2026 the resolver had just been taught Elegant's renamed
 files, asked the listing stored with October's rows for names it never
 held, and the replay removed three good rows of a closed month. A row that
-asks for something it never read, or whose contract the supplier withdrew,
-is left as it was too.
+asks for something it never read is left as it was too, and so is the row
+of a contract no longer sold in its region, whose region the parser refuses
+outright.
+
+A withdrawn contract's rows are replayed as well, where they were skipped
+before and stayed on the parse of the day they were written (OCTA+'s Flux
+rows never named the fields grossed on VAT). They are asked of the
+supplier's archive (`fetch_for_month`), the only way to a withdrawn
+product's cards since its `fetch` refuses it outright, the row captured
+while it was sold included: offline that comes to the row's own card or to
+nothing. Such a row is rewritten when the parse gives its month's card and
+is never removed, since nothing can fetch its card again and it still
+prices the contracts signed on it: on any failure, a card the parser now
+refuses or reads as another month's included, it stays byte for byte and
+is reported with the reason. A row captured live whose supplier's archive
+asks a listing first (OCTA+'s and Frank's last month sold) cannot be
+reached this way and stays as it was.
 
 A card the text readers refuse as page images is read with the OCR engine,
 [ocr_price_cards](https://github.com/renaudallard/ocr_price_cards), from its

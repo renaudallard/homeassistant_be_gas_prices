@@ -1042,11 +1042,11 @@ async def test_a_row_naming_no_source_as_its_card_goes_on_any_refusal(
         (Contract(id="acme_fix", label="Acme Fix", kind="fixed", regions=frozenset({"flanders"})),),
     ],
 )
-async def test_a_row_of_a_withdrawn_contract_is_kept(
+async def test_a_row_of_a_contract_no_longer_sold_there_is_kept(
     tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch, contracts: tuple[Contract, ...]
 ) -> None:
-    """The supplier withdrew the contract, or stopped selling it in the
-    region: its rows still price an earlier contract on it, and are not
+    """The supplier no longer lists the contract, or stopped selling it in
+    the region: its rows still price an earlier contract on it, and are not
     taken for rows the parser refuses."""
     out = tmp_path / "gas"
     await ac.archive(out, extractors=[_Acme().extractor()], now=NOW, sleep=_no_sleep)
@@ -1061,6 +1061,124 @@ async def test_a_row_of_a_withdrawn_contract_is_kept(
     )
     assert (out / ROW / "2026-09.json").exists()
     assert not summary.refused
+
+
+_AUGUST_URL = "https://acme.test/2026-08.pdf"
+
+
+class _Withdrawn(_Acme):
+    """Acme once it withdrew its contract. Its fetch refuses the product
+    outright, as every supplier's does, and only its archive reads the
+    cards: a past month's at its own address, the last month's where the
+    listing linked it. ``how`` is what a parser change makes of a card."""
+
+    def __init__(self, factor: float = 1.0, how: str = "read") -> None:
+        super().__init__(factor)
+        self.how = how
+
+    async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+        raise ExtractorError(
+            f"Acme withdrew {contract} on 2026-09-12: only its past cards are read"
+        )
+
+    async def fetch_for_month(
+        self, session: Any, contract: str, _region: str, month: date
+    ) -> SupplierSnapshot | None:
+        if self.how == "asks the archive's listing":
+            await _pdf.fetch_text(session, "https://acme.test/archive")
+        url = CARD_URL if month == date(2026, 9, 1) else _AUGUST_URL
+        text = await _pdf.fetch_pdf_rendered(
+            session, url, variant="plain", timeout=30, render=self.render
+        )
+        if self.how == "refuses the card":
+            raise ExtractorError("Acme: this card prints the network table of 2025")
+        if self.how == "crashes":
+            raise ValueError("no figure")
+        if self.how == "gives none":
+            return None
+        snapshot = replace(_parse(text, self.factor, contract), source_url=url)
+        if self.how == "reads another month":
+            return replace(snapshot, publication_label="2026-07")
+        return snapshot
+
+    def extractor(self, **kwargs: Any) -> SupplierExtractor:
+        contract = Contract(
+            id="acme_fix",
+            label="Acme Fix",
+            kind="fixed",
+            regions=self.regions,
+            withdrawn=date(2026, 9, 12),
+        )
+        sold = super().extractor(fetch_for_month=self.fetch_for_month, **kwargs)
+        return replace(sold, contracts=(contract,))
+
+
+async def _sold_then_withdrawn(out: Path, web: _Session) -> dict[str, bytes]:
+    """September's row captured while Acme sold the contract and August's
+    mirrored from its archive, each as stored."""
+    web.pages[_AUGUST_URL] = _card("2026-08", "0.07")
+    selling = _Acme().extractor(fetch_for_month=_Withdrawn().fetch_for_month)
+    await ac.archive(out, extractors=[selling], now=NOW, sleep=_no_sleep, backfill_months=1)
+    return {month: (out / ROW / f"{month}.json").read_bytes() for month in ("2026-08", "2026-09")}
+
+
+async def test_a_withdrawn_contract_s_rows_are_parsed_again(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Skipped, such rows stayed on the parse of the day they were written:
+    OCTA+'s Flux rows never named the fields grossed on VAT. They are
+    replayed through the supplier's archive, the one way to a withdrawn
+    product's cards, the row captured while it was sold as well, from their
+    stored texts and without a request."""
+    out = tmp_path / "gas"
+    await _sold_then_withdrawn(out, web)
+    asked = len(web.asked)
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out, extractors=[_Withdrawn(factor=2.0).extractor()], now=NOW, sleep=_no_sleep
+    )
+    assert len(web.asked) == asked
+    assert (summary.replayed, summary.reparsed) == (2, 2)
+    assert (summary.unreplayable, summary.refused) == ([], [])
+    august = json.loads((out / ROW / "2026-08.json").read_text())
+    september = json.loads((out / ROW / "2026-09.json").read_text())
+    assert (august["energy"]["price"], august["_via"]) == (pytest.approx(0.14), "archive")
+    assert (september["energy"]["price"], september["_via"]) == (pytest.approx(0.16), "live")
+    assert september["_seen_on"] == "2026-09-11"
+    assert [source["url"] for source in september["_sources"]] == [CARD_URL]
+
+
+@pytest.mark.parametrize(
+    ("how", "reason"),
+    [
+        ("refuses the card", "the contract is withdrawn: Acme: this card prints"),
+        ("gives none", "the contract is withdrawn: the parse no longer gives this month's card"),
+        (
+            "reads another month",
+            "the contract is withdrawn: the parse no longer gives this month's card",
+        ),
+        ("asks the archive's listing", "a replay is offline: https://acme.test/archive"),
+        ("crashes", "ValueError: no figure"),
+    ],
+)
+async def test_a_withdrawn_contract_s_row_is_never_removed(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch, how: str, reason: str
+) -> None:
+    """Nothing can fetch a withdrawn product's card again, and it still
+    prices the contracts signed on it. Whatever the parse makes of it now,
+    the row stays byte for byte and the reason is reported; it never comes
+    back as another month's card."""
+    out = tmp_path / "gas"
+    stored = await _sold_then_withdrawn(out, web)
+    monkeypatch.setattr(ac, "_parser_digest", lambda: "a parser that changed")
+    summary = await ac.archive(
+        out, extractors=[_Withdrawn(factor=2.0, how=how).extractor()], now=NOW, sleep=_no_sleep
+    )
+    for month, row in stored.items():
+        assert (out / ROW / f"{month}.json").read_bytes() == row
+    assert (summary.replayed, summary.refused) == (0, [])
+    assert len(summary.unreplayable) == 2
+    assert all(reason in line for line in summary.unreplayable)
 
 
 async def test_a_row_the_parser_cannot_rebuild_offline_is_left_as_it_was(
