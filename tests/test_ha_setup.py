@@ -1599,7 +1599,7 @@ async def test_an_outage_counts_once_on_a_meter_that_carries_it(
             AsyncMock(return_value="energy"),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            "custom_components.be_gas_prices.coordinator.daily_changes",
             AsyncMock(return_value=days),
         ),
     ):
@@ -1894,7 +1894,7 @@ async def test_a_meter_read_that_fails_still_names_the_meter_problem(
             AsyncMock(return_value="energy"),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            "custom_components.be_gas_prices.coordinator.daily_changes",
             AsyncMock(return_value=_a_year_of_gas()),
         ),
     ):
@@ -1950,7 +1950,7 @@ async def test_a_restart_on_a_named_meter_shows_its_held_figures(
             AsyncMock(return_value="energy"),
         ),
         patch(
-            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            "custom_components.be_gas_prices.coordinator.daily_changes",
             AsyncMock(return_value=_a_year_of_gas()),
         ),
     ):
@@ -1968,7 +1968,7 @@ async def test_a_restart_on_a_named_meter_shows_its_held_figures(
             "custom_components.be_gas_prices.coordinator.statistic_kind",
             AsyncMock(return_value="energy"),
         ),
-        patch("custom_components.be_gas_prices.coordinator.daily_consumption", slow),
+        patch("custom_components.be_gas_prices.coordinator.daily_changes", slow),
     ):
         assert await hass.config_entries.async_reload(entry.entry_id)
         assert entry.runtime_data.meter_reads_pending
@@ -2008,7 +2008,7 @@ async def test_a_restart_waiting_for_the_energy_manager_keeps_the_held_figures(
             "custom_components.be_gas_prices.coordinator.statistic_kind",
             AsyncMock(return_value="energy"),
         ),
-        patch("custom_components.be_gas_prices.coordinator.daily_consumption", consumption),
+        patch("custom_components.be_gas_prices.coordinator.daily_changes", consumption),
         patch("custom_components.be_gas_prices.coordinator.rank", ranked),
         patch("custom_components.be_gas_prices.coordinator.ranking_minute", return_value=24 * 60),
         patch("custom_components.be_gas_prices.backfill_once_a_year", backfill),
@@ -2939,7 +2939,7 @@ async def test_a_failed_meter_read_keeps_the_figures_held_for_a_restart(
     with (
         patch("custom_components.be_gas_prices.coordinator.statistic_kind", kind),
         patch(
-            "custom_components.be_gas_prices.coordinator.daily_consumption",
+            "custom_components.be_gas_prices.coordinator.daily_changes",
             AsyncMock(return_value=_a_year_of_gas()),
         ),
     ):
@@ -3125,7 +3125,7 @@ async def test_a_month_before_the_rolling_year_without_a_factor_keeps_the_costs(
             "custom_components.be_gas_prices.coordinator.statistic_kind",
             AsyncMock(return_value="volume"),
         ),
-        patch("custom_components.be_gas_prices.coordinator.daily_consumption", consumption),
+        patch("custom_components.be_gas_prices.coordinator.daily_changes", consumption),
     ):
         await _setup(hass, data)
     cost = hass.states.get("sensor.engie_flow_current_year_cost")

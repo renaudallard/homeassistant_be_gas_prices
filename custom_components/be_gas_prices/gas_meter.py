@@ -196,26 +196,33 @@ def _target_units(kind: MeterKind) -> dict[str, str]:
     return {EnergyConverter.UNIT_CLASS: UnitOfEnergy.KILO_WATT_HOUR}
 
 
-async def daily_consumption(
+async def daily_changes(
     hass: HomeAssistant,
     statistic_id: str,
     kind: MeterKind,
     start: date,
     end: date,
 ) -> dict[date, float]:
-    """Consumption per local day over [start, end], in m3 or kWh by ``kind``.
+    """The meter's change in each local day of [start, end], as recorded, in
+    m3 or kWh by ``kind``: a negative one is kept (:func:`consumption`).
 
-    Days the recorder holds nothing for are absent. A negative change is a
-    ``total`` meter that was replaced or re-based, never gas flowing back,
-    and counts as none. Raises :class:`RecorderUnavailable` when a running
-    recorder could not answer; returns {} when there is no recorder.
+    Days the recorder holds nothing for are absent. Raises
+    :class:`RecorderUnavailable` when a running recorder could not answer;
+    returns {} when there is no recorder.
     """
     if end < start:
         return {}
     start_dt = dt_util.start_of_local_day(start).astimezone(UTC)
     end_dt = dt_util.start_of_local_day(end + timedelta(days=1)).astimezone(UTC)
     changes = await _changes(hass, statistic_id, kind, start_dt, end_dt, "day")
-    return {dt_util.as_local(hour).date(): max(0.0, change) for hour, change in changes.items()}
+    return {dt_util.as_local(hour).date(): change for hour, change in changes.items()}
+
+
+def consumption(changes: Mapping[date, float]) -> dict[date, float]:
+    """The gas used in each day of ``changes``. A negative change is a
+    ``total`` meter that was replaced or re-based, or a sum the recorder
+    started over, never gas flowing back, and counts as none."""
+    return {day: max(0.0, change) for day, change in changes.items()}
 
 
 def carries_outages(hass: HomeAssistant, entity_id: str) -> bool:
@@ -238,15 +245,16 @@ def carries_outages(hass: HomeAssistant, entity_id: str) -> bool:
     return state_class == SensorStateClass.TOTAL_INCREASING
 
 
-def spread_outages(days: Mapping[date, float], since: date) -> dict[date, float]:
-    """``days``, read from ``since`` on, with the gas of each outage shared
-    out over its days.
+def spread_outages(changes: Mapping[date, float], since: date) -> dict[date, float]:
+    """The consumption of ``changes``, read from ``since`` on, with the gas
+    of each outage shared out over its days.
 
     For a meter that :func:`carries_outages`, the first day back holds the
     gas of the days missing before it as well as its own, and its figure is
-    split evenly over them and itself. One at 0 is a meter whose sum the
-    recorder started over, after an outage longer than it keeps its
-    five-minute rows: that gas is lost and the days stay missing.
+    split evenly over them and itself. At exactly 0 the meter stood still,
+    and so do the days it was away. A negative one is a sum the recorder
+    started over, after an outage longer than it keeps its five-minute
+    rows: that gas is lost and the days stay missing.
 
     The recorder measures the first day it returns against the last sum
     before the read, so a first day on record after ``since`` is the day
@@ -254,14 +262,14 @@ def spread_outages(days: Mapping[date, float], since: date) -> dict[date, float]
     nobody can count, unless it is the meter's very first, a part of a day:
     it is left out, a missing day like the others.
     """
-    out = dict(days)
-    first = min(days, default=since)
+    out = consumption(changes)
+    first = min(changes, default=since)
     if first > since:
         del out[first]
-    for before, after in pairwise(sorted(days)):
+    for before, after in pairwise(sorted(changes)):
         missed = (after - before).days - 1
-        value = days[after]
-        if missed <= 0 or value <= 0.0:
+        value = changes[after]
+        if missed <= 0 or value < 0.0:
             continue
         share = value / (missed + 1)
         for n in range(1, missed + 2):
@@ -278,7 +286,7 @@ async def hourly_changes(
 ) -> dict[datetime, float]:
     """The meter's change in each UTC hour of [start, end), as recorded:
     a negative one is kept, so that a day's hours add up to its change.
-    Raises and returns as :func:`daily_consumption` does."""
+    Raises and returns as :func:`daily_changes` does."""
     return await _changes(hass, statistic_id, kind, start, end, "hour")
 
 

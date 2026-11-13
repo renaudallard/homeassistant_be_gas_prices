@@ -102,7 +102,8 @@ from .gas_meter import (
     MeterKind,
     RecorderUnavailable,
     carries_outages,
-    daily_consumption,
+    consumption,
+    daily_changes,
     discover_energy_gas_meter,
     spread_outages,
     statistic_kind,
@@ -682,7 +683,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             kind = await statistic_kind(self.hass, self.meter)
             if kind is None:
                 return None, {}
-            days = await daily_consumption(self.hass, self.meter, kind, meter_start(today), today)
+            days = await daily_changes(self.hass, self.meter, kind, meter_start(today), today)
         except RecorderUnavailable as err:
             self.meter_error = str(err)
             _LOGGER.warning("gas meter not read: %s", err)
@@ -720,9 +721,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             # held for a tick that does.
             deferred = True
         kind: MeterKind | None = None
-        meter_days: dict[date, float] = {}
+        changes: dict[date, float] = {}
         if not deferred:
-            kind, meter_days = await self._read_meter(today)
+            kind, changes = await self._read_meter(today)
             # A recorder that did not answer is no year of no gas: the last
             # figures stand, as on setup's own tick, until a read answers.
             deferred = bool(self.meter_error)
@@ -745,13 +746,13 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             self.unpriced_this_month = []
             factor = self._factor_for(kind)
             billed_from = date(today.year, 1, 1)
-            kwh_days = to_kwh(meter_days, factor, billed_from) if meter_days else None
+            kwh_days = to_kwh(consumption(changes), factor, billed_from) if changes else None
             if kwh_days is not None and self.meter and carries_outages(self.hass, self.meter):
                 # The year reads each outage's gas off the first day back,
                 # shared over its days. A day the share lands on that has no
                 # factor leaves the days as the meter recorded them.
                 spread_days = to_kwh(
-                    spread_outages(meter_days, meter_start(today)), factor, billed_from
+                    spread_outages(changes, meter_start(today)), factor, billed_from
                 )
         waived = self._fee_waived()
         if kwh_days is not None:

@@ -545,10 +545,29 @@ def test_an_outage_s_gas_is_shared_over_its_days() -> None:
 
 
 def test_an_outage_whose_gas_was_lost_stays_missing() -> None:
-    """A first day back at 0 is a sum the recorder started over."""
+    """A negative first day back is a sum the recorder started over: it
+    counts no gas and the days before it stay missing."""
     days = {date(2026, 1, n): 10.0 for n in range(3, 11) if n not in (5, 6)}
-    days[date(2026, 1, 7)] = 0.0
-    assert spread_outages(days, date(2026, 1, 3)) == days
+    days[date(2026, 1, 7)] = -5000.0
+    assert spread_outages(days, date(2026, 1, 3)) == {**days, date(2026, 1, 7): 0.0}
+
+
+def test_an_outage_that_used_no_gas_is_on_record_at_zero() -> None:
+    """A first day back at exactly 0 is a meter that stood still: so did
+    the days it was away, which the rolling year then counts at 0 instead
+    of scaling them at the year's average."""
+    today = date(2026, 11, 13)
+    start = meter_start(today)
+    days = {
+        day: 0.0 if 5 <= day.month <= 9 else 10.0
+        for n in range((today - start).days)
+        if not date(2026, 7, 11) <= (day := start + timedelta(days=n)) <= date(2026, 7, 20)
+    }
+    whole = sum(value for day, value in days.items() if day >= today - timedelta(days=365))
+    assert rolling_year_kwh(days, today) == pytest.approx(whole * 365 / 355)
+    spread = spread_outages(days, start)
+    assert all(spread[date(2026, 7, n)] == 0.0 for n in range(11, 21))
+    assert rolling_year_kwh(spread, today) == pytest.approx(whole)
 
 
 def test_a_first_day_on_record_after_the_read_began_is_left_out() -> None:

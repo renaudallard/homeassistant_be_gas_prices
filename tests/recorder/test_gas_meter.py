@@ -28,6 +28,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
@@ -120,9 +121,7 @@ async def test_daily_consumption_in_cubic_metres(recorder_mock: Any, hass: HomeA
     _import(hass, "m³", start, 48, 0.5)
     await async_wait_recording_done(hass)
     assert await gas_meter.statistic_kind(hass, METER) == "volume"
-    days = await gas_meter.daily_consumption(
-        hass, METER, "volume", date(2026, 9, 1), date(2026, 9, 2)
-    )
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 9, 1), date(2026, 9, 2))
     # The recorder counts the first imported hour's sum from zero, so the
     # first day holds all of its 24 half cubic metres.
     assert days[date(2026, 9, 1)] == pytest.approx(12.0)
@@ -136,9 +135,7 @@ async def test_litres_are_converted_to_cubic_metres(
     start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 9, 1)))
     _import(hass, "L", start, 48, 500.0)
     await async_wait_recording_done(hass)
-    days = await gas_meter.daily_consumption(
-        hass, METER, "volume", date(2026, 9, 2), date(2026, 9, 2)
-    )
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 9, 2), date(2026, 9, 2))
     assert days[date(2026, 9, 2)] == pytest.approx(12.0)
 
 
@@ -170,10 +167,11 @@ async def test_a_meter_that_falls_counts_no_gas_that_day(
         ],
     )
     await async_wait_recording_done(hass)
-    days = await gas_meter.daily_consumption(
+    changes = await gas_meter.daily_changes(
         hass, METER, "volume", date(2026, 9, 1), date(2026, 9, 3)
     )
-    assert days == {
+    assert changes[date(2026, 9, 2)] < 0.0
+    assert gas_meter.consumption(changes) == {
         date(2026, 9, 1): pytest.approx(12.0),
         date(2026, 9, 2): 0.0,
         date(2026, 9, 3): pytest.approx(12.0),
@@ -188,12 +186,17 @@ async def test_a_meter_that_falls_counts_no_gas_that_day(
     assert sum(hours.values()) == pytest.approx(-8.0)
 
 
-async def test_an_outage_s_gas_lands_on_its_first_day_back(
-    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+async def _record_outage(
+    hass: HomeAssistant,
+    freezer: Any,
+    reading: Callable[[int], float],
+    down: set[int],
+    purge_at: int | None = None,
 ) -> None:
-    """24 m3 a day, the meter unavailable through 6 and 7 January: the
-    recorder resumes the sum from the last value it compiled, so 8 January
-    holds the 48 m3 it missed, which spread_outages shares out again."""
+    """Five days from 5 January 2026 of a total_increasing meter reading
+    ``reading(hour)`` each hour, unavailable on the days numbered in
+    ``down``; the recorder purges all but the last day at hour
+    ``purge_at``."""
     await _zone(hass)
     assert await async_setup_component(hass, "sensor", {})
     attributes = {
@@ -205,16 +208,29 @@ async def test_an_outage_s_gas_lands_on_its_first_day_back(
     for hour in range(5 * 24):
         slot = start + timedelta(hours=hour, minutes=55)
         freezer.move_to(slot + timedelta(seconds=30))
-        down = hour // 24 in (1, 2)
-        hass.states.async_set(METER, "unavailable" if down else str(5000.0 + hour), attributes)
+        state = "unavailable" if hour // 24 in down else str(reading(hour))
+        hass.states.async_set(METER, state, attributes)
         await async_wait_recording_done(hass)
         freezer.move_to(slot + timedelta(minutes=5, seconds=10))
         do_adhoc_statistics(hass, start=slot)
         await async_wait_recording_done(hass)
+        if hour == purge_at:
+            await hass.services.async_call(
+                "recorder", "purge", {"keep_days": 1, "repack": False}, blocking=True
+            )
+            await async_wait_recording_done(hass)
+            await async_wait_recording_done(hass)
     assert gas_meter.carries_outages(hass, METER)
-    days = await gas_meter.daily_consumption(
-        hass, METER, "volume", date(2026, 1, 5), date(2026, 1, 9)
-    )
+
+
+async def test_an_outage_s_gas_lands_on_its_first_day_back(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """24 m3 a day, the meter unavailable through 6 and 7 January: the
+    recorder resumes the sum from the last value it compiled, so 8 January
+    holds the 48 m3 it missed, which spread_outages shares out again."""
+    await _record_outage(hass, freezer, lambda hour: 5000.0 + hour, {1, 2})
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 1, 5), date(2026, 1, 9))
     # The 5th starts the sum at its first value; the 6th has a row for the
     # hour it went down in, the 7th none.
     assert days == {
@@ -230,12 +246,59 @@ async def test_an_outage_s_gas_lands_on_its_first_day_back(
     # Read from inside the outage, the first day back is measured against
     # the sum before the read and holds the outage whole, with no day on
     # record ahead of it to share it from: it is left out.
-    late = await gas_meter.daily_consumption(
-        hass, METER, "volume", date(2026, 1, 7), date(2026, 1, 9)
-    )
+    late = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 1, 7), date(2026, 1, 9))
     assert late == {date(2026, 1, 8): pytest.approx(72.0), date(2026, 1, 9): pytest.approx(24.0)}
     assert gas_meter.spread_outages(late, date(2026, 1, 7)) == {
         date(2026, 1, 9): pytest.approx(24.0)
+    }
+
+
+async def test_a_meter_that_stood_still_through_an_outage_reads_zero(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """The boiler off from the 6th on and the meter unavailable through the
+    6th and the 7th: the first day back changes by exactly 0, which puts
+    the day without rows on record at 0 rather than leaving it missing."""
+    await _record_outage(hass, freezer, lambda hour: 5000.0 + min(hour, 23), {1, 2})
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 1, 5), date(2026, 1, 9))
+    assert days == {
+        date(2026, 1, 5): pytest.approx(23.0),
+        date(2026, 1, 6): 0.0,
+        date(2026, 1, 8): 0.0,
+        date(2026, 1, 9): 0.0,
+    }
+    assert gas_meter.spread_outages(days, date(2026, 1, 5)) == {
+        date(2026, 1, 5): pytest.approx(23.0),
+        date(2026, 1, 6): 0.0,
+        date(2026, 1, 7): 0.0,
+        date(2026, 1, 8): 0.0,
+        date(2026, 1, 9): 0.0,
+    }
+
+
+async def test_an_outage_past_the_purge_reads_negative_and_stays_missing(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """The meter away from the 6th to the 8th and the five-minute rows
+    purged meanwhile: the recorder starts the sum over on the 9th, whose
+    change is the new sum, 23 m3, less the old one, 5023 m3 with the first
+    hour's 5000. That gas is lost, the day back counts none and the days
+    before it stay missing."""
+
+    def reading(hour: int) -> float:
+        return (5000.0 if hour == 0 else 10000.0) + hour
+
+    await _record_outage(hass, freezer, reading, {1, 2, 3}, purge_at=84)
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 1, 5), date(2026, 1, 9))
+    assert days == {
+        date(2026, 1, 5): pytest.approx(5023.0),
+        date(2026, 1, 6): 0.0,
+        date(2026, 1, 9): pytest.approx(-5000.0),
+    }
+    assert gas_meter.spread_outages(days, date(2026, 1, 5)) == {
+        date(2026, 1, 5): pytest.approx(5023.0),
+        date(2026, 1, 6): 0.0,
+        date(2026, 1, 9): 0.0,
     }
 
 

@@ -225,9 +225,13 @@ billed on the last card it was sold on.
   the last five-minute row it compiled, so the first day back holds the gas
   of the days without rows before it, and its figure is split evenly over
   them and itself; scaled across instead, that gas counted twice. A first
-  day back at 0 is a sum the recorder started over, once the outage
-  outlasted `purge_keep_days` and the last five-minute row was purged:
-  that gas is lost and the days stay missing. The meter is read from
+  day back that changed by exactly 0 is a meter that stood still, so the
+  days it was away are on record at 0. A negative one is a sum the recorder
+  started over, once the outage outlasted `purge_keep_days` and the last
+  five-minute row was purged, the new sum less the old one: that gas is
+  lost, the day counts none and the days stay missing (a meter whose whole
+  earlier sum is no more than the day back's gas reads 0 or more there,
+  and is taken for the other two). The meter is read from
   sixteen days before today's date last year (`meter_start`), so that the
   day before an outage that date falls in is on record; with none on
   record ahead of it, the first day read holds an outage that began before

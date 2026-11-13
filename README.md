@@ -272,7 +272,8 @@ and the projection share that day's figure out evenly over the missing days
 and itself, so the gas counts once and those days are on record. That
 holds for an outage a year ago that today's date falls in as well: the
 meter is read from sixteen days earlier, and an outage reaching further
-back than that leaves its days missing. A meter
+back than that leaves its days missing. A meter that reads the same
+after the outage as before it used no gas, and its days count as 0. A meter
 offline, while Home Assistant runs, for longer than the recorder keeps its
 five-minute statistics (`purge_keep_days`, 10 by default) starts its sum
 over and that gas is lost: the days stay missing. The monthly costs keep
