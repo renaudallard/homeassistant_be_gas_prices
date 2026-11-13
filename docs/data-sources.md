@@ -232,8 +232,18 @@ current one, what the integration bills on from the law, the excise of
 both slices, the protected customer's rate and the energy contribution,
 read from FPS Finance's tariff and Justel the way the live check reads
 them, with an installation's readers and a network failure tried again
-after a pause. A month they still give is written again, figure by figure; one
-they no longer give keeps what was written. `law_archive.py` reads it once
+after a pause. A month they no longer give keeps what was written. A run
+holds nothing of the days before it and does not always read both, so a
+figure already written is replaced only by the source the integration asks
+first for it: FPS Finance's tariff or the quarters typed in `const.py` for
+the excise, Justel for the protected customer's rate, the tariff for the
+energy contribution. What a later source gives (Justel for the excise and
+the contribution, the tariff for the protected rate, `const.py` for the
+contribution) fills a month that holds none and replaces nothing, so a run
+that read Justel and not the tariff does not put the law's yearly step over
+a quarterly notice. A month written from a later source keeps that figure,
+even where that source changes, until the first one gives the month.
+`law_archive.py` reads it once
 a day for an entry with the card archive option on
 (`GET https://raw.githubusercontent.com/renaudallard/be_price_cards/main/gas/law.json`,
 a failure waiting six hours), keeps it in each entry's Store, a month from

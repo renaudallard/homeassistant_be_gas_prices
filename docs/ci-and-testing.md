@@ -457,7 +457,13 @@ under `gas/`:
 - `law.json`: per month from January 2025 up to the current one, what the
   integration bills on from the law as the run read it (`_write_law`), a
   month it no longer gives keeping what was written, which `law_archive.py`
-  reads. The run reads the law with the live check's `check_excise_law` and
+  reads. A figure already written is replaced only by the source asked
+  first for it (`_law_month`: the tariff or the typed quarters for the
+  excise, Justel for the protected rate, the tariff for the contribution);
+  what a later source gives fills a month that holds none, so Justel's
+  yearly step never replaces a quarterly notice the tariff gave, on a day
+  the tariff is not read or once FPS Finance drops the quarter. The run
+  reads the law with the live check's `check_excise_law` and
   `check_excise_tariff`, so a network failure is tried again after a pause
   and one that persists is printed, costing the cards nothing.
 - `network.json`: per month of last year and this one up to the current

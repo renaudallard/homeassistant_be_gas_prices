@@ -35,6 +35,7 @@ import json
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -232,10 +233,88 @@ def test_a_month_the_readings_no_longer_give_keeps_what_was_written(tmp_path: Pa
     _readings_gone()
     ac._write_law(tmp_path, date(2026, 11, 2))
     table = json.loads((tmp_path / "law.json").read_text())["residential"]
-    # Before the window, and what no reading gives any more, stay.
+    # Before the window, and what no reading gives any more, stay. So does
+    # the contribution: const.py still gives one, but it is asked last, and
+    # only fills a month that holds none.
     assert table["2024-12"] == KEPT
-    assert table["2026-09"]["excise"] == KEPT["excise"]
-    assert table["2026-09"]["protected"] == KEPT["protected"]
-    # What the integration still bills, const.py's contribution here, is
-    # written again.
-    assert table["2026-09"]["contribution"] == 0.0
+    assert table["2026-09"] == KEPT
+    assert table["2026-10"] == {"contribution": 0.0}
+
+
+# A made-up quarter of 2027, for the figures FPS Finance's tariff alone gives.
+_QUARTER = (date(2027, 1, 1), date(2027, 3, 31))
+
+
+def _written(out: Path, today: date) -> dict[str, dict[str, Any]]:
+    """The table after one more run on ``today``."""
+    ac._write_law(out, today)
+    table: dict[str, dict[str, Any]] = json.loads((out / "law.json").read_text())["residential"]
+    return table
+
+
+def test_the_law_s_yearly_step_never_replaces_the_tariff_s_notice(tmp_path: Path) -> None:
+    """The tariff lists a notice for the first quarter of 2027 above the
+    step the law voted for the year, which is all Justel prints. A run holds
+    only what it read: one that read Justel and not the tariff, or neither,
+    wrote the step over the notice. The notice stays, the step still fills
+    a month that holds no excise, and the tariff, read again, corrects it."""
+    notice, step = [0.01139, 0.0125], [0.01139, 0.01224]
+    february, april = date(2027, 2, 10), date(2027, 4, 10)
+    tarbel.hold(((*_QUARTER, 0.01139, 0.0125),))
+    assert _written(tmp_path, february)["2027-01"]["excise"] == notice
+    tarbel._HELD.clear()
+    assert law_excise(date(2027, 1, 1)) == pytest.approx(step)
+    table = _written(tmp_path, april)
+    assert table["2027-01"]["excise"] == table["2027-02"]["excise"] == notice
+    assert table["2027-03"]["excise"] == table["2027-04"]["excise"] == pytest.approx(step)
+    _readings_gone()
+    assert _written(tmp_path, april)["2027-01"]["excise"] == notice
+    tarbel.hold(((date(2027, 4, 1), date(2027, 6, 30), 0.01139, 0.0126),))
+    table = _written(tmp_path, april)
+    assert table["2027-04"]["excise"] == [0.01139, 0.0126]
+    assert table["2027-03"]["excise"] == pytest.approx(step)
+
+
+def test_a_typed_quarter_is_written_over_what_was_there(tmp_path: Path) -> None:
+    """The quarters const.py types are the tariff's notices, never the
+    law's yearly step, so they are written like the tariff's own."""
+    (tmp_path / "law.json").write_text(
+        json.dumps({"residential": {"2026-07": KEPT}}), encoding="utf-8"
+    )
+    _readings_gone()
+    table = _written(tmp_path, date(2026, 11, 2))
+    assert table["2026-07"]["excise"] == pytest.approx([0.00823, 0.0093315])
+
+
+def test_the_tariff_never_replaces_the_protected_rate_justel_gave(tmp_path: Path) -> None:
+    """The protected customer's rate is asked of Justel first. On a day
+    Justel is not read, the tariff's figure fills a month that holds none
+    and leaves the others, and Justel, read again, corrects it."""
+    february, march = date(2027, 2, 10), date(2027, 3, 10)
+    assert _written(tmp_path, february)["2027-01"]["protected"] == pytest.approx(0.00342)
+    kept = list(excise_law._PROTECTED_HELD)
+    excise_law._PROTECTED_HELD.clear()
+    tarbel.hold_protected(((*_QUARTER, 0.003),))
+    table = _written(tmp_path, march)
+    assert table["2027-01"]["protected"] == pytest.approx(0.00342)
+    assert table["2027-03"]["protected"] == 0.003
+    excise_law._PROTECTED_HELD[:] = kept
+    assert _written(tmp_path, march)["2027-03"]["protected"] == pytest.approx(0.00342)
+
+
+def test_only_the_tariff_replaces_a_contribution_already_written(tmp_path: Path) -> None:
+    """The contribution is asked of the tariff first, then of Justel, and
+    last of const.py: what either of those gives fills a month that holds
+    none and never replaces what the tariff wrote."""
+    february, april = date(2027, 2, 10), date(2027, 4, 10)
+    tarbel.hold_contribution(((*_QUARTER, 0.0005),))
+    assert _written(tmp_path, february)["2027-01"]["contribution"] == 0.0005
+    tarbel._CONTRIBUTION_HELD.clear()
+    assert law_contribution(date(2027, 1, 1)) == 0.0
+    assert _written(tmp_path, february)["2027-01"]["contribution"] == 0.0005
+    _readings_gone()
+    table = _written(tmp_path, april)
+    assert table["2027-01"]["contribution"] == table["2027-02"]["contribution"] == 0.0005
+    assert table["2027-04"]["contribution"] == 0.0
+    tarbel.hold_contribution(((date(2027, 4, 1), date(2027, 6, 30), 0.0004),))
+    assert _written(tmp_path, april)["2027-04"]["contribution"] == 0.0004

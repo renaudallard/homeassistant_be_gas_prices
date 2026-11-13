@@ -490,7 +490,9 @@ jobs:
             "- \`law.json\`: per month, what the integration bills on from the law (the" \
             "  excise of both slices, the protected customer's rate and the energy" \
             "  contribution), read from FPS Finance's tariff and Justel; a month they no" \
-            "  longer give keeps what was written." \
+            "  longer give keeps what was written, and a figure already written is" \
+            "  replaced only by the source asked first for it, so Justel's yearly step" \
+            "  never replaces a quarterly notice of the tariff." \
             "- \`network.json\`: per month and DSO, what each regulator's sheet gives a" \
             "  custom entry taking its network from it (Fluvius, Brugel, the CWaPE):" \
             "  each tier's terms and the metering, excluding VAT; a month no longer read" \

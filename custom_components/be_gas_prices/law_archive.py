@@ -33,8 +33,12 @@ publishes, and Justel's consolidated text only the wording in force. The
 card archive reads them the same way every day and keeps what the
 integration bills each month from them in ``law.json``
 (``scripts/archive_cards.py``): the excise of both slices, the protected
-customer's rate and the energy contribution. A month the readings still
-give is written again, one they no longer give keeps what was written.
+customer's rate and the energy contribution. A month the readings no
+longer give keeps what was written, and a figure already written is
+replaced only by the source asked first for it: the tariff or const.py's
+quarters for the excise, Justel for the protected customer's rate, the
+tariff for the contribution. What a later source gives fills a month that
+holds none, so Justel's yearly step never replaces a quarterly notice.
 
 It answers only for a month an entry's own readings do not give
 (providers/_resolve.py), ahead of the figures const.py holds. Read daily by

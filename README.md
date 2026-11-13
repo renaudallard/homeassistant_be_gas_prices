@@ -529,7 +529,9 @@ contribution, read from FPS Finance's tariff and Justel as an installation
 reads them, a dropped connection tried again. Neither keeps every month it
 once gave, the tariff only the
 quarters it still publishes and Justel only the wording in force, so a
-month they no longer give keeps what was written. An installation with the
+month they no longer give keeps what was written, and a quarterly excise
+notice the tariff gave is never replaced by the yearly step Justel prints.
+An installation with the
 option on reads that table once a day too, and bills it only for a month
 its own reading of the tariff and the law does not give.
 

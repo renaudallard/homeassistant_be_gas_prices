@@ -65,7 +65,8 @@ Every supplier's index publication (its ``fetch_index``) is kept as
 what earlier runs kept, so a month the supplier's page stopped listing stays.
 The law is read the way the live check reads it, and what the integration
 bills each month on from it goes to ``<out>/law.json`` the same way, so a
-month FPS Finance's tariff and Justel no longer give stays. The network sheet
+month FPS Finance's tariff and Justel no longer give stays, and a figure the
+tariff gave is not replaced by the yearly step Justel prints. The network sheet
 of every DSO a custom entry can take its network from is read with the
 integration's readers too, and what each gives every month of last year and
 this one goes to ``<out>/network.json``, so a year the regulator stops
@@ -150,10 +151,17 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
     targets,
 )
 
-from custom_components.be_gas_prices import brugel, cwape, fluvius  # noqa: E402
+from custom_components.be_gas_prices import (  # noqa: E402
+    brugel,
+    cwape,
+    excise_law,
+    fluvius,
+    tarbel,
+)
 from custom_components.be_gas_prices.const import (  # noqa: E402
     BRUSSELS_DSO_KEYS,
     GAS_EXCISE_KNOWN_FROM,
+    GAS_EXCISE_KNOWN_UNTIL,
 )
 from custom_components.be_gas_prices.providers import all_extractors  # noqa: E402
 from custom_components.be_gas_prices.providers._pdf import (  # noqa: E402
@@ -975,22 +983,37 @@ def _write_vat(out: Path) -> None:
     (out / _VAT).write_text(json.dumps(table, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _law_month(month: date) -> dict[str, Any]:
+def _law_month(month: date) -> tuple[dict[str, Any], dict[str, Any]]:
     """What the integration bills ``month`` on from the law, as it reads the
     law now (providers/_resolve.py): the excise of both slices, the
     protected customer's rate and the energy contribution, each one left out
-    while it is not known."""
-    entry: dict[str, Any] = {}
+    while it is not known. In two parts: the figures that came from the
+    source the integration asks first for them, and the figures only a later
+    source in their order gave in this run.
+
+    The excise is asked of FPS Finance's tariff, then of the quarters
+    const.py types from the same notices, which count as the tariff here,
+    and only then of Justel, whose article 419 prints the voted yearly step
+    and no quarterly notice. The protected customer's rate is asked of
+    Justel first, which the notices do not move, and the contribution of
+    the tariff first.
+    """
+    first: dict[str, Any] = {}
+    later: dict[str, Any] = {}
     excise = law_excise(month)
     if excise is not None:
-        entry["excise"] = [excise[0], excise[1]]
-    for name, rate in (
-        ("protected", law_protected_excise(month)),
-        ("contribution", law_contribution(month)),
+        listed = (
+            tarbel.excise_for(month) is not None
+            or (month.year, month.month) < GAS_EXCISE_KNOWN_UNTIL
+        )
+        (first if listed else later)["excise"] = [excise[0], excise[1]]
+    for name, rate, asked_first in (
+        ("protected", law_protected_excise(month), excise_law.protected_excise_for(month)),
+        ("contribution", law_contribution(month), tarbel.contribution_for(month)),
     ):
         if rate is not None:
-            entry[name] = rate
-    return entry
+            (later if asked_first is None else first)[name] = rate
+    return first, later
 
 
 def _write_law(out: Path, today: date) -> int:
@@ -999,9 +1022,18 @@ def _write_law(out: Path, today: date) -> int:
 
     Neither source keeps every month it once gave: FPS Finance's tariff
     lists the quarters it still publishes and Justel the wording in force.
-    So a month the integration still bills from them is written again,
-    figure by figure, and one it no longer does keeps what was written,
-    which is what an installation reads for it (law_archive.py).
+    So a figure the integration no longer bills from them keeps what was
+    written, which is what an installation reads for it (law_archive.py).
+
+    A run holds nothing of the days before it, and does not always read
+    both sources. So only a figure from the source asked first for it is
+    written over one already there; a figure a later source gave fills a
+    month that holds none and replaces nothing (:func:`_law_month`).
+    Otherwise a run that read Justel and not the tariff, or any run after
+    FPS Finance dropped the quarter, would put the law's yearly step over
+    the quarterly notice the tariff had given. What this gives up: a month
+    written from a later source keeps that figure, even where that source
+    is amended, until the first one gives the month.
     Deterministic, so a day that changed nothing rewrites the same bytes.
     """
     path = out / _LAW
@@ -1010,11 +1042,11 @@ def _write_law(out: Path, today: date) -> int:
     months: dict[str, Any] = dict(section) if isinstance(section, dict) else {}
     year, month = GAS_EXCISE_KNOWN_FROM
     while (year, month) <= (today.year, today.month):
-        entry = _law_month(date(year, month, 1))
-        if entry:
+        first, later = _law_month(date(year, month, 1))
+        if first or later:
             label = _month_id(year, month)
             kept = months.get(label)
-            months[label] = {**(kept if isinstance(kept, dict) else {}), **entry}
+            months[label] = {**later, **(kept if isinstance(kept, dict) else {}), **first}
         year, month = (year + 1, 1) if month == 12 else (year, month + 1)
     _write_json(path, {"residential": dict(sorted(months.items()))})
     return len(months)
