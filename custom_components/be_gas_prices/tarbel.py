@@ -48,8 +48,8 @@ The energy contribution is code 300. Up to July 2026 it has rows of its own,
 "enkel de bijdrage op de energie", "van toepassing tot en met 31/07/2026"
 with no first day, at 0,9978 EUR/MWh, while the excise rows of those quarters
 say "enkel de bijzondere accijns" and carry 0 under that code: that 0 is not
-the contribution. A row that says neither carries both, as the slices of
-August and September 2026 do, the contribution at 0. A month no row gives is
+the contribution. A row that says neither carries both, as the slices
+from August 2026 on do, the contribution at 0. A month no row gives is
 left to the law (excise_law.py).
 
 What is read is held for the process, read again daily, and kept in every

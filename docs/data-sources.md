@@ -10,10 +10,14 @@ indexation page, OCTA+'s parameters PDF, TotalEnergies's history PDF, Eneco's
 indexation PDF, Mega's indexation page, Luminus's indexation PDF, the series
 on Bolt's price list page, and so on
 (see each [provider page](providers/)). The table is fetched twice a day and
-kept in the entry's Store. A supplier's values are never used for another
+kept in the entry's Store. A supplier's values are not used for another
 supplier's formula: publishers of "the same" hub disagree in the second
 decimal (ICIS Heren, EEX and Argus assess it independently) and an RLP
-weighting moves it again.
+weighting moves it again. The one exception is measured, not assumed:
+energie.be's TTF_RLP, which Trevion publishes within 0,05 EUR/MWh of it in
+every month both gave from December 2024 to September 2026, stands in for
+the months energie.be has not published yet, provisional until it has
+(`stand_in_name`, [energie.be](providers/energiebe.md)).
 
 ## Calorific values (Atrias)
 
@@ -91,8 +95,8 @@ Finance publishes for excise declarations (annex 7):
   ("enkel de bijdrage op de energie", "van toepassing tot en met
   31/07/2026", no first day), 0,9978 EUR/MWh, while the excise rows of those
   quarters say "enkel de bijzondere accijns" and carry 0 under that code,
-  which is not read as the contribution; on the rows that carry both, August
-  and September 2026, zero. A month no row gives is left to the law. Rows
+  which is not read as the contribution; on the rows that carry both, from
+  August 2026 on (August and September, then October to December), zero. A month no row gives is left to the law. Rows
   that cannot be read leave the excise read;
 - the protected customer's rows, "beschermde residentiële afnemer", one per
   period and without slices: exempt from April to June 2023, 2,77 EUR/MWh

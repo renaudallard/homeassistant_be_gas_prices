@@ -197,6 +197,15 @@ energy leg a contract signed on it is priced on (Smart Fixed of November
   660,65), Fluvius West T2 proportional 1.05 (1,05500). Read as printed.
 - Proportional terms are printed with two decimals (ORES 4.29 against the
   CWaPE 4,28944), transport as 0.165 (Fluxys 0,16536).
+- RESA's rows kept the supplement for gas brought by road ("supplément
+  pour gaz porté", about 0,61 c€/kWh on every tier) through January 2026:
+  "RESA 4.86 2.93 2.67" on every card of 2025 and "5.25 3.14 2.86" in
+  January 2026, then "4.64 2.53 2.24" from February. Engie printed it in
+  January and February 2025 too (4,862) and dropped it from March 2025
+  (4,247; 4,64 in January 2026). It is billed only for gas delivered by
+  lorry, so from March 2025 to January 2026 a household on RESA's pipes
+  was quoted too much. Read and billed as printed, as the other cards'
+  network errors are.
 - The Prepaid Fixed card prints `Prepaid-Fix` where the other cards print
   `Carte tarifaire`; nothing is anchored on either.
 - The Smart Flex card links `...-Cosy0109.pdf` as the Cosy tariff while the

@@ -65,9 +65,11 @@ this integration prices like any other.
   contracts are `factor x index + base`, where the index (TTF or ZTP, day-ahead
   or month-ahead, RLP-weighted or not) belongs to the delivery month and is
   only known once the month is over. Each month is priced on the value the
-  supplier itself publishes, never on another publisher's figure for "the
+  supplier itself publishes, not on another publisher's figure for "the
   same" market, and a month whose value is not out yet is priced at the
-  latest one and marked provisional.
+  latest one and marked provisional. The one exception is energie.be, whose
+  index Trevion publishes too, to the same figures: a month energie.be has
+  not published yet takes Trevion's value and stays provisional.
 - **The tier and the excise the way the bill applies them**: the distribution
   tier (up to 5 000, 150 000 or 1 000 000 kWh a year) prices every kWh of the
   year, and the federal excise is billed per slice of the annual volume.
@@ -170,7 +172,7 @@ this integration prices like any other.
 | **EnergyVision** | Goedkope stroom - Gas *(monthly ZTP-RLP-M)* · Goedkope stroom 1 jaar vast - Gas | All three regions, the fixed card Flanders + Wallonia · [`energyvision.py`](./custom_components/be_gas_prices/providers/energyvision.py) · [notes](./docs/providers/energyvision.md) |
 | **Engie** | Easy Fixe · Empower Fixe · Easy Variable *(ZTP101, set before the month)* · Flow · Direct Online · Basic Online · Empower Variable · Empty House *(monthly ZTPDAM)* | All three regions, Basic Online Flanders + Wallonia · [`engie.py`](./custom_components/be_gas_prices/providers/engie.py) · [notes](./docs/providers/engie.md) |
 | **Frank Energie** | Gas Variabel · HV · JN *(its November 2026 card waives the subscription for a contract's first year: billed at the October card's 26,04 EUR a year, and none of it over that year for a contract signed on it)* · Slim · Plus *(since November 2026)* *(monthly M ZTP RLP0N EOD EEX)* · *withdrawn on 2026-11-01, marked † for households still on it:* Korting | Flanders only · [`frank.py`](./custom_components/be_gas_prices/providers/frank.py) · [notes](./docs/providers/frank.md) |
-| **Luminus** | Comfy · Comfy+ · MaxxFix · BasicFix Online · ComfyFlex · ComfyFlex+ *(quarterly TTF DAHW)* · MaxxFlex *(monthly TTF DAH M)* · BasicFlex Online *(monthly TTF DAH RLP M)* · a card missing from Luminus's current address is read from its tariff archive instead, as BasicFlex Online's was in November 2026 | Flanders + Wallonia · [`luminus.py`](./custom_components/be_gas_prices/providers/luminus.py) · [notes](./docs/providers/luminus.md) |
+| **Luminus** | Comfy · Comfy+ · MaxxFix · BasicFix Online · ComfyFlex · ComfyFlex+ *(quarterly TTF DAHW)* · MaxxFlex *(monthly TTF DAH M)* · BasicFlex Online *(monthly TTF DAH M from November 2026, TTF DAH RLP M before)* · a card missing from Luminus's current address is read from its tariff archive instead, as BasicFlex Online's was in November 2026 | Flanders + Wallonia · [`luminus.py`](./custom_components/be_gas_prices/providers/luminus.py) · [notes](./docs/providers/luminus.md) |
 | **Mega** | Smart · Cosy · Online Flex *(monthly ZTP)* · Off-peak Impact *(monthly TTF, Wallonia only)* · Smart · Cosy · Online · Zen Fixed · *withdrawn on 2026-10-30, marked † for households still on them:* Prepaid Flex *(monthly ZTP)* · Off-peak Flex *(monthly TTF)* · Prepaid Fixed · Off-peak Fixed | All three regions · [`mega.py`](./custom_components/be_gas_prices/providers/mega.py) · [notes](./docs/providers/mega.md) |
 | **OCTA+** | Basic Online · Boost Flex · Eco Boost Flex · Smart Variable *(monthly ZTP RLP M)* · Boost Fix · Eco Boost Fix · *withdrawn on 2026-10-01, marked † for households still on them:* Flux · Eco Flux · Fixed · Eco Fixed | Flanders + Wallonia · [`octaplus.py`](./custom_components/be_gas_prices/providers/octaplus.py) · [notes](./docs/providers/octaplus.md) |
 | **Sparki** | Self Service · At Your Service *(a monthly price set on TTF; Sparki publishes no index values, so each month is priced at the estimate its card prints, marked provisional)* | Flanders + Wallonia · [`sparki.py`](./custom_components/be_gas_prices/providers/sparki.py) · [notes](./docs/providers/sparki.md) |
@@ -638,7 +640,7 @@ attached to an issue as it is.
   Past cards bill their months the same way,
   and their errors are in the provider notes: Trevion's January 2026 card
   prints the 2025 Fluvius table, Engie's prints RESA's mid tier as 2,259,
-  and RESA rows of Luminus, Engie, Eneco and TotalEnergies in 2025 and
+  and RESA rows of Luminus, Engie, Eneco, Mega and TotalEnergies in 2025 and
   January 2026, and of EnergyVision in February, May and June 2026, add
   the supplement CWaPE sets only for networks fed by trucked gas, 0,6155
   c EUR/kWh. A distribution tier that is not cheaper per kWh than the one

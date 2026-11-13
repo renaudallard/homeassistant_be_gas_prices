@@ -32,7 +32,7 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
 | `luminus_maxxfix` | Luminus MaxxFix | maxxfix | ZGR2B2X | fixed | |
 | `luminus_maxxflex` | Luminus MaxxFlex | maxxflex | ZGR2A2X | indexed, monthly | TTF DAH M |
 | `luminus_basicfix` | Luminus BasicFix Online | basicfix | ZGR1B2D | fixed | |
-| `luminus_basicflex` | Luminus BasicFlex Online | basicflex | ZGR1A0D | indexed, monthly | TTF DAH RLP M |
+| `luminus_basicflex` | Luminus BasicFlex Online | basicflex | ZGR1A0D | indexed, monthly | TTF DAH M from November 2026, TTF DAH RLP M before |
 
 - Every product is in Flanders and Wallonia (all sixteen cards fetched on
   29 September 2026). The current-card endpoint has no Brussels card; the
@@ -64,7 +64,9 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
     1-0-3 term must be weighted zero or the parse fails, since one index
     cannot resolve it.
   - MaxxFlex: "0,1001 x TTF DAH M + 1,5650"; BasicFlex: "0,1001 x TTF DAH
-    RLP M + 0,5609".
+    RLP M + 0,5609" up to October 2026 and, on the two-year product sold
+    from November, "0,1001 x TTF DAH M + 0,7479" (Wallonia; + 0,5279 in
+    Flanders). The index is the one each card names.
   - c€/kWh excluding VAT for an index in EUR/MWh: factor = A / 100 x 1,06,
     base = C / 100 x 1,06. An index name other than the three above fails.
 - Formula check: the card states no unit for its formula, only for the index
@@ -169,9 +171,14 @@ In November 2026 Luminus moved BasicFlex Online to a new product id
 attached no card to it, so the current-card address answered 404 in both
 regions. The archive still served a November card under the id the October
 list names (`a1p0800000CEbfNAAT`), made on 29 October, a day before the other
-November cards, with October's formula. The other gas formulas kept their
-figures that month (ComfyFlex and ComfyFlex+ only dropped their zero-weighted
-TTF 1-0-3 term), so it prices November as they do.
+November cards, with October's formula, "0,1001 x TTF DAH RLP M + 0,3409" in
+Flanders: the open-ended product ("GBFL0C2.0", "Durée du contrat :
+indéterminée") the new one replaced. From 2 November the current address
+served the new product's own card, a two-year contract ("GBFL2C2.0") on
+"0,1001 x TTF DAH M + 0,5279", and the stand-in was no longer read. At
+October's values the two formulas are 0,03 c€/kWh apart (9,73 against 9,70
+in Flanders). So a card found under the id of the month before can be the
+variant the product had before it changed.
 
 So when the current-card address has no card (a 404 or 410, or a web page
 served instead), `fetch` asks the archive (`_archived_current`): the running

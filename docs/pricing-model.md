@@ -68,10 +68,12 @@ the household's caliber cannot price it, like a card missing its DSO.
 | `VariableRates` | the card's printed price; provisional where the card sets it by a formula on an index the supplier publishes no value of (Dots, Sparki), since the bill follows the formula |
 | `IndexedRates` | `factor x index(M) + base` once the supplier has published the index for M; before that, at the latest value it has published (the month is then *provisional*), or at a stand-in its table carries for the months its own publication has not reached, the same index as another supplier publishes it (`stand_in_name`; energie.be's TTF_RLP from Trevion's), provisional too, as is Bolt's own value for the month just closed on the first two days of the next, while it can still move; with no value published up to M, the card's printed figure, or a signed or typed formula at the index that figure was set at |
 
-An index is always the supplier's own: Engie's ZTPDAM (ICIS Heren), OCTA+'s
+An index is the supplier's own: Engie's ZTPDAM (ICIS Heren), OCTA+'s
 ZTP RLP M, TotalEnergies's TTF_M_RLP each come from that supplier's
 publication (`SupplierExtractor.fetch_index`), because two publishers of
-"the same" market rarely publish the same figure. A quarterly index fills
+"the same" market rarely publish the same figure. The stand-in of the table
+above is the one exception, for an index two suppliers were measured to
+publish alike. A quarterly index fills
 each month of its quarter. An index set before delivery (Engie's ZTP101, a
 month-ahead average) is `settled`: the card prices its month on it and the
 printed price is final. A settled month the supplier's table does not hold

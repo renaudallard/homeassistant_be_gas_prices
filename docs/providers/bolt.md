@@ -267,6 +267,18 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   22nd was on version 11, but the walk gives version 12. In Flanders, where
   version 12 is not read, June to August fall back like any other month
   without a card, and the household can type its factor and base instead.
+- Bolt retitles a version in place. `bolt_res_ng_fr_14.pdf` was titled
+  "Octobre 2026" when the card archive read it in October and "Novembre
+  2026" from November on, with the same formula, fee, tables and printed
+  price: only the title changed. The walk reads the title served
+  today, so asked for October 2026 now it passes over version 14 and gives
+  version 13, where the archive's October row is version 14. Those two
+  print the same formula and fee, so nothing is billed differently. A
+  version that changed its terms in one month and was retitled the next
+  would price a signing of the first month on the version before it, and
+  nothing Bolt serves tells the two cases apart. The card archive's row of
+  the month, which an entry reading the archive asks first, is the version
+  that was in force.
 
 ## Tests
 

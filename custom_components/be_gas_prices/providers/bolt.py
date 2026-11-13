@@ -86,11 +86,12 @@ readers run. What the cards print, read as printed:
   - a single excise rate with no second band.
   - a Brussels levy table without the row above 160 m3/h.
 
-The current three-page card starts with April 2026. The January and March
-2026 fixed cards and the January 2025 variable one checked are an older
-two-page template this module does not read, nor are the second June 2026
-cards of Bolt Variable and Bolt Variable Online, whose Flanders rows and
-levy column are missing from their text; such a month has no card here.
+The current three-page card starts with April 2026. The fixed cards of
+November 2025 to March 2026 are an older two-page template, read apart
+(``_parse_older``); the January 2025 variable one checked is of that
+template too and is not read. The second June 2026 cards of Bolt Variable
+and Bolt Variable Online lack their Flanders rows and levy column: they
+read in Wallonia and Brussels and leave Flanders without a card that month.
 """
 
 from __future__ import annotations
