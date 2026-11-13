@@ -77,8 +77,9 @@ class IndexValue:
 
     ``month`` differs from the month priced while the supplier has not yet
     published that month's value, which makes the price provisional, and so
-    does ``stand_in``: a value of the same index another supplier published,
-    while the supplier's own publication lags (``stand_in_name``).
+    does ``stand_in``: a value the table carries beside the supplier's own
+    series (``stand_in_name``), another supplier's of the same index while
+    the supplier's own publication lags, or its own before it is final.
     """
 
     value: float

@@ -149,10 +149,12 @@ _STAND_IN = " stand-in"
 
 
 def stand_in_name(index: str) -> str:
-    """The series a table carries beside ``index`` while the supplier's own
-    publication lags: the same index as another supplier publishes it, for
-    the months after the supplier's own newest value (energie.be's TTF_RLP
-    from Trevion's). A month priced on it stays provisional."""
+    """The series a table carries beside ``index`` for the months the
+    supplier's own publication has not settled: the same index as another
+    supplier publishes it, for the months after the supplier's own newest
+    value (energie.be's TTF_RLP from Trevion's), or the supplier's own
+    value while it can still move (Bolt's month just closed, on the first
+    days of the next). A month priced on it stays provisional."""
     return f"{index}{_STAND_IN}"
 
 

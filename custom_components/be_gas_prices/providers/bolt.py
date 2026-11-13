@@ -98,7 +98,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, tzinfo
+from datetime import date, datetime, timedelta, tzinfo
 
 import aiohttp
 from homeassistant.util import dt as dt_util
@@ -155,6 +155,7 @@ from .base import (
     SupplierExtractor,
     SupplierSnapshot,
     TaxOverlay,
+    stand_in_name,
 )
 
 _BASE_URL = "https://files.boltenergie.be/pricelists"
@@ -724,6 +725,10 @@ def _parse_older(
 
 _HISTORY_KEY = '"priceHistory":'
 _BELGIUM = "Europe/Brussels"
+# The last day of a month, in Belgium, on which the series' value for the
+# month before can still move: October 2026 read 87,87 EUR/MWh on
+# 1 November and 88,06 from the 2nd on.
+_UNSETTLED_UNTIL_DAY = 2
 
 
 def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
@@ -736,6 +741,11 @@ def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
     in ``belgium`` rather than Home Assistant's zone, which west of Belgium
     would file every value a month early. The running month and the ones
     after hold forward values, not what was billed.
+
+    On the first days of a month the value of the month just closed is not
+    final yet (``_UNSETTLED_UNTIL_DAY``). It is filed beside the series
+    (``stand_in_name``) until then, which bills it and keeps the month
+    provisional.
     """
     start = listing.find(_HISTORY_KEY)
     if start < 0:
@@ -769,7 +779,11 @@ def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
             values[month] = price * 1000.0
     if not values:
         raise ExtractorError("Bolt: the gas price history holds no past month")
-    return {_INDEX: values}
+    table = {_INDEX: values}
+    closed = f"{today.replace(day=1) - timedelta(days=1):%Y-%m}"
+    if today.day <= _UNSETTLED_UNTIL_DAY and closed in values:
+        table[stand_in_name(_INDEX)] = {closed: values.pop(closed)}
+    return table
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:

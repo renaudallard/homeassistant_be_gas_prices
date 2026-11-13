@@ -38,6 +38,7 @@ import pytest
 from freezegun import freeze_time
 from homeassistant.util import dt as dt_util
 
+from custom_components.be_gas_prices.bill import index_for
 from custom_components.be_gas_prices.const import (
     DSO_FLUVIUS_ANTWERPEN,
     DSO_FLUVIUS_WEST,
@@ -58,6 +59,7 @@ from custom_components.be_gas_prices.providers.base import (
     ExtractorError,
     SupplierSnapshot,
     TaxOverlay,
+    stand_in_name,
 )
 from tests import fixture_page, fixture_text
 
@@ -704,6 +706,28 @@ def test_running_month_forward_value_is_left_out() -> None:
         "TTF"
     ]
     assert max(values) == "2026-08"
+
+
+@pytest.mark.parametrize("day", [1, 2])
+def test_the_month_just_closed_is_not_final_on_the_first_two_days(day: int) -> None:
+    """Bolt's value for October 2026 read 87,87 on 1 November and 88,06
+    from the 2nd: until the 3rd the month just closed is filed beside the
+    series, which bills it and keeps the month provisional."""
+    table = bolt.parse_index(fixture_page("bolt", _LISTING_202610), date(2026, 10, day), _BELGIUM)
+    assert max(table["TTF"]) == "2026-08"
+    assert table[stand_in_name("TTF")] == {"2026-09": pytest.approx(75.3495763449174)}
+    billed = index_for(table, "TTF", "2026-09")
+    assert billed is not None
+    assert billed.value == pytest.approx(75.3495763449174)
+    assert billed.month == "2026-09"
+    assert billed.stand_in
+
+
+def test_the_month_just_closed_is_final_from_the_third() -> None:
+    table = bolt.parse_index(fixture_page("bolt", _LISTING_202610), date(2026, 10, 3), _BELGIUM)
+    assert set(table) == {"TTF"}
+    billed = index_for(table, "TTF", "2026-09")
+    assert billed is not None and not billed.stand_in
 
 
 def test_listing_without_the_series_fails_loud() -> None:

@@ -199,7 +199,9 @@ this integration prices like any other.
 > over the days by the Synergrid profile, which makes the month's bill the
 > profile-weighted mean of the month, and that is the monthly value Bolt
 > publishes on its price list page. A household whose daily values reach Bolt
-> is billed on its own days, which this mean only approximates. Bolt issues
+> is billed on its own days, which this mean only approximates. The value of
+> a month can still move on the first two days of the next, so the month
+> just closed stays provisional until the 3rd. Bolt issues
 > a new variable card on no fixed schedule and a contract keeps the card it
 > was signed on, so a month with no card of its own takes the one in force
 > then.

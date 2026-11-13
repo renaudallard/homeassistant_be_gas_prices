@@ -144,6 +144,14 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   current month is Belgium's too: east of it Home Assistant's month turns
   first, and the running month's forward value would be kept as its mean
   until the next read. A date without its offset is refused.
+- The value of a month still moves after the month has closed: October 2026
+  read 87,8697 on 1 November (12:47 UTC) and 88,0593 from the 2nd (14:05
+  UTC) on, as the card archive's copies of those days show. On the 1st and
+  2nd of a month in Belgium the value of the month before is therefore
+  filed beside the series (`stand_in_name("TTF")`): the month is billed on
+  it and stays provisional, the price sensor's `index_stand_in` is true,
+  and the card archive leaves it out of `indices/bolt.json`. From the 3rd
+  it is the series' own. That rests on that one month turn.
 - It matches OCTA+'s "TTF RLP Mois" (EGSI TTF day-ahead weighted by the RLP,
   https://files.octaplus.be/tariffs/paramètres_gaz_fr.pdf) to 0,03 EUR/MWh
   every month from September 2025 to September 2026, and to 0,17 from May to
