@@ -184,6 +184,21 @@ def test_a_formula_in_a_unit_no_card_has_used_fails_loud(unit: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "worded", ["", "hors TVA", "(cEUR/kWh, HTVA)", "HTVA, en cEUR/kWh", "en EURcent/kWh HTVA"]
+)
+def test_a_formula_whose_unit_is_not_found_fails_loud(worded: str) -> None:
+    """Read as EUR/MWh for want of a statement, a base in c€/kWh came out a
+    tenth of itself: 9,73 c€/kWh where the card's own estimate is 11,34."""
+    stated = "en cEUR/kWh HTVA"
+    text = _card(ECOBOOSTFLEX_VL_NOVEMBER)
+    assert text.count(stated) == 1
+    with pytest.raises(ExtractorError, match="no unit stated"):
+        octaplus.parse_snapshot(
+            "octaplus_ecoboostflex", REGION_FLANDERS, text.replace(stated, worded)
+        )
+
+
+@pytest.mark.parametrize(
     ("contract", "region", "name", "price", "fee"),
     [
         ("octaplus_boostfix", REGION_WALLONIA, BOOSTFIX_WL, 0.0881, 110.0),

@@ -489,7 +489,12 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: {_INDEX} formula not found")
     stated = _UNIT_AHEAD_RE.search(text, max(0, formula.start() - 60), formula.start())
     stated = stated or _UNIT_AFTER_RE.match(text, formula.end())
-    unit = (stated.group(1), stated.group(2)) if stated else ("", "MWh")
+    if stated is None:
+        # Every card of this template states it. One that words it another
+        # way may have changed it too, as November 2026's did, and the card
+        # prints no price at a named value to hold the formula to.
+        raise ExtractorError(f"OCTA+ {contract.contract_id}: formula with no unit stated")
+    unit = (stated.group(1), stated.group(2))
     divisor = _BASE_DIVISORS.get(unit)
     if divisor is None:
         raise ExtractorError(f"OCTA+ {contract.contract_id}: formula in {unit[0]}€/{unit[1]}")

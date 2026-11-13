@@ -86,7 +86,10 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
     formula, or after it on Smart Variable's. A base in c€/kWh is divided by
     100 instead, so the November formulas bill what October's did; read as
     EUR/MWh it came out ten times too small. A formula in any other unit
-    fails the parse.
+    fails the parse, and so does one with no unit found in either place:
+    all 40 variable cards of this template in the card archive, June to
+    November 2026, state it, and the card prints no price at a named index
+    value that a formula read on the wrong unit would miss.
 - VAT: the cards print "TVAC" and no rate, so `card_vat_rate` is None and the
   formulas are grossed up by the statutory 6% (`const.VAT_RATE_REDUCED`).
 - Price: the only price on a variable card is "prix moyen estimé pour les 12
