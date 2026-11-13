@@ -95,9 +95,17 @@ electricity cards that day.
 
 ## Index
 
-- energie.be's document runs late: on 11 November 2026 it still ended with
-  September (last modified 3 November) while every other supplier had
-  October, and its cards print only a VNR estimate. For the months after
+- The document is read by position (`fetch_pdf_text_layout`). energie.be
+  adds a month's value to the file it already serves: the document of
+  3 November 2026 is October's with "8,81" added for October, and the plain
+  text prints that cell after the page's footer, past the table, so read
+  that way the table still ended with September on 11 November. By position
+  the cell sits in its row ("Oktober 4,03 3,20 8,81"), and the three
+  documents held read the same both ways apart from it. The plain text is
+  still read when the table by position does not parse, a figure pdfplumber
+  split for instance.
+- energie.be's document can run late, and its cards print only a VNR
+  estimate. For the months after
   its newest value, `fetch_index` adds Trevion's TTF_RLP as a stand-in
   (`trevion.published_since`, the series `stand_in_name("TTF_RLP")`). The two
   agreed within 0,05 EUR/MWh in each of the 22 months from December 2024 to
@@ -117,8 +125,9 @@ electricity cards that day.
   of 0,16.
 - `fetch_index` reads https://www.energie.be/api/v1/data/document?key=Indexation,
   a 302 to `Indexation_Parameters_<hash>.pdf`. Its TTF_RLP table (years
-  2024 2025 2026 across, months down) is read with pypdf, which keeps every
-  figure whole; pdfplumber splits some of the Belpex ones ("11,2 1"). Values
+  2024 2025 2026 across, months down) is read with pdfplumber, by position,
+  and with pypdf when that reading does not parse: pypdf keeps every figure
+  whole where pdfplumber splits some of the Belpex ones ("11,2 1"). Values
   are c EUR/kWh with two decimals, times 10 into EUR/MWh (August 2026: 6,17,
   so 61,7).
 - Up to September 2026 the table was headed "TTF_RLP (c€/kWh)" and pypdf

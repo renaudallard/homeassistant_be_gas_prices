@@ -69,12 +69,15 @@ layout reading runs together out of order, and two network labels away
 from their figures. Such a card is read off its plain text, a second
 download.
 
-energie.be publishes TTF_RLP in a document of its own, which can run late:
-on 11 November 2026 it still ended with September. For the months after its
-newest value the table carries Trevion's TTF_RLP as a stand-in, the same
-index, which agreed with energie.be's within 0,05 EUR/MWh in every month
-from December 2024 to September 2026; a month priced on it stays
-provisional until energie.be publishes its own.
+energie.be publishes TTF_RLP in a document of its own, which can run late.
+It also adds a month's value to the file it already serves, as on
+3 November 2026 for October: the new cell then comes out of the plain text
+after the page's footer, away from its row, so the document is read by
+position, where the cell sits in its row. For the months after the newest
+value the table carries Trevion's TTF_RLP as a stand-in, the same index,
+which agreed with energie.be's within 0,05 EUR/MWh in every month from
+December 2024 to September 2026; a month priced on it stays provisional
+until energie.be publishes its own.
 """
 
 from __future__ import annotations
@@ -443,15 +446,14 @@ _VALUE_RE = re.compile(r"\d+,\d+")
 def parse_index_document(text: str) -> IndexTable:
     """The TTF_RLP table of the indexation document, in EUR/MWh.
 
-    Read as pypdf extracts it, which keeps every figure whole where
-    pdfplumber splits some ("11,2 1"). The table comes out as the year
-    headings, then each month name followed by its values, one per year
-    from the oldest: one cell per line up to September 2026, one row per
-    line since. A month the latest year has not reached yet is simply
-    shorter, so the values fill the years from the left. The October 2026
-    document prints the first row's values before its label, glued to it
-    ("3,00 4,81 3,41Januari"), so values read before any label are the
-    first label's.
+    The table comes out as the year headings, then each month name
+    followed by its values, one per year from the oldest. A month the
+    latest year has not reached yet is simply shorter, so the values fill
+    the years from the left. Read by position that is one row per line. As
+    pypdf extracts it, it is one cell per line up to September 2026 and one
+    row per line since, the October 2026 document printing the first row's
+    values before its label, glued to it ("3,00 4,81 3,41Januari"), so
+    values read before any label are the first label's.
     """
     heading = _INDEX_HEADING_RE.search(text)
     if heading is None:
@@ -487,12 +489,25 @@ def parse_index_document(text: str) -> IndexTable:
     return {_INDEX: values}
 
 
+async def _own_index(session: aiohttp.ClientSession) -> IndexTable:
+    """The indexation document's table, read by position: a value added to
+    the file since it was laid out sits in its row there, and after the
+    page's footer in the plain text, past the table. pdfplumber splits a
+    figure now and then ("11,2 1"), which the table refuses, and the plain
+    text, which keeps every figure whole, is then read instead."""
+    text = await fetch_pdf_text_layout(session, _INDEX_URL)
+    try:
+        return parse_index_document(text)
+    except ExtractorError:
+        return parse_index_document(await fetch_pdf_text(session, _INDEX_URL))
+
+
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     """energie.be's published TTF_RLP values, and Trevion's for the months
     after energie.be's newest, as a stand-in (``stand_in_name``). Trevion
     out of reach leaves energie.be's own values, which is what was read
     before."""
-    table = parse_index_document(await fetch_pdf_text(session, _INDEX_URL))
+    table = await _own_index(session)
     own = table.get(_INDEX)
     if not own:
         return table

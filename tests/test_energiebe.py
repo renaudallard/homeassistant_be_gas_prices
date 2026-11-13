@@ -237,6 +237,31 @@ def test_the_october_2026_index_document() -> None:
     assert len(values) == 33
 
 
+def test_a_value_added_to_the_document_is_read_in_its_row() -> None:
+    """The document of 3 November 2026 is October's file with October's
+    value added to it: read by position the cell sits in its row
+    ("Oktober 4,03 3,20 8,81"), where the plain text prints it after the
+    page's footer, past the table."""
+    name = "Indexation_Parameters_5aad2d327b_2026-11-03.pdf"
+    values = energiebe.parse_index_document(fixture_text("energiebe", name, "layout"))["TTF_RLP"]
+    assert values["2026-10"] == pytest.approx(88.1)
+    assert values["2025-10"] == pytest.approx(32.0)
+    assert "2026-11" not in values
+    assert len(values) == 34
+    plain = energiebe.parse_index_document(fixture_text("energiebe", name, "plain"))["TTF_RLP"]
+    assert "2026-10" not in plain
+    assert plain == {month: value for month, value in values.items() if month != "2026-10"}
+
+
+@pytest.mark.parametrize(
+    "name", ["document_key_Indexation.pdf", "Indexation_Parameters_5aad2d327b.pdf"]
+)
+def test_the_index_document_reads_the_same_by_position(name: str) -> None:
+    assert energiebe.parse_index_document(
+        fixture_text("energiebe", name, "layout")
+    ) == energiebe.parse_index_document(fixture_text("energiebe", name, "plain"))
+
+
 def test_an_index_row_with_more_values_than_years_is_refused() -> None:
     text = "TTF_RLP in c€/kWh (Per maand) - gas\n2025 2026\n4,81 3,41Januari\nFebruari 5,13 3,33 2,60\n"
     with pytest.raises(ExtractorError, match="more values than years"):
@@ -407,35 +432,63 @@ async def test_fetch_for_month_raises_on_a_transient_failure() -> None:
 
 
 _INDEX_DOCUMENT = "Indexation_Parameters_5aad2d327b.pdf"
+_INDEX_DOCUMENT_NOVEMBER = "Indexation_Parameters_5aad2d327b_2026-11-03.pdf"
+
+
+def _index_text(name: str = _INDEX_DOCUMENT, reader: str = "layout") -> AsyncMock:
+    return AsyncMock(return_value=fixture_text("energiebe", name, reader))
 
 
 async def test_fetch_index_reads_the_indexation_document() -> None:
-    """The document still ended with September on 11 November 2026, so the
-    months after it are Trevion's, asked from October on, as a stand-in."""
+    """The October document ends with September, so the months after it are
+    Trevion's, asked from October on, as a stand-in."""
     stand_in = AsyncMock(return_value={"2026-10": 88.05})
     with (
-        patch.object(
-            energiebe,
-            "fetch_pdf_text",
-            AsyncMock(return_value=fixture_text("energiebe", _INDEX_DOCUMENT, "plain")),
-        ) as fetched,
+        patch.object(energiebe, "fetch_pdf_text_layout", _index_text()) as fetched,
+        patch.object(energiebe, "fetch_pdf_text", AsyncMock()) as plain,
         patch.object(energiebe.trevion, "published_since", stand_in),
     ):
         table = await energiebe.fetch_index(AsyncMock())
     assert fetched.call_args.args[1].endswith("?key=Indexation")
+    plain.assert_not_awaited()
     assert table["TTF_RLP"]["2026-09"] == pytest.approx(75.3)
     assert "2026-10" not in table["TTF_RLP"]
     assert table["TTF_RLP stand-in"] == {"2026-10": 88.05}
     assert stand_in.call_args.args[1] == date(2026, 10, 1)
 
 
+async def test_fetch_index_reads_october_s_value_once_it_is_added() -> None:
+    """The document of 3 November 2026 gives October itself, so Trevion is
+    asked from November on and October is energie.be's own."""
+    stand_in = AsyncMock(return_value={})
+    with (
+        patch.object(energiebe, "fetch_pdf_text_layout", _index_text(_INDEX_DOCUMENT_NOVEMBER)),
+        patch.object(energiebe.trevion, "published_since", stand_in),
+    ):
+        table = await energiebe.fetch_index(AsyncMock())
+    assert set(table) == {"TTF_RLP"}
+    assert table["TTF_RLP"]["2026-10"] == pytest.approx(88.1)
+    assert stand_in.call_args.args[1] == date(2026, 11, 1)
+
+
+async def test_fetch_index_reads_the_plain_text_when_a_figure_comes_out_split() -> None:
+    """pdfplumber splits a figure now and then ("11,2 1"); the table refuses
+    the stray digit and the plain text is read instead."""
+    split = fixture_text("energiebe", _INDEX_DOCUMENT, "layout").replace("7,53", "7,5 3")
+    assert split != fixture_text("energiebe", _INDEX_DOCUMENT, "layout")
+    with (
+        patch.object(energiebe, "fetch_pdf_text_layout", AsyncMock(return_value=split)),
+        patch.object(energiebe, "fetch_pdf_text", _index_text(reader="plain")) as plain,
+        patch.object(energiebe.trevion, "published_since", AsyncMock(return_value={})),
+    ):
+        table = await energiebe.fetch_index(AsyncMock())
+    plain.assert_awaited_once()
+    assert table["TTF_RLP"]["2026-09"] == pytest.approx(75.3)
+
+
 async def test_trevion_out_of_reach_leaves_energie_be_s_own_values() -> None:
     with (
-        patch.object(
-            energiebe,
-            "fetch_pdf_text",
-            AsyncMock(return_value=fixture_text("energiebe", _INDEX_DOCUMENT, "plain")),
-        ),
+        patch.object(energiebe, "fetch_pdf_text_layout", _index_text()),
         patch.object(
             energiebe.trevion,
             "published_since",
@@ -446,11 +499,7 @@ async def test_trevion_out_of_reach_leaves_energie_be_s_own_values() -> None:
     assert set(table) == {"TTF_RLP"}
     # Nothing from Trevion either when Trevion has no later month.
     with (
-        patch.object(
-            energiebe,
-            "fetch_pdf_text",
-            AsyncMock(return_value=fixture_text("energiebe", _INDEX_DOCUMENT, "plain")),
-        ),
+        patch.object(energiebe, "fetch_pdf_text_layout", _index_text()),
         patch.object(energiebe.trevion, "published_since", AsyncMock(return_value={})),
     ):
         assert set(await energiebe.fetch_index(AsyncMock())) == {"TTF_RLP"}
