@@ -634,8 +634,8 @@ attached to an issue as it is.
   T3 term as 1,548 for 1,639, and gives RESA ORES's mid-tier fixed term
   (140,93 for 122,05). The daily live check reports each of these as a
   notice while the card prints that figure, and as a failure if it prints
-  another; the transport at two decimals it cannot tell from Fluxys's, and
-  it does not compare T3 terms. Past cards bill their months the same way,
+  another; the transport at two decimals it cannot tell from Fluxys's.
+  Past cards bill their months the same way,
   and their errors are in the provider notes: Trevion's January 2026 card
   prints the 2025 Fluvius table, Engie's prints RESA's mid tier as 2,259,
   and RESA rows of Luminus, Engie, Eneco and TotalEnergies in 2025 and

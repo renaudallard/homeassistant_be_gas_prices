@@ -161,8 +161,11 @@ integration uses and checks:
   households (`T2 rows`): the parser drops a T2 whose rate is not below
   T1's, which leaves them unpriced and the fleet nothing to compare. Dots'
   Fluvius Limburg row, documented, is a notice until 2027
-  (`_KNOWN_MISSING_T2`). T3, which only some cards print and which no
-  residential household reaches, is not checked;
+  (`_KNOWN_MISSING_T2`). T3 is not asked of a row, since only some cards
+  print it: a household above 150 000 kWh a year, which the setup form
+  takes up to 1 000 000, gets a pricing error on a card without it. The T3
+  terms a card does print are billed off it and compared across the fleet
+  with the others, below;
 - every `fetch_index` reads, lists each index its cards are priced on, and
   has a recent value for it: the month before, or two months back in the
   first ten days of a month (TotalEnergies' history always two), four
@@ -177,7 +180,7 @@ integration uses and checks:
   does not read or names nothing `products listed`. Frank's Plus tier was
   found by hand five days after its first card, before the list was read;
 - the regulated figures agree across the fleet, month by month: per DSO the
-  T1 and T2 terms, transport and metering; the federal excise and energy
+  T1, T2 and T3 terms, transport and metering; the federal excise and energy
   contribution; the VAT rate a card states for its customers; the Walloon
   connection fee; the Brussels levy by caliber;
 - the energy leg of each card against its own row of the month before in the
@@ -298,7 +301,8 @@ How the cross-check decides:
   fleet has a majority: a misread sheet stays within every bound, and only
   the cards show it. One that disagrees fails as `<regulator>: <dso>
   <figure> for <month> against the sheet`. On 6 November 2026 all eleven
-  read and agreed with the October cards.
+  read and agreed with the October cards. The sheets are read for T1 and T2
+  only, so a T3 term is held against the other cards and nothing else.
 - It reads Atrias's newest month of calorific values as an entry
   converting on a reception station does (`check_atrias`, `atrias:
   calorific values`): the key from Atrias's site, the month list and that
@@ -306,11 +310,12 @@ How the cross-check decides:
   shipped intermediates no longer verify fails, as api.atrias.be's did on
   10 November 2026.
 - A card error the provider notes document (`_KNOWN_CARD_ERRORS`: Bolt's
-  and Ecofix's ORES and RESA terms, Bolt's Brussels levy, EBEM's Kempen
-  T1) is a notice while the card prints that value: it is billed as
-  printed, but already known. Any other value for it fails, and so does
-  that value once the allowance lapses: each carries its expiry and why it
-  is allowed, and the ones listed now lapse with the 2026 tariff year.
+  and Ecofix's ORES and RESA terms, Ecofix's ORES T3 among them, Bolt's
+  Brussels levy, EBEM's Kempen T1) is a notice while the card prints that
+  value: it is billed as printed, but already known. Any other value for it
+  fails, and so does that value once the allowance lapses: each carries its
+  expiry and why it is allowed, and the ones listed now lapse with the 2026
+  tariff year.
 
 `--texts DIR` points at the `gas/` directory of a `be_price_cards` checkout:
 a card whose bytes the archive holds is served its stored text instead of

@@ -35,8 +35,8 @@ says nothing about the card, and checks what came back:
     every index its cards are priced on, and has a recent value for each;
   - every supplier's list of the products it sells (its ``discover``) names
     the contracts registered for it, no more and no fewer;
-  - the regulated figures agree across the fleet: per DSO the T1 and T2
-    terms, transport and metering, and the federal excise, the energy
+  - the regulated figures agree across the fleet: per DSO the T1, T2 and
+    T3 terms, transport and metering, and the federal excise, the energy
     contribution, the VAT rate a card states, the Walloon connection fee and
     the Brussels per-meter levy.
     The regulators and the law set these for everyone, so a card printing
@@ -137,6 +137,7 @@ from custom_components.be_gas_prices.const import (  # noqa: E402
     SUPPLIER_SOCIAL,
     TIER_T1,
     TIER_T2,
+    TIER_T3,
     VAT_RATE_REDUCED,
     WALLOON_CONNECTION_FEE,
     WALLOON_CONNECTION_FEE_KNOWN_FROM,
@@ -585,6 +586,11 @@ _KNOWN_CARD_ERRORS: dict[tuple[str, str, str], tuple[float, date, str]] = {
         _TARIFF_YEAR_END,
         "the ORES term Bolt prints",
     ),
+    ("ecofix", "ores", "T3 proportional"): (
+        0.01548,
+        _TARIFF_YEAR_END,
+        "as short of the grid as its T1 and T2 terms",
+    ),
     ("ecofix", "resa", "T2 fixed"): (
         140.93,
         _TARIFF_YEAR_END,
@@ -610,7 +616,9 @@ _KNOWN_MISSING_T2: dict[tuple[str, str], tuple[date, str]] = {
 def _tiers(label: str, ex: SupplierExtractor, snapshot: SupplierSnapshot, today: date) -> Check:
     """Whether every DSO row of a residential card prices T2, the tier of
     most households: a row without it leaves every one of them there
-    unpriced, and gives the fleet no figure to compare."""
+    unpriced, and gives the fleet no figure to compare. T3 is not asked of
+    a row, since many cards print none; the terms a card does print are
+    compared across the fleet like the others (:func:`figures`)."""
     name = f"{label}: T2 rows"
     if snapshot.taxes.vat_rate != 0.0:
         return Check(name, "ok", "a professional card")
@@ -678,7 +686,7 @@ def figures(card: Card) -> Iterator[Figure]:
         return
     rows: list[tuple[str, str, str, float]] = []
     for dso, overlay in snapshot.dsos.items():
-        for tier in (TIER_T1, TIER_T2):
+        for tier in (TIER_T1, TIER_T2, TIER_T3):
             terms = overlay.tiers.get(tier)
             if terms is not None:
                 rows.append((dso, f"{tier.upper()} fixed", "EUR/year", terms.fixed_per_year))

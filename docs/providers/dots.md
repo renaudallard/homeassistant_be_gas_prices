@@ -101,7 +101,8 @@ is provisional, and its comparison rows carry the ~ mark.
   The Limburg one matters: read as printed it would price a Limburg
   household between 5 000 and 150 000 kWh 1,257 c€/kWh too high on
   distribution, so that household gets a pricing error until Dots corrects
-  its card. The three T3 cells concern no household.
+  its card. The three T3 cells do the same to a household above 150 000
+  kWh a year on those networks.
 - The energy contribution is still printed (0,10577) beside the new excise
   (1,093 / 1,183, the law's 1,09286 / 1,18296 rounded). The law override sets
   the contribution to zero from August 2026.

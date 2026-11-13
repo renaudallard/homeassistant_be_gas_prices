@@ -870,6 +870,58 @@ def test_a_documented_card_error_is_a_notice_while_the_card_prints_it() -> None:
     ]
 
 
+def _with_t3(
+    snapshot: SupplierSnapshot, proportional: float = 0.0055, dso: str = "fluvius_kempen"
+) -> SupplierSnapshot:
+    """``snapshot`` with a third tier, on ``dso`` in place of Kempen."""
+    row = snapshot.dsos["fluvius_kempen"]
+    third = DsoTier(fixed_per_year=560.0, proportional=proportional)
+    return replace(snapshot, dsos={dso: replace(row, tiers={**row.tiers, "t3": third})})
+
+
+def test_the_third_tier_is_compared_like_the_other_two() -> None:
+    """A household up to 1 000 000 kWh a year is billed T3 off the card. A
+    card printing none gives no figure and departs from nothing."""
+    cards = [
+        _card(_with_t3(_snapshot("alpha"))),
+        _card(_with_t3(_snapshot("beta"))),
+        _card(_with_t3(_snapshot("gamma"))),
+        _card(_snapshot("delta")),
+    ]
+    names = {figure.name for figure in lc.figures(cards[0])}
+    assert {"T3 fixed", "T3 proportional"} <= names
+    assert not any(figure.name.startswith("T3") for figure in lc.figures(cards[3]))
+    assert _failing(lc.consensus(cards)) == {}
+    tenfold = _card(_with_t3(_snapshot("delta"), proportional=0.055))
+    assert _failing(lc.consensus([*cards[:3], tenfold])) == {
+        "delta: fluvius_kempen T3 proportional for 2026-09": (
+            "prints 5.5 c EUR/kWh on delta_fix/flanders where alpha, beta, gamma print "
+            "0.55 c EUR/kWh"
+        )
+    }
+
+
+def test_ecofix_s_documented_third_tier_is_a_notice() -> None:
+    """Its ORES T3 term is as short of the grid as its T1 and T2 terms."""
+
+    def walloon(supplier: str, proportional: float) -> Any:
+        snapshot = _snapshot(supplier, connection_fee=lc.WALLOON_CONNECTION_FEE)
+        return _card(_with_t3(snapshot, proportional, "ores"), "wallonia")
+
+    def fleet(printed: float) -> list[Any]:
+        return [walloon("alpha", 0.01639), walloon("beta", 0.01639), walloon("ecofix", printed)]
+
+    today = date(2026, 11, 13)
+    known = lc.consensus(fleet(0.01548), today)
+    assert _failing(known) == {}
+    [notice] = [c for c in known if c.status == "notice"]
+    assert notice.label == "ecofix: ores T3 proportional for 2026-09"
+    assert "a known card error" in notice.detail
+    assert list(_failing(lc.consensus(fleet(0.015), today))) == [
+        "ecofix: ores T3 proportional for 2026-09"
+    ]
+
+
 @pytest.mark.parametrize(
     ("today", "allowed"), [(date(2026, 12, 31), True), (date(2027, 1, 1), False)]
 )
