@@ -17,7 +17,9 @@ also keeps each card's text on disk under `tmp/fixture_text/`. A directory
 per reader code, named by a digest of `providers/_pdf_render.py`, the bounds it
 reads under (`_pdf_bound.py`, `_pdf_bound_pdfminer.py`) and the pypdf and
 pdfplumber versions, holds one file per card digest and reader, so a changed
-card, reader or version is read afresh. `BE_FIXTURE_TEXT_CACHE` moves the
+card, reader or version is read afresh. Each file is written aside, synced
+and renamed into place, so a crash mid-run never leaves an empty text under a
+card's name. `BE_FIXTURE_TEXT_CACHE` moves the
 directory. On a Raspberry Pi the whole suite took 630 seconds with an empty
 cache and 54 seconds with a full one.
 
