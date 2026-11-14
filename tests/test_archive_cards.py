@@ -484,6 +484,65 @@ def test_months_older_than_three_years_go_with_the_texts_nothing_names(tmp_path:
     assert json.loads((out / "indices" / "acme.json").read_text()) == {"IDX": {"2023-09": 2.0}}
 
 
+def test_prune_keeps_a_pdf_a_kept_row_still_names(tmp_path: Path) -> None:
+    """An unchanged card is uploaded once, under the month it was first
+    captured in, and every later row names that copy: its manifest entry,
+    and with it the release, stays while a kept row or a refused card names
+    it. Pruned by its release month, a kept row linked a deleted PDF."""
+    path = tmp_path / ROW / "2026-02.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"_sources": [{"variant": "plain", "pdf": "jan"}]}))
+    (tmp_path / "unparsed.json").write_text(
+        json.dumps({"beta/beta_fix/wallonia/2026-03": [{"url": "u", "pdf": "img"}]})
+    )
+    (tmp_path / "pdfs.json").write_text(
+        json.dumps(
+            {
+                "jan": "gas-2026-01/jan.pdf",
+                "img": "gas-2026-01/img.pdf",
+                "gone": "gas-2026-01/gone.pdf",
+            }
+        )
+    )
+    assert ac._prune(tmp_path, 12, date(2027, 2, 10)) == 1
+    assert json.loads((tmp_path / "pdfs.json").read_text()) == {
+        "jan": "gas-2026-01/jan.pdf",
+        "img": "gas-2026-01/img.pdf",
+    }
+    # A row that cannot be read could be naming anything: nothing goes.
+    path.write_text("{not json")
+    assert ac._prune(tmp_path, 12, date(2028, 2, 10)) == 0
+    assert len(json.loads((tmp_path / "pdfs.json").read_text())) == 2
+
+
+def test_a_release_the_manifest_still_lists_is_not_deleted(tmp_path: Path) -> None:
+    """Retention deletes the releases past the cutoff, except one pdfs.json
+    still lists: the walk keeps the entry of an old card a kept row names,
+    and deleting its release broke that row's link."""
+    (tmp_path / "tmp" / "cards" / "gas").mkdir(parents=True)
+    (tmp_path / "tmp" / "cards" / "gas" / "pdfs.json").write_text(
+        json.dumps({"aaa": "gas-2020-01/aaa.pdf"})
+    )
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    (stubs / "gh").write_text(
+        "#!/bin/sh\n"
+        'case "$1 $2" in\n'
+        '  "release list") printf "gas-2020-01\\ngas-2020-02\\nelectricity-2020-01\\n" ;;\n'
+        '  "release delete") echo "$3" >> deleted.txt ;;\n'
+        "esac\n"
+        "exit 0\n"
+    )
+    (stubs / "gh").chmod(0o755)
+    step = next(s for s in _archive_jobs()["keep"]["steps"] if s.get("id") == "keep")
+    env = {**os.environ, "PATH": f"{stubs}:{os.environ['PATH']}", "CARDS_REPO": "o/r"}
+    done = subprocess.run(
+        ["bash", "-e", "-c", step["run"]], cwd=tmp_path, env=env, capture_output=True, text=True
+    )
+    assert done.returncode == 0, done.stderr
+    assert (tmp_path / "deleted.txt").read_text() == "gas-2020-02\n"
+
+
 def test_a_withdrawn_products_last_row_outlives_the_retention(tmp_path: Path) -> None:
     """A withdrawn product's households are still billed on its last card:
     pruned by its month, that row went three years after the product was

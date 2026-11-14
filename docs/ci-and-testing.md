@@ -481,7 +481,11 @@ under `gas/`:
 A row is rewritten only when the parse changed, so a quiet day writes
 nothing. Months older than `--keep-months` (36) are removed, with the texts
 no row names any more, except a product's newest row, which a withdrawn
-product's households are still billed on.
+product's households are still billed on. A PDF goes with the month of its
+release unless a kept row or a refused card still names it: an unchanged
+card is uploaded once, under the month it was first captured in, and every
+later row names that copy, so `pdfs.json` keeps its entry and the workflow
+keeps any release `pdfs.json` still lists.
 
 When the parser sources, the PDF readers or the OCR engine change (their
 digest is stamped in `parser.txt`), or with `--reparse`, every row is parsed

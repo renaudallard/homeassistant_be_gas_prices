@@ -673,13 +673,18 @@ def _prune(out: Path, keep_months: int, today: date) -> int:
         else:
             path.unlink()
     kept = _read_json(out / _MANIFEST)
-    if isinstance(kept, dict):
+    named = _named_pdfs(out)
+    if isinstance(kept, dict) and named is not None:
         # A release path is gas-<YYYY-MM>/<digest>.pdf, and the workflow
-        # deletes the release itself on the same cutoff.
+        # deletes the release itself on the same cutoff, unless this file
+        # still lists it. An unchanged card is uploaded once, under the month
+        # it was first captured in, and every later row names that copy, so
+        # an entry stays while a kept row or a refused card names it.
         current = {
             digest: rel
             for digest, rel in kept.items()
             if str(rel).split("/")[0].removeprefix(f"{_RELEASE_PREFIX}-") >= cutoff
+            or digest in named
         }
         if len(current) != len(kept):
             removed += len(kept) - len(current)
@@ -692,6 +697,20 @@ def _prune(out: Path, keep_months: int, today: date) -> int:
             if not any(folder.iterdir()):
                 folder.rmdir()
     return removed
+
+
+def _named_pdfs(out: Path) -> set[str] | None:
+    """Every PDF a stored row or a refused card names, or None when a row
+    cannot be read: such a row could be naming anything, so nothing may go."""
+    named: set[str] = set()
+    for path in out.glob(ROWS_GLOB):
+        row = _read_row(path)
+        if row is None:
+            return None
+        named.update(_pdfs_of(s for s in row.get("_sources", []) if isinstance(s, dict)))
+    for value in _read_unparsed(out).values():
+        named.update(s["pdf"] for s in _as_sources(value))
+    return named
 
 
 def _drop_unnamed_texts(out: Path) -> int:
