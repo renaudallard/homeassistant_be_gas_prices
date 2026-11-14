@@ -484,6 +484,18 @@ def test_months_older_than_three_years_go_with_the_texts_nothing_names(tmp_path:
     assert json.loads((out / "indices" / "acme.json").read_text()) == {"IDX": {"2023-09": 2.0}}
 
 
+def test_a_withdrawn_products_last_row_outlives_the_retention(tmp_path: Path) -> None:
+    """A withdrawn product's households are still billed on its last card:
+    pruned by its month, that row went three years after the product was
+    last sold and left them with no card. Its older rows go as before."""
+    for month in ("2023-07", "2023-08"):
+        path = tmp_path / ROW / f"{month}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}")
+    assert ac._prune(tmp_path, 36, date(2026, 11, 14)) == 1
+    assert sorted(_tree(tmp_path)) == [f"{ROW}/2023-08.json"]
+
+
 def test_no_text_goes_while_a_row_cannot_be_read(tmp_path: Path) -> None:
     (tmp_path / ROW).mkdir(parents=True)
     (tmp_path / ROW / "2026-09.json").write_text("{not json")

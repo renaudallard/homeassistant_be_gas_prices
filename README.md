@@ -536,7 +536,9 @@ option on reads that table once a day too, and bills it only for a month
 its own reading of the tariff and the law does not give.
 
 The archive keeps the running month and the thirty-six before it, as long
-as a fixed contract runs on its signing card. A signing month older than
+as a fixed contract runs on its signing card, and a product's newest card
+whatever its age, so a withdrawn product keeps its last card however long
+ago it was sold. A signing month older than
 that is read from the supplier's own archive where it still holds it;
 otherwise each month is priced on its own card rather than the one
 signed for, unless you type the figures of your contract. An older card

@@ -480,7 +480,8 @@ under `gas/`:
 
 A row is rewritten only when the parse changed, so a quiet day writes
 nothing. Months older than `--keep-months` (36) are removed, with the texts
-no row names any more.
+no row names any more, except a product's newest row, which a withdrawn
+product's households are still billed on.
 
 When the parser sources, the PDF readers or the OCR engine change (their
 digest is stamped in `parser.txt`), or with `--reparse`, every row is parsed

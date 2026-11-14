@@ -645,11 +645,18 @@ def _write_json(path: Path, value: Any) -> bool:
 
 def _prune(out: Path, keep_months: int, today: date) -> int:
     """Remove the months more than ``keep_months`` before today's: rows,
-    index values and manifest entries. Returns how many went."""
+    index values and manifest entries. Returns how many went.
+
+    A product's newest row stays whatever its month: a withdrawn product's
+    households are still billed on its last card, and a product still sold
+    has a newer row anyway."""
     cutoff = _months_before(today, keep_months)
     removed = 0
-    for path in out.glob(ROWS_GLOB):
-        if path.stem < cutoff:
+    rows = sorted(out.glob(ROWS_GLOB))
+    # Sorted, so each directory's last row is its newest month.
+    newest = {path.parent: path for path in rows}
+    for path in rows:
+        if path.stem < cutoff and newest[path.parent] != path:
             path.unlink()
             removed += 1
     for path in out.glob(f"{_INDICES}/*.json"):
