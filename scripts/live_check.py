@@ -35,7 +35,8 @@ says nothing about the card, and checks what came back:
     with the cards of the run's month;
   - every supplier's index publication (its ``fetch_index``) reads, lists
     every index its cards are priced on, and has a recent value for each
-    and one for every month since its first;
+    and one for every month since its first, on the scale of the cards
+    priced on it;
   - an index several suppliers publish reads alike at each of them, month by
     month;
   - every supplier's list of the products it sells (its ``discover``) names
@@ -218,6 +219,15 @@ GIVE_UP_AFTER = 3
 # How far apart two suppliers' values of one index may be, in EUR/MWh: they
 # print it to one, two or three decimals, rounded or cut off.
 _INDEX_TOLERANCE = 0.1
+# How far the index a card's price implies may be from the publication's
+# value for the card's month or the three before it, as a ratio either way.
+# On the card archive's indexed rows of January 2024 to November 2026 the
+# furthest was 1,48 (Luminus's ComfyFlex Plus card of January 2024, against
+# the one value listed near it), cards printing a forecast included. A table
+# or a formula on another scale is ten times off: Engie's index page read in
+# c€/kWh gave 8,5777 for October 2026, where the cards named 85,777.
+_INDEX_SCALE_RATIO = 2.0
+_INDEX_SCALE_MONTHS = 4
 # Days into a month the value of the month just closed may still move:
 # Bolt's for October 2026 read 87,87 on 1 November and 88,06 on the 2nd.
 _INDEX_SETTLE_DAYS = 2
@@ -506,7 +516,47 @@ def _index_checks(
             else:
                 yield Check(label, "fail", detail)
             continue
+        off = _off_scale(index, series, cards, today)
+        if off:
+            yield Check(label, "fail", off)
+            continue
         yield Check(label, "ok", f"{newest}: {series[newest]:g} EUR/MWh")
+
+
+def _months_back(month: tuple[int, int], count: int) -> list[str]:
+    """``month`` and the ``count - 1`` months before it, as "YYYY-MM"."""
+    first = month[0] * 12 + month[1] - 1
+    return [f"{i // 12:04d}-{i % 12 + 1:02d}" for i in range(first, first - count, -1)]
+
+
+def _off_scale(index: str, series: Mapping[str, float], cards: Iterable[Card], today: date) -> str:
+    """Why a card priced on ``index`` and the publication's ``series`` are not
+    on one scale, or "" when they are.
+
+    The index a card's printed price implies, (price - base) / factor, has
+    to lie within ``_INDEX_SCALE_RATIO`` of the series' value for the card's
+    month or one of the months before it. Where none is listed the lag and
+    gap checks speak instead."""
+    for card in cards:
+        energy = card.snapshot.energy
+        if not isinstance(energy, IndexedRates) or energy.index != index or energy.factor <= 0:
+            continue
+        month = label_month(card.snapshot.publication_label) or (today.year, today.month)
+        near = [
+            (key, series[key]) for key in _months_back(month, _INDEX_SCALE_MONTHS) if key in series
+        ]
+        implied = (energy.price - energy.base) / energy.factor
+        if near and not any(
+            value > 0 and 1 / _INDEX_SCALE_RATIO <= implied / value <= _INDEX_SCALE_RATIO
+            for _key, value in near
+        ):
+            given = ", ".join(f"{key}: {value:g}" for key, value in near)
+            return (
+                f"{card.contract}/{card.region} prints a price its formula gives at "
+                f"{implied:.4g} EUR/MWh, where the publication lists {given}: one of "
+                "them is on another scale"
+            )
+    return ""
 
 
 def _settling(month: str, today: date) -> bool:

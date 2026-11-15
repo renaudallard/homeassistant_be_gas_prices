@@ -1427,7 +1427,45 @@ async def test_the_fleet_s_index_publications_are_held_against_each_other() -> N
         publishing("trevion", 6.172),
     ]
     checks = await lc.check_fleet(None, fleet, TODAY, sleep=_no_sleep)
-    assert list(_failing(checks)) == ["trevion: index TTF_RLP against the same index elsewhere"]
+    # A tenth of the value is also off the scale of Trevion's own card.
+    assert list(_failing(checks)) == [
+        "trevion: index TTF_RLP",
+        "trevion: index TTF_RLP against the same index elsewhere",
+    ]
+
+
+def test_an_index_on_another_scale_than_its_cards_fails() -> None:
+    """Engie's index page, read in c€/kWh from 13 November 2026, gave 8,5777
+    for October's ZTPDAM, and the November FLOW card's price is its formula
+    at 85,777: the series was recent and complete, and passed. A card
+    printing a forecast some way off the last value still passes."""
+    extractor = _extractor("engie")
+    flow = IndexedRates(
+        factor=0.0010812, base=0.0107007, index="ZTPDAM", price=0.10344, yearly_fixed_fee=50.0
+    )
+    snapshot = _snapshot("engie", label="2026-11", energy=flow)
+    card = lc.Card(extractor, "engie_flow", "flanders", snapshot)
+    today = date(2026, 11, 15)
+
+    def row(table: dict[str, dict[str, float]]) -> tuple[str, str]:
+        (check,) = [
+            c
+            for c in lc._index_checks(extractor, table, [card], today)
+            if c.label == "engie: index ZTPDAM"
+        ]
+        return check.status, check.detail
+
+    assert row({"ZTPDAM": {"2026-09": 75.401, "2026-10": 85.777}}) == (
+        "ok",
+        "2026-10: 85.777 EUR/MWh",
+    )
+    assert row({"ZTPDAM": {"2026-09": 7.5401, "2026-10": 8.5777}}) == (
+        "fail",
+        "engie_flow/flanders prints a price its formula gives at 85.77 EUR/MWh, where the "
+        "publication lists 2026-10: 8.5777, 2026-09: 7.5401: one of them is on another scale",
+    )
+    # A forecast 1,8 times the last value.
+    assert row({"ZTPDAM": {"2026-10": 85.777 / 1.8}})[0] == "ok"
 
 
 def test_an_index_a_stand_in_covers_is_a_notice() -> None:

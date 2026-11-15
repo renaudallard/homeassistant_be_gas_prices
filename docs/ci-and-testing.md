@@ -196,7 +196,14 @@ integration uses and checks:
   shows is Trevion's February 2026, from 20 to 24 October, when the reader
   left out the March card that names it. The archive keeps a month a
   supplier stopped listing, so a hole in today's publication only shows on
-  a run;
+  a run. The same row fails when a card priced on the index is off its
+  scale: the index the card's price implies, (price - base) / factor, has to
+  lie within a factor 2 of the publication's value for the card's month or
+  one of the three before it (`_off_scale`). The furthest any archived row
+  of January 2024 to November 2026 lies is 1,48, cards printing a forecast
+  included, and a table or formula in another unit is ten times off: Engie's
+  index page, read in c€/kWh from 13 November 2026, gave 8,5777 for October's
+  ZTPDAM where the cards named 85,777, and passed every other check;
 - an index three suppliers' readers or more publish reads alike at each of
   them (`against_same_index`, `<supplier>: index <name> against the same
   index elsewhere`): a value ten times off, a month filed under another, or
