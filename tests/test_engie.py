@@ -459,6 +459,32 @@ def test_index_page_reads_both_indices_by_delivery_month() -> None:
     assert "2026-09" not in table["ZTPDAM"]
 
 
+_PAGE_2611 = "parametres-indexation-gaz-202611.html"
+_CKWH_PANEL = 'data-category="tabbed--content--tab-1"'
+
+
+def test_index_page_reads_the_table_in_eur_per_mwh() -> None:
+    """Since 13 November 2026 the page prints the table a second time in
+    c€/kWh, after the one in €/MWh. Reading every row, the second table won
+    and every index came out a tenth of itself."""
+    page = fixture_page("engie", _PAGE_2611)
+    assert page.count(_CKWH_PANEL) == 1
+    table = engie.parse_index_page(page)
+    # The value the November FLOW card names, and November's ZTP101.
+    assert table["ZTPDAM"]["2026-10"] == pytest.approx(85.777)
+    assert table["ZTP101"]["2026-11"] == pytest.approx(86.554)
+    assert table["ZTP101"]["2026-09"] == pytest.approx(61.768)
+    # The table in €/MWh alone gives the same figures.
+    assert engie.parse_index_page(page[: page.index(_CKWH_PANEL)]) == table
+
+
+def test_index_page_in_another_unit_only_is_refused() -> None:
+    page = fixture_page("engie", _PAGE_2611)
+    start = page.index('data-category="tabbed--content--tab-0"')
+    with pytest.raises(ExtractorError, match="indexation table in €/MWh not found"):
+        engie.parse_index_page(page[:start] + page[page.index(_CKWH_PANEL) :])
+
+
 def test_regions_follow_the_codes_engie_publishes() -> None:
     by_id = {c.id: c for c in engie.EXTRACTOR.contracts}
     assert by_id["engie_basic_online"].regions == frozenset({REGION_FLANDERS, REGION_WALLONIA})

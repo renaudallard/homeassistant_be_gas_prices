@@ -114,7 +114,11 @@ Two kinds of variable product:
 (`/fr/energie/electricite-gaz/prix-conditions/parametres-indexation/parametres-indexation-gaz`):
 one HTML row per month, newest first, with TTF103, TTF101, ZTP101, ZIGDAM
 and ZTPDAM in that order. Quarter rows (older than any product read here),
-empty cells and dashes are skipped.
+empty cells and dashes are skipped. Since 13 November 2026 the page prints
+the table twice, in €/MWh and then in c€/kWh, each under a heading ending
+"en <unit>."; only the rows under a heading in €/MWh are read, and a page
+without one is refused. Reading every row let the c€/kWh table win, and
+every index came out a tenth of itself (issue #15).
 
 ## Archive
 

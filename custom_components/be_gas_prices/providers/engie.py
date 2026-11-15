@@ -543,6 +543,24 @@ def _osp(text: str) -> dict[str, float]:
 _MONTH_LABEL_RE = re.compile(r"^([A-Za-zÀ-ÿ]+)\s+(\d{4})$")
 # The page's columns, left to right after the month, and the index each one is.
 _INDEX_COLUMNS = ("TTF103", "TTF101", "ZTP101", "ZIGDAM", "ZTPDAM")
+# Each table, and each month of the mobile layout, is headed by a sentence
+# ending in its unit: "... ZIG DAM et ZTP DAM en €/MWh.". Since 13 November
+# 2026 the page carries the table twice, in €/MWh and then in c€/kWh, a
+# tenth of every figure, so only the rows under a heading in €/MWh are read.
+_TABLE_UNIT_RE = re.compile(r"ZTP DAM en ([^\s.<]+)")
+_TABLE_UNIT = "€/MWh"
+
+
+def _sections_in_mwh(page: str) -> list[str]:
+    """The parts of ``page`` that follow a heading in €/MWh, each up to the
+    next heading."""
+    heads = list(_TABLE_UNIT_RE.finditer(page))
+    ends = [head.start() for head in heads[1:]] + [len(page)]
+    return [
+        page[head.end() : end]
+        for head, end in zip(heads, ends, strict=True)
+        if head.group(1) == _TABLE_UNIT
+    ]
 
 
 def parse_index_page(page: str) -> IndexTable:
@@ -550,22 +568,24 @@ def parse_index_page(page: str) -> IndexTable:
 
     One row per month or quarter, newest first; quarter rows ("2eme trimestre
     de 2016") are older than any product this reads and are skipped, as are
-    empty cells and dashes.
+    empty cells and dashes. A page whose tables are all in another unit is
+    refused.
     """
     table: IndexTable = {name: {} for name in _INDEX_COLUMNS}
-    for cells in html_rows(page):
-        if len(cells) != len(_INDEX_COLUMNS) + 1:
-            continue
-        match = _MONTH_LABEL_RE.match(cells[0])
-        month = MONTH_NAMES.get(fold_accents(match.group(1))) if match else None
-        if match is None or month is None:
-            continue
-        key = f"{match.group(2)}-{month:02d}"
-        for name, value in zip(_INDEX_COLUMNS, cells[1:], strict=True):
-            if re.fullmatch(r"\d+(?:,\d+)?", value):
-                table[name][key] = to_float(value)
+    for section in _sections_in_mwh(page):
+        for cells in html_rows(section):
+            if len(cells) != len(_INDEX_COLUMNS) + 1:
+                continue
+            match = _MONTH_LABEL_RE.match(cells[0])
+            month = MONTH_NAMES.get(fold_accents(match.group(1))) if match else None
+            if match is None or month is None:
+                continue
+            key = f"{match.group(2)}-{month:02d}"
+            for name, value in zip(_INDEX_COLUMNS, cells[1:], strict=True):
+                if re.fullmatch(r"\d+(?:,\d+)?", value):
+                    table[name][key] = to_float(value)
     if not table["ZTP101"] or not table["ZTPDAM"]:
-        raise ExtractorError("Engie: indexation table not found")
+        raise ExtractorError(f"Engie: indexation table in {_TABLE_UNIT} not found")
     return table
 
 
