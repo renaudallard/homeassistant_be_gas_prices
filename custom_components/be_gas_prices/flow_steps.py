@@ -32,7 +32,9 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import Mapping
 from datetime import date
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -183,34 +185,65 @@ def _select(
     return SelectSelector(config)
 
 
-def _factor_selector() -> TextSelector:
+def _decimal_selector(suffix: str | None = None) -> TextSelector:
     # Text rather than a number field: a browser's number field refuses the
     # decimal comma Belgian bills print, or sends it on as empty.
-    return TextSelector(TextSelectorConfig(suffix="kWh/m³"))
+    config = TextSelectorConfig()
+    if suffix is not None:
+        config["suffix"] = suffix
+    return TextSelector(config)
 
 
-# Digits with a decimal comma or point, as a bill prints the factor.
-_FACTOR_TEXT = re.compile(r"\d+(?:[.,]\d+)?", re.ASCII)
+# The largest figure the signed rate and the custom card take, past any
+# Belgian card's: c EUR/kWh, or EUR a year for a fee.
+_SIGNED_MAX = 1000.0
+_CUSTOM_MAX = 10_000.0
+
+# Digits with a decimal comma or point, as bills and contracts print them.
+_DECIMAL_TEXT = re.compile(r"\d+(?:[.,]\d+)?", re.ASCII)
 
 
-def _factor(value: Any) -> float | None:
-    """The factor typed on a form, or None when the field was left empty.
-    Raises ValueError when it is not a number from CONVERSION_FACTOR_MIN
-    to CONVERSION_FACTOR_MAX."""
+def _decimal(value: Any, low: float, high: float) -> float | None:
+    """A number typed in a text field, or None when the field was left
+    empty. Raises ValueError when it is not a number from ``low`` to
+    ``high``."""
     text = "" if value is None else str(value).strip()
     if not text:
         return None
-    if _FACTOR_TEXT.fullmatch(text) is None:
+    if _DECIMAL_TEXT.fullmatch(text) is None:
         raise ValueError(text)
-    factor = float(text.replace(",", "."))
-    if not CONVERSION_FACTOR_MIN <= factor <= CONVERSION_FACTOR_MAX:
+    number = float(text.replace(",", "."))
+    if not low <= number <= high:
         raise ValueError(text)
-    return factor
+    return number
 
 
-def _factor_text(value: Any) -> str | None:
-    """A stored factor as the text field shows it."""
-    return None if value is None else str(value)
+def _decimal_text(value: Any) -> str | None:
+    """A stored number as its text field shows it, never in the exponent
+    form str() gives a small one, which the field would then refuse."""
+    return None if value is None else format(Decimal(repr(float(value))), "f")
+
+
+def _read_decimals(
+    user_input: Mapping[str, Any],
+    bounds: Mapping[str, tuple[float, float]],
+    *,
+    required: bool = False,
+) -> tuple[dict[str, float | None], dict[str, str]]:
+    """The number typed in each field of ``bounds``, None for one left
+    empty, and an error for each that is not a number within its bounds,
+    or is empty when ``required``."""
+    values: dict[str, float | None] = {}
+    errors: dict[str, str] = {}
+    for key, (low, high) in bounds.items():
+        try:
+            values[key] = _decimal(user_input.get(key), low, high)
+        except ValueError:
+            errors[key] = "invalid_number"
+            continue
+        if required and values[key] is None:
+            errors[key] = "invalid_number"
+    return values, errors
 
 
 def _default(data: dict[str, Any], key: str, fallback: Any = vol.UNDEFINED) -> Any:
@@ -482,33 +515,31 @@ class _FlowSteps:
             ),
             None,
         )
-        if user_input is not None:
-            for key in MANUAL_RATE_KEYS:
-                if user_input.get(key) is None:
-                    self._data.pop(key, None)
-                else:
-                    self._data[key] = float(user_input[key])
-            return await self.async_step_dso()
-        number = NumberSelector(
-            NumberSelectorConfig(min=0, max=1000, step="any", mode=NumberSelectorMode.BOX)
-        )
-        factor = NumberSelector(
-            NumberSelectorConfig(
-                min=0, max=MANUAL_FACTOR_MAX, step="any", mode=NumberSelectorMode.BOX
-            )
-        )
         keys: tuple[str, ...] = (CONF_MANUAL_FEE,)
         if contract is not None and contract.kind == "fixed":
             keys = (CONF_MANUAL_PRICE, CONF_MANUAL_FEE)
         elif contract is not None and contract.kind == "indexed":
             keys = (CONF_MANUAL_FACTOR, CONF_MANUAL_BASE, CONF_MANUAL_FEE)
+        bounds = {
+            key: (0.0, MANUAL_FACTOR_MAX if key == CONF_MANUAL_FACTOR else _SIGNED_MAX)
+            for key in keys
+        }
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            values, errors = _read_decimals(user_input, bounds)
+            if not errors:
+                for key in MANUAL_RATE_KEYS:
+                    value = values.get(key)
+                    if value is None:
+                        self._data.pop(key, None)
+                    else:
+                        self._data[key] = value
+                return await self.async_step_dso()
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(
-                {vol.Optional(key): factor if key == CONF_MANUAL_FACTOR else number for key in keys}
-            ),
-            {key: self._data.get(key) for key in keys},
+            vol.Schema({vol.Optional(key): _decimal_selector() for key in keys}),
+            user_input if errors else {key: _decimal_text(self._data.get(key)) for key in keys},
         )
-        return self.async_show_form(step_id="signed_rate", data_schema=schema)
+        return self.async_show_form(step_id="signed_rate", data_schema=schema, errors=errors)
 
     async def async_step_dso(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         region = self._data[CONF_REGION]
@@ -529,27 +560,46 @@ class _FlowSteps:
         return self.async_show_form(step_id="dso", data_schema=schema)
 
     def _custom_form(
-        self, step_id: str, keys: tuple[str, ...], boxes: tuple[str, ...] = ()
+        self,
+        step_id: str,
+        keys: tuple[str, ...],
+        boxes: tuple[str, ...] = (),
+        user_input: dict[str, Any] | None = None,
+        errors: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
-        number = NumberSelector(
-            NumberSelectorConfig(min=0, max=10_000, step="any", mode=NumberSelectorMode.BOX)
-        )
+        """The custom card's figures, shown again as typed when one is
+        refused."""
+        retyped = user_input if errors and user_input is not None else None
         fields: dict[Any, Any] = {
-            vol.Optional(box, default=bool(self._data.get(box))): BooleanSelector() for box in boxes
+            vol.Optional(
+                box,
+                default=bool((retyped if retyped is not None else self._data).get(box)),
+            ): BooleanSelector()
+            for box in boxes
         }
-        fields.update({vol.Required(key): number for key in keys})
+        fields.update({vol.Required(key): _decimal_selector() for key in keys})
         schema = self.add_suggested_values_to_schema(
-            vol.Schema(fields), {key: self._data.get(key) for key in keys}
+            vol.Schema(fields),
+            {
+                key: retyped.get(key) if retyped is not None else _decimal_text(self._data.get(key))
+                for key in keys
+            },
         )
-        return self.async_show_form(step_id=step_id, data_schema=schema)
+        return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors or {})
 
     async def async_step_custom_energy(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        keys = (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE)
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._data.update({k: float(v) for k, v in user_input.items()})
-            return await self.async_step_custom_network()
-        return self._custom_form("custom_energy", (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE))
+            values, errors = _read_decimals(
+                user_input, dict.fromkeys(keys, (0.0, _CUSTOM_MAX)), required=True
+            )
+            if not errors:
+                self._data.update(values)
+                return await self.async_step_custom_network()
+        return self._custom_form("custom_energy", keys, (), user_input, errors)
 
     async def async_step_custom_network(
         self, user_input: dict[str, Any] | None = None
@@ -567,19 +617,27 @@ class _FlowSteps:
         )
         if region == REGION_BRUSSELS:
             keys += (CONF_CUSTOM_LEVY,)
+        errors: dict[str, str] = {}
         if user_input is not None:
-            for key in CUSTOM_KEYS:
-                if key in (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE, CONF_CUSTOM_NETWORK_FROM_SHEET):
-                    continue
-                if key in user_input:
-                    self._data[key] = float(user_input[key])
-                else:
-                    self._data.pop(key, None)
-            self._data[CONF_CUSTOM_NETWORK_FROM_SHEET] = bool(
-                user_input.get(CONF_CUSTOM_NETWORK_FROM_SHEET, False)
+            values, errors = _read_decimals(
+                user_input, dict.fromkeys(keys, (0.0, _CUSTOM_MAX)), required=True
             )
-            return await self.async_step_household()
-        return self._custom_form("custom_network", keys, (CONF_CUSTOM_NETWORK_FROM_SHEET,))
+            if not errors:
+                for key in CUSTOM_KEYS:
+                    if key in (CONF_CUSTOM_PRICE, CONF_CUSTOM_FEE, CONF_CUSTOM_NETWORK_FROM_SHEET):
+                        continue
+                    value = values.get(key)
+                    if value is None:
+                        self._data.pop(key, None)
+                    else:
+                        self._data[key] = value
+                self._data[CONF_CUSTOM_NETWORK_FROM_SHEET] = bool(
+                    user_input.get(CONF_CUSTOM_NETWORK_FROM_SHEET, False)
+                )
+                return await self.async_step_household()
+        return self._custom_form(
+            "custom_network", keys, (CONF_CUSTOM_NETWORK_FROM_SHEET,), user_input, errors
+        )
 
     async def async_step_household(
         self, user_input: dict[str, Any] | None = None
@@ -590,7 +648,11 @@ class _FlowSteps:
         if user_input is not None:
             user_input = dict(user_input)
             try:
-                user_input[CONF_CONVERSION_FACTOR] = _factor(user_input.get(CONF_CONVERSION_FACTOR))
+                user_input[CONF_CONVERSION_FACTOR] = _decimal(
+                    user_input.get(CONF_CONVERSION_FACTOR),
+                    CONVERSION_FACTOR_MIN,
+                    CONVERSION_FACTOR_MAX,
+                )
             except ValueError:
                 # Shown again as typed, the entry's own factor kept meanwhile.
                 errors[CONF_CONVERSION_FACTOR] = "invalid_factor"
@@ -643,7 +705,7 @@ class _FlowSteps:
         fields[vol.Optional(CONF_GAS_METER)] = EntitySelector(
             EntitySelectorConfig(domain=Platform.SENSOR, device_class=["gas", "energy"])
         )
-        fields[vol.Optional(CONF_CONVERSION_FACTOR)] = _factor_selector()
+        fields[vol.Optional(CONF_CONVERSION_FACTOR)] = _decimal_selector("kWh/m³")
         fields[
             vol.Required(
                 CONF_CARD_ARCHIVE,
@@ -664,7 +726,7 @@ class _FlowSteps:
                 CONF_CONVERSION_FACTOR: (
                     typed
                     if typed is not None
-                    else _factor_text(self._data.get(CONF_CONVERSION_FACTOR))
+                    else _decimal_text(self._data.get(CONF_CONVERSION_FACTOR))
                 ),
             },
         )
@@ -713,10 +775,14 @@ class _FlowSteps:
         user_input: dict[str, Any] | None = None,
         errors: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
-        shown = _factor_text(self._data.get(CONF_CONVERSION_FACTOR))
+        shown = _decimal_text(self._data.get(CONF_CONVERSION_FACTOR))
         if user_input is not None:
             try:
-                factor = _factor(user_input.get(CONF_CONVERSION_FACTOR))
+                factor = _decimal(
+                    user_input.get(CONF_CONVERSION_FACTOR),
+                    CONVERSION_FACTOR_MIN,
+                    CONVERSION_FACTOR_MAX,
+                )
             except ValueError:
                 errors = {CONF_CONVERSION_FACTOR: "invalid_factor"}
                 shown = user_input[CONF_CONVERSION_FACTOR]
@@ -729,7 +795,7 @@ class _FlowSteps:
                 self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
                 self._data.pop(CONF_STATION, None)
                 return await self._async_finish()
-        schema = vol.Schema({vol.Optional(CONF_CONVERSION_FACTOR): _factor_selector()})
+        schema = vol.Schema({vol.Optional(CONF_CONVERSION_FACTOR): _decimal_selector("kWh/m³")})
         # Suggested rather than a default, so a cleared field reaches here
         # empty instead of coming back as the old factor.
         schema = self.add_suggested_values_to_schema(schema, {CONF_CONVERSION_FACTOR: shown})

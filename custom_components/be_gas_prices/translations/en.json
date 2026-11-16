@@ -143,6 +143,7 @@
       "tariff_card_date_in_future": "The tariff card date cannot be in the future.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
       "invalid_factor": "Enter the factor as your bill prints it: a number from 9 to 13, such as 11,6.",
+      "invalid_number": "Type a number with a decimal comma or point, such as 8,25. It cannot be negative or higher than any card prints.",
       "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
     }
   },
@@ -339,6 +340,7 @@
       "start_date_before_switch": "The contract start date cannot be before the last change of contract recorded on this entry.",
       "stations_unavailable": "The list of reception stations could not be read from Atrias; enter the factor from your bill instead.",
       "invalid_factor": "Enter the factor as your bill prints it: a number from 9 to 13, such as 11,6.",
+      "invalid_number": "Type a number with a decimal comma or point, such as 8,25. It cannot be negative or higher than any card prints.",
       "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today. A contract that started on 1 January is set in \"Edit settings\" instead.",
       "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
     },

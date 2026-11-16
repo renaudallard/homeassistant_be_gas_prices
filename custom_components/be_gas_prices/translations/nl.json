@@ -143,6 +143,7 @@
       "tariff_card_date_in_future": "De datum van de tariefkaart kan niet in de toekomst liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
       "invalid_factor": "Geef de factor in zoals hij op je factuur staat: een getal van 9 tot 13, zoals 11,6.",
+      "invalid_number": "Typ een getal met een decimale komma of punt, zoals 8,25. Het kan niet negatief zijn of hoger dan wat een kaart vermeldt.",
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     }
   },
@@ -339,6 +340,7 @@
       "start_date_before_switch": "De startdatum van het contract kan niet voor de laatst vastgelegde contractwissel van deze invoer liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
       "invalid_factor": "Geef de factor in zoals hij op je factuur staat: een getal van 9 tot 13, zoals 11,6.",
+      "invalid_number": "Typ een getal met een decimale komma of punt, zoals 8,25. Het kan niet negatief zijn of hoger dan wat een kaart vermeldt.",
       "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag. Een contract dat op 1 januari begon, stel je in via \"Instellingen wijzigen\".",
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     },

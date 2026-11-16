@@ -377,13 +377,16 @@ manifest.
 4. **Household**: your yearly consumption in kWh (it picks the tier and the
    excise slices until your meter has measured a full year), your meter size
    in Brussels, your gas meter (leave blank to use the Energy dashboard's),
-   the **conversion factor** printed on your bill (a decimal comma or point,
-   such as 11,6, from 9 to 13), whether the project's card archive may be
+   the **conversion factor** printed on your bill (such as 11,6, from 9 to
+   13), whether the project's card archive may be
    read (an Ecofix entry prices on it, and it gives the VAT rate a card does
    not state and the law's figures of a month the tariff and Justel no longer
    give), and whether to compare every contract daily.
 5. **Reception station**, only when the factor was left empty: its monthly
    calorific value from Atrias converts cubic metres to kWh instead.
+
+The figures you type, the conversion factor, those of your contract and the
+custom card's, take a decimal comma or point, as Belgian cards print them.
 
 **Settings, Devices & services, Belgian Gas Prices, Configure** opens a menu:
 edit the settings, quote another contract, rank every contract (today's daily

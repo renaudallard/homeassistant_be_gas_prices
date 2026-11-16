@@ -57,6 +57,7 @@ from custom_components.be_gas_prices.const import (
     CONF_CUSTOM_CONNECTION_FEE,
     CONF_CUSTOM_CONTRIBUTION,
     CONF_CUSTOM_FEE,
+    CONF_CUSTOM_METERING,
     CONF_CUSTOM_NETWORK_FROM_SHEET,
     CONF_CUSTOM_PRICE,
     CONF_CUSTOM_T1_FIXED,
@@ -239,9 +240,9 @@ async def test_the_custom_supplier_is_not_asked_its_signing_rate(hass: HomeAssis
     assert result["step_id"] == "custom_energy"
 
 
-@pytest.mark.parametrize("printed", [1.08, 1.0])
+@pytest.mark.parametrize("printed", ["1,08", "1"])
 async def test_a_formula_s_printed_multiplier_is_refused_as_the_factor(
-    hass: HomeAssistant, printed: float
+    hass: HomeAssistant, printed: str
 ) -> None:
     """Mega's "ZTP x 1,08 + 1,15 c€/kWh" is a factor of 0,108 and Energy
     Together's "(TTF_RLP x 1) + €7/MWh" one of 0,1: the printed 1,08 or 1
@@ -251,11 +252,22 @@ async def test_a_formula_s_printed_multiplier_is_refused_as_the_factor(
         result["flow_id"], {CONF_CONTRACT: "engie_flow", "advanced": {"signed_rate": True}}
     )
     assert result["step_id"] == "signed_rate"
+    typed = {CONF_MANUAL_FACTOR: printed, CONF_MANUAL_BASE: "1,15"}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], typed)
+    assert result["step_id"] == "signed_rate"
+    assert result["errors"] == {CONF_MANUAL_FACTOR: "invalid_number"}
     schema = result["data_schema"]
     assert schema is not None
-    with pytest.raises(vol.Invalid):
-        schema({CONF_MANUAL_FACTOR: printed, CONF_MANUAL_BASE: 1.15})
-    assert schema({CONF_MANUAL_FACTOR: 0.108, CONF_MANUAL_BASE: 1.15})[CONF_MANUAL_FACTOR] == 0.108
+    shown = {str(key): (key.description or {}).get("suggested_value") for key in schema.schema}
+    assert shown == {**typed, CONF_MANUAL_FEE: None}
+    flow: Any = hass.config_entries.options._progress[result["flow_id"]]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_MANUAL_FACTOR: "0,108", CONF_MANUAL_BASE: "1,15"}
+    )
+    assert result["step_id"] != "signed_rate"
+    assert flow._data[CONF_MANUAL_FACTOR] == 0.108
+    assert flow._data[CONF_MANUAL_BASE] == 1.15
+    assert CONF_MANUAL_FEE not in flow._data
 
 
 async def test_the_custom_network_form_leaves_the_law_s_levies_out(hass: HomeAssistant) -> None:
@@ -276,14 +288,14 @@ async def test_the_custom_network_form_leaves_the_law_s_levies_out(hass: HomeAss
     flow: Any = hass.config_entries.flow._progress[result["flow_id"]]
     flow._data.update({CONF_CUSTOM_CONTRIBUTION: 0.10577, CONF_CUSTOM_CONNECTION_FEE: 0.0075})
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {CONF_CUSTOM_PRICE: 8.0, CONF_CUSTOM_FEE: 60.0}
+        result["flow_id"], {CONF_CUSTOM_PRICE: "8", CONF_CUSTOM_FEE: "60"}
     )
     assert result["step_id"] == "custom_network"
     schema = result["data_schema"]
     assert schema is not None
     assert CONF_CUSTOM_CONTRIBUTION not in schema.schema
     assert CONF_CUSTOM_CONNECTION_FEE not in schema.schema
-    typed = {key: 1.0 for key in schema.schema}
+    typed = {key: "1" for key in schema.schema if key != CONF_CUSTOM_NETWORK_FROM_SHEET}
     result = await hass.config_entries.flow.async_configure(result["flow_id"], typed)
     assert result["step_id"] == "household"
     assert CONF_CUSTOM_CONTRIBUTION not in flow._data
@@ -302,7 +314,7 @@ async def test_the_custom_network_form_offers_the_sheet_first(hass: HomeAssistan
         {CONF_SUPPLIER: SUPPLIER_CUSTOM},
         {CONF_CONTRACT: CUSTOM_CONTRACT},
         {CONF_DSO: DSO_ORES},
-        {CONF_CUSTOM_PRICE: 8.0, CONF_CUSTOM_FEE: 60.0},
+        {CONF_CUSTOM_PRICE: "8", CONF_CUSTOM_FEE: "60"},
     ):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
     assert result["step_id"] == "custom_network"
@@ -310,15 +322,82 @@ async def test_the_custom_network_form_offers_the_sheet_first(hass: HomeAssistan
     assert schema is not None
     keys = [str(key) for key in schema.schema]
     assert keys[0] == CONF_CUSTOM_NETWORK_FROM_SHEET
-    assert schema({key: 1.0 for key in keys[1:]})[CONF_CUSTOM_NETWORK_FROM_SHEET] is False
+    assert schema({key: "1" for key in keys[1:]})[CONF_CUSTOM_NETWORK_FROM_SHEET] is False
     flow: Any = hass.config_entries.flow._progress[result["flow_id"]]
-    typed = {key: 1.0 for key in keys[1:]}
+    typed = {key: "1" for key in keys[1:]}
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {**typed, CONF_CUSTOM_NETWORK_FROM_SHEET: True}
     )
     assert result["step_id"] == "household"
     assert flow._data[CONF_CUSTOM_NETWORK_FROM_SHEET] is True
     assert flow._data[CONF_CUSTOM_T1_FIXED] == 1.0
+
+
+async def test_the_custom_card_takes_a_decimal_comma(hass: HomeAssistant) -> None:
+    """The custom card's figures are copied from a Belgian card, decimal
+    comma and all; a figure that is not a number brings the form back as
+    typed, the sheet box as ticked."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    for user_input in (
+        {CONF_POSTCODE: ""},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: SUPPLIER_CUSTOM},
+        {CONF_CONTRACT: CUSTOM_CONTRACT},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    flow: Any = hass.config_entries.flow._progress[result["flow_id"]]
+    typed = {CONF_CUSTOM_PRICE: "8,25 c€", CONF_CUSTOM_FEE: "60"}
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], typed)
+    assert result["step_id"] == "custom_energy"
+    assert result["errors"] == {CONF_CUSTOM_PRICE: "invalid_number"}
+    schema = result["data_schema"]
+    assert schema is not None
+    assert {str(key): key.description for key in schema.schema} == {
+        key: {"suggested_value": value} for key, value in typed.items()
+    }
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_CUSTOM_PRICE: "8,25", CONF_CUSTOM_FEE: "60"}
+    )
+    assert result["step_id"] == "custom_network"
+    assert flow._data[CONF_CUSTOM_PRICE] == 8.25
+    assert flow._data[CONF_CUSTOM_FEE] == 60.0
+    schema = result["data_schema"]
+    assert schema is not None
+    keys = [str(key) for key in schema.schema][1:]
+    typed = {key: "1,5" for key in keys}
+    typed[CONF_CUSTOM_METERING] = "-1"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**typed, CONF_CUSTOM_NETWORK_FROM_SHEET: True}
+    )
+    assert result["step_id"] == "custom_network"
+    assert result["errors"] == {CONF_CUSTOM_METERING: "invalid_number"}
+    schema = result["data_schema"]
+    assert schema is not None
+    box = next(key for key in schema.schema if key == CONF_CUSTOM_NETWORK_FROM_SHEET)
+    assert box.default() is True
+    metering = next(key for key in schema.schema if key == CONF_CUSTOM_METERING)
+    assert metering.description == {"suggested_value": "-1"}
+    assert CONF_CUSTOM_T1_FIXED not in flow._data
+    typed[CONF_CUSTOM_METERING] = "12,34"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**typed, CONF_CUSTOM_NETWORK_FROM_SHEET: True}
+    )
+    assert result["step_id"] == "household"
+    assert flow._data[CONF_CUSTOM_T1_FIXED] == 1.5
+    assert flow._data[CONF_CUSTOM_METERING] == 12.34
+
+
+@pytest.mark.parametrize(
+    ("stored", "shown"), [(0.000075, "0.000075"), (11.6, "11.6"), (60, "60.0"), (None, None)]
+)
+def test_a_stored_figure_is_shown_as_the_field_reads_it(stored: Any, shown: str | None) -> None:
+    """str() writes 0.000075 as 7.5e-05, which the field would refuse."""
+    assert flow_steps._decimal_text(stored) == shown
+    if shown is not None:
+        assert flow_steps._decimal(shown, 0.0, 100.0) == float(stored)
 
 
 async def test_a_custom_entry_s_volume_stays_within_the_tiers_it_types(
@@ -335,13 +414,14 @@ async def test_a_custom_entry_s_volume_stays_within_the_tiers_it_types(
         {CONF_SUPPLIER: SUPPLIER_CUSTOM},
         {CONF_CONTRACT: CUSTOM_CONTRACT},
         {CONF_DSO: DSO_ORES},
-        {CONF_CUSTOM_PRICE: 8.0, CONF_CUSTOM_FEE: 60.0},
+        {CONF_CUSTOM_PRICE: "8", CONF_CUSTOM_FEE: "60"},
     ):
         result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
     schema = result["data_schema"]
     assert schema is not None
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], {key: 1.0 for key in schema.schema}
+        result["flow_id"],
+        {key: "1" for key in schema.schema if key != CONF_CUSTOM_NETWORK_FROM_SHEET},
     )
     assert result["step_id"] == "household"
     schema = result["data_schema"]
