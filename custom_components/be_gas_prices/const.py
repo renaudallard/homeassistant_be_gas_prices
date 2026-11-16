@@ -279,6 +279,9 @@ CONVERSION_MANUAL: Final = "manual"
 DEFAULT_CONVERSION_MODE: Final = CONVERSION_MANUAL
 CONF_STATION: Final = "station"
 CONF_CONVERSION_FACTOR: Final = "conversion_factor"
+# The kWh a cubic metre of Belgian gas is worth, as bills print it.
+CONVERSION_FACTOR_MIN: Final = 9.0
+CONVERSION_FACTOR_MAX: Final = 13.0
 
 CONF_CONTRACT_START_DATE: Final = "contract_start_date"
 CONF_CONTRACT_END_DATE: Final = "contract_end_date"

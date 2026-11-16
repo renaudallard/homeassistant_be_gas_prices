@@ -81,7 +81,7 @@
           "annual_consumption_kwh": "En kWh, d'après votre dernière facture annuelle. Utilisée jusqu'à ce que votre compteur de gaz ait une année complète de relevés.",
           "caliber": "Indiqué sur votre compteur de gaz ; la plupart des logements ont un G4 ou un G6. Il détermine une redevance bruxelloise.",
           "gas_meter": "Le capteur qui compte votre consommation de gaz, en m³ ou en kWh. Laissez-le vide pour utiliser celui du tableau de bord Énergie.",
-          "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
+          "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12, par exemple 11,6). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
           "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés. Lit aussi, une fois par jour, le taux de TVA sur lequel les cartes archivées s'accordent, pour les prix qu'une carte donne sans taux et les chiffres repris d'un contrat, les prélèvements fédéraux que l'archive a conservés pour les mois que la loi et le tarif du SPF Finances ne mentionnent plus, et, pour une entrée personnalisée qui reprend son réseau de la fiche tarifaire de son gestionnaire, le réseau que l'archive a conservé pour un mois que la fiche ne donne plus. Désactivée, l'intégration ne contacte pas GitHub et garde les tables lues en dernier quand l'option était active ; un taux de TVA qu'une carte n'indique pas est sinon de 6 %.",
           "daily_compare": "Une fois par jour, comparer tous les contrats de votre région et afficher la meilleure économie dans un capteur."
         }
@@ -95,7 +95,7 @@
       },
       "factor": {
         "title": "Facteur de conversion",
-        "description": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12 kWh/m³). Laissez-le vide pour choisir plutôt votre station de réception de gaz.",
+        "description": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12 kWh/m³, par exemple 11,6). Laissez-le vide pour choisir plutôt votre station de réception de gaz.",
         "data": {
           "conversion_factor": "Facteur de conversion"
         }
@@ -142,6 +142,7 @@
       "start_date_in_future": "La date de début du contrat ne peut pas être dans le futur.",
       "tariff_card_date_in_future": "La date de la carte tarifaire ne peut pas être dans le futur.",
       "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
+      "invalid_factor": "Indiquez le facteur tel qu'il figure sur votre facture : un nombre de 9 à 13, par exemple 11,6.",
       "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     }
   },
@@ -226,7 +227,7 @@
           "annual_consumption_kwh": "En kWh, d'après votre dernière facture annuelle. Utilisée jusqu'à ce que votre compteur de gaz ait une année complète de relevés.",
           "caliber": "Indiqué sur votre compteur de gaz ; la plupart des logements ont un G4 ou un G6. Il détermine une redevance bruxelloise.",
           "gas_meter": "Le capteur qui compte votre consommation de gaz, en m³ ou en kWh. Laissez-le vide pour utiliser celui du tableau de bord Énergie.",
-          "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
+          "conversion_factor": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12, par exemple 11,6). Laissez-le vide si vous ne l'avez pas : vous choisirez alors votre station de réception de gaz.",
           "card_archive": "Récupérer les cartes tarifaires dans l'archive de ce projet sur GitHub quand celles du fournisseur sont illisibles ou ne sont plus publiées. Seuls le fournisseur, le contrat, la région et le mois sont envoyés. Lit aussi, une fois par jour, le taux de TVA sur lequel les cartes archivées s'accordent, pour les prix qu'une carte donne sans taux et les chiffres repris d'un contrat, les prélèvements fédéraux que l'archive a conservés pour les mois que la loi et le tarif du SPF Finances ne mentionnent plus, et, pour une entrée personnalisée qui reprend son réseau de la fiche tarifaire de son gestionnaire, le réseau que l'archive a conservé pour un mois que la fiche ne donne plus. Désactivée, l'intégration ne contacte pas GitHub et garde les tables lues en dernier quand l'option était active ; un taux de TVA qu'une carte n'indique pas est sinon de 6 %.",
           "daily_compare": "Une fois par jour, comparer tous les contrats de votre région et afficher la meilleure économie dans un capteur."
         }
@@ -240,7 +241,7 @@
       },
       "factor": {
         "title": "Facteur de conversion",
-        "description": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12 kWh/m³). Laissez-le vide pour choisir plutôt votre station de réception de gaz.",
+        "description": "Le nombre de kWh que vaut un m³ de gaz, indiqué sur votre facture (environ 11 à 12 kWh/m³, par exemple 11,6). Laissez-le vide pour choisir plutôt votre station de réception de gaz.",
         "data": {
           "conversion_factor": "Facteur de conversion"
         }
@@ -337,6 +338,7 @@
       "tariff_card_date_in_future": "La date de la carte tarifaire ne peut pas être dans le futur.",
       "start_date_before_switch": "La date de début du contrat ne peut pas précéder le dernier changement de contrat enregistré sur cette entrée.",
       "stations_unavailable": "La liste des stations de réception n'a pas pu être lue chez Atrias ; indiquez plutôt le facteur de votre facture.",
+      "invalid_factor": "Indiquez le facteur tel qu'il figure sur votre facture : un nombre de 9 à 13, par exemple 11,6.",
       "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui. Un contrat commencé le 1er janvier se règle dans « Modifier les paramètres ».",
       "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
     },

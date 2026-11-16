@@ -31,6 +31,7 @@ conversion steps of an entry.
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
@@ -53,6 +54,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TextSelectorConfig,
 )
 from homeassistant.util import dt as dt_util
 
@@ -92,6 +94,8 @@ from .const import (
     CONF_SUPPLIER,
     CONF_TARIFF_CARD_DATE,
     CONF_YTD_FROM_CONTRACT_START,
+    CONVERSION_FACTOR_MAX,
+    CONVERSION_FACTOR_MIN,
     CONVERSION_MANUAL,
     CONVERSION_STATION,
     CUSTOM_KEYS,
@@ -179,12 +183,34 @@ def _select(
     return SelectSelector(config)
 
 
-def _factor_selector() -> NumberSelector:
-    return NumberSelector(
-        NumberSelectorConfig(
-            min=9.0, max=13.0, step="any", mode=NumberSelectorMode.BOX, unit_of_measurement="kWh/m³"
-        )
-    )
+def _factor_selector() -> TextSelector:
+    # Text rather than a number field: a browser's number field refuses the
+    # decimal comma Belgian bills print, or sends it on as empty.
+    return TextSelector(TextSelectorConfig(suffix="kWh/m³"))
+
+
+# Digits with a decimal comma or point, as a bill prints the factor.
+_FACTOR_TEXT = re.compile(r"\d+(?:[.,]\d+)?", re.ASCII)
+
+
+def _factor(value: Any) -> float | None:
+    """The factor typed on a form, or None when the field was left empty.
+    Raises ValueError when it is not a number from CONVERSION_FACTOR_MIN
+    to CONVERSION_FACTOR_MAX."""
+    text = "" if value is None else str(value).strip()
+    if not text:
+        return None
+    if _FACTOR_TEXT.fullmatch(text) is None:
+        raise ValueError(text)
+    factor = float(text.replace(",", "."))
+    if not CONVERSION_FACTOR_MIN <= factor <= CONVERSION_FACTOR_MAX:
+        raise ValueError(text)
+    return factor
+
+
+def _factor_text(value: Any) -> str | None:
+    """A stored factor as the text field shows it."""
+    return None if value is None else str(value)
 
 
 def _default(data: dict[str, Any], key: str, fallback: Any = vol.UNDEFINED) -> Any:
@@ -560,7 +586,16 @@ class _FlowSteps:
     ) -> ConfigFlowResult:
         brussels = self._data[CONF_REGION] == REGION_BRUSSELS
         errors: dict[str, str] = {}
+        typed: Any = None
         if user_input is not None:
+            user_input = dict(user_input)
+            try:
+                user_input[CONF_CONVERSION_FACTOR] = _factor(user_input.get(CONF_CONVERSION_FACTOR))
+            except ValueError:
+                # Shown again as typed, the entry's own factor kept meanwhile.
+                errors[CONF_CONVERSION_FACTOR] = "invalid_factor"
+                typed = user_input[CONF_CONVERSION_FACTOR]
+                user_input[CONF_CONVERSION_FACTOR] = self._data.get(CONF_CONVERSION_FACTOR)
             for key in (CONF_GAS_METER, CONF_CONVERSION_FACTOR):
                 if user_input.get(key) is None:
                     self._data.pop(key, None)
@@ -574,7 +609,7 @@ class _FlowSteps:
             # only card those days can be priced on. The form comes back
             # with the rest as entered.
             errors[CONF_CARD_ARCHIVE] = "card_archive_needed"
-        elif user_input is not None:
+        if user_input is not None and not errors:
             if not brussels:
                 self._data.pop(CONF_CALIBER, None)
             # The factor step stores the factor, or leads to the station list
@@ -624,7 +659,14 @@ class _FlowSteps:
         # Suggested rather than defaults, so a cleared field reaches here empty.
         schema = self.add_suggested_values_to_schema(
             vol.Schema(fields),
-            {key: self._data.get(key) for key in (CONF_GAS_METER, CONF_CONVERSION_FACTOR)},
+            {
+                CONF_GAS_METER: self._data.get(CONF_GAS_METER),
+                CONF_CONVERSION_FACTOR: (
+                    typed
+                    if typed is not None
+                    else _factor_text(self._data.get(CONF_CONVERSION_FACTOR))
+                ),
+            },
         )
         return self.async_show_form(step_id="household", data_schema=schema, errors=errors)
 
@@ -671,19 +713,24 @@ class _FlowSteps:
         user_input: dict[str, Any] | None = None,
         errors: dict[str, str] | None = None,
     ) -> ConfigFlowResult:
+        shown = _factor_text(self._data.get(CONF_CONVERSION_FACTOR))
         if user_input is not None:
-            if user_input.get(CONF_CONVERSION_FACTOR) is None:
-                # No bill at hand: the station list.
-                self._data[CONF_CONVERSION_MODE] = CONVERSION_STATION
-                return await self.async_step_station()
-            self._data[CONF_CONVERSION_FACTOR] = float(user_input[CONF_CONVERSION_FACTOR])
-            self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
-            self._data.pop(CONF_STATION, None)
-            return await self._async_finish()
+            try:
+                factor = _factor(user_input.get(CONF_CONVERSION_FACTOR))
+            except ValueError:
+                errors = {CONF_CONVERSION_FACTOR: "invalid_factor"}
+                shown = user_input[CONF_CONVERSION_FACTOR]
+            else:
+                if factor is None:
+                    # No bill at hand: the station list.
+                    self._data[CONF_CONVERSION_MODE] = CONVERSION_STATION
+                    return await self.async_step_station()
+                self._data[CONF_CONVERSION_FACTOR] = factor
+                self._data[CONF_CONVERSION_MODE] = CONVERSION_MANUAL
+                self._data.pop(CONF_STATION, None)
+                return await self._async_finish()
         schema = vol.Schema({vol.Optional(CONF_CONVERSION_FACTOR): _factor_selector()})
         # Suggested rather than a default, so a cleared field reaches here
         # empty instead of coming back as the old factor.
-        schema = self.add_suggested_values_to_schema(
-            schema, {CONF_CONVERSION_FACTOR: self._data.get(CONF_CONVERSION_FACTOR)}
-        )
+        schema = self.add_suggested_values_to_schema(schema, {CONF_CONVERSION_FACTOR: shown})
         return self.async_show_form(step_id="factor", data_schema=schema, errors=errors or {})

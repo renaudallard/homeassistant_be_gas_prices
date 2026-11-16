@@ -81,7 +81,7 @@
           "annual_consumption_kwh": "In kWh, van je laatste jaarfactuur. Gebruikt tot je gasmeter een volledig jaar aan metingen heeft.",
           "caliber": "Staat op je gasmeter; de meeste woningen hebben een G4 of G6. Hij bepaalt een Brusselse heffing.",
           "gas_meter": "De sensor die je gasverbruik telt, in m³ of kWh. Laat leeg om die van het Energiedashboard te gebruiken.",
-          "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
+          "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12, zoals 11,6). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
           "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd. Leest ook, één keer per dag, het btw-tarief waarover de gearchiveerde kaarten het eens zijn, voor de prijzen die een kaart zonder tarief vermeldt en de cijfers die van een contract overgenomen zijn, de federale heffingen die het archief bewaarde voor de maanden die de wet en het tarief van de FOD Financiën niet meer vermelden, en, voor een eigen invoer die zijn net van de tarieflijst van zijn netbeheerder overneemt, het net dat het archief bewaarde voor een maand die de lijst niet meer geeft. Staat dit uit, dan contacteert de integratie GitHub niet en houdt ze de tabellen die ze het laatst las toen dit aan stond; een btw-tarief dat een kaart niet vermeldt is anders 6%.",
           "daily_compare": "Vergelijk één keer per dag alle contracten in je gewest en toon de grootste besparing als sensor."
         }
@@ -95,7 +95,7 @@
       },
       "factor": {
         "title": "Omrekeningsfactor",
-        "description": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12 kWh/m³). Laat leeg om in de plaats je gasontvangststation te kiezen.",
+        "description": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12 kWh/m³, zoals 11,6). Laat leeg om in de plaats je gasontvangststation te kiezen.",
         "data": {
           "conversion_factor": "Omrekeningsfactor"
         }
@@ -142,6 +142,7 @@
       "start_date_in_future": "De startdatum van het contract kan niet in de toekomst liggen.",
       "tariff_card_date_in_future": "De datum van de tariefkaart kan niet in de toekomst liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
+      "invalid_factor": "Geef de factor in zoals hij op je factuur staat: een getal van 9 tot 13, zoals 11,6.",
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     }
   },
@@ -226,7 +227,7 @@
           "annual_consumption_kwh": "In kWh, van je laatste jaarfactuur. Gebruikt tot je gasmeter een volledig jaar aan metingen heeft.",
           "caliber": "Staat op je gasmeter; de meeste woningen hebben een G4 of G6. Hij bepaalt een Brusselse heffing.",
           "gas_meter": "De sensor die je gasverbruik telt, in m³ of kWh. Laat leeg om die van het Energiedashboard te gebruiken.",
-          "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
+          "conversion_factor": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12, zoals 11,6). Laat leeg als je die niet hebt: je kiest dan je gasontvangststation.",
           "card_archive": "Tariefkaarten ophalen uit het archief van dit project op GitHub wanneer die van de leverancier niet leesbaar zijn of niet meer gepubliceerd worden. Alleen de leverancier, het contract, het gewest en de maand worden verstuurd. Leest ook, één keer per dag, het btw-tarief waarover de gearchiveerde kaarten het eens zijn, voor de prijzen die een kaart zonder tarief vermeldt en de cijfers die van een contract overgenomen zijn, de federale heffingen die het archief bewaarde voor de maanden die de wet en het tarief van de FOD Financiën niet meer vermelden, en, voor een eigen invoer die zijn net van de tarieflijst van zijn netbeheerder overneemt, het net dat het archief bewaarde voor een maand die de lijst niet meer geeft. Staat dit uit, dan contacteert de integratie GitHub niet en houdt ze de tabellen die ze het laatst las toen dit aan stond; een btw-tarief dat een kaart niet vermeldt is anders 6%.",
           "daily_compare": "Vergelijk één keer per dag alle contracten in je gewest en toon de grootste besparing als sensor."
         }
@@ -240,7 +241,7 @@
       },
       "factor": {
         "title": "Omrekeningsfactor",
-        "description": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12 kWh/m³). Laat leeg om in de plaats je gasontvangststation te kiezen.",
+        "description": "Hoeveel kWh één m³ gas waard is, staat op je factuur (ongeveer 11 tot 12 kWh/m³, zoals 11,6). Laat leeg om in de plaats je gasontvangststation te kiezen.",
         "data": {
           "conversion_factor": "Omrekeningsfactor"
         }
@@ -337,6 +338,7 @@
       "tariff_card_date_in_future": "De datum van de tariefkaart kan niet in de toekomst liggen.",
       "start_date_before_switch": "De startdatum van het contract kan niet voor de laatst vastgelegde contractwissel van deze invoer liggen.",
       "stations_unavailable": "De lijst van ontvangststations kon niet bij Atrias gelezen worden; geef de factor van je factuur in.",
+      "invalid_factor": "Geef de factor in zoals hij op je factuur staat: een getal van 9 tot 13, zoals 11,6.",
       "switch_date_invalid": "Het nieuwe contract moet beginnen na 1 januari, na de start van het huidige contract en na de laatst vastgelegde wissel, en uiterlijk vandaag. Een contract dat op 1 januari begon, stel je in via \"Instellingen wijzigen\".",
       "card_archive_needed": "Een contract van dit jaar is bij een leverancier die zijn kaarten als afbeeldingen publiceert, die alleen het kaartarchief van het project leest: zet deze optie aan."
     },

@@ -117,7 +117,7 @@ def _walloon_ores_postcode() -> str:
     raise AssertionError("no ORES postcode in the table")
 
 
-async def _household(hass: HomeAssistant, flow_id: str, factor: float | None) -> ConfigFlowResult:
+async def _household(hass: HomeAssistant, flow_id: str, factor: str | None) -> ConfigFlowResult:
     """The household form, with the bill's factor or left empty for a station."""
     user_input: dict[str, Any] = {
         CONF_ANNUAL_CONSUMPTION_KWH: 12000,
@@ -204,7 +204,7 @@ async def test_blank_postcode_asks_the_region(hass: HomeAssistant) -> None:
         {
             CONF_ANNUAL_CONSUMPTION_KWH: 17000,
             CONF_CALIBER: "q16",
-            CONF_CONVERSION_FACTOR: 11.4,
+            CONF_CONVERSION_FACTOR: "11,4",
             CONF_CARD_ARCHIVE: True,
             CONF_DAILY_COMPARE: False,
         },
@@ -401,7 +401,7 @@ async def test_the_contract_form_folds_the_rarely_needed_fields(hass: HomeAssist
     # The contract's figures are only asked for when the household says so.
     assert result["step_id"] == "dso"
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
-    result = await _household(hass, result["flow_id"], 11.4)
+    result = await _household(hass, result["flow_id"], "11.4")
     data = result["data"]
     assert data[CONF_TARIFF_CARD_DATE] == "2026-02-10"
     assert data[CONF_YTD_FROM_CONTRACT_START] is False
@@ -969,6 +969,92 @@ async def test_a_cleared_factor_is_not_offered_again(hass: HomeAssistant) -> Non
     assert schema is not None
     factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
     assert (factor.description or {}).get("suggested_value") is None
+    # The factor form reads the comma a bill prints, and refuses a typo.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONVERSION_FACTOR: "11.6.1"}
+    )
+    assert result["step_id"] == "factor"
+    assert result["errors"] == {CONF_CONVERSION_FACTOR: "invalid_factor"}
+    schema = result["data_schema"]
+    assert schema is not None
+    factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
+    assert factor.description == {"suggested_value": "11.6.1"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_CONVERSION_FACTOR: " 11,6 "}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_CONVERSION_FACTOR] == 11.6
+    assert entry.data[CONF_CONVERSION_MODE] == CONVERSION_MANUAL
+
+
+async def _settings_household(hass: HomeAssistant, entry: MockConfigEntry) -> ConfigFlowResult:
+    """The settings of ``entry`` walked up to its household form."""
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    for user_input in (
+        {"next_step_id": "settings"},
+        {},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+        {CONF_CONTRACT: "engie_flow"},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "household"
+    return result
+
+
+@pytest.mark.parametrize(("typed", "factor"), [("11,6", 11.6), ("11.6", 11.6), ("9", 9.0)])
+async def test_the_factor_takes_a_decimal_comma(
+    hass: HomeAssistant, typed: str, factor: float
+) -> None:
+    """Belgian bills print the factor with a decimal comma: the household
+    form reads it as well as a point."""
+    entry = _entry(hass)
+    result = await _settings_household(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            CONF_ANNUAL_CONSUMPTION_KWH: 17000,
+            CONF_CONVERSION_FACTOR: typed,
+            CONF_CARD_ARCHIVE: False,
+            CONF_DAILY_COMPARE: False,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_CONVERSION_FACTOR] == factor
+
+
+@pytest.mark.parametrize(
+    "typed", ["11,6 kWh", "116", "8,9", "13,01", "nan", "1e1", "1_1.6", "+11", "11,6,0", "11,"]
+)
+async def test_a_factor_that_is_not_one_comes_back(hass: HomeAssistant, typed: str) -> None:
+    """Text, a dropped comma or a value off the bills' range: the form
+    comes back with it as typed, and the entry keeps its factor."""
+    entry = _entry(hass)
+    result = await _settings_household(hass, entry)
+    user_input = {
+        CONF_ANNUAL_CONSUMPTION_KWH: 12000,
+        CONF_CONVERSION_FACTOR: typed,
+        CONF_CARD_ARCHIVE: False,
+        CONF_DAILY_COMPARE: False,
+    }
+    result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "household"
+    assert result["errors"] == {CONF_CONVERSION_FACTOR: "invalid_factor"}
+    schema = result["data_schema"]
+    assert schema is not None
+    factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
+    assert factor.description == {"suggested_value": typed}
+    # The rest of the form is kept as entered.
+    volume = next(key for key in schema.schema if key == CONF_ANNUAL_CONSUMPTION_KWH)
+    assert volume.default() == 12000
+    assert entry.data[CONF_CONVERSION_FACTOR] == 11.5
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**user_input, CONF_CONVERSION_FACTOR: "11,6"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_CONVERSION_FACTOR] == 11.6
+    assert entry.data[CONF_ANNUAL_CONSUMPTION_KWH] == 12000
 
 
 def _entry(hass: HomeAssistant) -> MockConfigEntry:
@@ -1007,19 +1093,19 @@ async def test_an_images_only_supplier_needs_the_card_archive(hass: HomeAssistan
         result["flow_id"], {CONF_CONTRACT: "ecofix_flexy"}
     )
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_DSO: DSO_ORES})
-    result = await _household(hass, result["flow_id"], 11.4)
+    result = await _household(hass, result["flow_id"], "11.4")
     assert result["step_id"] == "household"
     assert result["errors"] == {CONF_CARD_ARCHIVE: "card_archive_needed"}
     # The form comes back with the factor as typed.
     schema = result["data_schema"]
     assert schema is not None
     factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
-    assert factor.description == {"suggested_value": 11.4}
+    assert factor.description == {"suggested_value": "11.4"}
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {
             CONF_ANNUAL_CONSUMPTION_KWH: 12000,
-            CONF_CONVERSION_FACTOR: 11.4,
+            CONF_CONVERSION_FACTOR: "11.4",
             CONF_CARD_ARCHIVE: True,
             CONF_DAILY_COMPARE: False,
         },
@@ -1414,7 +1500,7 @@ async def test_options_switch_keeps_the_earlier_contract(hass: HomeAssistant) ->
     schema = result["data_schema"]
     assert schema is not None
     factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
-    assert factor.description == {"suggested_value": 11.5}
+    assert factor.description == {"suggested_value": "11.5"}
     result = await _household_options(hass, result["flow_id"])
     assert result["type"] is FlowResultType.CREATE_ENTRY
     [previous] = entry.data[CONF_PREVIOUS_CONTRACTS]
@@ -1648,7 +1734,7 @@ async def _household_options(hass: HomeAssistant, flow_id: str) -> ConfigFlowRes
         flow_id,
         {
             CONF_ANNUAL_CONSUMPTION_KWH: 17000,
-            CONF_CONVERSION_FACTOR: 11.5,
+            CONF_CONVERSION_FACTOR: "11.5",
             CONF_CARD_ARCHIVE: False,
             CONF_DAILY_COMPARE: False,
         },

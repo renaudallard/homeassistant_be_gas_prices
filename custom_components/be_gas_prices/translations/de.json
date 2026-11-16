@@ -81,7 +81,7 @@
           "annual_consumption_kwh": "In kWh, von Ihrer letzten Jahresrechnung. Wird verwendet, bis Ihr Gaszähler ein volles Jahr an Messwerten hat.",
           "caliber": "Steht auf Ihrem Gaszähler; die meisten Haushalte haben einen G4 oder G6. Er bestimmt eine Brüsseler Abgabe.",
           "gas_meter": "Der Sensor, der Ihren Gasverbrauch zählt, in m³ oder kWh. Leer lassen, um den aus dem Energie-Dashboard zu verwenden.",
-          "conversion_factor": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12). Leer lassen, wenn Sie ihn nicht haben: Sie wählen dann Ihre Gasübernahmestation.",
+          "conversion_factor": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12, zum Beispiel 11,6). Leer lassen, wenn Sie ihn nicht haben: Sie wählen dann Ihre Gasübernahmestation.",
           "card_archive": "Tarifkarten aus dem Archiv dieses Projekts auf GitHub holen, wenn die des Lieferanten nicht lesbar sind oder nicht mehr veröffentlicht werden. Nur Lieferant, Vertrag, Region und Monat werden gesendet. Liest außerdem einmal täglich den MwSt.-Satz, auf den sich die archivierten Karten einigen, für die Preise, die eine Karte ohne Satz angibt, und die aus einem Vertrag übernommenen Zahlen, die föderalen Abgaben, die das Archiv für die Monate aufbewahrt hat, die das Gesetz und der Tarif des FÖD Finanzen nicht mehr nennen, sowie für einen eigenen Eintrag, der sein Netz aus dem Tarifblatt seines Netzbetreibers übernimmt, das Netz, das das Archiv für einen Monat aufbewahrt hat, den das Blatt nicht mehr nennt. Ausgeschaltet kontaktiert die Integration GitHub nicht und behält die Tabellen, die sie zuletzt gelesen hat, als die Option an war; ein MwSt.-Satz, den eine Karte nicht angibt, ist sonst 6 %.",
           "daily_compare": "Einmal täglich alle Verträge Ihrer Region vergleichen und die größte Ersparnis als Sensor anzeigen."
         }
@@ -95,7 +95,7 @@
       },
       "factor": {
         "title": "Umrechnungsfaktor",
-        "description": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³). Leer lassen, um stattdessen Ihre Gasübernahmestation zu wählen.",
+        "description": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³, zum Beispiel 11,6). Leer lassen, um stattdessen Ihre Gasübernahmestation zu wählen.",
         "data": {
           "conversion_factor": "Umrechnungsfaktor"
         }
@@ -142,6 +142,7 @@
       "start_date_in_future": "Der Vertragsbeginn darf nicht in der Zukunft liegen.",
       "tariff_card_date_in_future": "Das Datum der Tarifkarte darf nicht in der Zukunft liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
+      "invalid_factor": "Geben Sie den Faktor so ein, wie er auf Ihrer Rechnung steht: eine Zahl von 9 bis 13, zum Beispiel 11,6.",
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     }
   },
@@ -226,7 +227,7 @@
           "annual_consumption_kwh": "In kWh, von Ihrer letzten Jahresrechnung. Wird verwendet, bis Ihr Gaszähler ein volles Jahr an Messwerten hat.",
           "caliber": "Steht auf Ihrem Gaszähler; die meisten Haushalte haben einen G4 oder G6. Er bestimmt eine Brüsseler Abgabe.",
           "gas_meter": "Der Sensor, der Ihren Gasverbrauch zählt, in m³ oder kWh. Leer lassen, um den aus dem Energie-Dashboard zu verwenden.",
-          "conversion_factor": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12). Leer lassen, wenn Sie ihn nicht haben: Sie wählen dann Ihre Gasübernahmestation.",
+          "conversion_factor": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12, zum Beispiel 11,6). Leer lassen, wenn Sie ihn nicht haben: Sie wählen dann Ihre Gasübernahmestation.",
           "card_archive": "Tarifkarten aus dem Archiv dieses Projekts auf GitHub holen, wenn die des Lieferanten nicht lesbar sind oder nicht mehr veröffentlicht werden. Nur Lieferant, Vertrag, Region und Monat werden gesendet. Liest außerdem einmal täglich den MwSt.-Satz, auf den sich die archivierten Karten einigen, für die Preise, die eine Karte ohne Satz angibt, und die aus einem Vertrag übernommenen Zahlen, die föderalen Abgaben, die das Archiv für die Monate aufbewahrt hat, die das Gesetz und der Tarif des FÖD Finanzen nicht mehr nennen, sowie für einen eigenen Eintrag, der sein Netz aus dem Tarifblatt seines Netzbetreibers übernimmt, das Netz, das das Archiv für einen Monat aufbewahrt hat, den das Blatt nicht mehr nennt. Ausgeschaltet kontaktiert die Integration GitHub nicht und behält die Tabellen, die sie zuletzt gelesen hat, als die Option an war; ein MwSt.-Satz, den eine Karte nicht angibt, ist sonst 6 %.",
           "daily_compare": "Einmal täglich alle Verträge Ihrer Region vergleichen und die größte Ersparnis als Sensor anzeigen."
         }
@@ -240,7 +241,7 @@
       },
       "factor": {
         "title": "Umrechnungsfaktor",
-        "description": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³). Leer lassen, um stattdessen Ihre Gasübernahmestation zu wählen.",
+        "description": "Wie viele kWh ein m³ Gas wert ist, steht auf Ihrer Rechnung (etwa 11 bis 12 kWh/m³, zum Beispiel 11,6). Leer lassen, um stattdessen Ihre Gasübernahmestation zu wählen.",
         "data": {
           "conversion_factor": "Umrechnungsfaktor"
         }
@@ -337,6 +338,7 @@
       "tariff_card_date_in_future": "Das Datum der Tarifkarte darf nicht in der Zukunft liegen.",
       "start_date_before_switch": "Der Vertragsbeginn darf nicht vor dem zuletzt für diesen Eintrag erfassten Vertragswechsel liegen.",
       "stations_unavailable": "Die Liste der Übernahmestationen konnte bei Atrias nicht gelesen werden; geben Sie stattdessen den Faktor von Ihrer Rechnung ein.",
+      "invalid_factor": "Geben Sie den Faktor so ein, wie er auf Ihrer Rechnung steht: eine Zahl von 9 bis 13, zum Beispiel 11,6.",
       "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute. Ein Vertrag, der am 1. Januar begann, wird unter „Einstellungen bearbeiten“ eingetragen.",
       "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
     },
