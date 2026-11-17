@@ -1756,11 +1756,13 @@ async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: As
         # Nothing read and nothing held: no volume to price the year on.
         assert coordinator.data.projected_year_cost is None
         assert coordinator.data.projected_year_basis is None
+        assert coordinator.meter_coverage is None
         await coordinator.async_reprice(lambda: coordinator.meter_reads_pending)
         await hass.async_block_till_done(wait_background_tasks=True)
     assert read.await_count == 1
     assert not coordinator.meter_reads_pending
     assert coordinator.data.current_year_cost is not None
+    assert coordinator.meter_coverage is not None
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -4511,6 +4513,14 @@ async def test_diagnostics_leave_out_where_the_household_lives_and_its_meter(
     assert payload["entry"][CONF_SUPPLIER] == "engie"
     assert payload["snapshot"]["contract"] == "engie_flow"
     assert payload["state"]["tier"] == entry.runtime_data.data.tier
+    # The meter's year, enough for both year figures.
+    assert payload["meter_coverage"] == {
+        "first_day_read": "2025-09-15",
+        "rolling_days_on_record": 365,
+        "rolling_days_needed": 350,
+        "first_missing_last_year": None,
+    }
+    assert payload["state"]["projected_year_basis"] == "measured"
 
 
 async def test_diagnostics_of_an_entry_not_set_up_redact_its_settings(

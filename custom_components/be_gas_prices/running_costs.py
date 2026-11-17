@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import calendar
 import contextlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 
@@ -127,6 +127,22 @@ def meter_start(today: date) -> date:
     return _last_year(today) - timedelta(days=MEASURED_YEAR_GAP_DAYS + 1)
 
 
+def _rolling_window(today: date) -> tuple[date, date]:
+    """The first and last of the 365 days before today."""
+    end = today - timedelta(days=1)
+    return end - timedelta(days=MEASURED_FULL_YEAR_DAYS - 1), end
+
+
+def _twins_to_year_end(today: date) -> Iterator[tuple[date, date]]:
+    """Each day from today to 31 December with its date last year, the day
+    the year-end projection reads in its place."""
+    day = today
+    end = date(today.year, 12, 31)
+    while day <= end:
+        yield day, _last_year(day)
+        day += timedelta(days=1)
+
+
 def rolling_year_kwh(days: Mapping[date, float], today: date) -> float | None:
     """What the meter recorded over the 365 days before today.
 
@@ -135,8 +151,7 @@ def rolling_year_kwh(days: Mapping[date, float], today: date) -> float | None:
     missing the window is not a year and the answer is None. Gas is too
     seasonal for a shorter window to be scaled to a year at all.
     """
-    end = today - timedelta(days=1)
-    start = end - timedelta(days=MEASURED_FULL_YEAR_DAYS - 1)
+    start, end = _rolling_window(today)
     window = [value for day, value in days.items() if start <= day <= end]
     if len(window) < MEASURED_FULL_YEAR_DAYS - MEASURED_YEAR_GAP_DAYS:
         return None
@@ -268,16 +283,29 @@ def _remaining_days_last_year(kwh_days: Mapping[date, float], today: date) -> fl
     record: a year-end figure built on a gap would read as a forecast it is
     not."""
     total = 0.0
-    day = today
-    end = date(today.year, 12, 31)
-    while day <= end:
+    for day, twin in _twins_to_year_end(today):
         # A 29 February still to come takes its gas from last year's 28th.
-        value = kwh_days.get(_last_year(day))
+        value = kwh_days.get(twin)
         if value is None:
             return None
         if day == today:
             # The hours of today still to come, on today's twin.
             value = max(0.0, value - kwh_days.get(today, 0.0))
         total += value
-        day += timedelta(days=1)
     return total
+
+
+def meter_coverage(days: Mapping[date, float], today: date) -> dict[str, str | int | None]:
+    """What the rolling year and the year-end projection have to go on, for
+    the diagnostics: the first day read (no earlier than meter_start), how
+    many of the rolling year's 365 days are on record against the number
+    it needs, and the first of last year's days the projection reads that
+    is not."""
+    start, end = _rolling_window(today)
+    missing = next((twin for _day, twin in _twins_to_year_end(today) if twin not in days), None)
+    return {
+        "first_day_read": min(days).isoformat() if days else None,
+        "rolling_days_on_record": sum(1 for day in days if start <= day <= end),
+        "rolling_days_needed": MEASURED_FULL_YEAR_DAYS - MEASURED_YEAR_GAP_DAYS,
+        "first_missing_last_year": None if missing is None else missing.isoformat(),
+    }

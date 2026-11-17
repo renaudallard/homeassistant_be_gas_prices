@@ -87,4 +87,8 @@ same way.
 ## Diagnostics
 
 The download holds the entry's settings (postcode, meter and station
-redacted), the card as parsed, and the computed state.
+redacted), the card as parsed, the computed state, and `meter_coverage`
+(`running_costs.meter_coverage`): the first day read, the rolling year's
+days on record and the number it needs, and the first of last year's days
+the year-end projection reads that is missing, as the last tick that read
+the meter left them, or null before one or when it gave no days.

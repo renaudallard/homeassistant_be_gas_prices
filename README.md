@@ -580,11 +580,14 @@ is called; the button is there for everyone else.
 
 **Settings, Devices & services, Belgian Gas Prices**, then the entry's menu,
 **Download diagnostics**: the entry's settings, the last error, whether the
-card was found unreadable, missing or read by OCR, the card as parsed, and
-the computed state (the price breakdown, fixed costs, index, conversion,
-tier, consumption and costs). The postcode, the gas meter, the reception
-station and the meter the entry reads are redacted, so the file can be
-attached to an issue as it is.
+card was found unreadable, missing or read by OCR, the card as parsed, the
+computed state (the price breakdown, fixed costs, index, conversion, tier,
+consumption and costs), and the meter's coverage: the first day of history
+read (a year and sixteen days back at most), how many of the rolling year's
+365 days are on record against the 350 it needs, and the first of last
+year's remaining days the year-end projection misses. The postcode, the gas
+meter, the reception station and the meter the entry reads are redacted, so
+the file can be attached to an issue as it is.
 
 ## Troubleshooting
 

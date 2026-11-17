@@ -53,6 +53,7 @@ async def async_get_config_entry_diagnostics(
     payload["card_unreadable"] = coordinator.card_unreadable
     payload["card_missing"] = coordinator.card_missing
     payload["card_read_by_ocr"] = coordinator.card_read_by_ocr
+    payload["meter_coverage"] = coordinator.meter_coverage
     if data is None:
         return payload
     payload["snapshot"] = None if data.snapshot is None else snapshot_to_json(data.snapshot)

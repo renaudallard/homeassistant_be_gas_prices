@@ -69,6 +69,7 @@ from custom_components.be_gas_prices.running_costs import (
     Household,
     RunningCosts,
     _remaining_days_last_year,
+    meter_coverage,
     meter_start,
     rolling_year_kwh,
     running_costs,
@@ -533,6 +534,28 @@ def test_rolling_year_scales_a_few_missing_days_and_refuses_more() -> None:
     assert rolling_year_kwh(gappy, today) == pytest.approx(3650.0)
     short = {day: value for day, value in full.items() if day.month != 1}
     assert rolling_year_kwh(short, today) is None
+
+
+def test_the_meter_coverage_says_what_the_year_figures_miss() -> None:
+    today = date(2026, 11, 17)
+    # A meter on record only since 1 November.
+    november = {date(2026, 11, n): 40.0 for n in range(1, 18)}
+    assert meter_coverage(november, today) == {
+        "first_day_read": "2026-11-01",
+        "rolling_days_on_record": 16,
+        "rolling_days_needed": 350,
+        "first_missing_last_year": "2025-11-17",
+    }
+    # A year with one day gone in last year's December.
+    year = {meter_start(today) + timedelta(days=n): 10.0 for n in range(382)}
+    del year[date(2025, 12, 3)]
+    assert meter_coverage(year, today) == {
+        "first_day_read": meter_start(today).isoformat(),
+        "rolling_days_on_record": 364,
+        "rolling_days_needed": 350,
+        "first_missing_last_year": "2025-12-03",
+    }
+    assert meter_coverage({}, today)["first_day_read"] is None
 
 
 def test_an_outage_s_gas_is_shared_over_its_days() -> None:

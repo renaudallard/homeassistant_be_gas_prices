@@ -124,6 +124,7 @@ from .providers.base import (
 from .running_costs import (
     Household,
     RunningCosts,
+    meter_coverage,
     meter_start,
     rolling_year_kwh,
     running_costs,
@@ -208,6 +209,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         # there are.
         self.meter_count: int | None = None
         self.meter_error = ""
+        # The days the last meter read gave the rolling year and the
+        # projection, for the diagnostics; None before one or without days.
+        self.meter_coverage: dict[str, str | int | None] | None = None
         # The household the last tick priced, measured volume included, for
         # the price history backfill to price past months the same way.
         self.household: Household | None = None
@@ -745,6 +749,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             # no part of this year's cost.
             self.unpriced_periods = []
             self.unpriced_this_month = []
+            self.meter_coverage = None
             factor = self._factor_for(kind)
             billed_from = date(today.year, 1, 1)
             kwh_days = to_kwh(consumption(changes), factor, billed_from) if changes else None
@@ -759,6 +764,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         if kwh_days is not None:
             if spread_days is None:
                 spread_days = kwh_days
+            self.meter_coverage = meter_coverage(spread_days, today)
             # A measured year picks the tier and the excise slices; the typed
             # estimate stands in until the meter has one.
             rolling = rolling_year_kwh(spread_days, today)
