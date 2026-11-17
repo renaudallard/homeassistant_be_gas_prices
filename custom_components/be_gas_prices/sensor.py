@@ -119,6 +119,12 @@ def _fixed_attributes(data: CoordinatorData) -> dict[str, Any]:
     }
 
 
+def _rolling_attributes(data: CoordinatorData) -> dict[str, Any]:
+    # Which volume the rolling year cost prices: the meter's year or, short
+    # of one, the volume typed at setup.
+    return {"volume_basis": data.projected_year_basis}
+
+
 def _unpriced_attributes(data: CoordinatorData) -> dict[str, Any]:
     # Earlier contracts of the year whose supplier or card could not price
     # them: their days are not in the cost.
@@ -279,6 +285,7 @@ SENSORS: tuple[GasSensorDescription, ...] = (
         native_unit_of_measurement="EUR",
         suggested_display_precision=2,
         value_fn=lambda d: _money(d.projected_year_cost),
+        attributes_fn=_rolling_attributes,
     ),
     GasSensorDescription(
         key="projected_year_end_cost",

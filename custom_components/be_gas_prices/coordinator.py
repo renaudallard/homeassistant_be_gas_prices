@@ -882,6 +882,16 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
                     "unpriced": list(self.unpriced_periods),
                     "unpriced_month": list(self.unpriced_this_month),
                 }
+        # Short of a measured year, the rolling year cost prices the volume
+        # typed at setup, as the tier does. A tick that read no meter and
+        # holds no figures cannot tell which one applies, and names none.
+        if rolling is not None:
+            year_basis: str | None = "measured"
+        elif not deferred or held:
+            year_basis = "entered"
+        else:
+            year_basis = None
+        year_kwh = household.annual_kwh if rolling is None else rolling
         return CoordinatorData(
             snapshot=snapshot,
             card_source=self._card_source,
@@ -911,8 +921,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             ),
             rolling_year_kwh=rolling,
             projected_year_cost=(
-                None if rolling is None else rolling * now_bill.breakdown.all_in + fixed.total
+                None if year_basis is None else year_kwh * now_bill.breakdown.all_in + fixed.total
             ),
+            projected_year_basis=year_basis,
             projected_year_end_cost=year_end_cost,
             projected_year_kwh=year_end_kwh,
             meter=self.meter,

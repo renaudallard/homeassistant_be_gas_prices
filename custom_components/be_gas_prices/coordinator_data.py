@@ -86,6 +86,9 @@ class CoordinatorData:
     months_on_current_card: tuple[str, ...] = field(default_factory=tuple)
     rolling_year_kwh: float | None = None
     projected_year_cost: float | None = None
+    # The volume projected_year_cost prices: "measured" for the rolling
+    # year, "entered" for the yearly volume typed at setup.
+    projected_year_basis: str | None = None
     projected_year_end_cost: float | None = None
     projected_year_kwh: float | None = None
     meter: str | None = None

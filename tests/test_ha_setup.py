@@ -207,6 +207,11 @@ async def test_sensors_price_the_household(hass: HomeAssistant, fetch: AsyncMock
     # No meter: the running costs are unknown rather than zero.
     cost = hass.states.get("sensor.engie_flow_current_year_cost")
     assert cost is not None and cost.state == "unknown"
+    # The rolling year cost prices the volume typed at setup instead.
+    rolling = hass.states.get("sensor.engie_flow_rolling_year_cost")
+    assert rolling is not None
+    assert float(rolling.state) == pytest.approx(17_000.0 * expected + 50.0 + 140.93, abs=0.1)
+    assert rolling.attributes["volume_basis"] == "entered"
 
 
 @pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
@@ -1714,6 +1719,28 @@ async def test_an_outage_counts_once_on_a_meter_that_carries_it(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(("days", "basis"), [(366, "measured"), (100, "entered")])
+async def test_the_rolling_year_cost_falls_back_on_the_typed_volume(
+    hass: HomeAssistant, fetch: AsyncMock, days: int, basis: str
+) -> None:
+    """A meter short of a year has no rolling volume: the rolling year cost
+    prices the 17 000 kWh typed at setup, and says so."""
+    gas = {date(2026, 9, 15) - timedelta(days=n): 10.0 for n in range(days)}
+    with patch(_READ_METER, AsyncMock(return_value=("energy", gas))):
+        entry = await _setup(hass)
+    data = entry.runtime_data.data
+    assert data.breakdown is not None and data.fixed is not None
+    volume = 3650.0 if days == 366 else 17_000.0
+    assert (data.rolling_year_kwh is None) is (days == 100)
+    assert data.projected_year_basis == basis
+    assert data.projected_year_cost == pytest.approx(
+        volume * data.breakdown.all_in + data.fixed.total
+    )
+    rolling = hass.states.get("sensor.engie_flow_rolling_year_cost")
+    assert rolling is not None and rolling.attributes["volume_basis"] == basis
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: AsyncMock) -> None:
     """Home Assistant waits on it: the meter is read by the refresh setup
     starts in the background once it is done, once, though the past months'
@@ -1726,6 +1753,9 @@ async def test_setup_s_own_refresh_reads_no_meter(hass: HomeAssistant, fetch: As
         await coordinator.async_refresh()
         assert read.await_count == 0
         assert coordinator.meter_reads_pending
+        # Nothing read and nothing held: no volume to price the year on.
+        assert coordinator.data.projected_year_cost is None
+        assert coordinator.data.projected_year_basis is None
         await coordinator.async_reprice(lambda: coordinator.meter_reads_pending)
         await hass.async_block_till_done(wait_background_tasks=True)
     assert read.await_count == 1
@@ -1757,6 +1787,8 @@ async def test_a_restart_shows_the_figures_from_before_it_until_the_meter_is_rea
         assert held.rolling_year_kwh == pytest.approx(before.rolling_year_kwh)
         assert held.annual_kwh == pytest.approx(before.annual_kwh)
         assert held.annual_kwh_measured
+        assert held.projected_year_basis == "measured"
+        assert held.projected_year_cost == pytest.approx(before.projected_year_cost)
         gate.set()
         await hass.async_block_till_done(wait_background_tasks=True)
     assert not coordinator.meter_reads_pending

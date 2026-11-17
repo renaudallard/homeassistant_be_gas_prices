@@ -244,7 +244,8 @@ billed on the last card it was sold on.
   lands on without a factor leaves the days as recorded. The months are
   billed as recorded.
 - A measured rolling year replaces the typed annual volume for the tier and
-  the excise slices.
+  the excise slices, and for the rolling year cost, which prices the typed
+  volume until there is one.
 - `projected_year_end_cost`: the year so far as billed, plus last year's
   same remaining days at today's price and the remaining days' fixed costs;
   unknown unless every one of those days is on record. Today counts among

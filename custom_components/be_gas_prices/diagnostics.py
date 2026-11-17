@@ -76,6 +76,7 @@ async def async_get_config_entry_diagnostics(
             "unpriced_periods": list(data.unpriced_periods),
             "rolling_year_kwh": data.rolling_year_kwh,
             "projected_year_cost": data.projected_year_cost,
+            "projected_year_basis": data.projected_year_basis,
             "projected_year_end_cost": data.projected_year_end_cost,
             "meter": data.meter,
         },

@@ -252,7 +252,7 @@ All sensors share one device per entry, named after the contract.
 | `current_year_cost` | The year's running bill, each month on its own card, fixed costs accrued by the day from 1 January (or the contract start when the year counts from it), with a per-month breakdown attribute and the earlier contracts of the year that could not be priced, which leave it unknown until they are. `TOTAL` and monetary, so the Energy dashboard can use it. |
 | `current_month_cost` | The running month's bill, unknown while an earlier contract that supplied part of the month cannot be priced, which it names. |
 | `year_to_date_consumption` | kWh the meter recorded this year, from the contract start when the year counts from it, an earlier contract that could not be priced included. |
-| `projected_year_cost` | Shown as *Rolling year cost*. The volume of the 365 days before today at today's price plus a year of fixed costs: roughly what a year on this contract costs. |
+| `projected_year_cost` | Shown as *Rolling year cost*. The volume of the 365 days before today at today's price plus a year of fixed costs: roughly what a year on this contract costs. Short of a year of meter history, the yearly consumption entered at setup stands in; the `volume_basis` attribute says `measured` or `entered`. |
 | `projected_year_end_cost` | This year so far plus last year's remaining days at today's price, unknown while an earlier contract of the year cannot be priced, which it names. |
 | `projected_year_consumption`, `rolling_year_consumption` | The corresponding volumes. |
 | `contract_end_date` | With an end date set, for a renewal reminder. |
@@ -269,8 +269,10 @@ hourly update, an hour after the last one, always asks. The
 
 The running costs report `unknown` until a gas meter is readable. The rolling
 year needs 350 of the 365 days before today on record and the year-end
-projection every remaining day of last year, so all four stay `unknown`
-until the meter has about a year of history.
+projection every remaining day of last year, so the rolling year
+consumption and both projections stay `unknown` until the meter has about a
+year of history. The rolling year cost prices the yearly consumption
+entered at setup until then, with or without a meter.
 
 A meter that went quiet for a few days (Home Assistant stopped, the reader
 offline) has no statistics for them, and the recorder puts their gas on the
