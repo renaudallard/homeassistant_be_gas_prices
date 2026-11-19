@@ -159,10 +159,12 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - DSO proportional terms are rounded to two decimals (Fluvius publishes five:
   Antwerpen 2,25641 printed 2,26), the excise to four (1,09286 printed
   1,0929), transport to three (0,16536 printed 0,165).
-- Indexation PDF: TTF-DAHW prints 30,04 for October 2025 but 45,65 for
-  November and December 2025, and TTFDAW-RLP 45,95 for all of Q4 2025; 45,65
-  and 45,95 are also its Q2 2026 values. No residential gas product uses
-  these two columns.
+- Indexation PDF: TTF-DAHW prints its own value for October 2025 (30,04),
+  but for November and December 2025, and TTFDAW-RLP for all of Q4 2025,
+  the cells repeat the column's newest closed quarter as of the edition
+  read: Q2 2026 in the September 2026 fixture, Q3 2026 in the values the
+  card archive read in November. No residential gas product uses these two
+  columns.
 - The Walloon cards of January 2025 add the trucked-gas supplement CWaPE
   sets for RESA ("supplément pour gaz porté", 0,0058066 EUR/kWh excluding
   VAT, 0,6155 c€/kWh with it) to RESA's T1 and T2: 4,86 / 2,93, as every

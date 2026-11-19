@@ -140,7 +140,7 @@ async_setup_entry                       __init__.py
                    (an entry billing a Flemish contract)
         network:   this year's sheet of a custom entry's DSO  network_sheet.py
                    (a custom entry taking its network from it)
-        months:    past months' cards, supplier archive then card archive
+        months:    past months' cards, card archive then supplier archive
                    (the first tick's in the background, then async_reprice)
         meter:     recorder daily changes, m³ or kWh           gas_meter.py
                    (not on setup's own tick, which shows the held figures,
