@@ -535,6 +535,23 @@ async def test_a_storage_error_is_named_by_its_code_alone(
     assert str(err.value) == message.format(url=url)
 
 
+def test_a_payload_of_blanks_is_told_from_its_first_kilobyte() -> None:
+    """What a payload is gets decided on the event loop. On 64 MiB of blanks
+    the storage error pattern skipped them all, then gave them back one by
+    one: 6 s on a Raspberry Pi. The document itself, behind a BOM and blank
+    lines, is still read."""
+    blanks = b" " * _pdf.MAX_RESPONSE_BYTES
+    document = b"\xef\xbb\xbf\r\n<?xml version='1.0'?>\n<Error><Code>AccessDenied</Code>"
+    for head, code in ((b"", None), (b"<?xml ?>", None), (document, "AccessDenied")):
+        payload = head + blanks
+        start = time.monotonic()
+        assert _pdf._storage_error_code(payload) == code
+        assert not _pdf.is_pdf_payload(payload)
+        assert time.monotonic() - start < 0.5
+    # A BOM after a blank line is no BOM.
+    assert _pdf._storage_error_code(b"\n" + document) is None
+
+
 async def test_an_address_in_a_message_is_escaped_and_cut(
     socket_enabled: None, tmp_path: Path
 ) -> None:
