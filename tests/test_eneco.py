@@ -676,6 +676,23 @@ def test_the_listing_names_the_gas_products_sold() -> None:
     }
 
 
+def test_card_names_that_never_close_are_read_past_in_time() -> None:
+    """A token of any length took in the names after it and was read back
+    from each: 144 kB of them in front of the listing took 34 s. The
+    listing still names what it does alone, a token of the longest length
+    read included."""
+    page = fixture_page("eneco", "listing_nl_2026-11.html")
+    started = time.monotonic()
+    found = eneco.parse_catalog("BC___NL_ENECO_GAS_" * 8000 + page)
+    assert time.monotonic() - started < 1.0
+    assert found == eneco.parse_catalog(page)
+    longest = "X" * 32
+    assert eneco.parse_catalog(f"BC_032_012611_NL_ENECO_GAS_{longest}.pdf") == {
+        f"eneco_aardgas_{longest.lower()}"
+    }
+    assert eneco.parse_catalog(f"BC_032_012611_NL_ENECO_GAS_{longest}X.pdf") == set()
+
+
 async def test_discover_reads_the_listing() -> None:
     assert eneco.EXTRACTOR.discover is eneco.discover
     page = fixture_page("eneco", "listing_nl_2026-11.html")

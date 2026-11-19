@@ -20,9 +20,10 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   every request, and the card URL is only known from the listing.
 - `discover` reads the same listing for the live check's catalog rows: each
   `GAS_<TOKEN>` link names a product, by the contract with that token
-  (`eneco_aardgas_<token>` for one no contract has). The listing of 30
-  September 2026 linked Vast and not yet Fix One, that of 5 November the
-  three products sold.
+  (`eneco_aardgas_<token>` for one no contract has), a token being at most
+  32 capitals and underscores (`FLEX_ONE`, the longest used, is 8). The
+  listing of 30 September 2026 linked Vast and not yet Fix One, that of 5
+  November the three products sold.
 
 ## Products and regions
 

@@ -193,8 +193,12 @@ def card_url(listing: str, contract_id: str) -> str:
 
 
 # Every gas card the listing links, by its token. Looser than card_url, so a
-# product named in an unexpected way still shows up as one.
-_LISTED_RE = re.compile(r"BC_[\d_]+_NL_ENECO_GAS_([A-Z_]+)\.pdf")
+# product named in an unexpected way still shows up as one. The token is
+# held to 32 characters, four times FLEX_ONE, the longest Eneco has used:
+# of any length it took in the names after it, which are of its own letters,
+# and was read back from each one, 34 s for 144 kB of names that never close
+# on ".pdf".
+_LISTED_RE = re.compile(r"BC_[\d_]+_NL_ENECO_GAS_([A-Z_]{1,32})\.pdf")
 
 
 def parse_catalog(listing: str) -> set[str]:
