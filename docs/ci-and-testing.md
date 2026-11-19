@@ -510,7 +510,11 @@ product's households are still billed on. A PDF goes with the month of its
 release unless a kept row or a refused card still names it: an unchanged
 card is uploaded once, under the month it was first captured in, and every
 later row names that copy, so `pdfs.json` keeps its entry and the workflow
-keeps any release `pdfs.json` still lists.
+keeps any release `pdfs.json` still lists. A `pdfs.json` holding a value
+that is no path fails the step before a release is deleted: read through a
+pipe, under `bash -e` without pipefail, it passed as a shorter list and the
+releases it still named went
+(`test_a_manifest_that_does_not_read_deletes_no_release`).
 
 When the parser sources, the PDF readers or the OCR engine change (their
 digest is stamped in `parser.txt`), or with `--reparse`, every row is parsed
