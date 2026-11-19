@@ -65,7 +65,7 @@ from homeassistant.util import dt as dt_util
 
 from . import xlsx
 from .const import DSO_ORES, DSO_RESA
-from .providers._pdf import fetch_bytes, fetch_text
+from .providers._pdf import error_text, fetch_bytes, fetch_text, shown_url
 from .providers.base import SheetNetwork
 
 _LOGGER = logging.getLogger(__name__)
@@ -173,7 +173,11 @@ async def ensure_network(session: aiohttp.ClientSession, year: int, dso: str) ->
                 try:
                     grid = await read_grid(session, doc)
                 except Exception as err:  # the docstring promises no raise
-                    _LOGGER.warning("CWaPE %s could not be read: %s", doc.url, err)
+                    # The address is the listing's own text and the error
+                    # may quote a cell: neither goes to the log as sent.
+                    _LOGGER.warning(
+                        "CWaPE %s could not be read: %s", shown_url(doc.url), error_text(err)
+                    )
                     grid = None
                 if grid is None:
                     _failed_at[doc.url] = dt_util.utcnow()

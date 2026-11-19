@@ -74,7 +74,7 @@ from homeassistant.util import dt as dt_util
 
 from . import xlsx
 from .const import EXCISE_BAND_KWH, TARBEL_URL
-from .providers._pdf import fetch_bytes
+from .providers._pdf import error_text, fetch_bytes, shown_text
 from .providers.base import ExtractorError
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,9 +156,9 @@ def _excise(codes: str, rates: str, wanted: tuple[str, ...] = _EXCISE_CODES) -> 
     plus the special excise by default."""
     names, values = codes.split(), rates.split()
     if not names or len(names) != len(values):
-        raise TarbelError(f"codes {codes!r} against rates {rates!r}")
+        raise TarbelError(f"codes {shown_text(codes)!r} against rates {shown_text(rates)!r}")
     if not set(wanted) <= set(names):
-        raise TarbelError(f"codes {codes!r} without {wanted}")
+        raise TarbelError(f"codes {shown_text(codes)!r} without {wanted}")
     per_mwh = sum(
         float(value.replace(",", "."))
         for name, value in zip(names, values, strict=True)
@@ -225,7 +225,7 @@ def _household(gas: list[tuple[str, str, str, str]]) -> tuple[Period, ...]:
         name = "low" if _LOW in text else "high" if _HIGH in text else None
         period = _period(text)
         if name is None or period is None or unit != _PER_MWH:
-            raise TarbelError(f"a gas row without its slice, period or unit: {text!r}")
+            raise TarbelError(f"a gas row without its slice, period or unit: {shown_text(text)!r}")
         start, end = period
         rate = _excise(codes, rates)
         held = slices.setdefault((start, end), {})
@@ -255,7 +255,9 @@ def _protected(gas: list[tuple[str, str, str, str]]) -> tuple[ProtectedPeriod, .
             continue
         period = _period(text)
         if period is None or unit != _PER_MWH:
-            raise TarbelError(f"a protected gas row without its period or unit: {text!r}")
+            raise TarbelError(
+                f"a protected gas row without its period or unit: {shown_text(text)!r}"
+            )
         out.append((*period, _excise(codes, rates)))
     out.sort(key=lambda row: (row[0], row[1] or date.max))
     if not out:
@@ -272,7 +274,9 @@ def _contribution(gas: list[tuple[str, str, str, str]]) -> tuple[ContributionPer
             continue
         period = _period(text) or _until(text)
         if period is None or unit != _PER_MWH:
-            raise TarbelError(f"a contribution row without its period or unit: {text!r}")
+            raise TarbelError(
+                f"a contribution row without its period or unit: {shown_text(text)!r}"
+            )
         rate = _excise(codes, rates, _CONTRIBUTION_CODES)
         if found.setdefault(period, rate) != rate:
             raise TarbelError(f"two energy contributions from {period[0]} to {period[1]}")
@@ -476,14 +480,16 @@ def _parse_all(payload: bytes) -> Tariff:
     except (TarbelError, ValueError) as err:
         # Only the social tariff bills it, and the law gives it from the
         # wording in force: the household rates stay read.
-        _LOGGER.warning("The protected customer's gas excise tariff could not be read: %s", err)
+        _LOGGER.warning(
+            "The protected customer's gas excise tariff could not be read: %s", error_text(err)
+        )
         protected = ()
     try:
         contribution = _contribution(gas)
     except (TarbelError, ValueError) as err:
         # The law gives it from the wording in force, and const.py before:
         # the excise stays read.
-        _LOGGER.warning("The gas energy contribution tariff could not be read: %s", err)
+        _LOGGER.warning("The gas energy contribution tariff could not be read: %s", error_text(err))
         contribution = ()
     return household, protected, contribution
 
@@ -516,7 +522,7 @@ async def ensure_tariff(session: aiohttp.ClientSession) -> None:
             periods, protected, contribution = await fetch_tariff(session)
         except (TarbelError, *xlsx.UNREADABLE) as err:
             # The workbook came back and is not annex 7 as expected.
-            _LOGGER.warning("The gas excise tariff could not be read: %s", err)
+            _LOGGER.warning("The gas excise tariff could not be read: %s", error_text(err))
             _failed_at = now
             return
         except ExtractorError as err:

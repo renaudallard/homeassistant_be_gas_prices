@@ -128,7 +128,11 @@ by its size, its first bytes going to the debug log. The text of an aiohttp
 error, which quotes a malformed answer whole, is cut at 500 characters too
 (`error_text`). An error reaches last_error, the Repairs cards and the
 diagnostics, and last_error is cut at 500 characters where it is stored
-(`shown_text`), whatever a parser's message quotes of the card.
+(`shown_text`), whatever a parser's message quotes of the card. The CWaPE's
+grids and FPS Finance's excise tariff are logged the same way: a grid's
+address, which is the listing's own text, through `shown_url`, an error
+through `error_text`, and an error of the excise tariff quotes no more than
+the first 500 characters of a cell.
 
 ## A card that moved (providers/_moved.py)
 

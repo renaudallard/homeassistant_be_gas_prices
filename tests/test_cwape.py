@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -126,6 +127,27 @@ async def test_a_year_is_read_once_and_the_year_before_stands_in() -> None:
     assert cwape.cached_network(date(2027, 3, 1), DSO_RESA) is not None
     assert cwape.cached_network(date(2025, 12, 1), DSO_ORES) is None
     await cwape.ensure_network(session, 2026, "sibelga")
+
+
+async def test_a_grid_that_does_not_read_is_logged_on_one_short_line(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The address is the listing's own text, as long as the listing makes
+    it: a newline in it forged a line of the log."""
+    path = "/sites/x\n2026-11-19 09:00:00.000 ERROR (MainThread) forged\n/ORES " + "x" * 100_000
+    listed = {
+        "field_document_type": "203",
+        "field_grd": "453",
+        "field_date_application": "2026 - 2026",
+        "field_file": path + ".xlsx",
+    }
+    session: Any = _Session()
+    session.pages[cwape._LISTING_URL] = json.dumps([listed]).encode()
+    await cwape.ensure_network(session, 2026, DSO_ORES)
+    [message] = [record.getMessage() for record in caplog.records if record.name == cwape.__name__]
+    assert message.startswith("CWaPE https://www.cwape.be/sites/x%0A2026-11-19%2009:00:00.000")
+    assert "could not be read" in message
+    assert "\n" not in message and len(message) < 1200
 
 
 async def test_a_listing_that_does_not_answer_never_raises() -> None:

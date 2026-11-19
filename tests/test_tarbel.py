@@ -338,6 +338,75 @@ def test_a_workbook_not_as_expected_is_refused(
         tarbel.parse(_workbook(rows, sheet))
 
 
+_LONG = "9" * 1_000_000
+
+
+@pytest.mark.parametrize(
+    ("read", "rows"),
+    [
+        pytest.param(
+            tarbel.parse,
+            [_QUARTER[0], _row("vanaf 12 MWh", _LONG, None, "11,39")],
+            id="a household row without its period",
+        ),
+        pytest.param(
+            tarbel.parse,
+            [_QUARTER[0], [_QUARTER[1][0], "100\n200", f"0\n1\n{_LONG}", "EUR per MWh"]],
+            id="codes against rates",
+        ),
+        pytest.param(
+            tarbel.parse,
+            [_QUARTER[0], [_QUARTER[1][0], f"100\n{_LONG}", "0\n1", "EUR per MWh"]],
+            id="codes without the excise's",
+        ),
+        pytest.param(
+            tarbel.parse_protected,
+            [_protected_row(_LONG, None, "3,42")],
+            id="a protected row without its period",
+        ),
+        pytest.param(
+            tarbel.parse_contribution,
+            [_row("van 0 tot 12 MWh", _LONG, None, "11,39")],
+            id="a contribution row without its period",
+        ),
+    ],
+)
+def test_an_error_quotes_the_start_of_a_cell_alone(read: Any, rows: list[list[str]]) -> None:
+    """A cell is as long as the workbook makes it, and the error is logged."""
+    with pytest.raises(tarbel.TarbelError) as refused:
+        read(_workbook(rows))
+    assert len(str(refused.value)) < 1200
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        pytest.param(
+            [_QUARTER[0], _row("vanaf 12 MWh", "01/01/2027", "31/03/2027", f"n{_LONG}")],
+            id="a household rate",
+        ),
+        pytest.param(
+            [*_QUARTER, _protected_row("01/01/2027", None, f"n{_LONG}")], id="a protected rate"
+        ),
+        pytest.param(
+            [*_QUARTER, [_CONTRIBUTION_ONLY, "100\n200\n300", f"0\n0\nn{_LONG}", "EUR per MWh"]],
+            id="a contribution",
+        ),
+    ],
+)
+async def test_a_rate_that_is_no_number_is_logged_cut(
+    rows: list[list[str]], caplog: pytest.LogCaptureFixture
+) -> None:
+    """float() quotes what it could not convert, whole."""
+    tarbel._failed_at = tarbel._fetched_at = None
+    with patch.object(tarbel, "fetch_bytes", AsyncMock(return_value=_workbook(rows))):
+        await ensure_tariff(AsyncMock())
+    messages = [record.getMessage() for record in caplog.records if record.name == tarbel.__name__]
+    assert any("could not be read: could not convert string to float" in m for m in messages)
+    assert all(len(message) < 1200 for message in messages)
+    tarbel._failed_at = tarbel._fetched_at = None
+
+
 @pytest.mark.parametrize(
     "payload",
     [
