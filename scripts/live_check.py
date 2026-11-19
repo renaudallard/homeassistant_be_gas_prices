@@ -756,6 +756,8 @@ _EXCISE_SLICES = {_EXCISE_LOW: 0, _EXCISE_HIGH: 1}
 # is a new departure and fails again, and so does the same value once the
 # allowance has lapsed. Each one is a 2026 network term or levy, so each
 # lapses with the tariff year: a card printing it in 2027 is news again.
+# The year is the card's, not the run's (_allowed): a December card is still
+# the one served in the first days of January.
 _TARIFF_YEAR_END = date(2027, 1, 1)
 _KNOWN_CARD_ERRORS: dict[tuple[str, str, str], tuple[float, date, str]] = {
     ("bolt", "ores", "T1 proportional"): (
@@ -820,6 +822,14 @@ _KNOWN_MISSING_T2: dict[tuple[str, str], tuple[date, str]] = {
 }
 
 
+def _allowed(until: date, month: str) -> bool:
+    """Whether an allowance lapsing on ``until`` covers a card compared in
+    ``month`` (:func:`_figure_month`), which a month that does not read
+    never is."""
+    parsed = label_month(month)
+    return parsed is not None and date(parsed[0], parsed[1], 1) < until
+
+
 def _tiers(label: str, ex: SupplierExtractor, snapshot: SupplierSnapshot, today: date) -> Check:
     """Whether every DSO row of a residential card prices T2, the tier of
     most households: a row without it leaves every one of them there
@@ -832,10 +842,11 @@ def _tiers(label: str, ex: SupplierExtractor, snapshot: SupplierSnapshot, today:
     missing = sorted(dso for dso, overlay in snapshot.dsos.items() if TIER_T2 not in overlay.tiers)
     if not missing:
         return Check(name, "ok")
+    month = _figure_month(snapshot, today)
     known = {
         dso: _KNOWN_MISSING_T2[(ex.id, dso)][1]
         for dso in missing
-        if (ex.id, dso) in _KNOWN_MISSING_T2 and today < _KNOWN_MISSING_T2[(ex.id, dso)][0]
+        if (ex.id, dso) in _KNOWN_MISSING_T2 and _allowed(_KNOWN_MISSING_T2[(ex.id, dso)][0], month)
     }
     detail = "; ".join(
         f"{dso}: {known[dso]}" if dso in known else f"{dso}: no T2 term read" for dso in missing
@@ -1050,16 +1061,20 @@ def _billed(first: Figure) -> tuple[float, str] | None:
     return None if fee is None else (fee, "the Fluvius sheet")
 
 
-def _known_error(figure: Figure, today: date) -> str | None:
+def _known_error(figure: Figure) -> str | None:
     """Why a figure the provider notes document as the card's error is
-    allowed today, or None."""
+    allowed for the month it is compared in, or None."""
     known = _KNOWN_CARD_ERRORS.get((figure.supplier, figure.scope, figure.name))
-    if known is None or today >= known[1] or not agree(figure.value, known[0], figure.unit):
+    if (
+        known is None
+        or not _allowed(known[1], figure.month)
+        or not agree(figure.value, known[0], figure.unit)
+    ):
         return None
     return known[2]
 
 
-def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterator[Check]:
+def _departures(group: list[Figure], sheet_unread: bool) -> Iterator[Check]:
     """The cards of one figure, month and scope that depart from the rest.
 
     The consensus comes in two steps. First the figures most voters agree
@@ -1142,7 +1157,7 @@ def _departures(group: list[Figure], today: date, sheet_unread: bool) -> Iterato
             status, detail = "notice", detail + "; billed the regulated fee for this month"
         elif sheet_unread and all(_awaits_sheet(f) for f in printed_by):
             status, detail = "transient", detail + "; the Fluvius sheet did not answer"
-        elif None not in (reasons := {_known_error(f, today) for f in printed_by}):
+        elif None not in (reasons := {_known_error(f) for f in printed_by}):
             why = "; ".join(sorted(reason for reason in reasons if reason))
             status, detail = (
                 "notice",
@@ -1199,10 +1214,10 @@ def consensus(
     cards: Iterable[Card], today: date | None = None, *, sheet_unread: bool = False
 ) -> list[Check]:
     """Every card that departs from what the fleet prints, figure by figure,
-    among the cards of the same month. ``today``, Brussels's by default, is
-    what the known card errors lapse against, and its month the one a card
-    with no end date is compared in; ``sheet_unread`` says the year's
-    Fluvius sheet did not answer."""
+    among the cards of the same month. ``today``, Brussels's by default,
+    gives the month a card with no end date is compared in, and the known
+    card errors lapse on the month a card is compared in; ``sheet_unread``
+    says the year's Fluvius sheet did not answer."""
     today = today or datetime.now(BRUSSELS).date()
     groups: dict[tuple[str, str, str], list[Figure]] = {}
     for card in cards:
@@ -1210,7 +1225,7 @@ def consensus(
             groups.setdefault((figure.month, figure.scope, figure.name), []).append(figure)
     checks: list[Check] = []
     for key in sorted(groups):
-        checks.extend(_departures(groups[key], today, sheet_unread))
+        checks.extend(_departures(groups[key], sheet_unread))
     return checks
 
 

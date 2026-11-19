@@ -172,7 +172,7 @@ integration uses and checks:
 - every DSO row of a residential card prices T2, the tier of most
   households (`T2 rows`): the parser drops a T2 whose rate is not below
   T1's, which leaves them unpriced and the fleet nothing to compare. Dots'
-  Fluvius Limburg row, documented, is a notice until 2027
+  Fluvius Limburg row, documented, is a notice on the 2026 cards
   (`_KNOWN_MISSING_T2`). T3 is not asked of a row, since only some cards
   print it: a household above 150 000 kWh a year, which the setup form
   takes up to 1 000 000, gets a pricing error on a card without it. The T3
@@ -371,7 +371,13 @@ How the cross-check decides:
   value: it is billed as printed, but already known. Any other value for it
   fails, and so does that value once the allowance lapses: each carries its
   expiry and why it is allowed, and the ones listed now lapse with the 2026
-  tariff year.
+  tariff year. The year is the card's, by the month its figures are
+  compared in, not the day of the run: a December card is still the one
+  served, and accepted as fresh, in the first five days of January, when
+  lapsing on the day failed Bolt's and Ecofix's eight known figures. A card
+  for January 2027 printing the value fails, and so does a card with no end
+  date not reissued by 6 January
+  (`test_a_known_card_error_lapses_with_the_tariff_year_of_its_card`).
 
 `--texts DIR` points at the `gas/` directory of a `be_price_cards` checkout:
 a card whose bytes the archive holds is served its stored text instead of

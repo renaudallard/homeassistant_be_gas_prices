@@ -185,9 +185,47 @@ def test_a_dso_row_without_t2_fails_unless_documented() -> None:
     assert (check.status, check.detail) == ("fail", "fluvius_kempen: no T2 term read")
     limburg = replace(cut, dsos={"fluvius_limburg": cut.dsos["fluvius_kempen"]})
     assert lc._tiers("dots/x/flanders", _extractor("dots"), limburg, today).status == "notice"
-    lapsed = lc._tiers("dots/x/flanders", _extractor("dots"), limburg, date(2027, 1, 1))
-    assert lapsed.status == "fail"
     assert lc._tiers("x/x/flanders", _extractor("acme"), limburg, today).status == "fail"
+
+
+# A card's label and end date, the day it is met on, the month its figures
+# are compared in and whether an allowance for the 2026 tariff year covers it.
+_TARIFF_YEAR_CASES = [
+    pytest.param("2026-12", date(2026, 12, 31), date(2026, 12, 31), "2026-12", True, id="december"),
+    # Still the card served, and accepted as fresh, in the first days of 2027.
+    pytest.param("2026-12", date(2026, 12, 31), date(2027, 1, 1), "2026-12", True, id="on-1-jan"),
+    pytest.param("2026-12", date(2026, 12, 31), date(2027, 1, 5), "2026-12", True, id="on-5-jan"),
+    # A 2027 card printing the 2026 figure is news again.
+    pytest.param("2027-01", date(2027, 1, 31), date(2027, 1, 1), "2027-01", False, id="january"),
+    pytest.param("2027-01", date(2027, 1, 31), date(2027, 1, 6), "2027-01", False, id="on-6-jan"),
+    pytest.param("2027-12", date(2027, 12, 31), date(2028, 1, 2), "2027-12", False, id="in-2028"),
+    # A card with no end date not reissued is January's card from the 6th.
+    pytest.param("2026-12", None, date(2027, 1, 5), "2026-12", True, id="undated-on-5-jan"),
+    pytest.param("2026-12", None, date(2027, 1, 6), "2027-01", False, id="undated-on-6-jan"),
+    # A dated 2026 card met later is a stale card, which its card month row
+    # fails: its figure is still the 2026 one already known.
+    pytest.param("2026-12", date(2026, 12, 31), date(2027, 1, 6), "2026-12", True, id="stale"),
+    pytest.param("2026-09", date(2026, 9, 30), date(2028, 1, 2), "2026-09", True, id="long-stale"),
+]
+
+
+@pytest.mark.parametrize(
+    ("label", "valid_until", "today", "compared", "allowed"), _TARIFF_YEAR_CASES
+)
+def test_a_documented_missing_t2_lapses_with_the_tariff_year_of_its_card(
+    label: str, valid_until: date | None, today: date, compared: str, allowed: bool
+) -> None:
+    """Dots' Limburg row is allowed on the 2026 cards. Lapsing on the day of
+    the run failed December's card from 1 January, while it was still the
+    one served."""
+    snapshot = _snapshot("dots", label=label, valid_until=valid_until)
+    row = snapshot.dsos["fluvius_kempen"]
+    limburg = replace(
+        snapshot, dsos={"fluvius_limburg": replace(row, tiers={"t1": row.tiers["t1"]})}
+    )
+    assert lc._figure_month(limburg, today) == compared
+    check = lc._tiers("dots/x/flanders", _extractor("dots"), limburg, today)
+    assert check.status == ("notice" if allowed else "fail")
 
 
 def test_a_card_printing_no_gas_excise_gives_no_excise_figure() -> None:
@@ -923,18 +961,34 @@ def test_ecofix_s_documented_third_tier_is_a_notice() -> None:
 
 
 @pytest.mark.parametrize(
-    ("today", "allowed"), [(date(2026, 12, 31), True), (date(2027, 1, 1), False)]
+    ("label", "valid_until", "today", "compared", "allowed"), _TARIFF_YEAR_CASES
 )
-def test_a_known_card_error_is_reported_again_once_its_allowance_lapses(
-    today: date, allowed: bool
+def test_a_known_card_error_lapses_with_the_tariff_year_of_its_card(
+    label: str, valid_until: date | None, today: date, compared: str, allowed: bool
 ) -> None:
+    """EBEM's Kempen T1 is a 2026 term, known on the 2026 cards and news
+    again on a card for 2027. Lapsing on the day of the run failed eight
+    known figures of Bolt's and Ecofix's December cards from 1 to 5 January,
+    while those were still the cards served and accepted as fresh."""
     fleet = [
-        _card(_snapshot("alpha", t1_prop=0.0227489)),
-        _card(_snapshot("beta", t1_prop=0.0227)),
-        _card(_snapshot("ebem", t1_prop=0.0212)),
+        _card(_snapshot(sid, label=label, t1_prop=t1_prop, valid_until=valid_until))
+        for sid, t1_prop in (("alpha", 0.0227489), ("beta", 0.0227), ("ebem", 0.0212))
     ]
-    failing = _failing(lc.consensus(fleet, today))
-    assert (failing == {}) is allowed
+    checks = lc.consensus(fleet, today)
+    [check] = [
+        c for c in checks if c.label == f"ebem: fluvius_kempen T1 proportional for {compared}"
+    ]
+    assert check.status == ("notice" if allowed else "fail")
+    assert ("a known card error" in check.detail) is allowed
+
+
+def test_a_stale_card_s_known_error_is_left_to_its_card_month_row() -> None:
+    """A 2026 card met after the first days of 2027 fails as a stale card,
+    on the row that says so. Its known figure is the one already looked at,
+    and stays a notice (the stale cases above)."""
+    snapshot = _snapshot("ebem", label="2026-12", valid_until=date(2026, 12, 31))
+    assert lc._freshness("ebem/x/flanders", snapshot, date(2027, 1, 5)).status == "ok"
+    assert lc._freshness("ebem/x/flanders", snapshot, date(2027, 1, 6)).status == "fail"
 
 
 def test_the_fleet_s_excise_is_measured_against_the_law() -> None:
