@@ -31,7 +31,9 @@ there."""
 
 from __future__ import annotations
 
+import asyncio
 import inspect
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import datetime
@@ -215,6 +217,63 @@ async def test_dots_reads_only_the_links_on_its_own_site(monkeypatch: pytest.Mon
         snap = await EXTRACTORS["dots"].fetch(None, "dots_connect_digital", REGION_FLANDERS)  # type: ignore[arg-type]
     assert snap.source_url == "https://www.dotsenergy.be/api/tariefkaarten/dots-connect-gas-digital"
     assert asked == [_DOTS_ODOO, snap.source_url]
+
+
+@pytest.mark.parametrize(
+    "page",
+    [
+        # urljoin refuses the link: "Invalid IPv6 URL".
+        pytest.param('<a href="https://[bad/web/content/1">card</a>', id="link"),
+        # html.unescape refuses a numeric entity of more than 4300 digits.
+        pytest.param("<p>&#" + "9" * 5000 + ";</p>", id="entity"),
+    ],
+)
+@pytest.mark.parametrize("old", ["web page", "older card"])
+async def test_a_search_that_trips_over_a_page_leaves_the_usual_answer(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, page: str, old: str
+) -> None:
+    """A product page the search raises a ValueError on. It is a search that
+    found nothing: the refusal at the usual address stands, or September's
+    card read there, and the error goes to the debug log."""
+    monkeypatch.setattr(dots, "_CARD_URL", _DOTS_ODOO)
+    stale: str | ExtractorError = ExtractorError(f"expected a PDF at {_DOTS_ODOO}, got a web page")
+    if old == "older card":
+        stale = fixture_text("dots", "Tariefkaart NG Dots Connect - Digital 09_2026.pdf")
+    monkeypatch.setattr(dots, "fetch_pdf_text", _serve({"/web/content/98918": stale}))
+    asked = _pages(monkeypatch, {"dotsenergy.be/": page})
+    caplog.set_level(logging.DEBUG, logger=_moved.__name__)
+    fetch = EXTRACTORS["dots"].fetch
+    with freeze_time(NOVEMBER_3):
+        if old == "older card":
+            snap = await fetch(None, "dots_connect_digital", REGION_FLANDERS)  # type: ignore[arg-type]
+            assert snap.publication_label == "2026-09"
+        else:
+            with pytest.raises(ExtractorError, match=r"got a web page$"):
+                await fetch(None, "dots_connect_digital", REGION_FLANDERS)  # type: ignore[arg-type]
+    assert asked
+    logged = [record for record in caplog.records if record.name == _moved.__name__]
+    assert [record.levelno for record in logged] == [logging.DEBUG]
+    assert "no moved card looked for: ValueError: " in logged[0].getMessage()
+
+
+async def test_a_search_the_fetch_budget_cuts_short_is_a_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The coordinator's budget ends a fetch by cancelling it, in the search
+    as anywhere: that is no search that found nothing."""
+
+    async def fetch(_session: Any, contract_id: str, region: str) -> SupplierSnapshot:
+        raise ExtractorError("HTTP 404 fetching x")
+
+    async def never(_session: Any, url: str, **_kw: Any) -> str:
+        await asyncio.sleep(3600)
+        return ""
+
+    monkeypatch.setattr(_moved, "fetch_text", never)
+    fetch_or_moved = _moved._with_moved_fallback("dots", fetch)
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.05):
+            await fetch_or_moved(None, "dots_connect_digital", REGION_FLANDERS)  # type: ignore[arg-type]
 
 
 async def test_a_sibling_product_is_never_read(monkeypatch: pytest.MonkeyPatch) -> None:

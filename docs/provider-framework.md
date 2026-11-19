@@ -143,9 +143,12 @@ Engie's prices pages by family, rate and region, Dots's product page) and
 reads each address with the module's `_read`, the read step its `fetch`
 uses. The first card whose `valid_until` is the running month's end is kept
 and the address logged; with none the usual answer stands, the error or the
-older card. A parse error or a network failure is no sign of a move and is
-never searched for. An Engie sibling under the same family code is offered
-by the candidates but marked, and the wrapper skips it.
+older card, and a search that fails is one that found none, whatever it
+raised: a page that cannot be read, or one with a link `urljoin` refuses,
+goes to the debug log. A parse error or a network failure at the usual
+address is no sign of a move and is never searched for. An Engie sibling
+under the same family code is offered by the candidates but marked, and the
+wrapper skips it.
 
 Luminus, Belvus and EnergyVision are not wrapped. Luminus's `fetch` reads its
 archive's card of the running month when the usual address has none,
