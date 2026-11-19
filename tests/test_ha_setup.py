@@ -147,6 +147,12 @@ def _no_card_archive_rows() -> Iterator[None]:
             "custom_components.be_gas_prices.month_cards.fetch_archived_card",
             AsyncMock(return_value=None),
         ),
+        # An earlier contract's card is read through the name contract_periods
+        # imported, which the patch above does not reach.
+        patch(
+            "custom_components.be_gas_prices.contract_periods.fetch_archived_card",
+            AsyncMock(return_value=None),
+        ),
         patch(
             "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
             AsyncMock(return_value=None),
