@@ -104,7 +104,15 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import SIGN_CHARS, fold_accents, month_date, parse_sign, require_contract, to_float
+from ._parse import (
+    SIGN_CHARS,
+    fold_accents,
+    formula_gives,
+    month_date,
+    parse_sign,
+    require_contract,
+    to_float,
+)
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text,
@@ -349,6 +357,22 @@ _FORMULA_RE = re.compile(
     r"formule\s*\(excl\.\s*btw\)\s*:\s*\(\s*(\d+,\d+)\s*x\s*TTF_RLP\s*"
     r"([" + SIGN_CHARS + r"])\s*(\d+,\d+)\s*\)\s*c€/kWh"
 )
+# "Weergegeven prijs op basis van de ingeschatte index (VNR methodologie):
+# 6,24 c€/kWh.": the estimate of TTF_RLP the printed price is worked out at,
+# "4,30c€/kWh" on the May and June 2026 cards, its unit wrapped after the
+# slash on the plain reading of the November 2026 ones ("8,92 c€/", "kWh.").
+_ESTIMATE_RE = re.compile(r"\(VNR\s+methodologie\)\s*:\s*(\d+,\d+)\s*c€/\s*kWh")
+# The "c€/kWh" the formula ends on is its result's and says nothing of the
+# index it multiplies: restated on a TTF_RLP in €/MWh, its factor a tenth,
+# as EBEM and Ecofix print theirs, the formula would still match and bill a
+# tenth of the price. So it has to give the printed price back at that
+# estimate, and a card printing no estimate in c€/kWh is refused. Price and
+# estimate are both rounded to the hundredth, which moves the result by
+# 0,0104 c€/kWh at the most, half a percent of a price of 2,09; the twelve
+# cards of December 2025 to November 2026 are within 0,0085, 0,24% of the
+# lowest of them. A factor a tenth of itself misses by 85% or more, a base
+# a tenth of itself by 1,6% of November's 9,76 and more of a lower price.
+_FORMULA_TOLERANCE = 0.005
 _FIXED_RE = re.compile(r"De energieprijs is een vaste prijs")
 
 
@@ -380,7 +404,7 @@ def _indexed(text: str) -> IndexedRates:
     # TTF_RLP in c EUR/kWh is the index in EUR/MWh over 10, and the formula
     # yields c EUR/kWh: factor / 1000 per EUR/MWh, base / 100, both grossed.
     base = parse_sign(formula.group(2)) * to_float(formula.group(3))
-    return IndexedRates(
+    rates = IndexedRates(
         factor=to_float(formula.group(1)) / 1000.0 * vat,
         base=base / 100.0 * vat,
         index=_INDEX,
@@ -389,6 +413,19 @@ def _indexed(text: str) -> IndexedRates:
         formula=formula.group(0),
         vat_grossed=("factor", "base"),
     )
+    estimate = _ESTIMATE_RE.search(text)
+    if estimate is None:
+        raise ExtractorError(
+            "energie.be: the card prints no VNR estimate in c€/kWh to check its formula on"
+        )
+    # The estimate in c EUR/kWh, the factor per EUR/MWh.
+    value = to_float(estimate.group(1)) * 10.0
+    if not formula_gives(price, rates.factor, value, rates.base, tolerance=_FORMULA_TOLERANCE):
+        raise ExtractorError(
+            f"energie.be: the formula gives {rates.at(value) * 100:.2f} c€/kWh at the VNR "
+            f"estimate {value / 10:.2f} where the card prints {price * 100:.2f}"
+        )
+    return rates
 
 
 # "Netbeheerder | Klein verbruik Variabel, Vast | Gemiddeld verbruik

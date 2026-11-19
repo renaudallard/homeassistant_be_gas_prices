@@ -47,6 +47,19 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
 - Formula (variable): "formule (excl. btw): (1,014x TTF_RLP+ 0,16) c€/kWh".
   TTF_RLP is in c EUR/kWh, so with the index in EUR/MWh factor = 1,014 / 1000
   x 1,06 and base = 0,16 / 100 x 1,06.
+- Recompute: the formula's "c€/kWh" is its result's and says nothing of the
+  index, so a card restating TTF_RLP in EUR/MWh with its factor a tenth, as
+  EBEM and Ecofix print theirs, would still match and read a tenth of its
+  price. The formula therefore has to give the printed price back at the
+  estimate the card prints, "(VNR methodologie): 6,24 c€/kWh" ("4,30c€/kWh"
+  in May and June 2026, the unit wrapped after its slash on the plain
+  reading of the November 2026 cards), within 0,5%, and a card printing no
+  estimate in c€/kWh, or missing its price, is refused. Price and estimate
+  are both rounded to the hundredth, 0,0104 c EUR/kWh at the most, half a
+  percent of a price of 2,09; the twelve cards of December 2025 to November
+  2026 are within 0,0085, 0,24% of the lowest. A factor a tenth of itself
+  misses by 85% or more, a base a tenth of itself by 1,6% of November's 9,76
+  and more of a lower price.
 - VAT: the card says "Alle prijzen zijn inclusief btw tenzij anders vermeld"
   and never states the rate, so `card_vat_rate` is None and the formula is
   grossed by `const.VAT_RATE_REDUCED`. The printed price at the printed VNR
@@ -175,6 +188,10 @@ electricity cards that day.
   fee, VAT basis and the check at 62,4 EUR/MWh (September).
 - `test_the_october_card_leaves_particulier_out_of_its_title`.
 - `test_the_factor_is_read_per_card`: August's 1,025 and its 5,55 estimate.
+- `test_a_formula_that_misses_its_printed_price_is_refused` (the index
+  restated in EUR/MWh, a factor a tenth or ten times, a base a tenth, no
+  estimate), `test_the_printed_price_is_held_within_half_a_percent` and
+  `test_a_november_2026_card_on_an_index_in_eur_mwh_is_refused`.
 - `test_fixed_card`, `test_card_of_the_other_product_is_refused`.
 - `test_dso_table`: the Antwerpen row in full, Kempen and West cells.
 - `test_levies_as_printed`, `test_december_2025_card` (no "online", "0,

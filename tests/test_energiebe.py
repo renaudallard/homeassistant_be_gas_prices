@@ -122,6 +122,73 @@ def test_the_factor_is_read_per_card() -> None:
     assert energy.at(55.5) == pytest.approx(0.062, abs=5e-5)
 
 
+@pytest.mark.parametrize(
+    ("restatements", "refusal"),
+    [
+        # TTF_RLP restated in EUR/MWh, as EBEM and Ecofix print theirs: the
+        # factor a tenth, the estimate ten times the figure.
+        pytest.param(
+            [("(1,014x TTF_RLP", "(0,1014x TTF_RLP"), ("6,24 c€/kWh.", "62,4 €/MWh.")],
+            "no VNR estimate in c€/kWh",
+            id="index in EUR/MWh",
+        ),
+        # The same with the estimate left as it was, and the factor ten
+        # times the other way.
+        pytest.param(
+            [("(1,014x TTF_RLP", "(0,1014x TTF_RLP")],
+            r"gives 0\.84 c€/kWh at the VNR estimate 6\.24 where the card prints 6\.88",
+            id="factor a tenth",
+        ),
+        pytest.param(
+            [("(1,014x TTF_RLP", "(10,14x TTF_RLP")],
+            r"where the card prints 6\.88",
+            id="factor ten times",
+        ),
+        # The base a tenth of itself, 2,2% of the price.
+        pytest.param(
+            [("TTF_RLP+ 0,16)", "TTF_RLP+ 0,016)")],
+            r"gives 6\.72 c€/kWh at the VNR estimate 6\.24 where the card prints 6\.88",
+            id="base a tenth",
+        ),
+        pytest.param(
+            [("(VNR methodologie): 6,24 c€/kWh.", "(VNR methodologie).")],
+            "no VNR estimate in c€/kWh",
+            id="no estimate",
+        ),
+    ],
+)
+def test_a_formula_that_misses_its_printed_price_is_refused(
+    restatements: list[tuple[str, str]], refusal: str
+) -> None:
+    """The formula's "c€/kWh" is its result's, not the index's: the formula
+    has to give the printed 6,88 back at the estimate the card prints, 6,24
+    c€/kWh, or the card is refused rather than read a tenth."""
+    text = _card(VARIABLE)
+    energy = energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, text).energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.formula == "formule (excl. btw): (1,014x TTF_RLP+ 0,16) c€/kWh"
+    for printed, restated in restatements:
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    with pytest.raises(ExtractorError, match=refusal):
+        energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, text)
+
+
+@pytest.mark.parametrize(("printed", "kept"), [("6,91", True), ("6,92", False)])
+def test_the_printed_price_is_held_within_half_a_percent(printed: str, kept: bool) -> None:
+    """The formula gives 6,877 at 6,24: a price printed 6,91 is within 0,5%
+    of it, 6,92 is not. The cards held are within 0,24%."""
+    text = _card(VARIABLE)
+    assert text.count("Energieprijs\n6,88 formule") == 1
+    text = text.replace("Energieprijs\n6,88 formule", f"Energieprijs\n{printed} formule")
+    if kept:
+        energy = energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, text).energy
+        assert energy.price == pytest.approx(float(printed.replace(",", ".")) / 100)
+    else:
+        with pytest.raises(ExtractorError, match=r"where the card prints 6\.92"):
+            energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, text)
+
+
 def test_fixed_card() -> None:
     snap = energiebe.parse_snapshot("energiebe_fixed", REGION_FLANDERS, _card(FIXED))
     assert snap.energy == FixedRates(price=approx(0.0806), yearly_fixed_fee=35.0)
@@ -539,6 +606,22 @@ def test_the_november_2026_variable_card_is_read() -> None:
     assert energy.base == pytest.approx(0.0016 * 1.06)
     assert energy.yearly_fixed_fee == pytest.approx(35.0)
     assert snap.publication_label == "2026-11"
+
+
+def test_a_november_2026_card_on_an_index_in_eur_mwh_is_refused() -> None:
+    """The plain reading wraps the estimate's unit after its slash ("8,92
+    c€/", "kWh."), and the formula is still held to the printed 9,76 at it.
+    Restated on a TTF_RLP in EUR/MWh, the card would read a tenth."""
+    layout = fixture_text("energiebe", NOVEMBER_VARIABLE, "layout")
+    plain = fixture_text("energiebe", NOVEMBER_VARIABLE, "plain")
+    for printed in ("(1,014 x TTF_RLP+ 0,16) c€/kWh", "8,92 c€/\nkWh."):
+        assert plain.count(printed) == 1
+    restated = plain.replace("(1,014 x TTF_RLP", "(0,1014 x TTF_RLP")
+    with pytest.raises(ExtractorError, match=r"gives 1\.13 c€/kWh .* where the card prints 9\.76"):
+        energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, layout, plain=restated)
+    restated = restated.replace("8,92 c€/\nkWh.", "89,2 €/MWh.")
+    with pytest.raises(ExtractorError, match="no VNR estimate in c€/kWh"):
+        energiebe.parse_snapshot("energiebe_variable", REGION_FLANDERS, layout, plain=restated)
 
 
 @pytest.mark.parametrize("name", [NOVEMBER_FIXED, NOVEMBER_VARIABLE])
