@@ -196,6 +196,24 @@ def test_fixed_card() -> None:
 
 
 @pytest.mark.parametrize(
+    ("unit", "price"),
+    [("(€/kWh)", "0,0806"), ("(€/MWh)", "80,60"), ("", "8,06")],
+)
+def test_a_fixed_price_in_another_unit_is_refused(unit: str, price: str) -> None:
+    """The price is read as c€/kWh, the unit every card prints under it. A
+    card stating another one, or none, is refused: restated in €/kWh the
+    price would read a hundredth of itself."""
+    text = _card(FIXED)
+    printed = "Energieprijs\n8,06 looptijd van het contract .\n(c€/kWh)\n"
+    assert text.count(printed) == 1
+    restated = f"Energieprijs\n{price} looptijd van het contract .\n{unit}\n"
+    with pytest.raises(ExtractorError, match="energy price in c€/kWh"):
+        energiebe.parse_snapshot(
+            "energiebe_fixed", REGION_FLANDERS, text.replace(printed, restated)
+        )
+
+
+@pytest.mark.parametrize(
     ("contract", "name"),
     [("energiebe_fixed", VARIABLE), ("energiebe_variable", FIXED)],
 )
@@ -594,6 +612,18 @@ def test_the_november_2026_fixed_card_is_read() -> None:
         (None, pytest.approx(0.01183)),
     )
     assert snap.taxes.energy_contribution == 0.0
+
+
+@pytest.mark.parametrize("restated", ["0,1044 €/kWh", "104,40 €/MWh", "10,44"])
+def test_a_november_2026_price_in_another_unit_is_refused(restated: str) -> None:
+    """On the plain reading the unit sits beside the price, "10,44 c€/kWh",
+    and is held there."""
+    layout = fixture_text("energiebe", NOVEMBER_FIXED, "layout")
+    plain = fixture_text("energiebe", NOVEMBER_FIXED, "plain")
+    assert plain.count("Energieprijs\n10,44 c€/kWh\n") == 1
+    plain = plain.replace("Energieprijs\n10,44 c€/kWh\n", f"Energieprijs\n{restated}\n")
+    with pytest.raises(ExtractorError, match="energy price in c€/kWh"):
+        energiebe.parse_snapshot("energiebe_fixed", REGION_FLANDERS, layout, plain=plain)
 
 
 def test_the_november_2026_variable_card_is_read() -> None:

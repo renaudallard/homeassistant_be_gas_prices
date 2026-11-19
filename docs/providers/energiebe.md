@@ -42,7 +42,10 @@ Module: `custom_components/be_gas_prices/providers/energiebe.py`. Tests:
   print a formula and the fixed card "De energieprijs is een vaste prijs"
   and no formula.
 - Price: the figure opening the line under "Energieprijs" ("6,88 formule
-  ..." or "8,06 looptijd ..."), c EUR/kWh incl. VAT.
+  ..." or "8,06 looptijd ..."), c EUR/kWh incl. VAT. Its unit is the line
+  under it, "(c€/kWh)", and is part of what is read: a card stating
+  another unit there, or none, is refused, since a price restated in €/kWh
+  would read a hundredth of itself.
 - Fee: "Vaste vergoeding" / "35" / "(€/jaar)", yearly.
 - Formula (variable): "formule (excl. btw): (1,014x TTF_RLP+ 0,16) c€/kWh".
   TTF_RLP is in c EUR/kWh, so with the index in EUR/MWh factor = 1,014 / 1000
@@ -94,8 +97,8 @@ electricity cards that day.
 - So such a card is read off pypdf's plain text, a second download when the
   layout reading shows the title (`_read`). There each figure keeps its
   label: "Energieprijs" over "10,44 c€/kWh", "Vaste vergoeding" over "35
-  €/jaar" (`_FEE_RE` takes the unit beside the figure), the formula and the
-  levies as before. Only the Midden-Vlaanderen label still wraps, over two
+  €/jaar" (`_PRICE_RE` and `_FEE_RE` take the unit beside the figure, and
+  no other unit), the formula and the levies as before. Only the Midden-Vlaanderen label still wraps, over two
   lines above its figures, and is joined back (`_WRAPPED_LABEL_RE`), since
   the table reader looks one line up only.
 - "Taksen en heffingen" now comes before "Nettarieven", so the DSO table
@@ -192,7 +195,8 @@ electricity cards that day.
   restated in EUR/MWh, a factor a tenth or ten times, a base a tenth, no
   estimate), `test_the_printed_price_is_held_within_half_a_percent` and
   `test_a_november_2026_card_on_an_index_in_eur_mwh_is_refused`.
-- `test_fixed_card`, `test_card_of_the_other_product_is_refused`.
+- `test_fixed_card`, `test_a_fixed_price_in_another_unit_is_refused` (in
+  €/kWh, in €/MWh, without a unit), `test_card_of_the_other_product_is_refused`.
 - `test_dso_table`: the Antwerpen row in full, Kempen and West cells.
 - `test_levies_as_printed`, `test_december_2025_card` (no "online", "0,
   1058"), `test_pre_2025_layout_is_refused`, `test_only_flanders`.
@@ -207,6 +211,7 @@ electricity cards that day.
   document, with the fetch helpers mocked; a card linked off energie.be's
   storage is never read (`test_a_card_link_off_energiebes_storage_is_not_read`).
 - The November 2026 template: `test_the_november_2026_fixed_card_is_read`,
+  `test_a_november_2026_price_in_another_unit_is_refused`,
   `test_the_november_2026_variable_card_is_read`,
   `test_the_november_2026_network_rows_are_read` (Midden-Vlaanderen and
   West on both cards), `test_a_november_2026_card_of_the_other_product_is_refused`,

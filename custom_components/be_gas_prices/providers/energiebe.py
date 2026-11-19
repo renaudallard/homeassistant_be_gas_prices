@@ -342,10 +342,17 @@ def _card_month(text: str, contract: _ContractDef) -> date:
     return month_date(year, month, "energie.be")
 
 
-# The price sits alone at the start of the line under the "Energieprijs"
-# heading, before the formula (variable) or the fixed-price sentence, or
-# before its unit on the plain reading of the November 2026 cards.
-_PRICE_RE = re.compile(r"^Energieprijs[ \t]*\n[ \t]*(\d+,\d+)\s", re.MULTILINE)
+# The price opens the line under the "Energieprijs" heading, before the
+# formula (variable) or the fixed-price sentence, with its unit on the line
+# under it: "8,06 looptijd van het contract ." over "(c€/kWh)". On the
+# plain reading of the November 2026 cards the unit is beside it: "10,44
+# c€/kWh". Only c€/kWh is taken, since a price restated in €/kWh would read
+# a hundredth of itself.
+_PRICE_RE = re.compile(
+    r"^Energieprijs[ \t]*\n[ \t]*(\d+,\d+)"
+    r"(?:(?:[ \t][^\n]*)?\n[ \t]*\(c€/kWh\)|[ \t]+c€/kWh)[ \t]*$",
+    re.MULTILINE,
+)
 # The fee's unit is on its own line under it, or beside it on the plain
 # reading of the November 2026 cards: "35 €/jaar".
 _FEE_RE = re.compile(
@@ -380,7 +387,7 @@ def _price_and_fee(text: str) -> tuple[float, float]:
     price = _PRICE_RE.search(text)
     fee = _FEE_RE.search(text)
     if price is None or fee is None:
-        raise ExtractorError("energie.be: energy price or fixed fee not found")
+        raise ExtractorError("energie.be: energy price in c€/kWh or yearly fixed fee not found")
     return to_float(price.group(1)) / 100.0, to_float(fee.group(1))
 
 
