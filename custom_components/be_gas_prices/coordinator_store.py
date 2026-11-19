@@ -47,6 +47,7 @@ from .contract_periods import PeriodBilling, periods_this_year
 from .daily_ranking import DailyRanking
 from .month_cards import MonthCardCache
 from .network_sheet import held_network, takes_network_sheet
+from .providers._parse import finite_number
 from .providers._resolve import LAW_FIGURES, tier_for
 from .providers.base import IndexTable, SupplierExtractor, SupplierSnapshot
 from .running_costs import Household
@@ -163,8 +164,14 @@ class _StoreMixin:
         # is not restored, even under an index name the two share.
         table = blob.get("index")
         if isinstance(table, dict) and blob.get("index_supplier") == self.extractor.id:
+            # A value that is no number is left out: the store writes a NaN
+            # or an infinity as null, which must not fail every setup.
             self._index_table = {
-                str(name): {str(k): float(v) for k, v in values.items()}
+                str(name): {
+                    str(k): number
+                    for k, v in values.items()
+                    if (number := finite_number(v)) is not None
+                }
                 for name, values in table.items()
                 if isinstance(values, dict)
             }

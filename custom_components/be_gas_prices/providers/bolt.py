@@ -130,6 +130,7 @@ from ._network import (
 from ._parse import (
     SIGN_CHARS,
     cell_value,
+    finite_number,
     fold_accents,
     formula_gives,
     month_date,
@@ -764,12 +765,10 @@ def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
     values: dict[str, float] = {}
     for row in rows:
         stamp = row.get("date") if isinstance(row, dict) else None
-        price = row.get("price") if isinstance(row, dict) else None
-        if (
-            not isinstance(stamp, str)
-            or not isinstance(price, int | float)
-            or isinstance(price, bool)
-        ):
+        price = finite_number(row.get("price")) if isinstance(row, dict) else None
+        # In EUR/MWh, which a figure near the largest float no longer is.
+        value = None if price is None else finite_number(price * 1000.0)
+        if not isinstance(stamp, str) or value is None:
             raise ExtractorError(f"Bolt: unexpected gas price history row {row!r}")
         try:
             moment: datetime | None = datetime.fromisoformat(stamp)
@@ -779,7 +778,7 @@ def parse_index(listing: str, today: date, belgium: tzinfo) -> IndexTable:
             raise ExtractorError(f"Bolt: unexpected gas price history date {stamp!r}")
         month = f"{moment.astimezone(belgium):%Y-%m}"
         if month < current:
-            values[month] = price * 1000.0
+            values[month] = value
     if not values:
         raise ExtractorError("Bolt: the gas price history holds no past month")
     table = {_INDEX: values}

@@ -35,10 +35,96 @@ import time
 import pytest
 
 from custom_components.be_gas_prices.providers._parse import (
+    finite_number,
     formula_gives,
     html_rows,
     stated_unit,
+    to_float,
 )
+from custom_components.be_gas_prices.providers.base import ExtractorError
+
+
+@pytest.mark.parametrize(
+    ("text", "value"),
+    [
+        ("1,5", 1.5),
+        ("1.5", 1.5),
+        ("1.001,55", 1001.55),
+        ("1 250,5", 1250.5),
+        ("1\u202f250,5", 1250.5),
+        (" 0,1654 ", 0.1654),
+        ("-0,5", -0.5),
+        ("+5", 5.0),
+        ("12,", 12.0),
+        (",5", 0.5),
+        ("0", 0.0),
+    ],
+)
+def test_a_figure_as_cards_print_it(text: str, value: float) -> None:
+    assert to_float(text) == value
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "inf",
+        "-inf",
+        "Infinity",
+        "nan",
+        "1e3",
+        "1E-3",
+        "1_000",
+        "0x10",
+        "١٢,٥",
+        "１２",
+        pytest.param("9" * 400, id="400 digits"),
+        "1.234.567",
+        "1,2,3",
+        "5-",
+        "−0,5",
+        ".",
+        "",
+        " ",
+    ],
+)
+def test_what_is_no_plain_decimal_figure_is_refused(text: str) -> None:
+    """float() reads an infinity, a NaN, an exponent, an underscore and the
+    digits of other scripts, and makes an infinity of a figure too long for
+    it: none is a figure a card prints."""
+    with pytest.raises(ExtractorError, match="not a figure"):
+        to_float(text)
+
+
+@pytest.mark.parametrize(
+    "text", ["9" * 200_000 + "x", "9" * 200_000 + "." + "9" * 200_000 + "x", "9" * 200_000 + ".."]
+)
+def test_a_long_run_of_digits_is_refused_in_time_linear_in_it(text: str) -> None:
+    """A pattern that gave the run back a digit at a time took 1,2 s for
+    8 000 digits before anything else, and four times that for twice as many."""
+    started = time.perf_counter()
+    with pytest.raises(ExtractorError, match="not a figure"):
+        to_float(text)
+    assert time.perf_counter() - started < 2.0
+
+
+@pytest.mark.parametrize(
+    ("value", "number"),
+    [
+        (12, 12.0),
+        (0.5, 0.5),
+        (-3.25, -3.25),
+        (True, None),
+        (None, None),
+        ("12.5", None),
+        ([12.5], None),
+        (float("nan"), None),
+        (float("inf"), None),
+        (float("-inf"), None),
+        pytest.param(10**400, None, id="an integer past any float"),
+    ],
+)
+def test_a_json_number_is_a_finite_one_or_none(value: object, number: float | None) -> None:
+    assert finite_number(value) == number
 
 
 def test_the_unit_a_card_states_is_the_nearest_statement_of_it() -> None:

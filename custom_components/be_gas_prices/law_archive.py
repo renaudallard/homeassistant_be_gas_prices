@@ -57,6 +57,7 @@ from homeassistant.util import dt as dt_util
 
 from .archive_table import ArchiveTable
 from .const import LAW_TABLE_URL
+from .providers._parse import finite_number
 
 # A figure outside these is a misread, not a levy (EUR/kWh excluding VAT).
 _MAX_EUR_PER_KWH: Final = 0.2
@@ -90,20 +91,8 @@ def contribution_for(month: date) -> float | None:
     return rate
 
 
-def table_number(value: Any) -> float | None:
-    """A number of a card archive table, or ``None``: JSON's true and false
-    are no figure, a string is none either, and no float holds an integer of
-    309 digits or more."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    try:
-        return float(value)
-    except OverflowError:
-        return None
-
-
 def _rate(value: Any) -> float | None:
-    rate = table_number(value)
+    rate = finite_number(value)
     return rate if rate is not None and 0.0 <= rate < _MAX_EUR_PER_KWH else None
 
 

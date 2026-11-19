@@ -95,6 +95,7 @@ from ._network import (
     require_region,
 )
 from ._parse import (
+    finite_number,
     fold_accents,
     formula_gives,
     month_date,
@@ -343,8 +344,11 @@ def parse_rates(body: str) -> IndexTable:
         try:
             start = datetime.fromisoformat(rate["startDate"]).date()
             end = datetime.fromisoformat(rate["endDate"]).date()
-            price = float(rate["price"])
+            price = finite_number(rate["price"])
         except (KeyError, TypeError, ValueError):
+            continue
+        if price is None:
+            # A string, a boolean, NaN or an infinity is no index value.
             continue
         following = date(start.year + start.month // 12, start.month % 12 + 1, 1)
         if start.day == 1 and end == following:

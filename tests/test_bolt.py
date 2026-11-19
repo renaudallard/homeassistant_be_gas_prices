@@ -815,3 +815,28 @@ def test_a_date_without_its_offset_is_refused() -> None:
     page = page[:gas] + page[gas:].replace("2026-08-31T22:00:00+00:00", "2026-08-31T22:00:00", 1)
     with pytest.raises(ExtractorError, match="2026-08-31T22:00:00"):
         bolt.parse_index(page, date(2026, 10, 7), _BELGIUM)
+
+
+@pytest.mark.parametrize(
+    "figure",
+    [
+        "NaN",
+        "Infinity",
+        "-Infinity",
+        "1e999",
+        "1e306",
+        pytest.param("1" + "0" * 400, id="an integer past any float"),
+        "true",
+        '"0.07"',
+    ],
+)
+def test_a_price_that_is_no_finite_number_is_refused(figure: str) -> None:
+    """The JSON reader takes NaN, Infinity and a figure past any float for
+    numbers, and 1e306 EUR/kWh is past one in EUR/MWh. Filed, the store wrote
+    each as null, which no later start could read."""
+    page = (
+        '{"priceHistory":{"gas":[{"date":"2026-07-31T22:00:00+00:00","price":0.0617},'
+        f'{{"date":"2026-08-31T22:00:00+00:00","price":{figure}}}]}}}}'
+    )
+    with pytest.raises(ExtractorError, match="unexpected gas price history row"):
+        bolt.parse_index(page, date(2026, 10, 7), _BELGIUM)

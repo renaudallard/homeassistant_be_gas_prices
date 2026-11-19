@@ -3883,6 +3883,31 @@ async def test_a_stored_index_table_is_its_own_supplier_s_only(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_stored_index_value_that_is_no_number_is_left_out(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """The store writes a NaN or an infinity as null. An entry holding one
+    still sets up, on the values that are numbers."""
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    stored = {"2026-06": None, "2026-07": "x", "2026-08": True, "2026-09": 99.0}
+    hass_storage[key] = {
+        "version": 1,
+        "key": key,
+        "data": {"index": {"ZTPDAM": stored}, "index_supplier": "engie"},
+    }
+    down = replace(
+        providers.EXTRACTORS["engie"],
+        fetch_index=AsyncMock(side_effect=ExtractorError("HTTP 500 fetching x")),
+    )
+    with patch.dict(providers.EXTRACTORS, {"engie": down}):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.runtime_data._index_table == {"ZTPDAM": {"2026-09": 99.0}}
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_closed_month_the_index_source_drops_keeps_its_value(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:

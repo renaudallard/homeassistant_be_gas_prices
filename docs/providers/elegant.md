@@ -89,7 +89,9 @@ site itself uses:
 
 Only rows spanning exactly one calendar month are kept. The answer filtered
 on `"year":2026` ends with a one-day row for 1 January 2026 carrying
-December's 27,65, which would otherwise replace January's 34,26.
+December's 27,65, which would otherwise replace January's 34,26. A row whose
+`price` is no finite JSON number (a string, a boolean, `NaN`, `Infinity`) is
+left out too, and its month has no value.
 
 Index name in the snapshot and the table: `TTFDAM`.
 

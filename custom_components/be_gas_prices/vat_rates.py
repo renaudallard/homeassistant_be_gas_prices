@@ -51,7 +51,8 @@ import aiohttp
 
 from .archive_table import ArchiveTable
 from .const import VAT_RATE_REDUCED, VAT_TABLE_URL
-from .law_archive import table_months, table_number
+from .law_archive import table_months
+from .providers._parse import finite_number
 
 # A rate outside these is a misread, not a rate.
 _MIN_RATE: Final = 0.0
@@ -75,7 +76,7 @@ def _months(section: Any) -> dict[tuple[int, int], float]:
     alone (law_archive.table_months)."""
     out: dict[tuple[int, int], float] = {}
     for key, entry in table_months(section):
-        rate = table_number(entry.get("rate") if isinstance(entry, Mapping) else None)
+        rate = finite_number(entry.get("rate") if isinstance(entry, Mapping) else None)
         if rate is not None and _MIN_RATE <= rate < _MAX_RATE:
             out[key] = rate
     return out

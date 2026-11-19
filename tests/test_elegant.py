@@ -540,6 +540,22 @@ def test_index_rates_ignore_a_row_that_is_not_a_month() -> None:
     assert len(values["TTFDAM"]) == 8
 
 
+@pytest.mark.parametrize(
+    "figure", ["NaN", "Infinity", "-Infinity", "1e999", "true", '"nan"', '"inf"', '"61.66"', "null"]
+)
+def test_an_index_rate_that_is_no_finite_number_is_left_out(figure: str) -> None:
+    """Only a JSON number is a value: the month of anything else has none,
+    rather than a NaN or an infinity the store would write as null."""
+    rates = (
+        '{"startDate":"2026-08-01T06:00:00+02:00","endDate":"2026-09-01T06:00:00+02:00",'
+        '"price":61.66},'
+        '{"startDate":"2026-09-01T06:00:00+02:00","endDate":"2026-10-01T06:00:00+02:00",'
+        f'"price":{figure}}}'
+    )
+    body = f'[{{"result":{{"data":{{"rates":[{rates}]}}}}}}]'
+    assert elegant.parse_rates(body) == {"TTFDAM": {"2026-08": 61.66}}
+
+
 async def test_fetch_index_looks_the_id_up_first() -> None:
     answers = AsyncMock(
         side_effect=[

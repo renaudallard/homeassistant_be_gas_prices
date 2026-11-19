@@ -147,7 +147,9 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   be filed a month early, September taking October's forward value. The
   current month is Belgium's too: east of it Home Assistant's month turns
   first, and the running month's forward value would be kept as its mean
-  until the next read. A date without its offset is refused.
+  until the next read. A date without its offset is refused, and so is a
+  price that is no finite number (the JSON decoder reads `NaN` and
+  `Infinity`), which the Store would write as null.
 - The value of a month still moves after the month has closed: October 2026
   read 87,8697 on 1 November (12:47 UTC) and 88,0593 from the 2nd (14:05
   UTC) on, as the card archive's copies of those days show. On the 1st and

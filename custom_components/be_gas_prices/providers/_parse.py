@@ -34,6 +34,7 @@ refuse rather than guess. They know nothing about which supplier printed it.
 from __future__ import annotations
 
 import html
+import math
 import re
 import unicodedata
 from collections.abc import Callable, Iterator, Mapping
@@ -77,6 +78,10 @@ to the end of the run again each time, in time growing with its square:
 # carry thousands separators and a decimal part in either convention.
 _CELL = re.compile(r"^(?:\d+(?:[.,]\d+)*|[" + "".join(_DASHES) + r"])$")
 _FIGURE = re.compile(r"\d+(?:[.,]\d+)*")
+# A figure float() may read, once its comma is a dot: digits and one dot.
+# Each run of digits is taken whole, so a long one followed by anything
+# else is refused in one pass rather than tried again a digit shorter.
+_PLAIN = re.compile(r"[+-]?(?:[0-9]++(?:\.[0-9]*+)?|\.[0-9]++)")
 
 
 def month_date(year: str | int, month: str | int, label: str) -> date:
@@ -109,10 +114,24 @@ def to_float(text: str) -> float:
         cleaned = cleaned.replace(sep, "")
     if "," in cleaned and "." in cleaned:
         cleaned = cleaned.replace(".", "")
+    cleaned = cleaned.replace(",", ".")
+    # float() alone also reads "inf", "nan", "1e3", "1_000" and digits of
+    # other scripts, and makes an infinity of a figure too long for it.
+    if _PLAIN.fullmatch(cleaned) is None or not math.isfinite(value := float(cleaned)):
+        raise ExtractorError(f"not a figure: {text!r}")
+    return value
+
+
+def finite_number(value: object) -> float | None:
+    """A JSON number as a float, or None for anything else: a bool, a
+    string, NaN, an infinity, an integer no float holds."""
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
     try:
-        return float(cleaned.replace(",", "."))
-    except ValueError as err:
-        raise ExtractorError(f"not a figure: {text!r}") from err
+        number = float(value)
+    except OverflowError:
+        return None
+    return number if math.isfinite(number) else None
 
 
 def parse_sign(char: str) -> float:
