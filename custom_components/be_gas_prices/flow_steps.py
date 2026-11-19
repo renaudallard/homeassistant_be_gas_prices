@@ -124,6 +124,7 @@ from .contract_periods import (
 )
 from .providers import all_extractors
 from .providers import get as get_extractor
+from .providers._parse import finite_number
 from .providers._rates import Contract
 
 # The date fields a household may blank to remove.
@@ -647,6 +648,12 @@ class _FlowSteps:
         typed: Any = None
         if user_input is not None:
             user_input = dict(user_input)
+            if finite_number(user_input.get(CONF_ANNUAL_CONSUMPTION_KWH)) is None:
+                # The number field holds a value to its bounds, which a NaN
+                # passes. The frontend sends none, another client may: the
+                # entry keeps its own volume and the form comes back.
+                errors[CONF_ANNUAL_CONSUMPTION_KWH] = "invalid_number"
+                user_input.pop(CONF_ANNUAL_CONSUMPTION_KWH, None)
             try:
                 user_input[CONF_CONVERSION_FACTOR] = _decimal(
                     user_input.get(CONF_CONVERSION_FACTOR),

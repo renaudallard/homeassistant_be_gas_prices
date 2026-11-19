@@ -1137,6 +1137,67 @@ async def test_a_factor_that_is_not_one_comes_back(hass: HomeAssistant, typed: s
     assert entry.data[CONF_ANNUAL_CONSUMPTION_KWH] == 12000
 
 
+@pytest.mark.parametrize("volume", ["nan", "NaN", float("nan")])
+async def test_a_yearly_volume_that_is_no_number_comes_back(
+    hass: HomeAssistant, volume: str | float
+) -> None:
+    """The number field holds a value to its bounds, which a NaN passes. The
+    frontend sends none, a script calling the flow may: the volume was
+    stored as NaN, and four sensors then failed to be added."""
+    entry = _entry(hass)
+    result = await _settings_household(hass, entry)
+    user_input = {
+        CONF_ANNUAL_CONSUMPTION_KWH: volume,
+        CONF_CONVERSION_FACTOR: "11,6",
+        CONF_CARD_ARCHIVE: False,
+        CONF_DAILY_COMPARE: False,
+    }
+    result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "household"
+    assert result["errors"] == {CONF_ANNUAL_CONSUMPTION_KWH: "invalid_number"}
+    schema = result["data_schema"]
+    assert schema is not None
+    # The entry's own volume is shown again, the rest as entered.
+    shown = next(key for key in schema.schema if key == CONF_ANNUAL_CONSUMPTION_KWH)
+    assert shown.default() == 17000.0
+    factor = next(key for key in schema.schema if key == CONF_CONVERSION_FACTOR)
+    assert factor.description == {"suggested_value": "11.6"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**user_input, CONF_ANNUAL_CONSUMPTION_KWH: 12000}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.data[CONF_ANNUAL_CONSUMPTION_KWH] == 12000
+
+
+async def test_a_new_entry_is_not_created_on_a_volume_that_is_no_number(
+    hass: HomeAssistant,
+) -> None:
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    for user_input in (
+        {CONF_POSTCODE: ""},
+        {CONF_REGION: REGION_WALLONIA},
+        {CONF_SUPPLIER: "engie"},
+        {CONF_CONTRACT: "engie_flow"},
+        {CONF_DSO: DSO_ORES},
+    ):
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
+    assert result["step_id"] == "household"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_ANNUAL_CONSUMPTION_KWH: "nan",
+            CONF_CONVERSION_FACTOR: "11,6",
+            CONF_CARD_ARCHIVE: False,
+            CONF_DAILY_COMPARE: False,
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "household"
+    assert result["errors"] == {CONF_ANNUAL_CONSUMPTION_KWH: "invalid_number"}
+
+
 def _entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
