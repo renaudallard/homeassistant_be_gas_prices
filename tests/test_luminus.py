@@ -31,6 +31,7 @@ import time
 from collections.abc import Callable
 from datetime import date, datetime
 from functools import cache
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -442,6 +443,51 @@ def test_index_pdf_places_each_figure_under_its_year() -> None:
     assert "Q3 35,320 32,436 -" in lines
     assert "TTFDAH RLP M 2024 2025 2026" in lines
     assert "Août 37,614 32,154 61,637" in lines
+
+
+def _index_word(text: str, x0: float, top: float) -> dict[str, object]:
+    return {"text": text, "x0": x0, "x1": x0 + 20.0, "top": top, "upright": True}
+
+
+def _index_pdf(words: list[dict[str, object]]) -> SimpleNamespace:
+    """A one-page document as pdfplumber hands its words over."""
+    return SimpleNamespace(pages=[SimpleNamespace(extract_words=lambda: words)])
+
+
+def test_an_index_page_of_titles_above_one_heading_is_rendered_in_time() -> None:
+    """Each title above a year heading has its table read out of every
+    word of the page: 4 000 of them took 5,4 s, in a render thread the
+    fetch budget cannot stop. The render stops at a title's second table,
+    which the parse refuses as it did the 4 000."""
+    titles = [_index_word("TTFDAHW", 10.0, 10.0) for _ in range(4000)]
+    years = [_index_word("2025", 30.0, 30.0), _index_word("2026", 60.0, 30.0)]
+    started = time.monotonic()
+    text = luminus._render_index(_index_pdf(titles + years))
+    assert time.monotonic() - started < 1.0
+    assert text.splitlines() == ["TTFDAHW 2025 2026"] * 2
+    with pytest.raises(ExtractorError, match="two TTFDAHW tables"):
+        luminus.parse_index_text(text)
+
+
+def test_an_index_page_of_titles_far_from_its_headings_is_rendered_in_time() -> None:
+    """Each title was held against every year heading of its page to find
+    one just below it: 4 000 titles and 4 000 headings, none near a title,
+    took 24 s. With one heading in reach of the last title its table is
+    still the one rendered."""
+    titles = [_index_word("TTFDAHW", 10.0 + n, 10.0) for n in range(4000)]
+    years = [
+        _index_word(year, x0, 500.0 + 10.0 * n)
+        for n in range(4000)
+        for year, x0 in (("2025", 30.0), ("2026", 60.0))
+    ]
+    started = time.monotonic()
+    assert luminus._render_index(_index_pdf(titles + years)) == ""
+    assert time.monotonic() - started < 1.0
+    # The last title starts at 4009, the reach to the right of it ends at 4069.
+    near = [_index_word("2025", 4069.0, 30.0), _index_word("2026", 4099.0, 30.0)]
+    below = [_index_word("Q1", 4020.0, 40.0), _index_word("30,5", 4069.0, 40.0)]
+    text = luminus._render_index(_index_pdf(titles + years + near + below))
+    assert text.splitlines() == ["TTFDAHW 2025 2026", "Q1 30,5 -"]
 
 
 def test_index_table_holds_the_values_the_cards_name() -> None:

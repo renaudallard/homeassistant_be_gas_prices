@@ -140,7 +140,13 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
   year headings just below it (the formula beside it names the index again),
   places every figure under its year by pdfplumber word position and writes a
   dash in empty cells; `parse_index_text` reads that text and fills each month
-  of a quarter.
+  of a quarter. The render takes time linear in the page's words: a title
+  with two tables is refused, so it stops at the second, where each table
+  reads every word of its page, and the titles with a heading in reach are
+  found by taking them down the page with the headings' left edges kept
+  sorted (`_under_a_heading`), not by holding each against every heading.
+  A page of titles above one heading, or far from thousands of them,
+  otherwise took time growing with the square of them.
 - Agreement with the cards: the index PDF reproduces every value the cards
   name that falls in its window: TTF DAHW Q4 2024 42,831 (card 42,83), Q1
   2025 46,853, Q2 2025 35,358, Q3 2025 32,436, Q4 2025 30,042, Q1 2026 39,680,

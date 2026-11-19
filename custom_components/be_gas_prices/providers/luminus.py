@@ -81,8 +81,10 @@ also stands in for a current card the endpoint above has no longer, as
 from __future__ import annotations
 
 import re
+from bisect import bisect_left, bisect_right, insort
 from dataclasses import dataclass
 from datetime import date, timedelta
+from math import isfinite
 from typing import Any
 
 import aiohttp
@@ -654,29 +656,78 @@ def _table_lines(
     return lines
 
 
+def _under_a_heading(
+    titles: list[tuple[float, float]], headings: list[list[dict[str, Any]]]
+) -> list[bool]:
+    """Whether each title, given by its left edge and its top, has a year
+    heading within ``_TITLE_REACH`` below it and to its right.
+
+    The titles are taken down the page with the left edges of the headings
+    in reach below the current one kept sorted, so each is answered by two
+    lookups. Looking through every heading for every title took time
+    growing with their product: 24 s for 4 000 of each. A place that is no
+    finite number is near nothing.
+    """
+    spots = sorted(
+        (top, x0)
+        for top, x0 in ((float(h[0]["top"]), float(h[0]["x0"])) for h in headings)
+        if isfinite(top) and isfinite(x0)
+    )
+    under = [False] * len(titles)
+    in_reach: list[float] = []
+    entered = left = 0
+    for n in sorted(
+        (n for n, title in enumerate(titles) if isfinite(title[0]) and isfinite(title[1])),
+        key=lambda n: titles[n][1],
+    ):
+        x0, top = titles[n]
+        while entered < len(spots) and spots[entered][0] <= top + _TITLE_REACH:
+            insort(in_reach, spots[entered][1])
+            entered += 1
+        while left < entered and spots[left][0] <= top:
+            del in_reach[bisect_left(in_reach, spots[left][1])]
+            left += 1
+        under[n] = bisect_right(in_reach, x0) < bisect_right(in_reach, x0 + _TITLE_REACH)
+    return under
+
+
 def _render_index(pdf: Any) -> str:
     lines: list[str] = []
+    rendered: set[str] = set()
     for page in pdf.pages:
         words = [w for w in page.extract_words() if w["upright"]]
         rows = word_rows(words, _ROW_TOLERANCE)
         headings = _year_headings(rows)
+        titles: list[tuple[str, float, float]] = []
         for row in rows:
             texts = [word["text"] for word in row]
             for title in _INDEX_BY_TITLE:
                 size = len(title.split())
-                for i in range(len(row) - size + 1):
-                    if " ".join(texts[i : i + size]) != title:
-                        continue
-                    x0, top = float(row[i]["x0"]), float(row[i]["top"])
-                    below = [
-                        h
-                        for h in headings
-                        if top < float(h[0]["top"]) <= top + _TITLE_REACH
-                        and x0 < float(h[0]["x0"]) <= x0 + _TITLE_REACH
-                    ]
-                    if below:
-                        heading = min(below, key=lambda h: float(h[0]["top"]))
-                        lines += _table_lines(title, heading, words)
+                titles += [
+                    (title, float(row[i]["x0"]), float(row[i]["top"]))
+                    for i in range(len(row) - size + 1)
+                    if " ".join(texts[i : i + size]) == title
+                ]
+        under = _under_a_heading([(x0, top) for _title, x0, top in titles], headings)
+        for (title, x0, top), found in zip(titles, under, strict=True):
+            if not found:
+                continue
+            below = [
+                h
+                for h in headings
+                if top < float(h[0]["top"]) <= top + _TITLE_REACH
+                and x0 < float(h[0]["x0"]) <= x0 + _TITLE_REACH
+            ]
+            heading = min(below, key=lambda h: float(h[0]["top"]))
+            lines += _table_lines(title, heading, words)
+            if title in rendered:
+                # A title's second table, which parse_index_text refuses.
+                # Each table reads every word of its page, so a page of
+                # titles above one heading took time growing with the
+                # square of them: 5 s for 4 000, in a thread no budget
+                # stops.
+                return "\n".join(lines)
+            rendered.add(title)
     return "\n".join(lines)
 
 
