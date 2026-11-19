@@ -11,6 +11,19 @@ pytest tests/ -q -n auto --dist loadfile
 several tests of one file is rendered once (`tests.fixture_text` is cached per
 process).
 
+`requirements-dev.txt` pins what the suite installs, and the live check and
+the archive take their pypdf and pdfplumber from it with pip's `-c`, so the
+workflows read a card with the pypdf the suite ran on. The manifest only
+sets a floor (`pypdf>=6.16.2`), so an installation reads its cards with the
+newest pypdf, which no workflow does: the pin is the last release of the 6
+series, 6.21.4, and the suite is also run by hand on the newest, 7.1.1 on
+19 November 2026, and `tests/test_pdf_bound.py` on the floor, each installed
+alone in a directory put ahead of the venv (`pip install --target <dir>
+--no-deps pypdf==<version>`, then `PYTHONPATH=<dir>`). Both matter between
+releases: the readers' bounds wrap pypdf's internals by name, and its plain
+text moves, 6.20 running Engie's fee heading into the words after it and 7
+setting a space between them.
+
 Reading the fixture cards is most of what the suite spends, a Frank or Bolt
 card 40 to 50 seconds of pdfplumber on a Raspberry Pi, so `fixture_text`
 also keeps each card's text on disk under `tmp/fixture_text/`. A directory
