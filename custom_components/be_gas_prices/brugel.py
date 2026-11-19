@@ -40,6 +40,15 @@ household reading its meter once a year pays the "Comptage YMR" term. The
 yearly figures are marked indicative, the daily ones beside them being what
 is billed, and are those every card prints.
 
+The fixed term's row and each row per kWh are read off the cells after
+their unit, by their place: a refund is printed with its minus sign and
+subtracted, and a dash standing alone, as Brugel's electricity sheet prints
+a tier a row does not charge, is a cell that charges nothing. A row printing
+some tiers' cells and not all refuses the sheet, since its figures would be
+billed to other tiers than their own. The "Comptage YMR" term is one figure
+whatever the tier, printed under each tier that has a yearly reading, T1 to
+T4 in 2026, and the first is read.
+
 Nothing is kept over a restart. A year whose sheet is not served yet stands
 on the latest earlier one held, and the tick reads the year before's while
 it is not. Never raises: the caller is the coordinator tick.
@@ -56,6 +65,7 @@ from typing import Final
 import aiohttp
 from homeassistant.util import dt as dt_util
 
+from .providers._parse import SIGN_CHARS, parse_sign, to_float
 from .providers._pdf import fetch_pdf_bytes, render_in_thread
 from .providers._pdf_render import extract_pdf_text
 from .providers.base import ExtractorError, SheetNetwork
@@ -73,7 +83,15 @@ _PER_KWH: Final = "EUR / kWh"
 # one. Tried from every digit of a long run of thousands groups that no comma
 # ends, the pattern took time growing with the square of the line: 80 kB
 # took 86 s. Every figure the sheets print stands apart.
-_FIGURE_RE: Final = re.compile(r"(?<![\d.])\d{1,3}(?:\.\d{3})*,\d+")
+_NUMBER: Final = r"\d{1,3}(?:\.\d{3})*,\d+"
+_FIGURE_RE: Final = re.compile(rf"(?<![\d.]){_NUMBER}")
+# A tier's cell on the fixed term's row or a row per kWh: a figure with the
+# sign printed against it, or a sign standing alone, the dash of a tier the
+# row does not charge.
+_CELL_RE: Final = re.compile(rf"(?<![\d.])([{SIGN_CHARS}]?)({_NUMBER})|(?<!\S)[{SIGN_CHARS}](?!\S)")
+# T1 to T5, the cells the sheet's header, its fixed term's row and each of
+# its rows per kWh print.
+_TIERS: Final = 5
 _FIXED_RE: Final = re.compile(r"X\s*=\s*EUR\s*/\s*an")
 _RATE_RE: Final = re.compile(r"Y\s*=\s*EUR\s*/\s*kWh")
 _METERING_RE: Final = re.compile(r"^\s*Comptage YMR\b.*EUR\s*/\s*an", re.IGNORECASE)
@@ -137,38 +155,52 @@ async def read_network(session: aiohttp.ClientSession, year: int) -> SheetNetwor
     return await asyncio.to_thread(parse_network, text)
 
 
+def _cells(tail: str) -> list[float] | None:
+    """What a row charges each tier, off what follows its unit: none for a
+    row that prints nothing there, and ``None`` for one that prints some
+    tiers' cells and not all, whose figures read by their place would be
+    another tier's."""
+    cells = [
+        0.0 if cell[2] is None else parse_sign(cell[1]) * to_float(cell[2])
+        for cell in _CELL_RE.finditer(tail)
+    ]
+    return cells if len(cells) in (0, _TIERS) else None
+
+
 def parse_network(text: str) -> SheetNetwork | None:
     """The network a sheet's text gives a household on T1 or T2, or ``None``
-    when a term is missing, no rate per kWh is printed below them or a figure
+    when a term is missing, no rate per kWh is printed below them, the fixed
+    term's row or a row per kWh does not print every tier's cell or a figure
     is out of bounds."""
     fixed = rate = metering = None
     charges = [0.0, 0.0]
     seen_charge = False
     for line in text.splitlines():
-        figures = [float(f.replace(".", "").replace(",", ".")) for f in _FIGURE_RE.findall(line)]
-        if _FIXED_RE.search(line):
-            fixed = figures[:2]
-        elif _RATE_RE.search(line):
-            rate = figures[:2]
+        if (unit := _FIXED_RE.search(line)) is not None:
+            fixed = _cells(line[unit.end() :])
+            if not fixed:
+                return None
+        elif (unit := _RATE_RE.search(line)) is not None:
+            rate = _cells(line[unit.end() :])
+            if not rate:
+                return None
         elif _METERING_RE.search(line):
-            metering = figures[:1]
+            # One term whatever the tier: the first figure printed is it.
+            metering = [
+                float(f.replace(".", "").replace(",", ".")) for f in _FIGURE_RE.findall(line)
+            ][:1]
         elif _PER_KWH in line and rate is not None:
             # A row that prints no figure, the regulatory balances in 2026,
             # charges nothing.
-            seen_charge = seen_charge or bool(figures)
-            for tier, value in enumerate(figures[:2]):
+            cells = _cells(line.rpartition(_PER_KWH)[2])
+            if cells is None:
+                return None
+            seen_charge = seen_charge or bool(cells)
+            for tier, value in enumerate(cells[:2]):
                 charges[tier] += value
-    if (
-        fixed is None
-        or rate is None
-        or metering is None
-        or len(fixed) < 2
-        or len(rate) < 2
-        or len(metering) < 1
-        or not seen_charge
-    ):
+    if fixed is None or rate is None or metering is None or len(metering) < 1 or not seen_charge:
         return None
-    t1_kwh, t2_kwh = (value + charge for value, charge in zip(rate, charges, strict=True))
+    t1_kwh, t2_kwh = (value + charge for value, charge in zip(rate[:2], charges, strict=True))
     if not (
         0.0 < fixed[0] < _MAX_FIXED
         and 0.0 < fixed[1] < _MAX_FIXED

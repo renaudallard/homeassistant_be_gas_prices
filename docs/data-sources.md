@@ -186,6 +186,14 @@ against what the cards print for the DSO (see
   "prix hors TVA": the "X = EUR / an" and "Y = EUR / kWh" rows, every row in
   EUR / kWh below them, and the "Comptage YMR" term of a yearly-read meter,
   its text read in a worker thread, a figure starting where a number does.
+  The "X = EUR / an" row and each row in EUR / kWh are read off the cells
+  after their unit, one per tier, T1 to T5, by their place: a refund printed
+  with its minus sign is subtracted, a dash standing alone is a tier the row
+  does not charge, as Brugel's electricity sheet prints one, and a row in
+  EUR / kWh printing nothing charges nothing. A row printing some tiers'
+  cells and not all refuses the sheet, since its figures would be billed to
+  other tiers than their own. The "Comptage YMR" term is one figure whatever
+  the tier, printed under T1 to T4, and the first is read.
   For 2026: 15,00 and 40,63 EUR a year, 0,0187738 and 0,0136483 EUR/kWh,
   23,54 EUR a year. Only 2026's was served on 6 November 2026.
 - **Wallonia** (`cwape.py`): the operator's approved grid, found through the

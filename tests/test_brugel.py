@@ -12,6 +12,7 @@ import pytest
 
 from custom_components.be_gas_prices import brugel
 from custom_components.be_gas_prices.providers._pdf_render import extract_pdf_text
+from custom_components.be_gas_prices.providers.base import SheetNetwork
 
 _SHEET_2026 = (Path(__file__).parent / "fixtures" / "brugel" / "gaz_2026.pdf").read_bytes()
 
@@ -52,14 +53,93 @@ def test_a_sheet_missing_a_row_gives_no_network(row: str) -> None:
         assert terms is None
 
 
+_BALANCES = "3. Tarif pour les soldes régulatoires EUR / kWh"
+
+
+def _with_balances(cells: str) -> SheetNetwork | None:
+    """The 2026 sheet read with ``cells`` on its regulatory balances row,
+    which it prints no figure on."""
+    text = _text()
+    assert f"{_BALANCES}\n" in text
+    return brugel.parse_network(text.replace(_BALANCES, f"{_BALANCES} {cells}"))
+
+
+@pytest.mark.parametrize("minus", ["-", "−", "–"], ids=["hyphen", "minus sign", "en dash"])
+def test_a_refund_per_kwh_is_subtracted(minus: str) -> None:
+    """A balance the operator gives back is printed with its minus sign,
+    which the figure pattern read past: the refund was added."""
+    whole = brugel.parse_network(_text())
+    terms = _with_balances(" ".join(f"{minus}0,000{tier}000" for tier in range(1, 6)))
+    assert whole is not None and terms is not None
+    assert terms.t1_proportional == pytest.approx(whole.t1_proportional - 0.0001)
+    assert terms.t2_proportional == pytest.approx(whole.t2_proportional - 0.0002)
+
+
+def test_a_dash_alone_is_a_tier_the_row_does_not_charge() -> None:
+    """As Brugel's 2026 electricity sheet prints it, "EUR / kWh HI - - -
+    0,0572325 0,0572325": a cell in its place, and no sign of the figure
+    after it."""
+    whole = brugel.parse_network(_text())
+    assert _with_balances("- - - 0,0572325 0,0572325") == whole
+    assert _with_balances("- - - - -") == whole
+    terms = _with_balances("- 0,0002000 0,0003000 0,0004000 0,0005000")
+    assert whole is not None and terms is not None
+    assert terms.t1_proportional == whole.t1_proportional
+    assert terms.t2_proportional == pytest.approx(whole.t2_proportional + 0.0002)
+
+
+@pytest.mark.parametrize(
+    "cells",
+    [
+        pytest.param("0,0002000 0,0003000 0,0004000 0,0005000", id="a tier's cell missing"),
+        pytest.param("0,0001 0,0002 0,0003 0,0004 0,0005 0,0006", id="a cell too many"),
+        pytest.param(
+            "- 0,0001 - 0,0002 - 0,0003 - 0,0004 - 0,0005",
+            id="minus signs apart from their figures",
+        ),
+    ],
+)
+def test_a_row_per_kwh_without_every_tier_s_cell_refuses_the_sheet(cells: str) -> None:
+    """Read by their place, its figures were billed to other tiers than
+    their own: four cells put T2's rate on T1."""
+    assert _with_balances(cells) is None
+
+
+def test_a_rate_row_without_every_tier_s_cell_refuses_the_sheet() -> None:
+    text = _text()
+    assert "Y = EUR / kWh 0,0148166 0,0096911" in text
+    assert brugel.parse_network(text.replace("kWh 0,0148166 0,0096911", "kWh 0,0096911")) is None
+
+
+@pytest.mark.parametrize(
+    ("printed", "cells"),
+    [
+        pytest.param("15,00 40,63 944,86", "15 40,63 944,86", id="a term in whole euros"),
+        pytest.param("15,00 40,63 944,86", "40,63 944,86", id="a tier's cell missing"),
+        pytest.param("15,00 40,63 944,86", "- 15,00 40,63 944,86", id="a cell too many"),
+    ],
+)
+def test_a_fixed_term_row_without_every_tier_s_cell_refuses_the_sheet(
+    printed: str, cells: str
+) -> None:
+    """Read by their place among the figures found, four cells gave T1 the
+    40,63 EUR a year of T2 and T2 the 944,86 of T3."""
+    text = _text()
+    assert f"X = EUR / an  (°) {printed}" in text
+    assert brugel.parse_network(text.replace(printed, cells)) is None
+
+
 def test_a_long_run_of_thousands_groups_is_read_past_in_time() -> None:
     """A line of thousands groups that no comma ends, which the figure
     pattern once tried from every digit of: 80 kB of it held the event loop
-    for 86 s. The sheet still reads as it does alone."""
+    for 86 s. The sheet still reads as it does alone, and with such a run,
+    signed, where a row per kWh prints its cells."""
+    text = _text()
+    run = "1." + "111." * 20000 + "x"
     started = time.monotonic()
-    terms = brugel.parse_network("1." + "111." * 20000 + "x\n" + _text())
+    terms = brugel.parse_network(f"{run}\n{text}\nx EUR / kWh -{run}")
     assert time.monotonic() - started < 1.0
-    assert terms == brugel.parse_network(_text())
+    assert terms == brugel.parse_network(text)
 
 
 def test_a_figure_starts_where_a_number_does() -> None:
