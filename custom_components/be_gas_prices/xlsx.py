@@ -32,8 +32,9 @@ one of :data:`UNREADABLE`.
 
 A workbook is remote content, so nothing in it is taken on trust: the zip's
 directory is bounded before the zip reader parses it, and every member is
-inflated no further than the cap on what the workbook unpacks to, counting
-what each read gives rather than the sizes the directory declares.
+inflated no further than its own cap and the cap on what the workbook
+unpacks to, counting what each read gives rather than the sizes the
+directory declares.
 """
 
 from __future__ import annotations
@@ -71,6 +72,18 @@ _MAX_DIRECTORY_BYTES: Final = 64 * 1024
 # Python 3.13 inflates the other methods it knows without a bound on a read.
 _METHODS: Final = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 
+# What one member read may unpack to, unless the caller says otherwise. The
+# cap on the whole workbook does not bound what a parse costs: a 17 kB
+# workbook whose sheet was 16 MiB of empty cells, within the excise tariff's
+# cap, took 27 s of processor time in its thread on a Raspberry Pi 4 and
+# 557 MB, stalling the event loop for seconds while the XML parser held the
+# interpreter. Of the members read off the workbooks in tests/fixtures, the
+# largest is sheet Q of FPS Finance's excise tariff, 489 kB, beside its
+# shared strings of 269 kB; a CWaPE grid's sheet is 38 kB at most and a
+# Fluvius one 18 kB. This is eight times the largest, rounded up, and such a
+# sheet at this cap still takes 6,5 s and 97 MB.
+MAX_MEMBER_BYTES: Final = 4 * 1024 * 1024
+
 # What a payload that is not a readable workbook raises: not a zip, damaged
 # or cut short, a part missing, or XML that does not parse or is refused.
 # LookupError is a missing part (KeyError), a shared string that is not there
@@ -104,30 +117,33 @@ def _check_directory(payload: bytes) -> None:
 
 class _Members:
     """The members of one workbook, read no further than ``cap`` bytes in
-    all.
+    all and ``member_cap`` bytes each.
 
-    Each is read through ``ZipFile.open``, asking for what is left of the
-    cap and one byte more to tell a member past it, which is as far as zlib
-    inflates it: ``ZipFile.read`` inflates a whole member before it finds
-    that its data does not match the size the directory declares, and a
-    204 KB workbook declaring 1,000 bytes inflated 200 MiB that way. What
-    each read gives is counted against the cap, whatever the directory
-    declares.
+    Each is read through ``ZipFile.open``, asking for the smaller of its own
+    cap and what is left of the workbook's, and one byte more to tell a
+    member past it, which is as far as zlib inflates it: ``ZipFile.read``
+    inflates a whole member before it finds that its data does not match
+    the size the directory declares, and a 204 KB workbook declaring 1,000
+    bytes inflated 200 MiB that way. What each read gives is counted against
+    the caps, whatever the directory declares.
     """
 
-    def __init__(self, z: zipfile.ZipFile, cap: int) -> None:
+    def __init__(self, z: zipfile.ZipFile, cap: int, member_cap: int) -> None:
         self._z = z
         self._left = cap
+        self._member_cap = member_cap
 
     def read(self, name: str) -> bytes:
         """Member ``name``; KeyError when the workbook has none."""
         info = self._z.getinfo(name)
         if info.compress_type not in _METHODS:
             raise zipfile.BadZipFile(f"{name} is compressed with method {info.compress_type}")
+        limit = min(self._left, self._member_cap)
         with self._z.open(info) as member:
-            data = member.read(self._left + 1)
-        if len(data) > self._left:
-            raise ValueError("workbook unpacks past the size cap")
+            data = member.read(limit + 1)
+        if len(data) > limit:
+            what = "workbook" if limit == self._left else "a member of the workbook"
+            raise ValueError(f"{what} unpacks past the size cap")
         self._left -= len(data)
         return data
 
@@ -154,11 +170,18 @@ def _sheet_member(members: _Members, name: str) -> str:
     return target.lstrip("/") if target.startswith("/") else f"xl/{target}"
 
 
-def rows(payload: bytes, *, max_unpacked: int, sheet: str | None = None) -> list[dict[str, str]]:
+def rows(
+    payload: bytes,
+    *,
+    max_unpacked: int,
+    sheet: str | None = None,
+    max_member: int = MAX_MEMBER_BYTES,
+) -> list[dict[str, str]]:
     """The worksheet named ``sheet``, or the first sheet file, as text: one
     ``{column: text}`` per row. Raises one of :data:`UNREADABLE` on a
-    payload that is not a readable workbook, or one that unpacks past
-    ``max_unpacked`` bytes."""
+    payload that is not a readable workbook, one that unpacks past
+    ``max_unpacked`` bytes, or one with a member read that unpacks past
+    ``max_member`` bytes."""
     _check_directory(payload)
     try:
         with zipfile.ZipFile(io.BytesIO(payload)) as z:
@@ -166,7 +189,7 @@ def rows(payload: bytes, *, max_unpacked: int, sheet: str | None = None) -> list
             # anything is inflated; _Members holds a dishonest one.
             if sum(info.file_size for info in z.infolist()) > max_unpacked:
                 raise ValueError("workbook unpacks past the size cap")
-            members = _Members(z, max_unpacked)
+            members = _Members(z, max_unpacked, max_member)
             try:
                 shared = ET.fromstring(members.read("xl/sharedStrings.xml"))
             except KeyError:

@@ -490,9 +490,11 @@ def _parse_all(payload: bytes) -> Tariff:
 
 async def fetch_tariff(session: aiohttp.ClientSession) -> Tariff:
     """The household, the protected customer's and the energy contribution's
-    periods the workbook lists today, parsed off the event loop: a few
-    tenths of a second on a Raspberry Pi. No protected or contribution
-    period when those rows cannot be read."""
+    periods the workbook lists today, parsed in a worker thread: about three
+    tenths of a second of processor time on a Raspberry Pi 4. The event loop
+    still waits while the XML parser holds the interpreter, 0,16 s for sheet
+    Q in one call. No protected or contribution period when those rows
+    cannot be read."""
     payload = await fetch_bytes(session, TARBEL_URL, timeout=_TIMEOUT)
     return await asyncio.to_thread(_parse_all, payload)
 

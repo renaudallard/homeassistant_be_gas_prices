@@ -180,7 +180,24 @@ def test_what_the_members_inflate_to_is_counted_against_one_cap() -> None:
     the sheet past what is left of the cap is refused."""
     with zipfile.ZipFile(io.BytesIO(_FLUVIUS)) as z:
         shared = len(z.read("xl/sharedStrings.xml"))
-        members = xlsx._Members(z, shared + 100)
+        members = xlsx._Members(z, shared + 100, _CAP)
         assert len(members.read("xl/sharedStrings.xml")) == shared
-        with pytest.raises(ValueError, match="past the size cap"):
+        with pytest.raises(ValueError, match="workbook unpacks past the size cap"):
             members.read(_SHEET)
+
+
+def test_a_member_is_held_to_a_cap_of_its_own() -> None:
+    """The cap on the whole workbook does not bound what a parse costs: a
+    sheet of 16 MiB of empty cells, within the excise tariff's cap, took
+    27 s of processor time to parse and 557 MB."""
+    with zipfile.ZipFile(io.BytesIO(_FLUVIUS)) as z:
+        sheet = len(z.read(_SHEET))
+        assert sheet > len(z.read("xl/sharedStrings.xml"))
+    assert xlsx.rows(_FLUVIUS, max_unpacked=_CAP, max_member=sheet)
+    with pytest.raises(ValueError, match="a member of the workbook unpacks past the size cap"):
+        xlsx.rows(_FLUVIUS, max_unpacked=_CAP, max_member=sheet - 1)
+    # Unless the caller says otherwise, 4 MiB: within the workbook's cap,
+    # one byte past it is not parsed.
+    padded = _rewritten(_FLUVIUS, b" " * (xlsx.MAX_MEMBER_BYTES + 1))
+    with pytest.raises(ValueError, match="a member of the workbook unpacks past the size cap"):
+        xlsx.rows(padded, max_unpacked=4 * _CAP)

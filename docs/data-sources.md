@@ -133,7 +133,11 @@ in a worker thread, and nothing its zip declares is trusted: the zip has to
 end with its directory, at most 64 KiB, with no comment or ZIP64 record, a
 member has to be stored or deflated, and each member is read through
 `ZipFile.open` no further than what is left of the cap, which is as far as
-it is inflated.
+it is inflated. A member read is held to 4 MiB of its own as well
+(`xlsx.MAX_MEMBER_BYTES`), since the cap on the whole does not bound what a
+parse costs: the largest read off the workbooks kept as fixtures is sheet
+`Q` of FPS Finance's tariff, 489 kB, and a sheet of 16 MiB of empty cells
+took 27 s of processor time to parse on a Raspberry Pi 4 and 557 MB.
 
 Every area prints the same fee (17,51 EUR/year excluding VAT in 2025,
 17,85 in 2026), so one sheet stands for all eight. A sheet that is not the
