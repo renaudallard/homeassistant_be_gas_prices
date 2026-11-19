@@ -148,9 +148,10 @@ the layout reader is used here too. Index name: `ZTP-RLP-M`.
     tariff card date, and the earliest upload of all where every one came
     later (a card published after its month began).
   - An upload that does not read or names another month leaves the one
-    before it. Where an upload bears no Last-Modified nothing tells which
-    was in force: every upload is tried, each folder in the listing's
-    order, its newest name first.
+    before it. Where an upload bears no Last-Modified, or one that is no
+    date in Belgium (the last hour of year 9999), nothing tells which was
+    in force: every upload is tried, each folder in the listing's order,
+    its newest name first.
 - Brusol: the delivery-month folder is tried first, then the month before.
   August 2026 is in both, and the later upload (2026-08) carries the new
   excise; every other month from January 2026 is in exactly one, January

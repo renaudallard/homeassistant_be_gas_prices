@@ -418,14 +418,15 @@ def _made_by(uploads: list[tuple[str, str | None]], day: date, belgium: tzinfo) 
     """The uploads made by the end of ``day`` in Belgium, the newest first:
     the cards the listing had shown by then. The earliest upload alone where
     every one came later, a card published after its month began; all of
-    them as they come where one bears no date to tell by."""
+    them as they come where one bears no date to tell by, or one no zone
+    can hold: the last hour of year 9999 has no day in Belgium."""
     dated: list[tuple[datetime, str]] = []
     for url, modified in uploads:
         try:
-            stamp = parsedate_to_datetime(modified or "")
-        except ValueError:
+            stamp = parsedate_to_datetime(modified or "").astimezone(belgium)
+        except (ValueError, OverflowError):
             return [url for url, _ in uploads]
-        dated.append((stamp.astimezone(belgium), url))
+        dated.append((stamp, url))
     made = [upload for upload in dated if upload[0].date() <= day]
     made.sort(key=lambda upload: upload[0], reverse=True)
     if not made and dated:

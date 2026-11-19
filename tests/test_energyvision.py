@@ -875,9 +875,12 @@ async def test_a_day_before_every_upload_reads_the_earliest_of_all_folders() -> 
     assert snap.source_url == _FILES + earliest
 
 
-async def test_uploads_without_a_date_are_read_in_the_order_asked() -> None:
+@pytest.mark.parametrize("stamp", ["", "Fri, 31 Dec 9999 23:59:59 GMT"], ids=["none", "9999"])
+async def test_uploads_without_a_date_are_read_in_the_order_asked(stamp: str) -> None:
     """Nothing tells which was in force: each folder in the listing's
-    order, its newest name first, as before."""
+    order, its newest name first, as before. A date past the calendar's
+    end in Belgium tells no more than none, and once failed the read with
+    an OverflowError at every ask."""
     names = (
         "2026-11/EV-1126-GS1JVG-nl.pdf",
         "2026-11/EV-1126-GS1JVG-nl_0.pdf",
@@ -889,7 +892,7 @@ async def test_uploads_without_a_date_are_read_in_the_order_asked() -> None:
         read.append(url.removeprefix(_FILES))
         raise ExtractorError("EnergyVision: energy price not found")
 
-    stamps = dict.fromkeys(names, "Wed, 04 Nov 2026 11:28:55 GMT") | {names[2]: ""}
+    stamps = dict.fromkeys(names, "Wed, 04 Nov 2026 11:28:55 GMT") | {names[2]: stamp}
     with (
         patch.object(energyvision, "head_or_raise", _dated(stamps)),
         patch.object(energyvision, "fetch_pdf_text_layout", text),
