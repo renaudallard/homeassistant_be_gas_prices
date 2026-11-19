@@ -87,6 +87,7 @@ from ._pdf import (
     fetch_text,
     is_transient_fetch_error,
     printed_vat_rate,
+    shown_text,
 )
 from ._rates import Contract, VariableRates
 from ._validity import end_of_month, future_month, month_card
@@ -223,9 +224,15 @@ def _card_month(text: str) -> date:
 _PRODUCT_OPEN_RE = re.compile(r"produ(?:ct|it)\s*“")
 _PRODUCT_CLOSE_RE = re.compile("”")
 _VAT_PATTERNS = (r"inclusief\s+(\d+)\s*%\s*BTW", r"TVA\s+(\d+)\s*%\s*comprise")
+# "21,20 7,79 Geschatte maandprijs" under the line of its units, "€/jaar
+# c€/kWh", "€/an c€/kWh" on the French card: the only statement of them, on
+# every card since April 2026, and read with the figures. A price restated
+# in €/MWh would read ten times itself, a fee restated a month a twelfth.
 _PRICE_RE = re.compile(
-    r"^(\d+,\d+)\s+(\d+,\d+)\s+(?:Geschatte maandprijs|Prix mensuel estimé)", re.MULTILINE
+    r"^([^\n]*)\n(\d+,\d+)\s+(\d+,\d+)\s+(?:Geschatte maandprijs|Prix mensuel estimé)",
+    re.MULTILINE,
 )
+_UNITS = ("€/jaar c€/kWh", "€/an c€/kWh")
 # "((0,105*TTF)+0,8)*1,06.", from October 2026 "((0,105* TTF EGSI EEX DA)+0,8)
 # *1,06.": up to the full stop. The first "TTF" is taken for good, and the
 # formula is tried after the first "formule" of a line only
@@ -242,9 +249,14 @@ def _energy(text: str) -> VariableRates:
     formula = search_once_per_line(text, _FORMULA_START_RE, _FORMULA_RE)
     if price is None or formula is None:
         raise ExtractorError("Sparki: price or formula not found")
+    if " ".join(price.group(1).split()) not in _UNITS:
+        raise ExtractorError(
+            f"Sparki: fee and price are headed {shown_text(price.group(1))!r}, "
+            f"expected {_UNITS[0]!r}"
+        )
     return VariableRates(
-        price=to_float(price.group(2)) / 100.0,
-        yearly_fixed_fee=to_float(price.group(1)),
+        price=to_float(price.group(3)) / 100.0,
+        yearly_fixed_fee=to_float(price.group(2)),
         formula=formula.group(1),
     )
 

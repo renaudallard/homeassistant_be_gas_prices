@@ -80,6 +80,39 @@ def test_price_is_kept_as_printed() -> None:
 
 
 @pytest.mark.parametrize(
+    ("name", "region", "units", "figures"),
+    [
+        (SS_NL, REGION_FLANDERS, "€/jaar c€/kWh", "21,20 7,79 Geschatte maandprijs"),
+        (SS_FR, REGION_WALLONIA, "€/an c€/kWh", "21,20 7,79 Prix mensuel estimé"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("restated", "fee", "price"),
+    [
+        # In €/MWh the price would read ten times itself.
+        ("{fee} €/MWh", "21,20", "77,90"),
+        # A month, the fee would read a twelfth of itself.
+        ("€/maand {price}", "1,77", "7,79"),
+        # No units, where every card states them.
+        ("", "21,20", "7,79"),
+    ],
+)
+def test_a_card_headed_in_other_units_is_refused(
+    name: str, region: str, units: str, figures: str, restated: str, fee: str, price: str
+) -> None:
+    """The line above the fee and the price is the only statement of their
+    units and is read with them."""
+    text = _card(name)
+    printed = f"\n{units}\n{figures}"
+    assert text.count(printed) == 1
+    fee_unit, price_unit = units.split()
+    heading = restated.format(fee=fee_unit, price=price_unit)
+    other = f"\n{heading}\n{figures.replace('21,20', fee).replace('7,79', price)}"
+    with pytest.raises(ExtractorError, match="fee and price are headed"):
+        sparki.parse_snapshot("sparki_self_service", region, text.replace(printed, other), "url")
+
+
+@pytest.mark.parametrize(
     "line",
     ["formule x " * 8000, "formule x " + "TTF " * 8000],
     ids=["many formulas", "many TTF"],

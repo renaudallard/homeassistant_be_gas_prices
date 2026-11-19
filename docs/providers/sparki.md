@@ -66,6 +66,12 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
   octobre 2026".
 - Energy: "21,20 7,79 Geschatte maandprijs" / "21,20 7,79 Prix mensuel
   estimé": the yearly fee, then the price in c€/kWh.
+- Units: the line above those figures, "€/jaar c€/kWh" on the Dutch card
+  and "€/an c€/kWh" on the French one, is their only statement and is read
+  with them. All 32 archived rows of April to November 2026 print it. A
+  card with anything else on that line is refused and the error quotes it:
+  a price restated in €/MWh would read ten times itself, a fee restated a
+  month a twelfth.
 - Formula: "berekend volgens de formule ((0,105*TTF)+0,8)*1,06.", from
   October 2026 "((0,105* TTF EGSI EEX DA)+0,8)*1,06." (kept for diagnostics,
   and the mark of an estimate).
@@ -107,7 +113,8 @@ extract on a Raspberry Pi, 2 to 3,4 s live with the listing).
 
 ## Tests
 
-`tests/test_sparki.py`: the price kept as printed, the VNR arithmetic from
+`tests/test_sparki.py`: the price kept as printed, a Dutch or French card
+headed in €/MWh, a month or without units refused, the VNR arithmetic from
 the card's own figures, At Your Service's fee, the Flanders table and levies
 (Antwerpen and Zenne-Dijle rows), the Walloon card (ORES, RESA, connection
 fee), product and region refusals, a Walloon card without its connection fee
