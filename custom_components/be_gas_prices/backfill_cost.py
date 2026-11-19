@@ -48,11 +48,10 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from homeassistant.util.hass_dict import HassKey
 
-from .backfill import _backfill_end, _hours, _statistic_id
+from .backfill import _backfill_end, _compiled, _hours, _statistic_id
 from .bill import MonthBill
 from .coordinator import GasCoordinator
 from .gas_meter import RecorderUnavailable, hourly_changes, statistic_kind
@@ -135,6 +134,9 @@ async def backfill_cost(hass: HomeAssistant, coordinator: GasCoordinator) -> dic
         return {}
     sid = _statistic_id(hass, coordinator.entry.entry_id, _KEY)
     if sid is None or not _compiled(hass, sid):
+        # The cycle joins the live rows, and a sensor the recorder does not
+        # compile never has any: every tick would read the meter's year for
+        # it again.
         return {}
     # The instant the sensor gives as its last reset.
     reset = dt_util.as_utc(dt_util.start_of_local_day(coordinator.window_start(data.day)))
@@ -260,23 +262,6 @@ async def _import_cost_rows(
         instance.async_import_statistics(metadata, rows, Statistics)
         await instance.async_block_till_done()
     return True
-
-
-def _compiled(hass: HomeAssistant, sid: str) -> bool:
-    """Whether the recorder compiles the statistics of ``sid``: an enabled
-    sensor it records. The cycle joins the live rows, and a sensor it does
-    not compile never has any, which every tick would read the meter's year
-    for again."""
-    from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
-
-    found = er.async_get(hass).async_get(sid)
-    if found is not None and found.disabled_by is not None:
-        return False
-    # The filter is_entity_recorded reads: newer releases (2026.9.4) only
-    # re-export that function from the recorder package, and strict mypy
-    # refuses the import there.
-    recorded = get_instance(hass).entity_filter
-    return recorded is None or recorded(sid)
 
 
 async def _live_anchor(

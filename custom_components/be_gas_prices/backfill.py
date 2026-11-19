@@ -93,6 +93,22 @@ def _statistic_id(hass: HomeAssistant, entry_id: str, key: str) -> str | None:
     return er.async_get(hass).async_get_entity_id("sensor", DOMAIN, f"{entry_id}_{key}")
 
 
+def _compiled(hass: HomeAssistant, sid: str) -> bool:
+    """Whether the recorder compiles the statistics of ``sid``: an enabled
+    sensor it records. One it does not is a sensor the user turned off or
+    keeps out of the recorder, and gets no history written either."""
+    from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
+
+    found = er.async_get(hass).async_get(sid)
+    if found is not None and found.disabled_by is not None:
+        return False
+    # The filter is_entity_recorded reads: newer releases (2026.9.4) only
+    # re-export that function from the recorder package, and strict mypy
+    # refuses the import there.
+    recorded = get_instance(hass).entity_filter
+    return recorded is None or recorded(sid)
+
+
 def _hours(start: datetime, end: datetime) -> list[datetime]:
     """Every UTC hour in [start, end), on the hour."""
     hour = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
@@ -159,6 +175,8 @@ async def backfill_prices(
     hour the recorder has compiled.
 
     Returns the rows written per statistic id, none without a recorder.
+    A sensor the recorder does not compile, disabled or excluded from it, is
+    left out.
     ``clear`` deletes the sensors' statistics first, whole, since the
     recorder has no windowed delete: whatever sat before ``start`` is gone
     too.
@@ -181,7 +199,7 @@ async def backfill_prices(
         start = switched
     entry_id = coordinator.entry.entry_id
     ids = {key: _statistic_id(hass, entry_id, key) for key, _unit in _SERIES}
-    present = {key: sid for key, sid in ids.items() if sid is not None}
+    present = {key: sid for key, sid in ids.items() if sid is not None and _compiled(hass, sid)}
     if not present:
         return {}
     begin = dt_util.as_utc(dt_util.start_of_local_day(start))

@@ -243,7 +243,9 @@ changed, redraws it; left out where no contract takes one), and the tier the
 measured volume falls in (so a year that crosses into another tier redraws its
 hours on it; the excise blend within a tier, a few hundredths of a cent, does
 not). It is stamped in the Store, and skipped where Home Assistant runs no
-recorder.
+recorder. A price sensor the recorder never compiles, disabled or excluded
+from it, gets no rows (`backfill._compiled`, the check the cost history
+makes), from the service either, and a clear leaves what it holds alone.
 
 ## The automatic cost history
 
@@ -260,8 +262,8 @@ It waits for a tick that read the meter and knows the cost (setup's own tick
 holds the figure without its bills), for the sensor to be registered, and for
 the recorder to have compiled some of the sensor's own statistics, which it
 does within five minutes. A sensor the recorder never compiles, disabled or
-excluded from it, is not written at all (`_compiled`): no tick would find
-those statistics.
+excluded from it, is not written at all (`backfill._compiled`): no tick
+would find those statistics.
 
 The rows are joined to what the recorder compiled from the live sensor: they
 continue the total recorded before the window (last year's whole bill, on an

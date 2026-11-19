@@ -123,7 +123,9 @@ this integration prices like any other.
 - **Price history backfill**: the price sensors' statistics are filled back to
   1 January the first time an entry runs in a year, or to the contract start
   when the year counts from it, or to a change of contract recorded this
-  year.
+  year. A disabled price sensor, or one the recorder excludes, is left
+  out; once it is enabled or recorded again, `backfill_statistics` fills
+  its history.
 - **Cost history backfill**: `current_year_cost`'s statistics are filled back
   to the start of the year's window from the meter's hourly statistics, so a
   monthly statistics graph of it shows the months before the install too.

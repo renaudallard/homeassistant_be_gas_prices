@@ -514,6 +514,37 @@ async def test_the_price_history_is_written_hour_by_hour(
     assert stats[kwh][0]["start"] == start.timestamp()
 
 
+@pytest.mark.parametrize("why", ["disabled", "excluded"])
+@pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
+async def test_a_price_sensor_the_recorder_does_not_compile_gets_no_history(
+    recorder_mock: Any,
+    hass: HomeAssistant,
+    enable_custom_integrations: None,
+    monkeypatch: pytest.MonkeyPatch,
+    why: str,
+) -> None:
+    """A price sensor the user disabled, or keeps out of the recorder, was
+    written its hours all the same. It is left out, as the cost sensor is,
+    and the others are written."""
+    await _zone(hass)
+    entry = await _setup_entry(hass)
+    kwh, m3 = "sensor.engie_flow_current_price", "sensor.engie_flow_current_price_per_m3"
+    if why == "disabled":
+        er.async_get(hass).async_update_entity(m3, disabled_by=er.RegistryEntryDisabler.USER)
+    else:
+        monkeypatch.setattr(get_instance(hass), "entity_filter", lambda entity_id: entity_id != m3)
+    counts = await backfill_prices(hass, entry.runtime_data, date(2026, 9, 15))
+    assert counts[kwh] == 10
+    assert m3 not in counts and len(counts) == 4
+    await async_wait_recording_done(hass)
+    start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 9, 15)))
+    stats = await get_instance(hass).async_add_executor_job(
+        statistics_during_period, hass, start, None, {kwh, m3}, "hour", None, {"mean"}
+    )
+    assert len(stats[kwh]) == 10
+    assert m3 not in stats
+
+
 @pytest.mark.freeze_time("2026-01-01 10:30:00+01:00")
 @pytest.mark.parametrize("held", [True, False])
 async def test_a_month_before_the_window_is_priced_on_its_own_card(
