@@ -257,3 +257,6 @@ Not modelled: the one-off welcome credit the Flemish cards print
   asked.
 - The index document table and `fetch_index` following the page link, the
   first on EnergyVision's own site, none when every link is elsewhere.
+- Brusol's page and the index page with an href of 128 kB of card or
+  document names read in under a second: each href is read to its closing
+  quote and the name looked for in it.

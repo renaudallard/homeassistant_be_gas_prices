@@ -393,6 +393,26 @@ async def test_a_brusol_link_off_its_own_site_is_passed_over() -> None:
     assert snap.publication_label == "2026-09"
 
 
+# An href holding nothing but card names, 128 kB of them: the patterns that
+# read an href and the name in it in one go read on to the closing quote
+# again from every name, 15 s for the card's and 10 s for the document's.
+def _href_of_names(name: str) -> str:
+    return '<a href="/sites/default/files/' + name * (128 * 1024 // len(name)) + '">x</a>'
+
+
+def test_an_href_of_card_names_is_read_past_in_time() -> None:
+    page = fixture_page("energyvision", "brusol/signup-goedkope-stroom-nl.html")
+    asked = energyvision._CONTRACTS_BY_ID[_GSG], "BXL-nl", _BRUSOL_PAGE
+    started = time.monotonic()
+    linked = energyvision._linked_card(_href_of_names("EV-0926-GSG-BXL-nl") + page, *asked)
+    assert time.monotonic() - started < 1.0
+    assert linked == energyvision._linked_card(page, *asked)
+    assert linked == (
+        "https://www.brusol.be/sites/default/files/2026-08/EV-0926-GSG-BXL-nl.pdf",
+        date(2026, 9, 1),
+    )
+
+
 @pytest.mark.parametrize(
     ("uploaded", "read", "month"),
     [
@@ -1008,6 +1028,24 @@ async def test_fetch_index_follows_the_page_link() -> None:
         patch.object(energyvision, "fetch_pdf_text_layout", fetched),
     ):
         table = await energyvision.fetch_index(AsyncMock())
+    assert fetched.call_args.args[1] == (
+        "https://www.energyvision.be/sites/default/files/inline-files/"
+        "EV-0926-Indexatieparameters-nl.pdf"
+    )
+    assert table["ZTP-RLP-M"]["2026-08"] == pytest.approx(61.822)
+
+
+async def test_an_href_of_document_names_is_read_past_in_time() -> None:
+    page = fixture_page("energyvision", "indexatieparameters.html")
+    fetched = AsyncMock(return_value=_card("EV-0926-Indexatieparameters-nl.pdf"))
+    crafted = _href_of_names("EV-0926-Indexatieparameters-nl")
+    with (
+        patch.object(energyvision, "fetch_text", AsyncMock(return_value=crafted + page)),
+        patch.object(energyvision, "fetch_pdf_text_layout", fetched),
+    ):
+        started = time.monotonic()
+        table = await energyvision.fetch_index(AsyncMock())
+        assert time.monotonic() - started < 1.0
     assert fetched.call_args.args[1] == (
         "https://www.energyvision.be/sites/default/files/inline-files/"
         "EV-0926-Indexatieparameters-nl.pdf"

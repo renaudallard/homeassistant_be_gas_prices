@@ -147,7 +147,7 @@ from ._network import (
     require_region,
     signing_dsos,
 )
-from ._parse import NUMBER_START, fold_accents, require_contract, to_float
+from ._parse import NUMBER_START, elements, fold_accents, require_contract, to_float
 from ._pdf import (
     MONTH_NAMES,
     fetch_pdf_text_layout,
@@ -244,6 +244,25 @@ def _contract(contract_id: str, region: str) -> tuple[_ContractDef, _Card]:
     return contract, card
 
 
+# A page is remote text. Each href is read to its closing quote and the file
+# it names looked for inside it: one pattern running from an href through
+# "[^"]*?" to a card's name and on to ".pdf" read the rest of the page again
+# from every name, 15 s for 128 kB of names behind one href.
+_HREF_RE = re.compile('href="')
+_QUOTE_RE = re.compile('"')
+_FILES_RE = re.compile(r"(?:https?://[^/]+)?/sites/default/files/")
+
+
+def _linked_file(href: str, name: re.Pattern[str]) -> re.Match[str] | None:
+    """Where ``name`` first reads in the file name of ``href``, a PDF under
+    Drupal's files folder on whatever host, or None for any other link."""
+    file = href.rpartition("/")[2]
+    found = name.search(file) if _FILES_RE.match(href) else None
+    if found is None or not file.endswith(".pdf") or found.end() > len(file) - len(".pdf"):
+        return None
+    return found
+
+
 def _linked_card(html: str, contract: _ContractDef, token: str, page: str) -> tuple[str, date]:
     """The newest card of ``contract`` with ``token`` that ``html``, the
     page at ``page``, links, and the month its file name prices.
@@ -252,13 +271,15 @@ def _linked_card(html: str, contract: _ContractDef, token: str, page: str) -> tu
     ("EV-1026-GSG-BXL-nl.pdf "). A name whose month is no month is passed
     over, and so is a link off the page's own site.
     """
-    pattern = re.compile(
-        r'href="((?:https?://[^"/]+)?/sites/default/files/[^"]*?'
-        rf'EV-(\d{{2}})(\d{{2}})-{contract.code}-{re.escape(token)}[^"/]*\.pdf)\s*"'
-    )
+    name = re.compile(rf"EV-(\d{{2}})(\d{{2}})-{contract.code}-{re.escape(token)}")
     site = str(URL(page).origin())
     found: dict[date, str] = {}
-    for href, month, year in pattern.findall(html):
+    for _opened, href, _closed in elements(html, _HREF_RE, _QUOTE_RE, attributes=False):
+        href = href.rstrip()
+        card = _linked_file(href, name)
+        if card is None:
+            continue
+        month, year = card.groups()
         url = urljoin(page, href)
         if 1 <= int(month) <= 12 and on_site(url, site):
             found[date(2000 + int(year), int(month), 1)] = url
@@ -474,16 +495,17 @@ async def fetch_on_day(
     return await _fetch_in_force(session, contract_id, region, day)
 
 
-_INDEX_PDF_RE = re.compile(
-    r'href="((?:https?://[^"/]+)?/sites/default/files/[^"]*?EV-\d{4}-Indexatieparameters-nl[^"/]*\.pdf)"'
-)
+_INDEX_PDF_RE = re.compile(r"EV-\d{4}-Indexatieparameters-nl")
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
     """ZTP-RLP-M by month, off the first parameter document the index page
     links on EnergyVision's own site."""
-    for match in _INDEX_PDF_RE.finditer(await fetch_text(session, _INDEX_PAGE_URL)):
-        url = urljoin(_INDEX_PAGE_URL, match.group(1))
+    page = await fetch_text(session, _INDEX_PAGE_URL)
+    for _opened, href, _closed in elements(page, _HREF_RE, _QUOTE_RE, attributes=False):
+        if _linked_file(href, _INDEX_PDF_RE) is None:
+            continue
+        url = urljoin(_INDEX_PAGE_URL, href)
         if on_site(url, _SITE):
             return parse_index_document(await fetch_pdf_text_layout(session, url))
     raise ExtractorError("EnergyVision: no parameter document linked")
