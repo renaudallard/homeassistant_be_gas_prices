@@ -656,8 +656,14 @@ def _osp(text: str) -> dict[str, float]:
 # One row of the index page and the series it is of, found from its opening
 # to its closing (_parse.elements): "<tr data-line=...>(.*?)</tr>" scanned to
 # the end of the page from every row no closing followed, 26 s over 72 kB.
-_INDEX_ROW_RE = re.compile(r'<tr data-line="([^"]+)"')
+# A row naming no series is the heading of a table, "Du | Au | Prix €/kWh
+# (htva)", whose last cell is the only statement of the unit and VAT basis
+# of the values under it. They are read under that heading alone: a table
+# headed in c€/kWh or €/MWh would come out a hundred or a thousand times
+# off, as Engie's index did when its page gained a table in c€/kWh.
+_INDEX_ROW_RE = re.compile(r'<tr(?: data-line="([^"]+)"|(?=[\s>]))')
 _INDEX_ROW_END_RE = re.compile("</tr>")
+_INDEX_HEADING = "Prix €/kWh (htva)"
 _MONTH_START_RE = re.compile(r"01-(0[1-9]|1[0-2])-(\d{4})")
 _INDEX_VALUE_RE = re.compile(r"€\s*(\d+[.,]\d+)")
 
@@ -667,14 +673,19 @@ def parse_index_page(page: str) -> IndexTable:
 
     One row per month, newest first: "01-08-2026 | 01-09-2026 | EUR0.0617121"
     in EUR/kWh excluding VAT. A row that does not run from the first of a
-    month to the first of the next is not a monthly value and is skipped.
+    month to the first of the next is not a monthly value and is skipped,
+    and so is every row of a table headed in another unit.
     """
     table: IndexTable = {name: {} for name in _INDEX_NAMES.values()}
+    heading: str | None = None
     for opened, row, _closed in elements(page, _INDEX_ROW_RE, _INDEX_ROW_END_RE):
         name = opened.group(1)
-        if name not in table:
-            continue
         cells = html_cells(row)
+        if name is None:
+            heading = cells[-1] if cells else None
+            continue
+        if name not in table or heading != _INDEX_HEADING:
+            continue
         if len(cells) != 3:
             continue
         start = _MONTH_START_RE.fullmatch(cells[0])
@@ -688,7 +699,10 @@ def parse_index_page(page: str) -> IndexTable:
         table[name][f"{year}-{month:02d}"] = to_float(value.group(1)) * 1000.0
     missing = sorted(name for name, values in table.items() if not values)
     if missing:
-        raise ExtractorError(f"Mega: index values not found: {', '.join(missing)}")
+        raise ExtractorError(
+            f"Mega: index values not found: {', '.join(missing)} (read under the "
+            f"heading {_INDEX_HEADING!r} only)"
+        )
     return table
 
 

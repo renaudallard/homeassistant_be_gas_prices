@@ -141,6 +141,14 @@ uses a comma. `to_float` reads both.
   Ahead et Weekend TTF (EGSI) durant le mois de fourniture", monthly from
   January 2021.
 
+Each table opens on a heading row, "Du | Au | Prix €/kWh (htva)", whose last
+cell is the only statement of the unit and VAT basis of the values under it.
+Rows are read under that heading alone: those of a table headed otherwise
+(c€/kWh, €/MWh, TVAC, or no such cell) are skipped, so a page restated in
+another unit gives no values and is refused, where it would have read a
+hundred or a thousand times off, and a table added in another unit beside
+the one in €/kWh, as Engie's page gained in November 2026, changes nothing.
+
 A row counts when it runs from the 1st of a month to the 1st of the next; the
 value is stored x 1000 as EUR/MWh under `YYYY-MM` of its first day. On
 2026-09-29 the last row of both was August 2026 (ZTP 61,7121, TTF 61,54081
@@ -255,5 +263,7 @@ energy leg a contract signed on it is priced on (Smart Fixed of November
   tests (URL built, Brussels clock, month refusal, CDN stub, transient
   failures, future month).
 - Index: `test_index_page_reads_both_series_by_delivery_month`,
+  `test_index_page_headed_in_another_unit_is_refused`,
+  `test_index_table_printed_again_in_another_unit_is_not_read`,
   `test_index_page_without_the_series_fails_loud`,
   `test_fetch_index_reads_mega_s_page`.

@@ -691,6 +691,43 @@ def test_index_page_reads_both_series_by_delivery_month() -> None:
     assert "2026-09" not in table["ZTP mensuel"]
 
 
+@pytest.mark.parametrize(
+    ("heading", "value"),
+    [
+        # A hundred and a thousand times off, read as €/kWh.
+        ("Prix c€/kWh <small>(htva)</small>", "€6.17121"),
+        ("Prix €/MWh <small>(htva)</small>", "€61.7121"),
+        # Including VAT, or no heading for the column at all.
+        ("Prix €/kWh <small>(tvac)</small>", "€0.0654148"),
+        ("Prix", "€0.0617121"),
+    ],
+)
+def test_index_page_headed_in_another_unit_is_refused(heading: str, value: str) -> None:
+    """Each table is headed "Du | Au | Prix €/kWh (htva)", the only
+    statement of the unit its values are in."""
+    page = fixture_page("mega", "indexation-de-nos-produits-variables.html")
+    printed = "Prix €/kWh <small>(htva)</small>"
+    assert page.count(printed) == 14
+    assert page.count("€0.0617121") == 1
+    restated = page.replace(printed, heading).replace("€0.0617121", value)
+    with pytest.raises(ExtractorError, match=r"index values not found: TTF1, ZTP mensuel \(read"):
+        mega.parse_index_page(restated)
+
+
+def test_index_table_printed_again_in_another_unit_is_not_read() -> None:
+    """Engie's page gained a second table in c€/kWh in November 2026. The
+    same on Mega's page, its ZTP table repeated in c€/kWh after the one in
+    €/kWh, leaves every value as the first table gives it."""
+    page = fixture_page("mega", "indexation-de-nos-produits-variables.html")
+    start = page.rindex("<table", 0, page.index('data-line="ZTP mensuel"'))
+    again = page[start : page.index("</table>", start) + len("</table>")]
+    assert again.count("Prix €/kWh") == 1
+    assert again.count("€0.0617121") == 1
+    again = again.replace("Prix €/kWh", "Prix c€/kWh").replace("€0.0617121", "€6.17121")
+    assert mega.parse_index_page(page + again) == mega.parse_index_page(page)
+    assert mega.parse_index_page(page)["ZTP mensuel"]["2026-08"] == pytest.approx(61.7121)
+
+
 def test_index_page_without_the_series_fails_loud() -> None:
     page = fixture_page("mega", "indexation-de-nos-produits-variables.html")
     with pytest.raises(ExtractorError, match="TTF1"):
