@@ -55,7 +55,9 @@ cards (`issues.sync_issues`).
    the month cards are, since that release may have read it short of what
    this one reads (the fields the month's VAT rate is applied to, named
    since 0.3.10); it stays where no card is found, and a failure that may
-   recover is asked again on the next tick.
+   recover is asked again on the next tick, after a restart too: the Store
+   keeps the mark (`reread_last_card`) beside the release it names, which
+   the first write after the update already makes this one.
 2. **Index values** (`_refresh_index`), twice a day, from the supplier's own
    publication. A failure keeps the table held, or with none held and a
    failure a retry may cure (network, storage, HTTP 5xx, 403, 408, 429) is

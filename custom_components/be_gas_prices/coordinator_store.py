@@ -142,8 +142,11 @@ class _StoreMixin:
             # again whatever the next check finds, and waited on like one.
             self.card_read_by_ocr = blob.get("read_by_ocr") is True
             # A withdrawn contract fetches no card, so the one another
-            # release stored is read again once, as its month cards are.
-            self._reread_last_card = blob.get("release") != self._release
+            # release stored is read again once, as its month cards are, and
+            # still is after a restart while that read has not succeeded.
+            self._reread_last_card = (
+                blob.get("release") != self._release or blob.get("reread_last_card") is True
+            )
         # The fetches of this card that failed in a row, and whether it was
         # found unreadable, with or without a card in hand: counted on from
         # there, the first tick after a restart does not delete a Repairs
@@ -219,6 +222,7 @@ class _StoreMixin:
             "snapshot": None if self._snapshot is None else snapshot_to_json(self._snapshot),
             "fetched_at": None if self._fetched_at is None else self._fetched_at.isoformat(),
             "read_by_ocr": self.card_read_by_ocr,
+            "reread_last_card": self._reread_last_card,
             "failures": self._failures,
             "failing_since": None if since is None else since.isoformat(),
             "unreadable": self.card_unreadable,

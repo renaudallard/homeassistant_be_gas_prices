@@ -1324,6 +1324,27 @@ async def test_a_withdrawn_contract_s_card_not_read_again_is_kept_and_asked_agai
 
 
 @pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
+async def test_a_withdrawn_contract_s_card_is_still_read_again_after_a_restart(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    """OCTA+'s archive is down at the first tick after the update, and Home
+    Assistant restarts before the next: the store names this release by
+    then, so it keeps the card as one still to read again."""
+    down = ExtractorError("network error fetching x: reset")
+    archive = _september_flux(down, _flux_card())
+    entry = await _set_up_flux(hass, hass_storage, "0.3.9", archive)
+    assert _grossed(entry) == ()
+    assert hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]["release"] != "0.3.9"
+    stub = replace(_octaplus_stub(), fetch_for_month=archive)
+    with patch.dict(providers.EXTRACTORS, {"octaplus": stub}):
+        assert await hass.config_entries.async_reload(entry.entry_id)
+        await hass.async_block_till_done()
+    assert _grossed(entry) == ("factor", "base")
+    assert not entry.runtime_data._reread_last_card
+    assert hass_storage[f"{DOMAIN}.{entry.entry_id}"]["data"]["reread_last_card"] is False
+
+
+@pytest.mark.freeze_time("2026-10-15 10:00:00+02:00")
 async def test_a_withdrawn_contract_s_card_nobody_serves_any_more_is_kept(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
