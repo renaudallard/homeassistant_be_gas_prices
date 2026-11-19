@@ -61,11 +61,58 @@ def test_a_station_out_of_use_or_without_a_value_is_left_out() -> None:
     }
 
 
-def test_a_value_that_is_not_a_figure_is_a_calorific_error() -> None:
-    """Not the parsers' ExtractorError, which no caller of this catches."""
-    broken = _FILE + "2026-08,GOS FLUVIUS - BEVEREN,541454827090000056,n/a\r\n"
-    with pytest.raises(CalorificError, match="bad value"):
-        parse_gcv_file(broken.encode())
+_AALST = Station(ean="541454827090000155", name="GOS FLUVIUS - AALST")
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        "n/a",
+        "115.19",
+        "1151925",
+        '"115,19"',
+        "1e1",
+        "inf",
+        "Infinity",
+        "nan",
+        "-11.5",
+        "8.99",
+        "13.01",
+        pytest.param("9" * 400, id="400 digits"),
+    ],
+)
+def test_a_station_whose_value_is_no_calorific_value_is_left_out(cell: str) -> None:
+    """Refused by the row, not the file: the other stations keep their
+    values, and no parser's ExtractorError escapes, which no caller of this
+    catches. A value past the band a typed factor is held to would scale
+    every bill, and an infinity was stored as null."""
+    broken = _FILE + f"2026-08,GOS FLUVIUS - BEVEREN,541454827090000056,{cell}\r\n"
+    assert parse_gcv_file(broken.encode()) == {_AALST: pytest.approx(11.519258996)}
+
+
+@pytest.mark.parametrize(("cell", "value"), [("9", 9.0), ("13.0", 13.0), ('"10,0962"', 10.0962)])
+def test_a_value_at_the_edge_of_the_band_is_kept(cell: str, value: float) -> None:
+    beveren = Station(ean="541454827090000056", name="GOS FLUVIUS - BEVEREN")
+    edge = _FILE + f"2026-08,GOS FLUVIUS - BEVEREN,541454827090000056,{cell}\r\n"
+    assert parse_gcv_file(edge.encode())[beveren] == value
+
+
+def test_a_row_longer_than_the_header_is_left_out() -> None:
+    """A decimal comma no quotes hold splits the value over two cells, the
+    first of which read as 11 kWh/m3."""
+    split = _FILE + "2026-08,GOS FLUVIUS - BEVEREN,541454827090000056,11,5192589960\r\n"
+    assert parse_gcv_file(split.encode()) == {_AALST: pytest.approx(11.519258996)}
+
+
+def test_a_file_whose_every_value_is_refused_is_a_calorific_error() -> None:
+    """In another unit, say: 41,5 MJ a cubic metre for every station."""
+    file = (
+        "GCVMonth,ARSName,ARSEanGSRN,GCVValue\r\n"
+        '2026-08,GOS FLUVIUS - AALST,541454827090000155,"41,5"\r\n'
+        '2026-08,GOS FLUVIUS - GENT,541454827090000087,"41,4"\r\n'
+    )
+    with pytest.raises(CalorificError, match="lists no station"):
+        parse_gcv_file(file.encode())
 
 
 def test_a_file_that_is_no_csv_is_a_calorific_error() -> None:

@@ -1654,14 +1654,14 @@ async def test_a_pricing_error_clears_once_the_card_prices_again(
 async def test_one_unreadable_calorific_month_leaves_the_others_read(
     hass: HomeAssistant, fetch: AsyncMock
 ) -> None:
-    """March's file has a bad value: the months after it are read all the
+    """March's file cannot be read: the months after it are read all the
     same, and August converts on August's value."""
     station = "541234"
     months = {f"2026-{m:02d}": f"GCV2026{m:02d}.txt" for m in range(1, 9)}
 
     async def fetch_month(_session: Any, _context: Any, _key: Any, path: str) -> Any:
         if path == "GCV202603.txt":
-            raise calorific.CalorificError("calorific value file has a bad value 'n/a'")
+            raise calorific.CalorificError("calorific value file has no header")
         return {calorific.Station(ean=station, name="X"): 11.0 + int(path[7:9]) / 100}
 
     data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: station}
@@ -1673,6 +1673,65 @@ async def test_one_unreadable_calorific_month_leaves_the_others_read(
     ):
         entry = await _setup(hass, data)
     assert entry.runtime_data._m3_factor("2026-08") == (pytest.approx(11.08), "2026-08")
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_station_value_outside_the_band_leaves_its_month_to_the_one_before(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """August's file gives the station 115,19 kWh a cubic metre, ten times
+    its value: the station has none that month, and August converts on
+    July's, as a month not published yet does."""
+    station = "541454827090000155"
+    months = {"2026-07": "GCV202607.txt", "2026-08": "GCV202608.txt"}
+    head = "GCVMonth,ARSName,ARSEanGSRN,GCVValue\r\n"
+    files = {
+        "GCV202607.txt": head + f'2026-07,GOS X,{station},"11,4"\r\n',
+        "GCV202608.txt": head
+        + f'2026-08,GOS X,{station},"115,19"\r\n'
+        + '2026-08,GOS Y,541454827090000087,"11,6"\r\n',
+    }
+
+    async def get(_session: Any, _context: Any, url: str, *_args: Any) -> bytes:
+        return files[url.rsplit("/", 1)[-1]].encode()
+
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: station}
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "_get", get),
+    ):
+        entry = await _setup(hass, data)
+    assert entry.runtime_data._gcv == {"2026-07": pytest.approx(11.4)}
+    assert entry.runtime_data._m3_factor("2026-08") == (pytest.approx(11.4), "2026-07")
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_stored_calorific_value_that_is_no_number_is_read_again(
+    hass: HomeAssistant, fetch: AsyncMock, hass_storage: dict[str, Any]
+) -> None:
+    """An infinity an older release took off a month file was stored as
+    null. The entry still sets up, and reads that month again."""
+    station = "541234"
+    months = {"2026-07": "GCV202607.txt", "2026-08": "GCV202608.txt"}
+    fetch_month = AsyncMock(return_value={calorific.Station(ean=station, name="X"): 11.6})
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: station}
+    entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=data)
+    key = f"{DOMAIN}.{entry.entry_id}"
+    stored = {"station": station, "values": {"2026-07": 11.4, "2026-08": None}}
+    hass_storage[key] = {"version": 1, "key": key, "data": {"gcv": stored}}
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "fetch_month", fetch_month),
+    ):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert [call.args[3] for call in fetch_month.await_args_list] == ["GCV202608.txt"]
+    assert entry.runtime_data._gcv == {"2026-07": 11.4, "2026-08": 11.6}
 
 
 _READ_METER = "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter"

@@ -90,7 +90,8 @@ this integration prices like any other.
   the delivery year.
 - **Cubic metres to kWh**: the factor printed on your bill, or without one
   the monthly calorific value of your gas reception station, published by
-  Atrias.
+  Atrias. A value outside 9 to 13 kWh/m³, the range the typed factor is held
+  to, is not used: that month converts on the latest value before it.
 
 **Costs over time**
 

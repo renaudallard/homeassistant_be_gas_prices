@@ -32,6 +32,17 @@ station from Atrias:
   (station name, EAN, value in kWh/m³(n)), whose format varies from file to
   file and is read tolerantly, in a worker thread.
 
+A station's value is taken only from 9 to 13 kWh/m³(n), the band the factor
+typed from a bill is held to (`CONVERSION_FACTOR_MIN`, `CONVERSION_FACTOR_MAX`):
+it scales every bill, and every value Atrias published from November 2021 to
+August 2026 lies between 10,10 and 11,81. A station listed at 0 or without a
+value is not in use that month. One whose value is no figure or lies outside
+the band, or whose row is longer than the header (an unquoted decimal comma
+splits the value over two cells), is left out by its row, the other stations
+keeping theirs. Its month then has no value and converts on the latest one
+before it, and the file is read again the next day. A file without its
+header, that is no CSV or that leaves no station at all is refused whole.
+
 Each answer is held to 256 KiB as it streams: on 6 November 2026 the folder
 list was 9 kB, a month's file 4 kB and the runtime config 668 bytes.
 

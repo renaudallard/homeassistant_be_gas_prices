@@ -161,9 +161,10 @@ floor is dropped. The past months' cards another release of the integration
 stored are read again, even across a restart, so a release that reads a card
 better reaches them, and kept when no card of the month can be found any
 more. A release that refuses a card an older one misread raises the floor to
-its schema, which drops them all. A stored index value that is no finite
-number is left out: the Store writes a NaN or an infinity as null, on which
-the restore failed setup at every start.
+its schema, which drops them all. A stored index value or calorific value
+that is no finite number is left out: the Store writes a NaN or an infinity
+as null, on which the restore failed setup at every start. The calorific
+value's month is then read again.
 
 ## Staleness
 

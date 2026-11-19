@@ -257,7 +257,8 @@ billed on the last card it was sold on.
 A meter in kWh needs nothing. A meter in m³ is converted per month: by the
 factor typed from the bill, the default, or by the calorific value of the
 household's reception station for that month (Atrias, kWh per m³(n)), the
-latest published before it while the month's own is not out. A billed month
+latest published before it while the month's own is not out or is refused
+(no figure, or outside the 9 to 13 the typed factor is held to). A billed month
 without any is no bill at all; a day of last year without any, as before a
 station Atrias lists only since a later month, is left out of the rolling
 year and the projection, which take it as a missing day. The station

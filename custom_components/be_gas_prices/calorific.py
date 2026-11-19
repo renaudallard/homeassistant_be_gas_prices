@@ -69,7 +69,12 @@ from urllib.parse import quote
 import aiohttp
 from homeassistant.util.ssl import create_client_context
 
-from .const import ATRIAS_API_URL, ATRIAS_CONFIG_URL
+from .const import (
+    ATRIAS_API_URL,
+    ATRIAS_CONFIG_URL,
+    CONVERSION_FACTOR_MAX,
+    CONVERSION_FACTOR_MIN,
+)
 from .providers._parse import to_float
 from .providers._pdf import (
     checked_request,
@@ -200,6 +205,13 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
     before the header, a header misspelt "SGCVMonth", the columns in another
     order, the decimal a quoted comma or a dot. A station listed at 0 is not
     in use that month and is left out, as is one with no value at all.
+
+    So is a station whose value is no figure or lies outside the band a
+    factor typed from the bill is held to, which every value Atrias
+    published from November 2021 to August 2026 is well within (10,10 to
+    11,81): it scales every bill, and that month then converts on the
+    latest value before it. A row longer than the header is left out too:
+    an unquoted decimal comma splits the value over two cells.
     """
     text = payload.decode("utf-8-sig", errors="replace")
     lines = text.splitlines()
@@ -220,7 +232,8 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
         raise CalorificError(f"calorific value file has an unknown header {header}") from None
     out: dict[Station, float] = {}
     for row in rows[1:]:
-        if len(row) <= max(name_at, ean_at, value_at):
+        if not max(name_at, ean_at, value_at) < len(row) <= len(header):
+            # Cut short, or split by a comma no quotes hold.
             continue
         cell = row[value_at].strip()
         if not cell:
@@ -229,8 +242,9 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
         try:
             value = to_float(cell)
         except ExtractorError:
-            raise CalorificError(f"calorific value file has a bad value {cell!r}") from None
-        if value > 0:
+            # No figure: this station's row alone is refused, not the file.
+            continue
+        if CONVERSION_FACTOR_MIN <= value <= CONVERSION_FACTOR_MAX:
             out[Station(ean=row[ean_at].strip(), name=row[name_at].strip())] = value
     if not out:
         raise CalorificError("calorific value file lists no station")

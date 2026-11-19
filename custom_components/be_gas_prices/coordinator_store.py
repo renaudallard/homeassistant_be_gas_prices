@@ -187,7 +187,11 @@ class _StoreMixin:
         network_archive.restore(blob.get("network_archive"))
         gcv = blob.get("gcv")
         if isinstance(gcv, dict) and gcv.get("station") == self._data.get(CONF_STATION):
-            self._gcv = {str(k): float(v) for k, v in (gcv.get("values") or {}).items()}
+            self._gcv = {
+                str(k): number
+                for k, v in (gcv.get("values") or {}).items()
+                if (number := finite_number(v)) is not None
+            }
         self._months.load_json(blob.get("months"), reread=blob.get("release") != self._release)
         stamp = blob.get("backfill")
         self.backfill_stamp = stamp if isinstance(stamp, str) else None
