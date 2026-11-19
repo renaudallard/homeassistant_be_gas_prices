@@ -59,6 +59,10 @@ from tests.recorder.test_gas_meter import _import, _setup_entry, _zone
 # The module itself: the package exports a function of the same name.
 backfill_cost_module = importlib.import_module("custom_components.be_gas_prices.backfill_cost")
 
+# A test stopped by its timeout while a worker waits on the recorder hangs in
+# its teardown and again at exit, so the thread method ends the process.
+pytestmark = pytest.mark.timeout(method="thread")
+
 SID = "sensor.gas_current_year_cost"
 OLD = datetime(2025, 12, 31, 23, tzinfo=UTC)  # 1 January 2026, Brussels
 JULY = datetime(2026, 6, 30, 22, tzinfo=UTC)  # 1 July 2026, Brussels
@@ -391,6 +395,9 @@ async def test_nothing_is_imported_when_the_recorder_does_not_answer(
     assert await hass.async_add_executor_job(_rows, hass, OLD) == []
 
 
+# Writing the year's hours took 21 seconds on a quiet x86 runner, 50 on a
+# quiet Raspberry Pi and 187 on one at load 20.
+@pytest.mark.timeout(300, method="thread")
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
 async def test_the_year_is_written_from_the_meter(
     recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None, freezer: Any

@@ -84,6 +84,10 @@ from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
 from tests import fixture_text
 
+# A test stopped by its timeout while a worker waits on the recorder hangs in
+# its teardown and again at exit, so the thread method ends the process.
+pytestmark = pytest.mark.timeout(method="thread")
+
 METER = "sensor.gas_meter"
 
 
@@ -632,6 +636,9 @@ async def test_the_hour_the_recorder_is_compiling_is_left_to_it(
     assert counts["sensor.engie_flow_current_price"] == 9
 
 
+# Writing the price history from 1 January took 5 seconds on a quiet x86
+# runner and 76 on a Raspberry Pi at load 20.
+@pytest.mark.timeout(180, method="thread")
 @pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
 async def test_the_price_history_gives_the_event_loop_turns(
     recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None

@@ -21,7 +21,8 @@ card, reader or version is read afresh. Each file is written aside, synced
 and renamed into place, so a crash mid-run never leaves an empty text under a
 card's name. `BE_FIXTURE_TEXT_CACHE` moves the
 directory. On a Raspberry Pi the whole suite took 630 seconds with an empty
-cache and 54 seconds with a full one.
+cache. With a full one it took 131 seconds on an idle four-core x86 machine,
+most of it Home Assistant and the recorder.
 
 ### Layout
 
@@ -110,8 +111,16 @@ pdfplumber takes 20 to 60 seconds a page on some cards on a Raspberry Pi
 (Bolt, Frank), so `test_bolt.py`, `test_frank.py` and the test of
 `test_vat_table.py` that lays out a Bolt card raise the per-test timeout to
 180 seconds. The full suite takes 4 to 10 minutes on a Raspberry Pi
-with three workers (`-n 3`) while the text cache is empty, under a minute once
-it is full.
+with three workers (`-n 3`) while the text cache is empty.
+
+Two recorder tests write a year of hours: in `test_backfill_cost.py` the
+year's cost took 21 seconds on an idle x86 machine, 50 on a quiet Raspberry
+Pi and 187 on one at load 20, so it has 300 seconds; in `test_gas_meter.py`
+the price history took 5, and 76 at load 20, and has 180. The recorder
+tests time out with pytest-timeout's thread method, which ends the process:
+a test stopped while a worker thread waits on the recorder would otherwise
+hang in its teardown, where Home Assistant's executor waits for ten seconds
+of a clock the test froze, and again at exit on that thread.
 
 ### Linting and typing
 
@@ -141,8 +150,7 @@ scripts/gate.sh tests/test_ebem.py                     # one file
 
 pytest spreads over the cores and the other checks take one each. The text
 cache and the two mypy caches are the main checkout's, so a gate after the
-first reuses them: on a Raspberry Pi, every check and the whole suite took 69
-seconds with the caches full. The interpreter is `GATE_PYTHON`, else
+first reuses them. The interpreter is `GATE_PYTHON`, else
 `.venv/bin/python`; actionlint runs over the workflows when its binary sits
 at `tmp/actionlint`.
 

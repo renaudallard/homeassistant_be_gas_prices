@@ -54,6 +54,10 @@ from custom_components.be_gas_prices.backfill import _backfill_end, _hours
 from custom_components.be_gas_prices.backfill_cost import _import_cost_rows
 from tests.recorder.test_gas_meter import _zone
 
+# A test stopped by its timeout while a worker waits on the recorder hangs in
+# its teardown and again at exit, so the thread method ends the process.
+pytestmark = pytest.mark.timeout(method="thread")
+
 SID = "sensor.gas_current_year_cost"
 TEMPERATURE = "sensor.temperature"
 BLOCKED = "Blocked attempt to insert duplicated statistic rows"
