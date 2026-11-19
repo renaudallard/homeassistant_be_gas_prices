@@ -452,8 +452,32 @@ def _price_and_fee(text: str) -> tuple[float, float]:
     return to_float(price.group(1)) / 100.0, to_float(fee.group(1)) * 12.0
 
 
+# The fixed card's price has no formula to be worked out again from, so its
+# unit is read from the legend of the chart the price sits in, "Gaz
+# provenant du marché de gros (c€/kWh)". A price restated in €/kWh would
+# read a hundredth of itself. Every fixed card from April to November 2026
+# prints the legend once, starting 36 characters behind the price, or 81
+# ahead of it on Bolt Plenty Fixe since August 2026, and only "c€/kWh" is
+# taken. The reach leaves room for a few lines more either side.
+_PRICE_UNIT_RE = re.compile(r"Gaz\s+provenant\s+du\s+marché\s+de\s+gros\s*\(([^()\n]*)\)")
+_PRICE_UNIT = "c€/kWh"
+_PRICE_UNIT_REACH = 300
+
+
+def _price_unit(text: str) -> str | None:
+    """The unit the chart's legend states for the "Prix mensuel"."""
+    figure = _PRICE_RE.search(text)
+    if figure is None:
+        return None
+    reach = _PRICE_UNIT_REACH
+    return stated_unit(text, _PRICE_UNIT_RE, figure.span(1), before=reach, after=reach)
+
+
 def _fixed(text: str) -> FixedRates:
     price, fee = _price_and_fee(text)
+    unit = _price_unit(text)
+    if unit != _PRICE_UNIT:
+        raise ExtractorError(f"Bolt: price unit {unit!r}, expected {_PRICE_UNIT!r}")
     return FixedRates(price=price, yearly_fixed_fee=fee)
 
 

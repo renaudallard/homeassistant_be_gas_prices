@@ -74,6 +74,15 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   August 2026 card spells it "Aôut", which folds to "aout".
 - Energy: "Prix mensuel 8,02" (c€/kWh TTC) and "€ 8,99 / mois", times 12 for
   `yearly_fixed_fee`.
+- Units of the fixed price: read from the legend of the chart the price
+  sits in, "Gaz provenant du marché de gros (c€/kWh)", looked for within 300
+  characters either side of the figure. Every fixed card from April to
+  November 2026 prints it once, starting 36 characters behind the price, or
+  81 ahead of it on Bolt Plenty Fixe since August 2026. A card stating
+  another unit there, or none, is refused: a fixed price has no formula to
+  be worked out again from, and restated in €/kWh it would read a hundredth
+  of itself. The older template prints its unit around the figure
+  ("c€4,62/kWh"), which its pattern holds.
 - VAT: "TTC" everywhere, no rate stated, so `card_vat_rate` is None. The only
   formula the fixed card prints is "Simple Fixe".
 - Variable formula, under "Type de compteur TTF Q3 2026 Formule tarifaire
@@ -298,7 +307,8 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
 pays pdfplumber's 45 s on a Raspberry Pi):
 
 - Bolt Fixe price and fee, month, VAT basis; Plenty Fixe fee; the Bolt Fixe
-  card refused for Plenty Fixe.
+  card refused for Plenty Fixe; either fixed card with its chart legend in
+  €/kWh, in €/MWh or without a unit refused, and a legend past its reach.
 - The older fixed template, November 2025 and March 2026 cards: price, fee,
   month, levies and tables in each region, each table of its own year, the
   card held to its product, and the older variable card refused.

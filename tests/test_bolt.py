@@ -132,6 +132,53 @@ def test_plenty_fixe_differs_by_its_fee() -> None:
     assert _fixed(snap) == pytest.approx((0.0802, 3.99 * 12))
 
 
+@pytest.mark.parametrize(
+    ("restated", "price", "refusal"),
+    [
+        # In €/kWh the price would read a hundredth of itself, in €/MWh ten
+        # times itself.
+        ("gros (€/kWh)", "0,0802", "price unit '€/kWh'"),
+        ("gros (€/MWh)", "80,20", "price unit '€/MWh'"),
+        # No unit, where every card states one.
+        ("gros", "8,02", "price unit None"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("contract", "region", "name"),
+    [
+        # The legend is printed behind the price on Bolt Fixe, ahead of it
+        # on Bolt Plenty Fixe.
+        ("bolt_fix", REGION_FLANDERS, _FIX_202609),
+        ("bolt_plenty_fix", REGION_WALLONIA, _PLENTY_202609),
+    ],
+)
+def test_fixed_card_stating_another_price_unit_is_refused(
+    contract: str, region: str, name: str, restated: str, price: str, refusal: str
+) -> None:
+    """The fixed price is read as c€/kWh off the legend of its chart, "Gaz
+    provenant du marché de gros (c€/kWh)"."""
+    text = _card(name)
+    assert _fixed(bolt.parse_snapshot(contract, region, text))[0] == pytest.approx(0.0802)
+    for printed, other in (
+        ("gros (c€/kWh)", restated),
+        ("Prix mensuel 8,02", f"Prix mensuel {price}"),
+    ):
+        assert text.count(printed) == 1
+        text = text.replace(printed, other)
+    with pytest.raises(ExtractorError, match=refusal):
+        bolt.parse_snapshot(contract, region, text)
+
+
+def test_a_price_unit_past_its_reach_is_no_unit() -> None:
+    """The legend is looked for within 300 characters of the price: moved
+    to the end of the card it states nothing for it."""
+    text = _card(_FIX_202609)
+    legend = "Gaz provenant du marché de gros (c€/kWh)\n"
+    assert text.count(legend) == 1
+    with pytest.raises(ExtractorError, match="price unit None"):
+        bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, text.replace(legend, "") + legend)
+
+
 def test_card_of_the_other_product_is_refused() -> None:
     with pytest.raises(ExtractorError, match="the card is for Bolt Fixe"):
         bolt.parse_snapshot("bolt_plenty_fix", REGION_FLANDERS, _card(_FIX_202609))
