@@ -82,7 +82,7 @@ from ._network import (
     read_dsos,
     require_region,
 )
-from ._parse import require_contract, to_float
+from ._parse import require_contract, stated_unit, to_float
 from ._pdf import NL_MONTHS, fetch_pdf_text, printed_vat_rate
 from ._rates import Contract, VariableRates
 from ._validity import end_of_month
@@ -128,6 +128,15 @@ _VAT_RE = r"inclusief\s+(\d+)\s*%\s*BTW"
 _PRICE_RE = re.compile(
     r"^Gas[ \t]+(\S(?>.*?ZTP).*\+[ \t]*\d+(?:,\d+)?)[ \t]+(\d+,\d+)[ \t]*$", re.MULTILINE
 )
+# The price's unit is the heading of its block, "Energiekost (in c€/kWh)",
+# two lines above the formula's and starting 121 characters ahead of the
+# price on the cards of September to November 2026. It is the only
+# statement of it: a price restated in €/kWh would read a hundredth of
+# itself. Only "c€/kWh" is taken, and the reach leaves room for a few more
+# lines in between.
+_PRICE_UNIT_RE = re.compile(r"Energiekost\s*\(in\s+([^()\n]*)\)")
+_PRICE_UNIT = "c€/kWh"
+_PRICE_UNIT_REACH = 300
 _FEE_RE = re.compile(r"€\s*(\d+(?:,\d+)?)\s*/maand/EAN")
 # pypdf breaks some tax figures around their comma ("0, 10577", "1 ,093").
 _FIGURE = r"\s+(\d+ ?, ?\d+)"
@@ -154,6 +163,9 @@ def _energy(text: str) -> VariableRates:
     fee = _FEE_RE.search(text)
     if price is None or fee is None:
         raise ExtractorError("Dots Energy: price or fee not found")
+    unit = stated_unit(text, _PRICE_UNIT_RE, price.span(2), before=_PRICE_UNIT_REACH)
+    if unit != _PRICE_UNIT:
+        raise ExtractorError(f"Dots Energy: price unit {unit!r}, expected {_PRICE_UNIT!r}")
     return VariableRates(
         price=to_float(price.group(2)) / 100.0,
         yearly_fixed_fee=to_float(fee.group(1)) * 12.0,

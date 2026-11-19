@@ -158,6 +158,31 @@ def test_a_price_wrapped_off_the_formula_line_is_refused() -> None:
         dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, text, "url")
 
 
+@pytest.mark.parametrize(
+    ("heading", "price", "refusal"),
+    [
+        # In €/kWh the price would read a hundredth of itself, in €/MWh ten
+        # times itself.
+        ("Energiekost (in €/kWh)", "0,07873", "price unit '€/kWh'"),
+        ("Energiekost (in €/MWh)", "78,73", "price unit '€/MWh'"),
+        # No unit, where every card states one.
+        ("Energiekost", "7,873", "price unit None"),
+    ],
+)
+def test_a_price_headed_in_another_unit_is_refused(heading: str, price: str, refusal: str) -> None:
+    """The price is read as c€/kWh off the heading of its block,
+    "Energiekost (in c€/kWh)"."""
+    text = fixture_text("dots", CARD)
+    for printed, restated in (
+        ("Energiekost (in c€/kWh)\n", f"{heading}\n"),
+        ("EEX + 0,9 7,873\n", f"EEX + 0,9 {price}\n"),
+    ):
+        assert text.count(printed) == 1
+        text = text.replace(printed, restated)
+    with pytest.raises(ExtractorError, match=refusal):
+        dots.parse_snapshot("dots_connect_digital", REGION_FLANDERS, text, "url")
+
+
 def test_the_november_2026_card_is_read() -> None:
     """The card the rebuilt site serves: "Gas 1,05 * M ZTP rek. gem. EGSI EEX +
     0,9 10,881" and "€5,3/maand/EAN"."""

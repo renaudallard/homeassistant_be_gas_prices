@@ -73,6 +73,12 @@ is provisional, and its comparison rows carry the ~ mark.
 - Energy: the "Gas ... ZTP ... + 0,9 7,873" line (formula up to its adder,
   then the price, on the same line: a price wrapped off it refuses the card
   rather than reading the adder); fee "€5,3/maand/EAN" x 12.
+- Unit of the price: the heading of its block, "Energiekost (in c€/kWh)",
+  two lines above the formula's and looked for within 300 characters ahead
+  of the price (it starts 121 ahead on the cards of September to November
+  2026). It is the only statement of it, and a card stating
+  another unit there, or none, is refused: a price restated in €/kWh would
+  read a hundredth of itself. The fee's unit is part of its own pattern.
 - VAT: "inclusief 6% BTW" into `card_vat_rate`.
 - Taxes: "Energiebijdrage 0,10577", "Verbruik tussen 0 & 12.000 kWh 1,093",
   "Verbruik > 12.000 kWh 1,183". pypdf breaks some of these around the comma
@@ -114,5 +120,6 @@ is provisional, and its comparison rows carry the ~ mark.
 `tests/test_dots.py`: the price kept as printed, the levies, the Antwerpen
 row, the wrong cells dropping their tier, the Internal card refused, region and
 contract refusals, a lost price line, a price wrapped off the formula line,
+a price headed in €/kWh, in €/MWh or in no unit,
 the November 2026 card, `fetch` at the card's address, and the extractor
 having neither archive nor index.
