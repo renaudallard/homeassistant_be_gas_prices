@@ -542,8 +542,12 @@ def _license() -> str:
 
 
 def _entry(postcode: str, values: tuple[str, ...]) -> str:
-    joined = ", ".join(f'"{value}"' for value in values)
-    return f'    "{postcode}": ({joined}{"," if len(values) == 1 else ""}),'
+    """One row of a table, each string as a literal: a JSON string is a
+    double-quoted Python one. A DSO name without a key is Synergrid's text,
+    and put between quotes as it came, one holding a quote became code in a
+    module every installation imports."""
+    joined = ", ".join(json.dumps(value, ensure_ascii=False) for value in values)
+    return f"    {json.dumps(postcode)}: ({joined}{',' if len(values) == 1 else ''}),"
 
 
 def render(

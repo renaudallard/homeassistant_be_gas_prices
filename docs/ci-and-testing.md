@@ -39,7 +39,7 @@ cache and 54 seconds with a full one.
   quoting it are checked in `test_ha_setup.py`.
 - `test_postcodes.py`: the postcode table. `test_refresh_postcodes.py`: the
   script that generates it writes nothing when bpost or Synergrid comes back
-  short or keeps failing.
+  short or keeps failing, and writes a name Synergrid gives as a string.
 - `test_calorific.py`: Atrias's monthly calorific value files, and its two
   hosts held to the rules the shared helpers keep.
 - `test_excise_law.py`: article 419 read from Justel's page as served,
@@ -619,6 +619,14 @@ Rebuilds `postcode_map.py` from bpost's postcode list and Synergrid's "DNB in
 uw gemeente" lookup, one gas DSO set per postcode, with the script's
 `OVERRIDES` applied. It prints every Synergrid answer on stdout for review and
 writes nothing when a source comes back short. Standard library only.
+
+Every string of the two tables is written as a literal (`_entry`): the name
+of a gas DSO without a key is Synergrid's own text, and put between quotes
+as it came, a name holding a quote became code in the module every
+installation imports
+(`test_a_name_synergrid_gives_is_written_as_a_string`). The writer gives
+back the committed module byte for byte from the tables it holds
+(`test_the_writer_gives_back_the_table_in_the_repository`).
 
 ## scripts/file_ci_issue.sh
 
