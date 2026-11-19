@@ -344,7 +344,12 @@ How the cross-check decides:
   than the sheet's fails as `... metering ... against the Fluvius sheet`.
   While the sheet does not answer (a transient check), a Fluvius row
   printing no fee is transient too: its fee is the sheet's, which the
-  integration bills once read.
+  integration bills once read. In the first five days of January, while a
+  December card is still accepted, last year's sheet is read and held as
+  well (`_sheet_years`), with a row of its own: a card leaving the fee out,
+  as Luminus's do, is billed its own year's, and with this year's sheet
+  alone December's card failed its eight Fluvius rows
+  (`test_the_run_reads_last_year_s_fluvius_sheet_while_a_december_card_is_accepted`).
 - It also reads this year's network sheet of every DSO a custom entry can
   take its network from, through the integration's readers
   (`read_network_sheets`): each Fluvius area's, Brugel's, and ORES's and

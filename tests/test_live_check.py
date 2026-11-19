@@ -52,6 +52,7 @@ from unittest.mock import AsyncMock, patch
 import aiohttp
 import pytest
 import yaml  # type: ignore[import-untyped]
+from freezegun.api import FrozenDateTimeFactory
 
 from custom_components.be_gas_prices import calorific, excise_law, fluvius, tarbel
 from custom_components.be_gas_prices.providers import _moved
@@ -792,7 +793,7 @@ async def test_this_year_s_fluvius_sheet_is_read_before_the_fleet(
 
     monkeypatch.setattr(fluvius, "fetch_fee", fetch_fee)
     fluvius._cache.clear()
-    check = await lc.check_fluvius_sheet(None, date(2026, 10, 19), sleep=_no_sleep)
+    check = await lc.check_fluvius_sheet(None, 2026, sleep=_no_sleep)
     assert (check.label, check.status) == ("fluvius: 2026 gas tariff sheet", status)
     assert fluvius.data_management_fee(2026) == (17.85 if status == "ok" else None)
 
@@ -1952,8 +1953,13 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_main_writes_the_fingerprint_and_returns_the_code(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    freezer: FrozenDateTimeFactory,
 ) -> None:
+    # A day with one Fluvius sheet to read: early January has two.
+    freezer.move_to("2026-10-19T08:00:00+02:00")
     fleets: list[dict[str, Any]] = []
 
     async def check_fleet(*_args: Any, **kwargs: Any) -> list[Any]:
@@ -1990,6 +1996,66 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
 
     monkeypatch.setattr(lc, "check_fleet", crash)
     assert lc.main() == 3
+
+
+# The run's own read of a Fluvius sheet, which _offline stands in for.
+_CHECK_FLUVIUS_SHEET = lc.check_fluvius_sheet
+
+
+@pytest.mark.parametrize(
+    ("day", "label", "years"),
+    [
+        ("2026-12-31", "2026-12", [2026]),
+        ("2027-01-01", "2026-12", [2027, 2026]),
+        ("2027-01-05", "2026-12", [2027, 2026]),
+        ("2027-01-06", "2027-01", [2027]),
+        ("2028-01-02", "2027-12", [2028, 2027]),
+    ],
+)
+def test_the_run_reads_last_year_s_fluvius_sheet_while_a_december_card_is_accepted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    freezer: FrozenDateTimeFactory,
+    day: str,
+    label: str,
+    years: list[int],
+) -> None:
+    """A card leaving out the Fluvius fee is billed the sheet's of its own
+    year, as Luminus's are. A run of 1 to 5 January held this year's sheet
+    only, and December's card, still accepted, failed its Fluvius rows."""
+    freezer.move_to(f"{day}T08:00:00+01:00")
+    fleet = [
+        _card(_snapshot("alpha", label=label)),
+        _card(_snapshot("beta", label=label)),
+        _card(_snapshot("gamma", label=label, metering=0.0)),
+    ]
+    asked: list[int] = []
+    rows: list[Any] = []
+
+    async def fetch_fee(_session: Any, year: int) -> float:
+        asked.append(year)
+        return 18.5 / 1.06
+
+    async def check_fleet(_session: Any, _extractors: Any, today: date, **kwargs: Any) -> list[Any]:
+        rows.extend(lc.consensus(fleet, today, sheet_unread=kwargs["sheet_unread"]))
+        return []
+
+    _offline(monkeypatch)
+    fluvius._cache.clear()
+    monkeypatch.setattr(lc, "check_fluvius_sheet", _CHECK_FLUVIUS_SHEET)
+    monkeypatch.setattr(fluvius, "fetch_fee", fetch_fee)
+    monkeypatch.setattr(lc, "check_fleet", check_fleet)
+    fingerprint = tmp_path / "failures.txt"
+    monkeypatch.setattr(sys, "argv", ["live_check.py", "--fingerprint", str(fingerprint)])
+    assert lc.main() == 0
+    assert asked == years
+    out = capsys.readouterr().out
+    for year in years:
+        assert f"- [x] fluvius: {year} gas tariff sheet" in out
+    [check] = [row for row in rows if "metering" in row.label]
+    assert (check.label, check.status) == (f"gamma: fluvius_kempen metering for {label}", "notice")
+    assert check.detail.endswith("; billed the regulated fee for this month")
 
 
 def test_the_run_holds_the_archive_s_vat_table_before_the_fleet(

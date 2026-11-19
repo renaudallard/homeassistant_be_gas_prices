@@ -1217,7 +1217,7 @@ def consensus(
     among the cards of the same month. ``today``, Brussels's by default,
     gives the month a card with no end date is compared in, and the known
     card errors lapse on the month a card is compared in; ``sheet_unread``
-    says the year's Fluvius sheet did not answer."""
+    says a Fluvius sheet the run reads did not answer."""
     today = today or datetime.now(BRUSSELS).date()
     groups: dict[tuple[str, str, str], list[Figure]] = {}
     for card in cards:
@@ -1418,27 +1418,34 @@ def check_vat_table(texts: Path | None) -> Check:
     return Check(label, "ok")
 
 
+def _sheet_years(today: date) -> list[int]:
+    """The years whose Fluvius tariff sheet a run measures cards on: this
+    one, and the one before while its December card is still accepted
+    (:func:`_behind`). A card leaving the fee out is billed its own year's."""
+    return [today.year] if _behind((today.year - 1, 12), today) else [today.year, today.year - 1]
+
+
 async def check_fluvius_sheet(
     session: aiohttp.ClientSession,
-    today: date,
+    year: int,
     *,
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> Check:
-    """This year's Fluvius gas tariff sheet read as the integration reads
+    """``year``'s Fluvius gas tariff sheet read as the integration reads
     it, and held for the fleet's Fluvius fees to be measured against: run
     before the fleet. A year Fluvius lists no sheet for, or a sheet that no
     longer gives the fee, fails: the fee a Flemish card leaves out is then
     left out of the bill too."""
-    label = f"fluvius: {today.year} gas tariff sheet"
+    label = f"fluvius: {year} gas tariff sheet"
     try:
         fee = await fetch_with_retry(
-            functools.partial(fluvius.fetch_fee, session, today.year), sleep=sleep
+            functools.partial(fluvius.fetch_fee, session, year), sleep=sleep
         )
     except Exception as err:  # reported like a card
         return _failure(label, err)
     if fee is None:
         return Check(label, "fail", "no sheet listed, or no yearly-read data management fee on it")
-    fluvius.hold(today.year, fee)
+    fluvius.hold(year, fee)
     return Check(label, "ok")
 
 
@@ -1785,8 +1792,8 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
                 today, law_read=checks[0].status == "ok", tariff_read=checks[1].status == "ok"
             )
             checks.append(check_vat_table(texts))
-            sheet = await check_fluvius_sheet(session, today)
-            checks.append(sheet)
+            fee_sheets = [await check_fluvius_sheet(session, year) for year in _sheet_years(today)]
+            checks += fee_sheets
             sheets, read = await read_network_sheets(session, today)
             checks += read
             checks.append(await check_atrias(session))
@@ -1794,7 +1801,7 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
                 session,
                 all_extractors(),
                 today,
-                sheet_unread=sheet.status == "transient",
+                sheet_unread=any(sheet.status == "transient" for sheet in fee_sheets),
                 sheets=sheets,
                 archive=texts,
             )
