@@ -169,6 +169,15 @@ that is no finite number is left out: the Store writes a NaN or an infinity
 as null, on which the restore failed setup at every start. The calorific
 value's month is then read again.
 
+The Repairs cards outlive an unload. A reload is an unload and a setup, and
+saving the settings is a reload: a card deleted at the unload lost the
+user's choice to ignore it, and the first tick raised it afresh. That tick
+deletes the cards that no longer hold instead, the meter's two once the
+meter is read. Where no setup follows, the cards go with the entry: when it
+is disabled, on the signal Home Assistant sends as the entry stops, loaded or
+with its setup still retrying (`_entry_changed`), and when it is removed
+(`async_remove_entry`).
+
 ## Staleness
 
 `snapshot_stale()` is true once the card is a week old (a week without a

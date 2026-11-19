@@ -541,6 +541,65 @@ async def test_disabling_a_retrying_entry_clears_its_repairs_cards(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize(
+    ("loaded", "stop"), [(True, "disable"), (True, "remove"), (False, "remove")]
+)
+async def test_an_entry_stopped_for_good_takes_its_repairs_cards_with_it(
+    hass: HomeAssistant, fetch: AsyncMock, loaded: bool, stop: str
+) -> None:
+    """Disabled or removed, loaded or with its setup still retrying: no
+    setup follows, so no tick would delete the cards."""
+    unreadable = CardNotReadableError("card has no text layer")
+    if loaded:
+        entry = await _setup(hass)
+        fetch.side_effect = unreadable
+        await entry.runtime_data.async_force_refresh(wait=True)
+    else:
+        fetch.side_effect = unreadable
+        entry = MockConfigEntry(domain=DOMAIN, title="Engie Flow", data=DATA)
+        entry.add_to_hass(hass)
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        assert entry.state is ConfigEntryState.SETUP_RETRY
+    issues = ir.async_get(hass)
+    key = f"card_unreadable_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, key) is not None
+    if stop == "disable":
+        await hass.config_entries.async_set_disabled_by(entry.entry_id, ConfigEntryDisabler.USER)
+    else:
+        await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, key) is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("still_unreadable", [True, False])
+async def test_a_reload_leaves_the_repairs_cards_to_its_first_tick(
+    hass: HomeAssistant, fetch: AsyncMock, still_unreadable: bool
+) -> None:
+    """A reload unloads the entry. Clearing its cards there dropped the
+    user's choice to ignore one, and the first tick raised it afresh: the
+    cards now stay through the unload, and that tick deletes one that no
+    longer holds."""
+    entry = await _setup(hass)
+    fetch.side_effect = CardNotReadableError("card has no text layer")
+    await entry.runtime_data.async_force_refresh(wait=True)
+    issues = ir.async_get(hass)
+    key = f"card_unreadable_{entry.entry_id}"
+    assert issues.async_get_issue(DOMAIN, key) is not None
+    issues.async_ignore(DOMAIN, key, True)
+    if not still_unreadable:
+        fetch.side_effect = None
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    issue = issues.async_get_issue(DOMAIN, key)
+    if still_unreadable:
+        assert entry.runtime_data.card_unreadable
+        assert issue is not None and issue.dismissed_version is not None
+    else:
+        assert issue is None
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize("start", ["0001-01-01", "1970-01-01", "2024-12-31"])
 async def test_a_backfill_before_last_year_is_refused(
     hass: HomeAssistant, fetch: AsyncMock, start: str

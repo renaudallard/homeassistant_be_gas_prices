@@ -99,9 +99,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     @callback
     def _entry_changed(_change: ConfigEntryChange, entry: ConfigEntry) -> None:
-        # An entry whose setup was retrying is not unloaded when it is
-        # disabled, only stopped: its Repairs cards go with it here.
-        if entry.domain == DOMAIN and entry.state is ConfigEntryState.NOT_LOADED:
+        # A disabled entry is stopped for good, loaded or with its setup
+        # still retrying, which is not unloaded: its Repairs cards go with
+        # it here. Any other unload is followed by a setup, whose first
+        # tick deletes the cards that no longer hold.
+        if (
+            entry.domain == DOMAIN
+            and entry.state is ConfigEntryState.NOT_LOADED
+            and entry.disabled_by is not None
+        ):
             clear_issues(hass, entry.entry_id)
 
     async_dispatcher_connect(hass, SIGNAL_CONFIG_ENTRY_CHANGED, _entry_changed)
@@ -250,16 +256,15 @@ async def _async_reload(hass: HomeAssistant, entry: GasConfigEntry) -> None:
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
-    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unloaded:
-        clear_issues(hass, entry.entry_id)
-    return unloaded
+    """Unload the platforms. The Repairs cards stay: a reload is an unload
+    too, and deleting a card drops the user's choice to ignore it, for the
+    next tick to raise it afresh. A removal or a disabling clears them."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: GasConfigEntry) -> None:
     """Drop the entry's store and Repairs cards with the entry, so a re-add
-    starts clean. An entry removed while its setup was retrying was never
-    unloaded, which is where the cards are cleared otherwise."""
+    starts clean, whether it was loaded or its setup was still retrying."""
     clear_issues(hass, entry.entry_id)
     await Store[dict[str, object]](
         hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}"
