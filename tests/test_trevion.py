@@ -290,7 +290,10 @@ async def test_fetch_reads_the_newest_listed_card() -> None:
 
 
 async def test_fetch_index_takes_each_value_from_the_following_card() -> None:
+    # The index is read from January of the year before the run's, and the
+    # listing held here is 2026's: on the real clock it gave nothing from 2028.
     with (
+        freeze_time(datetime(2026, 10, 19, 12)),
         patch.object(
             trevion,
             "fetch_text",
@@ -341,6 +344,7 @@ async def test_fetch_index_survives_a_dead_link_but_not_an_outage() -> None:
 
     listing = AsyncMock(return_value=fixture_page("trevion", "tariefkaarten.html"))
     with (
+        freeze_time(datetime(2026, 10, 19, 12)),
         patch.object(trevion, "fetch_text", listing),
         patch.object(trevion, "fetch_pdf_text", AsyncMock(side_effect=card_or_404)),
     ):
@@ -348,6 +352,7 @@ async def test_fetch_index_survives_a_dead_link_but_not_an_outage() -> None:
     assert "2026-08" not in table["TTF_RLP"]
     assert table["TTF_RLP"]["2026-07"] == pytest.approx(53.07)
     with (
+        freeze_time(datetime(2026, 10, 19, 12)),
         patch.object(trevion, "fetch_text", listing),
         patch.object(
             trevion, "fetch_pdf_text", AsyncMock(side_effect=ExtractorError("HTTP 503 fetching x"))
