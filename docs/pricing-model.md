@@ -259,9 +259,11 @@ factor typed from the bill, the default, or by the calorific value of the
 household's reception station for that month (Atrias, kWh per m³(n)), the
 latest published before it while the month's own is not out or is refused
 (no figure, or outside the 9 to 13 the typed factor is held to). A billed month
-without any is no bill at all; a day of last year without any, as before a
-station Atrias lists only since a later month, is left out of the rolling
-year and the projection, which take it as a missing day. The station
+without any is no bill at all; a day before the first one billed without
+any, last year's or this year's before the contract start the year is
+counted from, as before a station Atrias lists only since a later month, is
+left out of the rolling year and the projection, which take it as a missing
+day. The station
 value is per normal cubic metre and leaves out the DSO's correction for the
 pressure and temperature at the meter: Fluvius takes 9 °C without a volume
 converter, which alone is 273,15 / 282,15 = 0,968, and the pressure terms

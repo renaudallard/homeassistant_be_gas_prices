@@ -751,7 +751,7 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             self.unpriced_this_month = []
             self.meter_coverage = None
             factor = self._factor_for(kind)
-            billed_from = date(today.year, 1, 1)
+            billed_from = self.window_start(today)
             kwh_days = to_kwh(consumption(changes), factor, billed_from) if changes else None
             if kwh_days is not None and self.meter and carries_outages(self.hass, self.meter):
                 # The year reads each outage's gas off the first day back,

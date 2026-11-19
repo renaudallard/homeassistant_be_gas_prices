@@ -3464,6 +3464,52 @@ async def test_a_month_before_the_rolling_year_without_a_factor_keeps_the_costs(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_day_of_this_year_before_the_billed_window_needs_no_factor(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """Atrias lists the station only since June, and the entry counts the
+    year from its contract's start on 1 July: the days from January to May
+    hold gas and have no factor, but none of them is billed. Asked for a
+    factor from 1 January on, every cost and volume was unknown."""
+    station = "541234"
+    months = {f"2026-{m:02d}": f"GCV2026{m:02d}.txt" for m in range(6, 9)}
+
+    async def fetch_month(_session: Any, _context: Any, _key: Any, path: str) -> Any:
+        return {calorific.Station(ean=station, name="X"): 11.0}
+
+    async def consumption(_hass: Any, _meter: str, _kind: str, start: date, end: date) -> Any:
+        return {start + timedelta(days=n): 1.0 for n in range((end - start).days + 1)}
+
+    data = {
+        **DATA,
+        CONF_CONVERSION_MODE: CONVERSION_STATION,
+        CONF_STATION: station,
+        CONF_CONTRACT_START_DATE: "2026-07-01",
+        CONF_YTD_FROM_CONTRACT_START: True,
+    }
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", AsyncMock(return_value=months)),
+        patch.object(calorific, "fetch_month", fetch_month),
+        patch(
+            "custom_components.be_gas_prices.coordinator.discover_energy_gas_meter",
+            AsyncMock(return_value=("sensor.gas", 1)),
+        ),
+        patch(
+            "custom_components.be_gas_prices.coordinator.statistic_kind",
+            AsyncMock(return_value="volume"),
+        ),
+        patch("custom_components.be_gas_prices.coordinator.daily_changes", consumption),
+    ):
+        await _setup(hass, data)
+    cost = hass.states.get("sensor.engie_flow_current_year_cost")
+    assert cost is not None and cost.state not in ("unknown", "unavailable")
+    # 1 July to 15 September.
+    assert cost.attributes["ytd_kwh"] == pytest.approx(77 * 11.0)
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize(
     ("same_release", "served", "price"),
     [(True, True, 1.0), (False, True, 0.07643), (False, False, 1.0)],
