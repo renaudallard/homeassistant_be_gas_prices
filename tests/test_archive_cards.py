@@ -850,6 +850,18 @@ async def test_a_row_no_utf8_file_can_hold_fails_its_card_alone(
     assert (out / "parser.txt").exists()
 
 
+def test_a_table_no_utf8_file_can_hold_leaves_the_one_held(tmp_path: Path) -> None:
+    """The index tables, the manifest and the other tables are written the
+    same way as a row: a value holding half a surrogate pair raised once the
+    file had been opened for writing, and left it empty."""
+    path = tmp_path / "indices" / "acme.json"
+    assert ac._write_json(path, {"TTF": {"2026-08": 61.72}})
+    held = path.read_bytes()
+    with pytest.raises(UnicodeEncodeError):
+        ac._write_json(path, {f"TTF {_HALF_PAIR}": {"2026-09": 61.72}})
+    assert path.read_bytes() == held
+
+
 async def test_a_card_no_reader_could_read_is_kept_and_named(tmp_path: Path, web: _Session) -> None:
     """A live card that downloaded and did not parse was dropped with the
     run. It is kept under the month of the run and named on the sheet, a

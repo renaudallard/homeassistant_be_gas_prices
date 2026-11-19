@@ -608,19 +608,26 @@ def _same_card(existing: dict[str, Any], fresh: dict[str, Any]) -> bool:
     return settled(existing) == settled(fresh)
 
 
+def _write_whole(path: Path, text: str) -> None:
+    """Write ``text`` as UTF-8, encoded before the file is opened: a text
+    holding half a surrogate pair raises UnicodeEncodeError and leaves what
+    the file held, which write_text had emptied by then."""
+    payload = text.encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(payload)
+
+
 def _write_row(path: Path, row: dict[str, Any]) -> bool:
     """Write a row unless the file already holds the same card; True when
     the file changed.
 
     Raises UnicodeEncodeError on a field holding half a surrogate pair, read
-    off a card's text: an installation reads the row as UTF-8. Encoded before
-    the file is opened, so the row held there stays whole."""
+    off a card's text: an installation reads the row as UTF-8, and the row
+    held there stays whole."""
     existing = _read_row(path)
     if existing is not None and _same_card(existing, row):
         return False
-    payload = _dump(row).encode("utf-8")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(payload)
+    _write_whole(path, _dump(row))
     return True
 
 
@@ -647,8 +654,7 @@ def _write_json(path: Path, value: Any) -> bool:
     text = _dump(value)
     if path.exists() and path.read_text(encoding="utf-8") == text:
         return False
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    _write_whole(path, text)
     return True
 
 

@@ -480,7 +480,9 @@ under `gas/`:
   such card stopped the whole walk. A row is read as UTF-8 by every
   installation, so a row quoting one in a field is not written and its card
   fails alone (`test_a_row_no_utf8_file_can_hold_fails_its_card_alone`); a
-  failure quoting one is printed and listed as an escape.
+  failure quoting one is printed and listed as an escape. Rows and tables
+  are encoded before their file is opened (`_write_whole`), so one that
+  cannot be written leaves the file as it was instead of empty.
 - With `--pdfs DIR`, each new PDF to `DIR/gas-<YYYY-MM>/<sha256>.pdf`, which
   the workflow uploads as the assets of the release of that name;
   `pdfs.json` says which release holds each digest. A PDF no row names goes
