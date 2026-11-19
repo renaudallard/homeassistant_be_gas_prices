@@ -36,6 +36,7 @@ import base64
 import functools
 import hashlib
 import inspect
+import io
 import json
 import os
 import re
@@ -742,6 +743,90 @@ async def test_backfill_offers_again_a_card_an_earlier_ask_already_read(
 
 
 _BASE = "https://cards.test/download"
+
+
+# Half a surrogate pair, which pypdf reads off a font whose ToUnicode map
+# names one and strict UTF-8 refuses.
+_HALF_PAIR = "\ud83d"
+
+
+class _HalfPairAcme(_Acme):
+    """Acme with a card that reads as half a surrogate pair. The parse of a
+    region in ``quoted`` copies it into the row."""
+
+    quoted: frozenset[str] = frozenset()
+
+    def render(self, payload: bytes) -> str:
+        return f"{_HALF_PAIR} {super().render(payload)}"
+
+    async def fetch(self, session: Any, contract: str, region: str) -> SupplierSnapshot:
+        snapshot = await super().fetch(session, contract, region)
+        if region not in self.quoted:
+            return snapshot
+        return replace(snapshot, publication_label=f"{snapshot.publication_label} {_HALF_PAIR}")
+
+
+async def test_a_card_reading_as_half_a_surrogate_pair_is_stored_as_read(
+    tmp_path: Path, web: _Session
+) -> None:
+    """Such a text raised out of the walk when it was stored: no row of any
+    supplier and no stamp, every day the card was served. It is written and
+    read back as it was read, so the next walk is served it and a replay
+    parses the same string."""
+    out = tmp_path / "gas"
+    acme = _HalfPairAcme()
+    first = await ac.archive(out, extractors=[acme.extractor()], now=NOW, sleep=_no_sleep)
+    assert (first.stored, first.failed) == (1, [])
+    row = json.loads((out / ROW / "2026-09.json").read_text())
+    card = next(s for s in row["_sources"] if s["url"] == CARD_URL)
+    text = f"{_HALF_PAIR} {web.pages[CARD_URL].decode('ascii')}"
+    assert card_texts.read_text(out / card["text"]) == text
+    assert (out / "parser.txt").exists()
+    before = _tree(out)
+
+    second = await ac.archive(
+        out,
+        extractors=[acme.extractor()],
+        now=NOW + timedelta(days=1),
+        sleep=_no_sleep,
+        reparse=True,
+    )
+    assert (second.unchanged, second.failed) == (1, [])
+    assert (second.replayed, second.reparsed, second.unreplayable) == (1, 0, [])
+    assert acme.renders == 1
+    assert _tree(out) == before
+
+
+async def test_a_row_no_utf8_file_can_hold_fails_its_card_alone(
+    tmp_path: Path, web: _Session
+) -> None:
+    """A row is read as UTF-8 by every installation, so one quoting half a
+    surrogate pair is not written. That is its card's failure: the walk goes
+    on to the next card, and the row held from before stays whole, in the
+    walk and in a replay."""
+    out = tmp_path / "gas"
+    acme = _HalfPairAcme()
+    acme.regions = frozenset({"flanders", "wallonia"})
+    await ac.archive(out, extractors=[acme.extractor()], now=NOW, sleep=_no_sleep)
+    flanders = out / "cards/acme/acme_fix/flanders/2026-09.json"
+    held = flanders.read_bytes()
+
+    web.pages[CARD_URL] = _card("2026-09", "0.09")
+    acme.quoted = frozenset({"flanders"})
+    summary = await ac.archive(
+        out, extractors=[acme.extractor()], now=NOW, sleep=_no_sleep, reparse=True
+    )
+    assert [line[:44] for line in summary.failed] == [
+        "acme/acme_fix/flanders: UnicodeEncodeError: "
+    ]
+    assert summary.stored == 1
+    assert json.loads((out / ROW / "2026-09.json").read_text())["energy"]["price"] == 0.09
+    assert [line.split(": ")[:2] for line in summary.unreplayable] == [
+        ["acme/acme_fix/flanders/2026-09", "UnicodeEncodeError"]
+    ]
+    assert summary.replayed == 1
+    assert flanders.read_bytes() == held
+    assert (out / "parser.txt").exists()
 
 
 async def test_a_card_no_reader_could_read_is_kept_and_named(tmp_path: Path, web: _Session) -> None:
@@ -1980,6 +2065,33 @@ def test_main_writes_the_ocr_failures_one_a_line(
     assert report.read_text() == "ecofix/flexy/flanders: ExtractorError: a b\n"
     assert ac.main() == 0
     assert report.read_text() == ""
+
+
+def test_a_failure_quoting_half_a_surrogate_pair_is_printed_and_listed(
+    tmp_path: Path, web: _Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failure can quote its card. Printed to a strict stream, or written
+    to the workflow's list, it raised once the rows were written and failed
+    a walk that had succeeded. It is shown as an escape."""
+
+    def refuse(payload: bytes) -> str:
+        raise CardNotReadableError(f"OCR could not read the card: no glyph for {_HALF_PAIR}")
+
+    monkeypatch.setattr(ac, "_ocr_text", refuse)
+    monkeypatch.setattr(ac, "all_extractors", lambda: [_ImageAcme().extractor()])
+    printed = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(printed, encoding="utf-8"))
+    report = tmp_path / "ocr_failed.txt"
+    argv = ["archive_cards.py", "--out", str(tmp_path / "gas"), "--ocr-failures", str(report)]
+    monkeypatch.setattr(sys, "argv", argv)
+    assert ac.main() == 1
+    sys.stdout.flush()
+    line = (
+        "acme/acme_fix/wallonia: CardNotReadableError: "
+        "OCR could not read the card: no glyph for \\ud83d"
+    )
+    assert f"  failed {line}\n" in printed.getvalue().decode("utf-8")
+    assert report.read_text(encoding="utf-8") == f"{line}\n"
 
 
 async def test_a_new_engine_reads_a_month_no_longer_downloaded_again(

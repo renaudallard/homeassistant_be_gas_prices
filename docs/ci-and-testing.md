@@ -440,7 +440,13 @@ under `gas/`:
   `month_cards.fetch_archived_card` reads, plus `_seen_on`, `_sources` and
   `_via` (`live` or `archive`), which the reader ignores. A source the OCR
   engine read carries `"ocr"`, the engine version.
-- `texts/<YYYY-MM>/<sha256>.txt`: the text every parse read.
+- `texts/<YYYY-MM>/<sha256>.txt`: the text every parse read, written and
+  read back with `surrogatepass`: pypdf reads a glyph whose font map names
+  half a surrogate pair as just that, which strict UTF-8 refuses, and one
+  such card stopped the whole walk. A row is read as UTF-8 by every
+  installation, so a row quoting one in a field is not written and its card
+  fails alone (`test_a_row_no_utf8_file_can_hold_fails_its_card_alone`); a
+  failure quoting one is printed and listed as an escape.
 - With `--pdfs DIR`, each new PDF to `DIR/gas-<YYYY-MM>/<sha256>.pdf`, which
   the workflow uploads as the assets of the release of that name;
   `pdfs.json` says which release holds each digest. A PDF no row names goes

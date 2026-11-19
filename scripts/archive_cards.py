@@ -107,6 +107,7 @@ import binascii
 import functools
 import hashlib
 import inspect
+import io
 import json
 import re
 import sys
@@ -499,14 +500,17 @@ async def _unfold_embedded_cards(text: str, kept_pdf: Callable[[str], Awaitable[
 
 
 def _write_text(out: Path, month: str, text: str) -> str:
-    """Store ``text`` once, content-addressed, and return its path in ``out``."""
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    rel = f"{_TEXTS}/{month}/{digest}.txt"
+    """Store ``text`` once, content-addressed, and return its path in ``out``.
+
+    With surrogatepass, as ``card_texts.read_text`` reads it back: pypdf
+    decodes a font's ToUnicode map that way, so a card can read as half a
+    surrogate pair, which strict UTF-8 refuses."""
+    payload = text.encode("utf-8", "surrogatepass")
+    rel = f"{_TEXTS}/{month}/{hashlib.sha256(payload).hexdigest()}.txt"
     path = out / rel
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8", newline="") as handle:
-            handle.write(text)
+        path.write_bytes(payload)
     return rel
 
 
@@ -606,12 +610,17 @@ def _same_card(existing: dict[str, Any], fresh: dict[str, Any]) -> bool:
 
 def _write_row(path: Path, row: dict[str, Any]) -> bool:
     """Write a row unless the file already holds the same card; True when
-    the file changed."""
+    the file changed.
+
+    Raises UnicodeEncodeError on a field holding half a surrogate pair, read
+    off a card's text: an installation reads the row as UTF-8. Encoded before
+    the file is opened, so the row held there stays whole."""
     existing = _read_row(path)
     if existing is not None and _same_card(existing, row):
         return False
+    payload = _dump(row).encode("utf-8")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_dump(row), encoding="utf-8")
+    path.write_bytes(payload)
     return True
 
 
@@ -1470,12 +1479,17 @@ async def _replay_row(
         kept = _why_kept(row, memo, cards, withdrawn)
         _settle_refusal(path, label, "the parse no longer gives this month's card", kept, summary)
         return
-    summary.replayed += 1
     fresh = _row(
         snapshot, _sources_of(memo, cards, _month_id(seen_on.year, seen_on.month)), seen_on, via
     )
+    try:
+        changed = _write_row(path, fresh)
+    except UnicodeEncodeError as err:  # reported, and the row stays as it was
+        summary.unreplayable.append(f"{label}: {type(err).__name__}: {err}")
+        return
+    summary.replayed += 1
     cards.file(path.stem, _pdfs_of(fresh["_sources"]))
-    if _write_row(path, fresh):
+    if changed:
         summary.reparsed += 1
 
 
@@ -1572,6 +1586,15 @@ async def archive(
         patience.ok(ex.id)
         return got
 
+    def store(path: Path, row: dict[str, Any], label: str) -> bool | None:
+        """Write a row: whether its file changed, or None when the row
+        cannot be written, which is that card's failure and is recorded."""
+        try:
+            return _write_row(path, row)
+        except UnicodeEncodeError as err:  # one card must not stop the walk
+            summary.failed.append(f"{label}: {type(err).__name__}: {err}")
+            return None
+
     async with aiohttp.ClientSession() as session:
         with memoise_text_fetches(memo), render_through(cards.render):
             for ex, contract, region in wanted:
@@ -1589,7 +1612,10 @@ async def archive(
                 month = _card_month(snapshot, today)
                 sources = _sources_of(memo, cards, seen_month)
                 path = out / ROWS / ex.id / contract / region / f"{month}.json"
-                if _write_row(path, _row(snapshot, sources, today, "live")):
+                changed = store(path, _row(snapshot, sources, today, "live"), label)
+                if changed is None:
+                    continue
+                if changed:
                     summary.stored += 1
                 else:
                     summary.unchanged += 1
@@ -1610,10 +1636,11 @@ async def archive(
                         continue
                     first = date(int(month[:4]), int(month[5:]), 1)
                     key = _unparsed_key(ex.id, contract, region, month)
+                    label = f"{ex.id}/{contract}/{region}/{month}"
                     past = await walk(
                         ex,
                         functools.partial(ex.fetch_for_month, session, contract, region, first),
-                        f"{ex.id}/{contract}/{region}/{month}",
+                        label,
                         key,
                     )
                     if reoffer:
@@ -1641,7 +1668,8 @@ async def archive(
                     if named < cutoff or path.exists():
                         continue
                     sources = _sources_of(memo, cards, seen_month)
-                    _write_row(path, _row(past, sources, today, "archive"))
+                    if store(path, _row(past, sources, today, "archive"), label) is None:
+                        continue
                     summary.backfilled += 1
                     cards.file(named, _pdfs_of(sources))
             # Inside the memo: a supplier reading its index off its own cards
@@ -1777,6 +1805,11 @@ def main() -> int:
     # The providers take the month off Home Assistant's clock, which an
     # installation sets to its own zone, and a Belgian one is in Brussels.
     dt_util.set_default_time_zone(BRUSSELS)
+    # A failure can quote its card, half a surrogate pair included, which a
+    # strict stream refuses: printed as an escape, it cannot fail a run whose
+    # rows are already written.
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(errors="backslashreplace")
     summary = asyncio.run(
         archive(
             args.out,
@@ -1793,6 +1826,7 @@ def main() -> int:
         args.ocr_failures.write_text(
             "".join(" ".join(line.split()) + "\n" for line in summary.ocr_failed),
             encoding="utf-8",
+            errors="backslashreplace",
         )
     return 0 if summary.stored or summary.unchanged else 1
 
