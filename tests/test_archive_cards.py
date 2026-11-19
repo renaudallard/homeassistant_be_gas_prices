@@ -1627,10 +1627,11 @@ def _git(*args: str, cwd: Path) -> str:
     ).stdout
 
 
-def _push_race(tmp_path: Path) -> tuple[Path, Path, str]:
-    """The cards repository, a job's clone of it with today's gas rows, and
-    the workflow's push step. Between the clone and the push, the
-    electricity archive pushed a commit that rewrote the README."""
+def _push_race(tmp_path: Path) -> tuple[Path, Path, str, date]:
+    """The cards repository, a job's clone of it with today's gas rows, the
+    workflow's push step, and the UTC day read before the step runs. Between
+    the clone and the push, the electricity archive pushed a commit that
+    rewrote the README."""
     origin = tmp_path / "origin.git"
     seed = tmp_path / "seed"
     seed.mkdir()
@@ -1665,12 +1666,16 @@ def _push_race(tmp_path: Path) -> tuple[Path, Path, str]:
     stubs.mkdir()
     (stubs / "sleep").write_text("#!/bin/sh\nexit 0\n")
     (stubs / "sleep").chmod(0o755)
-    return origin, work, step["run"]
+    return origin, work, step["run"], datetime.now(UTC).date()
 
 
-def _assert_landed(origin: Path) -> None:
+def _assert_landed(origin: Path, day: date) -> None:
+    """The step names its commit by its own clock, after ``day`` was read:
+    on a run across 00:00 UTC that is the day after."""
     log = _git("log", "--format=%s", "main", cwd=origin).splitlines()
-    assert log[:2] == [f"Gas cards seen on {datetime.now(UTC).date().isoformat()}", "Cards seen"]
+    days = (day, day + timedelta(days=1))
+    assert log[0] in [f"Gas cards seen on {seen.isoformat()}" for seen in days]
+    assert log[1] == "Cards seen"
     assert (
         _git("show", "main:README.md", cwd=origin)
         == "# Price cards\n\nelectricity, gas and water\n"
@@ -1685,18 +1690,18 @@ def test_the_push_survives_another_archive_rewriting_the_readme(tmp_path: Path) 
     land between this job's clone and its push, README included, the run
     must not be lost: the push step rebases, keeps this job's README, which
     lists every namespace, and lands."""
-    origin, work, run = _push_race(tmp_path)
+    origin, work, run, day = _push_race(tmp_path)
     env = {**os.environ, "PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}"}
     done = subprocess.run(
         ["bash", "-e", "-c", run], cwd=work, env=env, capture_output=True, text=True
     )
     assert done.returncode == 0, done.stderr
-    _assert_landed(origin)
+    _assert_landed(origin, day)
 
 
 def test_the_push_survives_a_pull_that_fails(tmp_path: Path) -> None:
     """A network blip on the first pull is left to the next attempt."""
-    origin, work, run = _push_race(tmp_path)
+    origin, work, run, day = _push_race(tmp_path)
     real = shutil.which("git")
     assert real is not None
     stub = tmp_path / "bin" / "git"
@@ -1714,7 +1719,7 @@ def test_the_push_survives_a_pull_that_fails(tmp_path: Path) -> None:
     )
     assert done.returncode == 0, done.stderr
     assert (tmp_path / "pulled").exists()
-    _assert_landed(origin)
+    _assert_landed(origin, day)
 
 
 def _archive_jobs() -> dict[str, Any]:
@@ -1955,7 +1960,7 @@ def test_the_cards_token_is_on_no_command_line(tmp_path: Path) -> None:
     which reads GH_TOKEN, and keeps it out of the clone's config."""
     token = "t0ken"
     hidden = (token, base64.b64encode(f"x-access-token:{token}".encode()).decode())
-    origin, work, run = _push_race(tmp_path)
+    origin, work, run, day = _push_race(tmp_path)
     log = tmp_path / "argv.log"
     real = shutil.which("git")
     assert real is not None
@@ -1973,7 +1978,7 @@ def test_the_cards_token_is_on_no_command_line(tmp_path: Path) -> None:
         ["bash", "-e", "-c", run], cwd=work, env=env, capture_output=True, text=True
     )
     assert done.returncode == 0, done.stderr
-    _assert_landed(origin)
+    _assert_landed(origin, day)
     argv = log.read_text()
     assert "push -q" in argv and "pull -q" in argv
     for secret in hidden:
