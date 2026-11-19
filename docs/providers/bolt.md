@@ -12,9 +12,13 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
 - `fetch` reads the listing https://www.boltenergie.be/fr/listes-des-prix,
   which links each current card (`pricelists/fix/fix_res_ng_fr_202609.pdf`,
   `pricelists/var/online_res_ng_fr_14.pdf`), and takes the latest month or
-  version linked for the product. The listing also links the Dutch and
-  professional cards, which the pattern
-  `pricelists/<fix|var>/<slug>_res_ng_fr_<digits>.pdf` leaves out.
+  version linked for the product. A fixed card reissued within its month is
+  filed under the month with a number after it (`fix_res_ng_fr_202603_2.pdf`
+  from 14 March 2026): of the newest month linked, the highest such number
+  is the current card, for `fetch` and for the probe. A version takes no
+  such number. The listing also links the Dutch and professional cards,
+  which the pattern `pricelists/<fix|var>/<slug>_res_ng_fr_<digits>.pdf`,
+  with `_<digits>` before `.pdf` for a reissue, leaves out.
 - Probe: the listing gives the card URL, then a HEAD on the card gives its
   Last-Modified. The card says "Le prix proposé peut évoluer dans le courant
   du mois", and the September 2026 card was last modified on 14 September
@@ -208,7 +212,10 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
   `plenty_fix` for the same months except 202501 (404). The next month
   (202610) is 404 for both.
 - `fetch_for_month` builds the URL from the month asked for; 404 is no card, a
-  transient failure raises, and a card naming another month is refused.
+  transient failure raises, and a card naming another month is refused. A
+  card naming the days it is for is read on to the "_2" card when the
+  month's last day is not among them: the month's card is the one in force
+  as it ended, which is the one `fetch` read then.
 - Template: the current three-page card starts with April 2026. The fixed
   cards of November 2025 to March 2026 are an older two-page layout, read
   whole by `_parse_older`: "Bolt Fixe - gaz" over "Janvier 2026 -
@@ -229,10 +236,13 @@ Module: `custom_components/be_gas_prices/providers/bolt.py`. Tests:
 - March 2026 has two fixed cards each: `fix_res_ng_fr_202603.pdf` for
   "01/03/2026-13/03/2026" (4,57 c€/kWh) and `fix_res_ng_fr_202603_2.pdf` for
   "14/03/2026 - 31/03/2026" (6,42), and Plenty Fixe's the same. The month is
-  the first; `fetch_on_day` gives a household that names the day it signed
-  the card in force that day, reading on to the "_2" card when the day is
-  not among the first's (`_older_span`). No other month from November 2025
-  to November 2026 answers for "_2".
+  the second, the card in force on its last day; `fetch_on_day` gives a
+  household that names the day it signed the card in force that day, reading
+  on to the "_2" card when the day is not among the first's (`_older_span`).
+  No other month from November 2025 to November 2026 answers for "_2". A
+  reissue that named no days would leave both readings on the month's first
+  card, since nothing on it would tell the two apart, and one numbered past
+  "_2" is found as the current card only.
 - Seen on the current template: 10,99 €/month for Bolt Fixe on the April and
   June cards, 8,99 from July; prices 6,95 (April), 6,21 (June), 5,76 (July),
   7,31 (August), 8,02 (September).
@@ -301,6 +311,10 @@ pays pdfplumber's 45 s on a Raspberry Pi):
 - `fetch` and `probe` take the card the listing links, fixed and variable;
   `fetch_for_month` URL, another month refused, 404 as None, transient
   failure raised.
+- A fixed card reissued within its month: `fetch` and `probe` on the highest
+  reissue of the newest month, linked beside the first card or alone, a
+  version with a number after it passed over, and March 2026 as a past
+  month read on its second card, the one `fetch_on_day` gives for the 31st.
 - Variable cards: the formula against the printed price, the four fees, the
   tables in each region, another product refused, no `valid_until`; a
   formula heading restated in c€/kWh or TVAC, or without its unit, refused.

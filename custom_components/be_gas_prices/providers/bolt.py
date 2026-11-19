@@ -37,9 +37,11 @@ suffix, and the same URL for an earlier month is the archive:
 The card says its price may change within the month ("Le prix proposé peut
 évoluer dans le courant du mois"), and the September 2026 card was last
 modified on the 14th, so the probe reads the card's own Last-Modified rather
-than the listing's ETag. The two fixed cards print the same price and
-tables; Plenty Fixe charges a lower platform fee and asks for a share in the
-Plenty cooperative.
+than the listing's ETag. March 2026 was reissued under a name of its own,
+"<YYYYMM>_2", from the 14th: linked from the listing, such a card is the
+current one, and it is its month's once the month is over. The two fixed
+cards print the same price and tables; Plenty Fixe charges a lower platform
+fee and asks for a share in the Plenty cooperative.
 
 The variable products (Bolt Variable, Bolt Variable Online, Plenty Variable,
 Plenty Variable Online) carry a version number instead:
@@ -162,7 +164,9 @@ from .base import (
 
 _BASE_URL = "https://files.boltenergie.be/pricelists"
 _LISTING_URL = "https://www.boltenergie.be/fr/listes-des-prix"
-_CARD_RE = re.compile(r"pricelists/(fix|var)/([a-z_]+)_res_ng_fr_(\d+)\.pdf")
+# A fixed card reissued within its month is filed under the month with a
+# number after it: "fix_res_ng_fr_202603_2.pdf" from 14 March 2026.
+_CARD_RE = re.compile(r"pricelists/(fix|var)/([a-z_]+)_res_ng_fr_(\d+)(?:_(\d+))?\.pdf")
 
 # The index the variable cards name, and the name fetch_index files it under.
 _INDEX = "TTF"
@@ -219,16 +223,18 @@ def _card_url(contract: _ContractDef, suffix: str) -> str:
 
 async def _current_suffix(session: aiohttp.ClientSession, contract: _ContractDef) -> str:
     """The month or version of the card the listing links for ``contract``,
-    the latest if it links several."""
+    the latest if it links several: for a fixed card the newest month, and
+    of that month the highest reissue ("202603_2"), which is the card in
+    force. A version carries no reissue."""
     listing = await fetch_text(session, _LISTING_URL)
-    suffixes: list[str] = [
-        suffix
-        for folder, slug, suffix in _CARD_RE.findall(listing)
-        if (folder, slug) == (contract.folder, contract.slug)
+    linked = [
+        (int(number), int(reissue or 0), f"{number}_{reissue}" if reissue else number)
+        for folder, slug, number, reissue in _CARD_RE.findall(listing)
+        if (folder, slug) == (contract.folder, contract.slug) and (folder == "fix" or not reissue)
     ]
-    if not suffixes:
+    if not linked:
         raise ExtractorError(f"Bolt: the listing links no {contract.slug} gas card")
-    return max(suffixes, key=int)
+    return max(linked)[2]
 
 
 async def _current_url(session: aiohttp.ClientSession, contract: _ContractDef) -> str:
@@ -273,21 +279,23 @@ async def fetch_for_month(
     region: str,
     year_month: date,
 ) -> SupplierSnapshot | None:
-    """The card in force in a past month, or None.
+    """The card in force at the end of a past month, or None.
 
     A fixed card is addressed by its month, which answers 404 when Bolt has
-    no card for it; a card naming another month is refused. A variable card
-    is the newest version whose title names the month or an earlier one. A
-    transient failure raises so the month cache retries it; any other
-    failure, a variable card from the older template included, is a month
-    with no card.
+    no card for it; a card naming another month is refused. Where Bolt
+    reissued it within the month it is the card of the month's last day
+    (:func:`_read_on`), which is the one :func:`fetch` read as the month
+    ended. A variable card is the newest version whose title names the
+    month or an earlier one. A transient failure raises so the month cache
+    retries it; any other failure, a variable card from the older template
+    included, is a month with no card.
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     if contract is None or region not in REGIONS:
         return None
     if contract.folder == "fix":
-        url = _card_url(contract, f"{year_month:%Y%m}")
-        return await month_card(_read(session, contract_id, region, url), year_month)
+        last = end_of_month(year_month.year, year_month.month)
+        return await month_card(_read_on(session, contract, region, last), year_month)
     return await card_or_none(_read_in_force(session, contract, region, year_month))
 
 

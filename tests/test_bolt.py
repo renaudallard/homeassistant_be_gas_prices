@@ -244,6 +244,27 @@ async def test_the_day_signed_picks_march_2026_s_card(day: date, price: float, s
         )
 
 
+async def test_a_past_month_reissued_is_the_card_of_its_last_day() -> None:
+    """March 2026 without a day signed: the card in force as the month
+    ended, the one ``fetch`` read then, and what the 31st gives."""
+    cards = {
+        "plenty_fix_res_ng_fr_202603.pdf": _OLDER_PLENTY,
+        "plenty_fix_res_ng_fr_202603_2.pdf": "plenty_fix_res_ng_fr_202603_2.pdf",
+    }
+
+    async def read(_session: Any, url: str, **_kwargs: Any) -> str:
+        return _card(cards[url.rsplit("/", 1)[1]])
+
+    asked = AsyncMock(), "bolt_plenty_fix", REGION_WALLONIA
+    with patch.object(bolt, "fetch_pdf_text_layout", AsyncMock(side_effect=read)):
+        snap = await bolt.fetch_for_month(*asked, date(2026, 3, 1))
+        assert snap is not None
+        assert snap.source_url.endswith("plenty_fix_res_ng_fr_202603_2.pdf")
+        assert _fixed(snap) == pytest.approx((0.0642, 5.99 * 12))
+        assert snap.publication_label == "2026-03"
+        assert snap == await bolt.fetch_on_day(*asked, date(2026, 3, 31))
+
+
 def test_flanders_table_skips_the_old_fluvius_rows() -> None:
     snap = bolt.parse_snapshot("bolt_fix", REGION_FLANDERS, _card(_FIX_202609))
     assert set(snap.dsos) == FLUVIUS_KEYS
@@ -408,6 +429,60 @@ async def test_probe_heads_the_linked_card() -> None:
     assert head.call_args.args[1] == (
         "https://files.boltenergie.be/pricelists/fix/fix_res_ng_fr_202609.pdf"
     )
+
+
+_FIX_FILES = "https://files.boltenergie.be/pricelists/fix/"
+_VAR_FILES = "https://files.boltenergie.be/pricelists/var/"
+
+
+@pytest.mark.parametrize(
+    ("linked", "current"),
+    [
+        # Both cards of the month linked, then the second alone.
+        (("202609", "202609_2"), "202609_2"),
+        (("202609_2",), "202609_2"),
+        (("202609_3", "202609_2"), "202609_3"),
+        # The newest month, whatever an earlier one was reissued as.
+        (("202608_2", "202609"), "202609"),
+    ],
+)
+async def test_a_fixed_card_reissued_within_its_month_is_the_current_one(
+    linked: tuple[str, ...], current: str
+) -> None:
+    """Bolt filed the second card of March 2026 under the month with "_2".
+    Linked so, it was no card to the listing's pattern: the first card
+    stayed the current one, or the listing was read as linking none."""
+    listing = "".join(
+        f'<a href="{_FIX_FILES}plenty_fix_res_ng_fr_{suffix}.pdf">Plenty Fixe</a>'
+        for suffix in linked
+    )
+    url = f"{_FIX_FILES}plenty_fix_res_ng_fr_{current}.pdf"
+    text = _card(_PLENTY_202609)
+    with (
+        patch.object(bolt, "fetch_text", AsyncMock(return_value=listing)),
+        patch.object(bolt, "fetch_pdf_text_layout", AsyncMock(return_value=text)) as fetched,
+        patch.object(bolt, "head_freshness_key", AsyncMock(return_value="stamp")) as head,
+    ):
+        snap = await bolt.fetch(AsyncMock(), "bolt_plenty_fix", REGION_BRUSSELS)
+        assert await bolt.probe(AsyncMock(), "bolt_plenty_fix", REGION_BRUSSELS) == "stamp"
+    assert fetched.call_args.args[1] == url
+    assert snap.source_url == url
+    assert head.call_args.args[1] == url
+
+
+async def test_a_variable_version_takes_no_reissue() -> None:
+    """A version is a number alone: a name with another after it is not
+    read as version 13 reissued, nor as version 132."""
+    listing = "".join(
+        f'<a href="{_VAR_FILES}bolt_res_ng_fr_{version}.pdf">Bolt Variable</a>'
+        for version in ("13", "13_2")
+    )
+    with (
+        patch.object(bolt, "fetch_text", AsyncMock(return_value=listing)),
+        patch.object(bolt, "head_freshness_key", AsyncMock(return_value="stamp")) as head,
+    ):
+        await bolt.probe(AsyncMock(), "bolt_variable", REGION_FLANDERS)
+    assert head.call_args.args[1] == f"{_VAR_FILES}bolt_res_ng_fr_13.pdf"
 
 
 async def test_fetch_for_month_builds_the_month_url() -> None:

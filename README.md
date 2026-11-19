@@ -112,8 +112,8 @@ this integration prices like any other.
   of March 2026, and the tariff card date picks the card there too: Bolt
   Fixe and Plenty Fixe 4,57 c€/kWh up to 13 March and 6,42 from the 14th,
   OCTA+ Fixed 5,50 up to 15 March and 6,39 from the 16th, Eco Fixed 6,46
-  and 7,43. Without a day, March is Bolt's first card and OCTA+'s second,
-  the one its archive lists. EnergyVision uploaded its one-year fixed card
+  and 7,43. Without a day, March is the second card of each: the one in
+  force when the month ended. EnergyVision uploaded its one-year fixed card
   of November 2026 again on the 10th: 9,95 c€/kWh up to 9 November and 9,20
   from the 10th. The tariff card date picks the upload made by that day;
   without one, a month is priced on its last upload.
