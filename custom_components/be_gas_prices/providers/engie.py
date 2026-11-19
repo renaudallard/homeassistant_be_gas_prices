@@ -93,11 +93,10 @@ from ._parse import (
     html_rows,
     month_date,
     require_contract,
-    search_once_per_line,
     stated_unit,
     to_float,
 )
-from ._pdf import MONTH_NAMES, fetch_pdf_text, fetch_text
+from ._pdf import MONTH_NAMES, fetch_pdf_text, fetch_text, shown_text
 from ._rates import Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, month_card
 from .base import (
@@ -320,16 +319,28 @@ def _vat_rate(text: str) -> float:
     return to_float(match.group(1)) / 100.0
 
 
-# "Redevance fixe (EUR/an)(11) Prix par kWh(1) (c EUR/kWh)" is a heading; the
+# "Redevance fixe (€/an)(11) Prix par kWh(1) (c€/kWh)" is a heading; the
 # fixed card prints the two figures on the next line ("60,00 7,939"), the
 # variable one prints the monthly price after "Prix mensuels" and the fee
-# before a repeated "Prix par kWh". The figures are looked for after the
-# first "Redevance fixe" of a line only (search_once_per_line): after every
-# one the rest of its line was scanned again, in time growing with the
-# square of the line, to reach the same line break.
-_FIXED_START_RE = re.compile("Redevance fixe")
-_FIXED_RE = re.compile(r"[^\n]*\n\s*(\d+,\d+)\s+(\d+,\d+)\s*\n")
-_MONTHLY_RE = re.compile(rf"Prix mensuels{LINE_BREAK}(\d+,\d+){LINE_BREAK}(\d+,\d+)\s+Prix par kWh")
+# before a repeated "Prix par kWh". The heading is the only statement of
+# the fee's unit, and of a fixed price's, so its two units are read with
+# the figures: all 525 archived rows of April 2024 to November 2026 print
+# it right above them, the fee in "€/an" and the price in "€cent/kWh" up to
+# December 2025 and "c€/kWh" since, a footnote mark after the fee's unit
+# from December 2025. A fixed price restated in €/MWh would read ten times
+# itself and a fee restated a month a twelfth. pypdf 6.18 ends the
+# heading's line before "Prix mensuels" and 6.20 runs the two together, so
+# either is taken. Nothing here scans to the end of a line, so a line of
+# headings costs its length once.
+_HEADING = (
+    r"Redevance fixe\s*\(([^()\n]*)\)(?:\(\d+\))?\s+Prix par kWh(?:\(\d+\))?\s*\(([^()\n]*)\)"
+)
+_FIXED_RE = re.compile(_HEADING + LINE_BREAK + r"(\d+,\d+)\s+(\d+,\d+)\s*\n")
+_MONTHLY_RE = re.compile(
+    _HEADING + rf"\s*Prix mensuels{LINE_BREAK}(\d+,\d+){LINE_BREAK}(\d+,\d+)\s+Prix par kWh"
+)
+_FEE_UNIT = "€/an"
+_PRICE_UNITS = ("c€/kWh", "€cent/kWh")
 _FORMULA_RE = re.compile(
     r"Prélèvement\s*:\s*(\d+,\d+)\s*\+\s*\(\s*(\d+,\d+)\s*x\s*(ZTP101|ZTPDAM)\s*\(Heren\)"
 )
@@ -394,34 +405,47 @@ def _energy(
     text: str, contract: _ContractDef, vat: float, card_month: date
 ) -> FixedRates | IndexedRates:
     if contract.kind == "fixed":
-        match = search_once_per_line(text, _FIXED_START_RE, _FIXED_RE)
+        match = _FIXED_RE.search(text)
         if match is None:
             raise ExtractorError("Engie: fixed price block not found")
+        _require_units(match)
         return FixedRates(
-            price=to_float(match.group(2)) / 100.0,
-            yearly_fixed_fee=to_float(match.group(1)),
+            price=to_float(match.group(4)) / 100.0,
+            yearly_fixed_fee=to_float(match.group(3)),
         )
     monthly = _MONTHLY_RE.search(text)
     formula = _FORMULA_RE.search(text)
     if monthly is None or formula is None:
         raise ExtractorError("Engie: variable price block or formula not found")
+    _require_units(monthly)
     index = formula.group(3)
     factor = to_float(formula.group(2)) / 100.0 * vat
     base = to_float(formula.group(1)) / 100.0 * vat
-    price = to_float(monthly.group(1)) / 100.0
+    price = to_float(monthly.group(3)) / 100.0
     _require_scale(text, formula, factor, base, price, card_month)
     return IndexedRates(
         factor=factor,
         base=base,
         index=index,
         price=price,
-        yearly_fixed_fee=to_float(monthly.group(2)),
+        yearly_fixed_fee=to_float(monthly.group(4)),
         formula=formula.group(0),
         # ZTP101 is set in the month before delivery and the card prices its
         # month on it, when it says so; ZTPDAM is only known once the month
         # is over.
         settled=index == "ZTP101" and _priced_on_its_month(text, card_month),
     )
+
+
+def _require_units(block: re.Match[str]) -> None:
+    """Refuse a price block whose heading states its fee in another unit
+    than €/an or its price in another than c€/kWh."""
+    fee, price = block.group(1, 2)
+    if fee != _FEE_UNIT or price not in _PRICE_UNITS:
+        raise ExtractorError(
+            f"Engie: the card heads its fee and price {shown_text(fee)!r} and "
+            f"{shown_text(price)!r}, expected {_FEE_UNIT!r} and {_PRICE_UNITS[0]!r}"
+        )
 
 
 def _require_scale(

@@ -137,6 +137,74 @@ def test_fixed_cards(contract: str, name: str, price: float, fee: float) -> None
     assert snap.energy == FixedRates(price=approx(price), yearly_fixed_fee=fee)
 
 
+_FIXED_HEADING = "Redevance fixe (€/an)(11) Prix par kWh(1) (c€/kWh)"
+
+
+@pytest.mark.parametrize(
+    ("heading", "figures", "refusal"),
+    [
+        # In €/MWh the price would read ten times itself.
+        pytest.param(
+            "Redevance fixe (€/an)(11) Prix par kWh(1) (€/MWh)",
+            "60,00 79,39",
+            "heads its fee and price '€/an' and '€/MWh', expected '€/an' and 'c€/kWh'",
+            id="price in €/MWh",
+        ),
+        # A month, the fee would read a twelfth of itself.
+        pytest.param(
+            "Redevance fixe (€/mois)(11) Prix par kWh(1) (c€/kWh)",
+            "5,00 7,939",
+            "heads its fee and price '€/mois' and 'c€/kWh'",
+            id="fee a month",
+        ),
+        pytest.param(
+            "Redevance fixe Prix par kWh(1)", "60,00 7,939", "fixed price block", id="no units"
+        ),
+    ],
+)
+def test_a_fixed_card_headed_in_other_units_is_refused(
+    heading: str, figures: str, refusal: str
+) -> None:
+    """The heading over the fee and the price is the only statement of their
+    units, "(€/an)" and "(c€/kWh)", and is read with them."""
+    text = _card("G_EASY_R_GREY_C_F_12_W_F_202609.pdf")
+    printed = f"{_FIXED_HEADING}\n60,00 7,939\n"
+    assert text.count(printed) == 1
+    with pytest.raises(ExtractorError, match=refusal):
+        engie.parse_snapshot(
+            "engie_easy_fixed", REGION_WALLONIA, text.replace(printed, f"{heading}\n{figures}\n")
+        )
+
+
+def test_a_fixed_price_headed_in_eurocent_is_read() -> None:
+    """Up to December 2025 the heading spelled the price's unit "€cent/kWh"
+    and carried no footnote mark after the fee's."""
+    text = _card("G_EASY_R_GREY_C_F_12_W_F_202609.pdf")
+    assert text.count(_FIXED_HEADING) == 1
+    older = text.replace(_FIXED_HEADING, "Redevance fixe (€/an) Prix par kWh(1) (€cent/kWh)")
+    snap = engie.parse_snapshot("engie_easy_fixed", REGION_WALLONIA, older)
+    assert snap.energy == FixedRates(price=approx(0.07939), yearly_fixed_fee=60.0)
+
+
+def test_a_variable_card_with_its_fee_a_month_is_refused() -> None:
+    """The variable card's fee stands under the same heading, which pypdf
+    6.18 ends its line on, as in the card archive's texts, and 6.20 runs
+    into "Prix mensuels": both read, and a fee headed a month is refused
+    rather than read a twelfth of itself."""
+    text = _card("G_FLOW_R_GREY_C_I_24_W_F_202609.pdf")
+    broken = f"{_FIXED_HEADING}\nPrix mensuels\n7,643\n50,00 Prix par kWh"
+    joined = f"{_FIXED_HEADING}Prix mensuels\n7,643\n50,00 Prix par kWh"
+    assert text.count(broken) + text.count(joined) == 1
+    for rendering in (text.replace(joined, broken), text.replace(broken, joined)):
+        energy = engie.parse_snapshot("engie_flow", REGION_WALLONIA, rendering).energy
+        assert energy.yearly_fixed_fee == 50.0
+        monthly = rendering.replace("fixe (€/an)(11)", "fixe (€/mois)(11)").replace(
+            "7,643\n50,00 Prix", "7,643\n4,17 Prix"
+        )
+        with pytest.raises(ExtractorError, match="heads its fee and price '€/mois' and 'c€/kWh'"):
+            engie.parse_snapshot("engie_flow", REGION_WALLONIA, monthly)
+
+
 @pytest.mark.parametrize(
     ("contract", "name", "crafted"),
     [

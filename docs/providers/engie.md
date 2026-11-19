@@ -56,6 +56,16 @@ configured region's card is read.
   VAT inclusive except the formula.
 - Fixed energy: the line after the "Redevance fixe" heading carries the fee
   and the price ("60,00 7,939" on the September 2026 EASY Fixe card).
+- Units of the fee and the price: the heading over them, "Redevance fixe
+  (€/an)(11) Prix par kWh(1) (c€/kWh)", is their only statement and is read
+  with the figures, on the fixed card and on the variable one, where it
+  stands right before "Prix mensuels" (pypdf 6.18 ends its line there, 6.20
+  runs the two together). All 525 archived rows of April 2024 to November
+  2026 print the fee in "€/an" and the price in "€cent/kWh" up to December
+  2025 and "c€/kWh" since, with a footnote mark after the fee's unit from
+  December 2025. A card heading either in another unit is refused, and one
+  without the heading has no price block: a fixed price restated in €/MWh
+  would read ten times itself, a fee restated a month a twelfth.
 - Indexed energy: the monthly price and the fee after "Prix mensuels", and
   the formula "Prélèvement: 1,4055 + (0,1020 x ZTP101 (Heren)" in c EUR/kWh
   excluding VAT against an index in EUR/MWh. It is grossed up here by the
@@ -152,6 +162,9 @@ Billed as printed:
   61,768 reproducing the printed 8,168 c€/kWh, month and VAT.
 - FLOW: ZTPDAM, not settled, the formula at 61,537.
 - Empty House: its own formula and no fee. EASY Fixe and Empower Fixe.
+- The heading's units: a fixed card headed in €/MWh, with its fee a month
+  or without units refused; the older "€cent/kWh" read; a variable card
+  with its fee headed a month refused in both renderings of the heading.
 - Wallonia: the ORES collapse and RESA row in full, the connection fee, the
   August 2026 excise, no energy contribution. The July 2026 EASY Variable
   card: its energy contribution and excise, July's law for a July delivery,
