@@ -258,6 +258,29 @@ async def test_a_workbook_without_protected_rows_still_bills_the_household() -> 
     tarbel._fetched_at = None
 
 
+@pytest.mark.parametrize(
+    "row",
+    [
+        pytest.param(_protected_row("01/01/2027", None, "n.v.t."), id="a rate that is no number"),
+        pytest.param(_protected_row("31/09/2027", None, "3,42"), id="a day no calendar has"),
+    ],
+)
+async def test_a_protected_row_that_cannot_be_read_still_bills_the_household(
+    row: list[str], caplog: pytest.LogCaptureFixture
+) -> None:
+    """Such a row raises ValueError, which refused the whole workbook, the
+    household slices with it."""
+    held = tarbel.protected_held_table()
+    tarbel._failed_at = tarbel._fetched_at = None
+    with patch.object(tarbel, "fetch_bytes", AsyncMock(return_value=_workbook([*_QUARTER, row]))):
+        await ensure_tariff(AsyncMock())
+    assert tarbel._failed_at is None
+    assert tarbel.excise_for(date(2027, 2, 1)) is not None
+    assert tarbel.protected_held_table() == held
+    assert "protected customer's gas excise tariff could not be read" in caplog.text
+    tarbel._fetched_at = None
+
+
 def test_the_quarters_typed_in_const_are_the_tariff_s() -> None:
     for (year, month), low, high in GAS_EXCISE_RESIDENTIAL_HTVA:
         assert tarbel.excise_for(date(year, month, 1)) == (pytest.approx(low), pytest.approx(high))

@@ -473,7 +473,7 @@ def _parse_all(payload: bytes) -> Tariff:
     household = _household(gas)
     try:
         protected = _protected(gas)
-    except TarbelError as err:
+    except (TarbelError, ValueError) as err:
         # Only the social tariff bills it, and the law gives it from the
         # wording in force: the household rates stay read.
         _LOGGER.warning("The protected customer's gas excise tariff could not be read: %s", err)
