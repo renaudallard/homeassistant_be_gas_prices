@@ -161,6 +161,10 @@ needs a venv at `~/gas_gate/.venv`, which the gate refreshes with uv when
 `~/gas_gate/fixture_text`. A host that does not answer, or drops mid-run,
 gets the suite run locally instead.
 
+pytest gets 30 minutes, three times a cold run on a Raspberry Pi, under
+`timeout` on the host it runs on, so a suite that hangs is stopped there
+and fails the gate with a line saying so, rather than holding it for good.
+
 ## scripts/live_check.py
 
 Fetches every registered (supplier, contract, region) with the extractor the

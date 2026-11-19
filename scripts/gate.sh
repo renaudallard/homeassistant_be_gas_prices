@@ -23,6 +23,10 @@
 # requirements-dev.txt moves. A remote that cannot be reached, or drops
 # mid-run, costs a local pytest, never a gate result.
 #
+# pytest is given PYTEST_LIMIT seconds, on the remote host by a timeout run
+# there, so a hung suite is stopped where it runs and fails the gate rather
+# than holding it for good.
+#
 # Usage: scripts/gate.sh [pytest args...]
 #   scripts/gate.sh                     the whole suite, as test.yml runs it
 #   scripts/gate.sh tests/test_ebem.py  one file, for a quick pass
@@ -44,6 +48,12 @@ REMOTE_DIR="gas_gate/gate-$SHA.$$"
 # connection within about 15 s, so the local fallback starts.
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5
   -o ServerAliveCountMax=3)
+# A whole suite takes about a minute on the runner and up to ten on a
+# Raspberry Pi with an empty text cache: three times that is a hang, not a
+# slow run. A test that hangs in its teardown outlives its own pytest
+# timeout. KILL follows TERM after 30 s.
+PYTEST_LIMIT=1800
+BOUND=(timeout -k 30 "$PYTEST_LIMIT")
 shipped=""
 
 [ -x "$PYTHON" ] || { echo "no interpreter at $PYTHON; set GATE_PYTHON" >&2; exit 1; }
@@ -109,10 +119,10 @@ PYTEST_ARGS=("${@:-tests/}")
 if remote_ready; then
   where="$REMOTE"
   start "pytest (on $REMOTE)" "${SSH[@]}" -n "$REMOTE" \
-    "cd $REMOTE_DIR && export BE_FIXTURE_TEXT_CACHE=\$HOME/gas_gate/fixture_text && exec ../.venv/bin/python -m pytest $(printf '%q ' "${PYTEST_ARGS[@]}")-q -n auto --dist loadfile"
+    "cd $REMOTE_DIR && export BE_FIXTURE_TEXT_CACHE=\$HOME/gas_gate/fixture_text && exec ${BOUND[*]} ../.venv/bin/python -m pytest $(printf '%q ' "${PYTEST_ARGS[@]}")-q -n auto --dist loadfile"
 else
   where=local
-  start "pytest" "$PYTHON" -m pytest "${PYTEST_ARGS[@]}" -q -n auto --dist loadfile
+  start "pytest" "${BOUND[@]}" "$PYTHON" -m pytest "${PYTEST_ARGS[@]}" -q -n auto --dist loadfile
 fi
 echo "pytest runs on $where"
 echo
@@ -145,11 +155,14 @@ for n in "${order[@]}"; do
     cat "$LOGS/$n.log"
     echo "   lost $REMOTE, rerunning pytest locally"
     name="pytest"
-    ( cd "$WORKTREE" && "$PYTHON" -m pytest "${PYTEST_ARGS[@]}" -q -n auto --dist loadfile ) > "$LOGS/$n.log" 2>&1
+    ( cd "$WORKTREE" && "${BOUND[@]}" "$PYTHON" -m pytest "${PYTEST_ARGS[@]}" -q -n auto --dist loadfile ) > "$LOGS/$n.log" 2>&1
     rc=$?
   fi
   echo "== $name"
   cat "$LOGS/$n.log"
+  if [ "$n" -eq 0 ] && { [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; }; then
+    echo "   stopped after $PYTEST_LIMIT s: pytest hung or ran far too long"
+  fi
   if [ "$rc" -eq 0 ]; then
     echo "   ok"
   else
