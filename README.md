@@ -132,10 +132,12 @@ this integration prices like any other.
   has read the meter, the cost is known and the sensor has recorded its first
   five minutes, and again when what the year is priced from changes (a
   month's card, the index, the calorific values, the law's figures, the
-  settings or the volume tier) or the meter does. The past
-  is written on what the year is priced from today, so where the sensor
-  showed something else then, the difference shows once, in the hour after
-  the last one written. A disabled cost sensor, or one the recorder
+  settings or the volume tier) or the meter does. After an edit that moves
+  the start of the window it waits for the sensor's first five minutes on
+  the new one, so the history follows at the next refresh, within the hour.
+  The past is written on what the year is priced from today, so where the
+  sensor showed something else then, the difference shows once, in the hour
+  after the last one written. A disabled cost sensor, or one the recorder
   excludes, is left out.
 
 **Choosing a contract**

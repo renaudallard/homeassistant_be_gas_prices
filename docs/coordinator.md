@@ -273,6 +273,14 @@ meanwhile is moved with the rest. The adjustment is what the reads found
 between the two totals, so two joins that read before either was written, a
 tick's and a service call's, moved the rows twice: one join of a sensor runs
 at a time, and it holds until the recorder has committed what it queued.
+The sensor's total is read off its newest five minutes, the row the compile
+carries on from, and only when that row is of the window's cycle (its
+`last_reset`, `_live_anchor`). Once the window has moved (the contract start
+edited, the year counted from it or no longer, New Year) the newest row
+stays the cycle before's until the sensor's next five minutes compile, and
+the compile then adds the new figure on top of that cycle's whole total:
+joined to the old row, the hour after the last one written rose by the old
+cycle's cost. Nothing is written until then, and the next update asks again.
 When the recorder does not answer one of those reads nothing is written. It is stamped in the Store on what the price
 history is stamped on and the meter, so it runs again when either moves.
 With an earlier contract of the year the stamp also holds what that

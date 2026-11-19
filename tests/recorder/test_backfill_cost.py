@@ -61,6 +61,7 @@ backfill_cost_module = importlib.import_module("custom_components.be_gas_prices.
 
 SID = "sensor.gas_current_year_cost"
 OLD = datetime(2025, 12, 31, 23, tzinfo=UTC)  # 1 January 2026, Brussels
+JULY = datetime(2026, 6, 30, 22, tzinfo=UTC)  # 1 July 2026, Brussels
 NEW = datetime(2026, 12, 31, 23, tzinfo=UTC)  # 1 January 2027, Brussels
 
 
@@ -158,6 +159,71 @@ async def test_a_new_year_continues_last_years_total(
     assert got[-1][2] == pytest.approx(0.5), got
 
 
+async def test_a_new_year_waits_for_the_sensors_first_row_of_it(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """No tick in the first hour of 1 January: that hour is compiled on last
+    year's figure, and the tick after it writes the new year while the
+    sensor's newest row is still that one. Joined to it, the live rows were
+    moved up by last year's bill and the second hour rose by 1200.5. Nothing
+    is written until a row of the new year is compiled, and that one already
+    carries on from last year's total."""
+    await _sensor(hass)
+    last = NEW - timedelta(hours=1)
+    await _live(hass, freezer, last + timedelta(minutes=1), 1000.0, OLD)
+    await _live(hass, freezer, last + timedelta(minutes=56), 1200.0, OLD)
+    await _live(hass, freezer, NEW + timedelta(minutes=56), 1200.0, OLD)
+    chain = (await hass.async_add_executor_job(_rows, hass, last))[-1][1]
+    freezer.move_to(NEW + timedelta(hours=1, minutes=2))
+    assert not await _import_cost_rows(hass, SID, [(NEW, 3.0)], NEW)
+    await async_wait_recording_done(hass)
+    got = await hass.async_add_executor_job(_rows, hass, NEW)
+    assert [r[:2] for r in got] == [(1200.0, pytest.approx(chain))], got
+    await _live(hass, freezer, NEW + timedelta(hours=1, minutes=2), 3.0, NEW)
+    assert await _import_cost_rows(hass, SID, [(NEW, 3.0)], NEW)
+    await async_wait_recording_done(hass)
+    await _live(hass, freezer, NEW + timedelta(hours=1, minutes=56), 3.5, NEW)
+    got = await hass.async_add_executor_job(_rows, hass, NEW)
+    assert [r[1] for r in got] == pytest.approx([chain + 3.0, chain + 3.5]), got
+    assert [r[2] for r in got] == pytest.approx([3.0, 0.5]), got
+
+
+async def test_a_moved_window_waits_for_the_sensors_first_row_of_it(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """An entry counting from 1 January is edited to count from 1 July, and
+    the reload's tick writes the new window seconds later, when the newest
+    row compiled is still of the year's cycle. Joined to that one, the live
+    rows were moved by what stood between the totals of another cycle, and
+    the hour after the last one written rose by the year's whole cost, 800.8
+    here. Nothing is written until the sensor's first five minutes of the new
+    cycle are compiled, and the cycle is joined to those."""
+    await _sensor(hass)
+    h = datetime(2026, 10, 10, 8, tzinfo=UTC)
+    await _live(hass, freezer, h + timedelta(minutes=1), 800.0, OLD)
+    await _live(hass, freezer, h + timedelta(minutes=56), 800.5, OLD)
+    await _live(hass, freezer, h + timedelta(hours=1, minutes=1), 800.6, OLD)
+    totals = [(OLD + timedelta(days=31 * n), 80.0 * (n + 1)) for n in range(9)]
+    totals += [(h - timedelta(hours=1), 799.9), (h, 800.5)]
+    assert await _import_cost_rows(hass, SID, totals, OLD)
+    await async_wait_recording_done(hass)
+    # 480 on the total by the end of June, and 300 billed since.
+    moved = [(JULY, 0.1), (h - timedelta(hours=1), 299.9), (h, 300.0)]
+    freezer.move_to(h + timedelta(hours=1, minutes=11))
+    assert not await _import_cost_rows(hass, SID, moved, JULY)
+    await async_wait_recording_done(hass)
+    got = await hass.async_add_executor_job(_rows, hass, h)
+    assert [r[:2] for r in got] == [(800.5, pytest.approx(800.5))], got
+    await _live(hass, freezer, h + timedelta(hours=1, minutes=11), 300.0, JULY)
+    assert await _import_cost_rows(hass, SID, moved, JULY)
+    await async_wait_recording_done(hass)
+    await _live(hass, freezer, h + timedelta(hours=1, minutes=56), 300.2, JULY)
+    await _live(hass, freezer, h + timedelta(hours=2, minutes=56), 300.4, JULY)
+    got = await hass.async_add_executor_job(_rows, hass, h)
+    assert [r[1] for r in got] == pytest.approx([780.0, 780.2, 780.4]), got
+    assert [r[2] for r in got[1:]] == pytest.approx([0.2, 0.2]), got
+
+
 async def test_a_run_past_the_next_hour_moves_that_hours_row(
     recorder_mock: Any, hass: HomeAssistant, freezer: Any
 ) -> None:
@@ -194,10 +260,10 @@ async def test_a_compile_between_the_read_and_the_import_joins_the_cycle(
     read = backfill_cost_module._read
     compiled: list[bool] = []
 
-    async def _then_compile(*args: Any) -> list[Any] | None:
-        got = await read(*args)
-        if not compiled and args[4] == "hour" and args[2] >= h:
-            # The last read of the live rows, then the five minutes at 09:05.
+    async def _then_compile(*args: Any, **kwargs: Any) -> list[Any] | None:
+        got = await read(*args, **kwargs)
+        if not compiled and args[4] == "5minute":
+            # The read of the live rows, then the five minutes at 09:05.
             compiled.append(True)
             await _live(hass, freezer, h + timedelta(hours=1, minutes=6), 800.7, OLD)
         return got

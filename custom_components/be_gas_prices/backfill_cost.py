@@ -206,8 +206,9 @@ async def _import_cost_rows(
     difference lands in the hour after the last one written.
 
     False, with nothing imported, when the recorder did not answer one of
-    the reads, or holds no live row of the sensor yet to join the cycle to:
-    a new sensor's first is compiled within five minutes.
+    the reads, or holds no live row of the cycle yet to join it to: a new
+    sensor's first is compiled within five minutes, and so is the first of a
+    window that has just moved.
     """
     from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
     from homeassistant.components.recorder.db_schema import Statistics
@@ -235,7 +236,7 @@ async def _import_cost_rows(
         base = await _total_before(hass, sid, totals[0][0])
         if base is None:
             return False
-        anchor = await _live_anchor(hass, sid, totals[-1][0] + timedelta(hours=1))
+        anchor = await _live_anchor(hass, sid, totals[-1][0], reset)
         if anchor is None:
             return False
         state, total = anchor
@@ -278,18 +279,30 @@ def _compiled(hass: HomeAssistant, sid: str) -> bool:
     return recorded is None or recorded(sid)
 
 
-async def _live_anchor(hass: HomeAssistant, sid: str, end: datetime) -> tuple[float, float] | None:
-    """The state and the total of a live row of the cycle near ``end``: the
-    sensor's hour before it, or, for a sensor that started after it, its
-    first five minutes. None when the recorder did not answer, or holds
-    neither."""
-    rows = await _read(hass, sid, end - timedelta(hours=1), end, "hour")
-    if rows is not None and not rows:
-        rows = await _read(hass, sid, end, None, "5minute")
-    for row in rows or []:
-        if row.get("state") is not None and row.get("sum") is not None:
-            return float(row["state"]), float(row["sum"])
-    return None
+async def _live_anchor(
+    hass: HomeAssistant, sid: str, last: datetime, reset: datetime
+) -> tuple[float, float] | None:
+    """The state and the total of the sensor's newest five minutes, the row
+    the live compile carries on from, looked for from the hour ``last`` on.
+
+    None when the recorder did not answer or holds no such row, and when the
+    row is of another cycle than the one that began at ``reset``: once the
+    window has moved, or the year turned, the newest row stays the cycle
+    before's until the sensor's next five minutes compile, and it stands a
+    whole cycle's cost away from the rows to come.
+    """
+    rows = await _read(hass, sid, last, None, "5minute", last_reset=True)
+    if not rows:
+        return None
+    row = rows[-1]
+    began = row.get("last_reset")
+    if isinstance(began, datetime):
+        began = began.timestamp()
+    if began is None or abs(began - reset.timestamp()) >= 1.0:
+        return None
+    if row.get("state") is None or row.get("sum") is None:
+        return None
+    return float(row["state"]), float(row["sum"])
 
 
 async def _read(
@@ -298,9 +311,12 @@ async def _read(
     start: datetime,
     end: datetime | None,
     period: Literal["5minute", "hour", "month"],
+    *,
+    last_reset: bool = False,
 ) -> list[Any] | None:
     """The rows of ``period`` from ``start`` to ``end``, or to the newest
-    when None; None when the recorder did not answer."""
+    when None, with the instant each was last reset at when ``last_reset``;
+    None when the recorder did not answer."""
     from homeassistant.components.recorder import get_instance  # type: ignore[attr-defined]
     from homeassistant.components.recorder.statistics import statistics_during_period
 
@@ -313,7 +329,7 @@ async def _read(
             {sid},
             period,
             None,
-            {"sum", "state"},
+            {"sum", "state", "last_reset"} if last_reset else {"sum", "state"},
         )
     except Exception as err:  # whatever the recorder raised
         _LOGGER.debug("could not read the statistics of %s: %s", sid, err)
