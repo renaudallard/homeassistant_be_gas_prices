@@ -39,8 +39,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import aiohttp
+from homeassistant.util import dt as dt_util
 
 from .bill import LegFor, contract_leg, fee_waiver, merged_index, month_key
 from .const import (
@@ -145,11 +147,23 @@ def last_month_sold(extractor: SupplierExtractor, contract: str) -> str | None:
     return None if withdrawn is None else month_key(withdrawn - timedelta(days=1))
 
 
+# Cards are Belgian, whatever zone Home Assistant keeps: a supplier dates its
+# card in Belgium, and EnergyVision's uploads are read there.
+_BELGIUM = ZoneInfo("Europe/Brussels")
+
+
+def belgian_today() -> date:
+    """Today's date in Belgium, which a card's day and month end by. East
+    of it Home Assistant's day turns first: in Tokyo the 10th is over at
+    16:00 in Belgium, where a card can still be uploaded that day."""
+    return dt_util.now(_BELGIUM).date()
+
+
 def card_key_due(key: str, today: date) -> bool:
     """Whether the month card cache can hold a card under ``key`` by
-    ``today``: a month before this one, or a day before today. A card found
-    is kept for good, and a supplier's archive may not list today's
-    reissue yet."""
+    ``today``, Belgium's date (:func:`belgian_today`): a month before this
+    one, or a day before today. A card found is kept for good, and a
+    supplier's archive may not list today's reissue yet."""
     return key < today.isoformat() if len(key) > len("YYYY-MM") else key < month_key(today)
 
 
@@ -393,6 +407,7 @@ class PeriodBilling:
         cache."""
         from .providers import get as get_extractor
 
+        due = belgian_today()
         # Read once for all the months, as the coordinator's own fill does.
         with memoise_text_fetches({}):
             for period, start, end in periods_this_year(data, today):
@@ -408,7 +423,7 @@ class PeriodBilling:
                 contract = str(period[CONF_CONTRACT])
                 region = str(period[CONF_REGION])
                 for month in _card_keys(period, start, end, extractor):
-                    if card_key_due(month, today):
+                    if card_key_due(month, due):
                         try:
                             await self._months.card(
                                 session, extractor, contract, region, month, use_archive=use_archive

@@ -86,7 +86,9 @@ the signing card when the entry names a contract start date or a tariff card
 date and the contract is fixed or indexed. Where the supplier reissues its
 card within a month (Elegant's Zeker & Vast, EnergyVision's uploads from
 November 2026), the signing card is the one in force on the tariff card
-date, once that day is past. A variable price is
+date, once that day is over in Belgium, whatever zone Home Assistant keeps:
+the card found for a day is kept for good, and one uploaded later that day
+would never be read. A variable price is
 the supplier's for each month, so the card of month M sets it whatever the
 signing date. A signing card no one serves any more (neither the supplier's
 archive nor the project's, which keeps thirty-six months) leaves each month on

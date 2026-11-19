@@ -33,8 +33,11 @@ from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
+from freezegun import freeze_time
+from homeassistant.util import dt as dt_util
 
 from custom_components.be_gas_prices import providers, snapshot_codec
 from custom_components.be_gas_prices.compare import (
@@ -86,6 +89,7 @@ from custom_components.be_gas_prices.const import (
 from custom_components.be_gas_prices.contract_periods import (
     PeriodBilling,
     Unpriced,
+    belgian_today,
     card_key_due,
     current_period_start,
     periods_this_year,
@@ -253,6 +257,7 @@ def _energy_price(costs: RunningCosts) -> float:
     return sum(bill.energy_cost for bill in costs.months) / costs.ytd_kwh
 
 
+@pytest.mark.freeze_time("2026-09-30 12:00:00+02:00")
 async def test_an_earlier_contract_is_billed_on_its_signing_card() -> None:
     """A fixed contract signed in October 2025 and left on 1 July is billed
     at the price it was signed at, not at what each month offered new
@@ -276,6 +281,41 @@ def test_a_signing_day_is_asked_for_once_it_is_past() -> None:
     assert not card_key_due("2026-10", today)
 
 
+@pytest.mark.parametrize(
+    ("zone", "now", "due"),
+    [
+        # 16:05 on 30 November in Belgium is five past midnight on 1
+        # December in Tokyo: the month still runs where its card is dated.
+        ("Asia/Tokyo", "2026-11-30 16:05:00+01:00", False),
+        ("Asia/Tokyo", "2026-12-01 00:05:00+01:00", True),
+        # Five past midnight on 1 December in Belgium is 15:05 on 30
+        # November in Los Angeles: the month is over.
+        ("America/Los_Angeles", "2026-11-30 23:55:00+01:00", False),
+        ("America/Los_Angeles", "2026-12-01 00:05:00+01:00", True),
+    ],
+)
+async def test_an_earlier_contract_s_month_is_asked_for_once_it_is_over_in_belgium(
+    zone: str, now: str, due: bool
+) -> None:
+    """Cards are Belgian: November's is asked for, and then kept for good,
+    once November is over in Belgium, whatever Home Assistant's date is."""
+    asked: list[str] = []
+
+    async def fetch_for_month(_s: object, _c: str, _r: str, first: date) -> None:
+        asked.append(f"{first:%Y-%m}")
+
+    stub = replace(engie.EXTRACTOR, fetch_for_month=fetch_for_month)
+    data = record_switch(dict(ENTRY), date(2026, 11, 21))
+    dt_util.set_default_time_zone(ZoneInfo(zone))
+    with freeze_time(now), patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        assert belgian_today() == date.fromisoformat(now[:10])
+        await PeriodBilling(MonthCardCache()).fill(
+            AsyncMock(), data, dt_util.now().date(), use_archive=False
+        )
+    assert asked[:10] == [f"2026-{month:02d}" for month in range(1, 11)]
+    assert asked[10:] == (["2026-11"] if due else [])
+
+
 def _reissued(base: SupplierSnapshot, day: date) -> SupplierSnapshot:
     """Elegant's Zeker & Vast of March 2026: 5,11 from the 1st, 5,61 from
     the 6th, 7,54 from the 21st."""
@@ -283,6 +323,7 @@ def _reissued(base: SupplierSnapshot, day: date) -> SupplierSnapshot:
     return replace(base, energy=FixedRates(price=price))
 
 
+@pytest.mark.freeze_time("2026-09-30 12:00:00+02:00")
 async def test_a_contract_signed_on_a_reissue_is_billed_on_that_day_s_card() -> None:
     """A supplier reissuing its fixed card within a month bills a contract
     on the card of the day it was signed, where the entry names that day;
@@ -319,6 +360,7 @@ async def test_a_contract_signed_on_a_reissue_is_billed_on_that_day_s_card() -> 
         assert _energy_price(earlier) == pytest.approx(price), signed
 
 
+@pytest.mark.freeze_time("2026-09-30 12:00:00+02:00")
 async def test_an_earlier_withdrawn_contract_is_billed_on_its_last_card() -> None:
     """Flow withdrawn on 1 August and left on 10 September: no card exists
     for August or September, and none of today's, so July's card prices
@@ -365,6 +407,7 @@ async def test_an_earlier_withdrawn_contract_is_billed_on_its_last_card() -> Non
     assert fetch.await_count == 0
 
 
+@pytest.mark.freeze_time("2026-10-23 12:00:00+02:00")
 async def test_an_earlier_withdrawn_contract_falls_back_on_its_last_card() -> None:
     """Flow withdrawn on 1 October and left on 20 August, August's card
     lacking the household's network: September's, the last card it was sold
@@ -997,6 +1040,7 @@ async def test_a_ranking_reads_what_a_supplier_s_contracts_share_once() -> None:
     assert web.asked == ["https://acme.test/listing"]
 
 
+@pytest.mark.freeze_time("2026-09-30 12:00:00+02:00")
 async def test_an_earlier_contract_s_months_read_a_shared_page_once() -> None:
     """Bolt's variable months each walk down the same versions of its card:
     one fill reads what its months share once."""

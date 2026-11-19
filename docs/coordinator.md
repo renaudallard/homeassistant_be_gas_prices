@@ -87,7 +87,11 @@ cards (`issues.sync_issues`).
    the current contract supplied this year and the signing month (and the
    signing day, for a supplier with `fetch_on_day`), and
    (`PeriodBilling.fill`) the earlier contracts' own, each from the card
-   archive, else the supplier's archive (`MonthCardCache.card`). The first
+   archive, else the supplier's archive (`MonthCardCache.card`). A signing
+   day or month, and an earlier contract's month, is asked for once it is
+   over in Belgium (`card_key_due` on `belgian_today`), not by Home
+   Assistant's date: east of Belgium that turns while a card can still be
+   uploaded for the day. The first
    tick does this in the background, because it is what setup waits on, and
    prices again on them when done (`async_reprice`), without asking the
    supplier or Atrias again.

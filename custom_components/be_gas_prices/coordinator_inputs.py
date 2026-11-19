@@ -52,7 +52,7 @@ from .const import (
     DEFAULT_CONVERSION_MODE,
     SUPPLIER_CUSTOM,
 )
-from .contract_periods import card_key_due, parse_date, signing_keys
+from .contract_periods import belgian_today, card_key_due, parse_date, signing_keys
 from .coordinator_data import Conversion
 from .gas_meter import MeterKind
 from .month_cards import ArchiveUnavailable, MonthCardCache
@@ -222,10 +222,11 @@ class _InputsMixin:
         while f"{year}-{month:02d}" < current:
             months.append(f"{year}-{month:02d}")
             year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+        due = belgian_today()
         months += [
             key
             for key in signing_keys(self._data, self.extractor)
-            if card_key_due(key, today) and key not in months
+            if card_key_due(key, due) and key not in months
         ]
         return months
 

@@ -3776,6 +3776,53 @@ async def test_a_card_reissued_within_its_month_prices_the_day_signed(
     )
 
 
+@pytest.mark.parametrize(
+    ("zone", "now", "due"),
+    [
+        # 16:05 on the 10th in Belgium is five past midnight on the 11th in
+        # Tokyo, and EnergyVision uploaded its card again at 16:26 that day.
+        ("Asia/Tokyo", "2026-11-10 16:05:00+01:00", False),
+        ("Asia/Tokyo", "2026-11-11 00:05:00+01:00", True),
+        # Five past midnight on the 11th in Belgium is 15:05 on the 10th in
+        # Los Angeles.
+        ("America/Los_Angeles", "2026-11-10 23:55:00+01:00", False),
+        ("America/Los_Angeles", "2026-11-11 00:05:00+01:00", True),
+    ],
+)
+async def test_the_day_signed_is_asked_for_once_it_is_over_in_belgium(
+    hass: HomeAssistant,
+    fetch: AsyncMock,
+    freezer: FrozenDateTimeFactory,
+    zone: str,
+    now: str,
+    due: bool,
+) -> None:
+    """Cards are Belgian, and the card found for a day is kept for good:
+    the day is asked for once it is over in Belgium, whatever date Home
+    Assistant's zone has by then."""
+    asked: list[date] = []
+
+    async def on_day(_session: Any, _contract: str, _region: str, day: date) -> Any:
+        asked.append(day)
+        return fetch.return_value
+
+    stub = replace(providers.EXTRACTORS["engie"], fetch_on_day=on_day)
+    data = {
+        **DATA,
+        CONF_CONTRACT: "engie_easy_fixed",
+        CONF_CONTRACT_START_DATE: "2026-11-10",
+        CONF_TARIFF_CARD_DATE: "2026-11-10",
+    }
+    await hass.config.async_set_time_zone(zone)
+    freezer.move_to(now)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        entry = await _setup(hass, data)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    needed = entry.runtime_data._months_needed(dt_util.now().date())
+    assert ("2026-11-10" in needed) is due
+    assert asked == ([date(2026, 11, 10)] if due else [])
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_the_price_history_stamp_moves_with_the_tier(
     hass: HomeAssistant, fetch: AsyncMock
