@@ -323,7 +323,9 @@ _FORMULA_RE = re.compile(
 _FORMULA_UNIT_RE = re.compile(r"^\(([^()\n]*/[kM]Wh)\)$", re.MULTILINE)
 _FORMULA_UNIT = "c€/kWh"
 _FORMULA_UNIT_REACH = 120
-_INDICATIVE_RE = re.compile(r"Compteur Simple\s*:\s*(\d+,\d+)")
+# With a comma or, as the estimate above was once, a dot: read with a comma
+# alone, a dotted price was taken for the blank one and the estimate billed.
+_INDICATIVE_RE = re.compile(r"Compteur Simple\s*:\s*(\d+[.,]\d+)")
 
 
 def _energy(text: str, contract: _ContractDef, vat: float) -> FixedRates | IndexedRates:

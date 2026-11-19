@@ -196,6 +196,20 @@ def test_october_myessential_prints_its_estimate_with_a_dot() -> None:
     assert snap.publication_label == "2026-10"
 
 
+def test_an_indicative_price_printed_with_a_dot_is_read() -> None:
+    """The estimate was printed with a dot once ("8.03 Tarif mensuel"). An
+    indicative price printed so is still the card's price, not the blank one
+    the estimate, 7,41 here, stands in for."""
+    card = _card("MYCOMFORT_GAS_WAL_FR.pdf")
+    dotted = card.replace("Compteur Simple : 7,33", "Compteur Simple : 7.33", 1)
+    assert dotted != card
+    assert "7,41 Tarif mensuel" in card
+    snap = totalenergies.parse_snapshot("totalenergies_mycomfort_variable", REGION_WALLONIA, dotted)
+    assert isinstance(snap.energy, IndexedRates)
+    assert snap.energy.price == pytest.approx(0.0733)
+    assert snap == _mycomfort(REGION_WALLONIA, "MYCOMFORT_GAS_WAL_FR.pdf")
+
+
 @pytest.mark.parametrize(
     ("contract", "region", "name", "price", "fee"),
     [

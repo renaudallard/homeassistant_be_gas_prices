@@ -102,7 +102,9 @@ takes about 10 s per card on a Raspberry Pi 4 (`sweep_cost_s`).
     Variable cards, on 1 October, left it blank (`Compteur Simple : € cent/
     kWh`), and the estimate was then the price. The reissue later that day
     prints it again (8,78 against an estimate of 8,12 in Wallonia), and the
-    estimate still stands in for a card leaving it blank.
+    estimate still stands in for a card leaving it blank. The figure is read
+    with a comma or a dot, as the estimate is: a dotted one read as blank
+    would bill the estimate instead.
 - DSO table: it runs from `Coûts de distribution - Terme variable` to
   `Accise fédérale`. The columns are all proportional terms first (0-5000,
   5001-150.000 and 150.001-400.000 kWh, c€/kWh), then the three fixed terms
