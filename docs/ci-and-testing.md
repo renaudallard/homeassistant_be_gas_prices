@@ -66,7 +66,8 @@ cache and 54 seconds with a full one.
   replayed on November 2026's moves with the real pages and cards.
 - `test_moved.py`: `providers/_moved.py`, the registry reading a moved card
   where its supplier lists it, on the same moves, and never at an address
-  its page links on another host.
+  its page links on another host, and a search over thousands of links or
+  names looking at the first hundred card links or names only.
 - `test_file_ci_issue.py`: `scripts/file_ci_issue.sh` against a fake `gh`
   that answers from files and logs its calls.
 - `test_autorelease.py`: the release job of `autorelease.yml`, its own

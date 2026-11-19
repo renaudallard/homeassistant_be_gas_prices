@@ -99,6 +99,20 @@ def _pages(monkeypatch: pytest.MonkeyPatch, pages: dict[str, str]) -> list[str]:
     return asked
 
 
+def _calls(monkeypatch: pytest.MonkeyPatch, name: str) -> list[str]:
+    """The text each call of ``_moved``'s ``name`` is made on, its last
+    argument, as a search runs."""
+    texts: list[str] = []
+    real = getattr(_moved, name)
+
+    def call(*args: str) -> Any:
+        texts.append(args[-1])
+        return real(*args)
+
+    monkeypatch.setattr(_moved, name, call)
+    return texts
+
+
 def _elegant_before_the_fix(monkeypatch: pytest.MonkeyPatch) -> None:
     """Elegant's Flex gas card under the name the registry asked before
     November 2026's rename, and the listing of 4 November that names it
@@ -128,6 +142,29 @@ async def test_elegant_is_read_under_the_name_its_listing_gives(
         snap = await EXTRACTORS["elegant"].fetch(None, "elegant_flex", REGION_FLANDERS)  # type: ignore[arg-type]
     assert snap.publication_label == "2026-11"
     assert snap.source_url.endswith("/Current/Flex%20Gas_Residential.pdf")
+
+
+async def test_elegant_looks_at_the_first_names_of_a_listing_each_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A listing is a few cards long. Of one that names thousands the first
+    hundred are compared with the product's, and a name is decoded by itself,
+    "&" as an entity or as JSON spells it, not the page before the search."""
+    spelt = ("Zeker &amp; Vast Gas", "Zeker \\u0026 Vast Gas", "Zeker & Vast Gas")
+    names = [*spelt, *spelt, *(f"Card {n}" for n in range(5000)), "Flex Gas"]
+    page = " ".join(f'"/Current/{name}_Residential.pdf"' for name in names)
+    _pages(monkeypatch, {"elegant.be/tariefkaarten": page})
+    decoded = _calls(monkeypatch, "unescape")
+    compared = _calls(monkeypatch, "_squash")
+    found = await _moved._elegant(None, "elegant_zeker_vast", REGION_FLANDERS, NOVEMBER_3.date())  # type: ignore[arg-type]
+    assert [url.rsplit("/", 1)[1] for url, _where, _exact in found] == [
+        "Zeker%20%26%20Vast%20Gas_Residential.pdf"
+    ]
+    assert len(decoded) == _moved._MAX_LISTED
+    assert max(len(text) for text in decoded) < 30
+    # The product's own name, then each listed name once decoded.
+    assert len(compared) == 1 + _moved._MAX_LISTED - 2
+    assert await _moved._elegant(None, "elegant_flex", REGION_FLANDERS, NOVEMBER_3.date()) == []  # type: ignore[arg-type]
 
 
 async def test_engie_is_read_under_the_code_its_prices_page_gives(
@@ -220,12 +257,46 @@ async def test_dots_reads_only_the_links_on_its_own_site(monkeypatch: pytest.Mon
 
 
 @pytest.mark.parametrize(
+    ("links", "cards"),
+    [
+        # Links to anything but a card, as most of a page's are.
+        pytest.param("".join(f'<a href="/nl/klant/{n}">' for n in range(5000)), [], id="none"),
+        # One card linked over and over.
+        pytest.param('<a href="/web/content/7?a=1&amp;b=2">' * 5000, [7], id="one"),
+        # More cards than any page lists: the first hundred.
+        pytest.param(
+            "".join(f'<a href="/web/content/{n}?a=1&amp;b=2">' for n in range(5000)),
+            list(range(100)),
+            id="many",
+        ),
+    ],
+)
+async def test_dots_joins_only_the_card_links_of_a_page_each_once(
+    monkeypatch: pytest.MonkeyPatch, links: str, cards: list[int]
+) -> None:
+    """Every link of a page was joined to the page's address before it was
+    looked at, 600 000 of them in over a minute on the event loop, and the
+    page had its entities decoded whole. A link is now joined, and decoded,
+    once it spells a card's address, and a hundred of them at most."""
+    asked = _pages(monkeypatch, {"dotsenergy.be/": links})
+    joins = _calls(monkeypatch, "urljoin")
+    decoded = _calls(monkeypatch, "unescape")
+    found = await _moved._dots(None, "dots_connect_digital", REGION_FLANDERS, NOVEMBER_3.date())  # type: ignore[arg-type]
+    assert len(asked) == len(_moved._DOTS_PAGES)
+    assert len(joins) == len(cards) * len(asked)
+    assert decoded == [link.replace("&", "&amp;") for link in joins]
+    assert [url for url, _where, _exact in found] == [
+        f"https://www.dotsenergy.be/web/content/{n}?a=1&b=2" for n in cards
+    ]
+
+
+@pytest.mark.parametrize(
     "page",
     [
         # urljoin refuses the link: "Invalid IPv6 URL".
         pytest.param('<a href="https://[bad/web/content/1">card</a>', id="link"),
         # html.unescape refuses a numeric entity of more than 4300 digits.
-        pytest.param("<p>&#" + "9" * 5000 + ";</p>", id="entity"),
+        pytest.param('<a href="/web/content/1?x=&#' + "9" * 5000 + ';">card</a>', id="entity"),
     ],
 )
 @pytest.mark.parametrize("old", ["web page", "older card"])

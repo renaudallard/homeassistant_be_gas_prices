@@ -150,6 +150,15 @@ address is no sign of a move and is never searched for. An Engie sibling
 under the same family code is offered by the candidates but marked, and the
 wrapper skips it.
 
+A search runs on the event loop over a page of up to 8 MiB, so it does
+little per link. Of Dots's page only the links that spell a card's address
+are joined to the page's, and the names Elegant's listing gives are compared
+with the product's, each link or name once and the first hundred of a page
+at most (`_MAX_LISTED`: Dots's page linked its card twice and Elegant's
+listing named six cards in November 2026). Entities are decoded in a link or
+a name that is kept, not in the page: joining 600 000 links took over a
+minute, and decoding 8 MiB of entities seconds.
+
 Luminus, Belvus and EnergyVision are not wrapped. Luminus's `fetch` reads its
 archive's card of the running month when the usual address has none,
 Belvus's reads both pages that list its cards, and EnergyVision's asks every

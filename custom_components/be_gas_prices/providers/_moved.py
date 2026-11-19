@@ -60,10 +60,11 @@ from __future__ import annotations
 import functools
 import logging
 import re
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import replace
 from datetime import date
 from html import unescape
+from itertools import islice
 from urllib.parse import quote, urljoin
 
 import aiohttp
@@ -91,6 +92,12 @@ ReadAt = Callable[[aiohttp.ClientSession, str, str, str], Awaitable[SupplierSnap
 # The addresses read for one card, best first.
 _MAX_TRIED = 4
 
+# The links or names of one page a search looks at, each once. In November
+# 2026 Dots's page linked its card twice and Elegant's listing named six
+# cards, while 8 MiB of markup can hold 600 000 links, which took over a
+# minute to join on the event loop.
+_MAX_LISTED = 100
+
 # A link as markup carries it.
 _HREF_RE = re.compile(r"""(?:href|src)\s*=\s*["']([^"'<>]+)["']""", re.IGNORECASE)
 
@@ -117,11 +124,18 @@ def _squash(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
+def _listed(found: Iterable[str]) -> list[str]:
+    """What a page lists, each once and :data:`_MAX_LISTED` at most, spelt
+    as the page spells it. Its entities are decoded once it is kept: decoding
+    the page first took seconds on 8 MiB of them."""
+    return list(islice(dict.fromkeys(found), _MAX_LISTED))
+
+
 async def _page(session: aiohttp.ClientSession, url: str) -> str:
     """A page's text, or nothing when it cannot be read: the search goes on
     with the supplier's other pages."""
     try:
-        return unescape(await fetch_text(session, url))
+        return await fetch_text(session, url)
     except ExtractorError:
         return ""
 
@@ -130,12 +144,12 @@ async def _elegant(
     session: aiohttp.ClientSession, contract_id: str, region: str, month: date
 ) -> list[Candidate]:
     contract = elegant._CONTRACTS_BY_ID[contract_id]
-    page = (await fetch_text(session, elegant._LISTING_URL)).replace("\\u0026", "&")
+    listed = _listed(_ELEGANT_LISTED_RE.findall(await fetch_text(session, elegant._LISTING_URL)))
     # The archive key is the listed name with its spaces and "&" taken out.
     wanted = _squash(contract.archive_key)
     return [
         (f"{elegant._CURRENT_URL}/{quote(name)}_Residential.pdf", "Elegant's listing", True)
-        for name in dict.fromkeys(_ELEGANT_LISTED_RE.findall(unescape(page)))
+        for name in dict.fromkeys(unescape(name.replace("\\u0026", "&")) for name in listed)
         if _squash(name) == wanted
     ]
 
@@ -172,8 +186,10 @@ async def _dots(
     found: dict[str, str] = {}
     for path in _DOTS_PAGES:
         page_url = f"{dots._HOST}{path}"
-        for link in _HREF_RE.findall(await _page(session, page_url)):
-            url = urljoin(page_url, link)
+        links = _HREF_RE.findall(await _page(session, page_url))
+        # Only a link that spells a card's address is joined.
+        for link in _listed(filter(_DOTS_CARD_RE.search, links)):
+            url = urljoin(page_url, unescape(link))
             # Dots's own site only: the card is no other host's.
             if on_site(url, dots._HOST) and _DOTS_CARD_RE.search(url) is not None:
                 found.setdefault(url, "Dots's product page")
