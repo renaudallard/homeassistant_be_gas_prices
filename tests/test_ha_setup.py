@@ -909,6 +909,53 @@ async def test_a_card_the_probe_finds_unchanged_does_not_go_stale(
     assert issue is None
 
 
+@pytest.mark.freeze_time("2026-10-07 10:00:00+02:00")
+async def test_a_card_a_week_past_its_month_goes_stale(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """September's card still the one served in October: read afresh every
+    tick, yet stale once its month ended more than a week ago, on the 8th,
+    and not on the 7th."""
+    assert fetch.return_value.valid_until == date(2026, 9, 30)
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    issue_id = f"snapshot_stale_{entry.entry_id}"
+    issues = ir.async_get(hass)
+    for moment, stale in (
+        ("2026-10-07 23:30:00+02:00", False),
+        ("2026-10-08 00:30:00+02:00", True),
+    ):
+        freezer.move_to(moment)
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert coordinator.snapshot_age() == timedelta(0)
+        assert coordinator.snapshot_stale() is stale
+        assert (issues.async_get_issue(DOMAIN, issue_id) is not None) is stale
+
+
+@pytest.mark.freeze_time("2026-09-02 10:00:00+02:00")
+async def test_a_card_unread_for_a_week_goes_stale_no_sooner(
+    hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
+) -> None:
+    """The card read on 2 September and every fetch failing since: not stale
+    a week to the minute later, stale the tick after."""
+    entry = await _setup(hass)
+    coordinator = entry.runtime_data
+    fetch.side_effect = ExtractorError("HTTP 500 fetching x")
+    issue_id = f"snapshot_stale_{entry.entry_id}"
+    issues = ir.async_get(hass)
+    for moment, stale in (
+        ("2026-09-09 10:00:00+02:00", False),
+        ("2026-09-09 11:00:00+02:00", True),
+    ):
+        freezer.move_to(moment)
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert coordinator.snapshot_stale() is stale
+        assert (issues.async_get_issue(DOMAIN, issue_id) is not None) is stale
+    assert coordinator.snapshot_age() == timedelta(days=7, hours=1)
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_a_card_fetched_at_setup_is_kept_against_its_probe_key(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
@@ -3031,6 +3078,8 @@ def _failing_coordinator(**values: Any) -> SimpleNamespace:
         ("2026-11-03 14:00:00+01:00", date(2026, 11, 2), True, False),
         ("2026-11-05 23:30:00+01:00", date(2026, 11, 2), True, False),
         ("2026-11-06 00:30:00+01:00", date(2026, 11, 2), True, True),
+        # One begun on the 1st is held all the same.
+        ("2026-11-05 23:30:00+01:00", date(2026, 11, 1), True, False),
         # A run begun before the 1st keeps its card.
         ("2026-11-03 14:00:00+01:00", date(2026, 10, 30), True, True),
         # No card at all: shown at once, since nothing prices the entry.

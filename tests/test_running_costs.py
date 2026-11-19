@@ -743,6 +743,23 @@ def test_each_month_names_the_first_day_it_bills() -> None:
     ]
 
 
+def test_a_leap_year_s_fixed_costs_add_up_to_one_year() -> None:
+    """2028 billed whole: its 366 days come to one year of FLOW's 50,00 and
+    ORES T2's 140,93, not a day more."""
+    costs = running_costs(
+        kwh_days={},
+        today=date(2028, 12, 31),
+        window_start=date(2028, 1, 1),
+        household=Household(dso=DSO_ORES, caliber=CALIBER_Q10, annual_kwh=17_000.0),
+        current_card=_flow(),
+        month_card=lambda month: None,
+        energy_for=card_leg,
+        table=TABLE,
+    )
+    assert sum(bill.days for bill in costs.months) == 366
+    assert sum(bill.fixed_cost for bill in costs.months) == pytest.approx(50.0 + 140.93)
+
+
 def test_a_signing_card_without_a_table_prices_the_energy_alone() -> None:
     """A Flemish card from before the Fluvius merger reads its energy leg,
     which prices the contract signed on it, but no DSO row: its own month is

@@ -1210,6 +1210,26 @@ async def test_a_stored_signing_card_past_the_archive_s_reach_is_kept() -> None:
     assert row.snapshot == card and not row.reread
 
 
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_a_month_no_one_holds_is_asked_again_after_a_day(freezer: Any) -> None:
+    """Not on every tick of the day: the archive captures a month late, and
+    a supplier can reissue, so it is asked again the next day."""
+    gone = AsyncMock(return_value=None)
+    extractor = replace(engie.EXTRACTOR, fetch_for_month=gone)
+    cache = MonthCardCache()
+    for step, asked in (
+        (timedelta(0), 1),
+        (timedelta(hours=23, minutes=59), 1),
+        (timedelta(minutes=1), 2),
+    ):
+        freezer.tick(step)
+        row = await cache.card(
+            AsyncMock(), extractor, "engie_flow", "wallonia", "2026-07", use_archive=False
+        )
+        assert row.snapshot is None
+        assert gone.await_count == asked
+
+
 _ARCHIVED = "custom_components.be_gas_prices.month_cards.fetch_archived_card"
 
 
