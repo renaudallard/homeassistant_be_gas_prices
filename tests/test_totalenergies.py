@@ -493,6 +493,37 @@ def test_index_history_with_another_column_order_is_refused() -> None:
         totalenergies.parse_index_history(text)
 
 
+@pytest.mark.parametrize(
+    ("restated", "refusal"),
+    [
+        # In c€/kWh every value would price a tenth.
+        ("indiqués en c€/kWh HTVA.", "states c€/kWh HTVA, expected €/MWh HTVA"),
+        # Including VAT.
+        ("indiqués en €/MWh TVAC.", "states €/MWh TVAC, expected €/MWh HTVA"),
+        ("indiqués hors TVA.", "states no unit, expected €/MWh HTVA"),
+    ],
+)
+def test_index_history_stating_another_unit_is_refused(restated: str, refusal: str) -> None:
+    """The table carries no unit: the document states it under its title,
+    "Les prix sont indiqués en €/MWh HTVA.", and the values are read under
+    it alone."""
+    text = _card(_HISTORY)
+    printed = "indiqués en €/MWh HTVA."
+    assert text.count(printed) == 1
+    assert totalenergies.parse_index_history(text)["TTF_M_RLP"]["2026-08"] == pytest.approx(61.662)
+    with pytest.raises(ExtractorError, match=refusal):
+        totalenergies.parse_index_history(text.replace(printed, restated))
+
+
+def test_index_history_stating_a_second_unit_is_refused() -> None:
+    """A second table in another unit, as Engie's page gained in November
+    2026, would overwrite the first one's rows: a document stating two
+    units is not read."""
+    again = "\nLes prix sont indiqués en c€/kWh HTVA.\n08/2026 6,1662 6,1824"
+    with pytest.raises(ExtractorError, match="states c€/kWh HTVA, €/MWh HTVA, expected"):
+        totalenergies.parse_index_history(_card(_HISTORY) + again)
+
+
 def test_regions_follow_the_cards_totalenergies_publishes() -> None:
     by_id = {c.id: c for c in totalenergies.EXTRACTOR.contracts}
     assert by_id["totalenergies_impact_variable"].regions == frozenset({REGION_WALLONIA})

@@ -113,6 +113,7 @@ from ._pdf import (
     fetch_pdf_text_layout,
     head_freshness_key,
     printed_vat_rate,
+    shown_text,
 )
 from ._rates import ALL_REGIONS, Contract, FixedRates, IndexedRates, TariffKind
 from ._validity import end_of_month, future_month, month_card
@@ -465,6 +466,12 @@ def _osp(text: str) -> dict[str, float]:
 _INDEX_COLUMNS = (_INDEX, "ZTP_M_RLP", "ZTP_Q_RLP")
 _INDEX_HEADER_RE = re.compile(r"TTF_M_RLP\*\s+ZTP_M_RLP\*\s+ZTP_Q_RLP\*\*")
 _INDEX_ROW_RE = re.compile(r"^(\d{2})/(20\d{2})((?: \d+,\d+){2,3})$", re.MULTILINE)
+# The table carries no unit. The document states it once, under its title:
+# "Les prix sont indiqués en €/MWh HTVA.". The values are read only when
+# that is the one unit it states: restated in c€/kWh they would price a
+# tenth.
+_INDEX_UNIT_RE = re.compile(r"Les prix sont indiqués en ([^.]{0,40})\.")
+_INDEX_UNIT = "€/MWh HTVA"
 
 
 def parse_index_history(text: str) -> IndexTable:
@@ -473,10 +480,18 @@ def parse_index_history(text: str) -> IndexTable:
     One row per month, newest first ("08/2026 61,662 61,824"). The quarterly
     ZTP_Q_RLP is printed on each month of its quarter and left empty until the
     quarter is over, so a row with two figures is missing the last column.
-    The header is checked because the columns are read by position.
+    The header is checked because the columns are read by position. A
+    document stating its prices in another unit than EUR/MWh excluding VAT,
+    or in none, is refused.
     """
     if _INDEX_HEADER_RE.search(text) is None:
         raise ExtractorError("TotalEnergies: index history header not found")
+    units = set(_INDEX_UNIT_RE.findall(" ".join(text.split())))
+    if units != {_INDEX_UNIT}:
+        stated = shown_text(", ".join(sorted(units)) or "no unit")
+        raise ExtractorError(
+            f"TotalEnergies: the index history states {stated}, expected {_INDEX_UNIT}"
+        )
     table: IndexTable = {name: {} for name in _INDEX_COLUMNS}
     for month, year, values in _INDEX_ROW_RE.findall(text):
         for name, value in zip(_INDEX_COLUMNS, values.split(), strict=False):

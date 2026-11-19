@@ -145,6 +145,12 @@ reads "Paramètres gaz myComfort, myEssential, Impact, Gaz". It gives one row
 per delivery month from 06/2024, newest first, in €/MWh excluding VAT:
 `08/2026 61,662 61,824` for the columns `TTF_M_RLP* ZTP_M_RLP* ZTP_Q_RLP**`.
 
+The table itself carries no unit. The document states it once, under its
+title, "Les prix sont indiqués en €/MWh HTVA.", and the values are read only
+when that is the one unit stated: a document stating another (c€/kWh, TVAC),
+none, or a second one beside it is refused, and the held table keeps
+pricing.
+
 The header is checked, because the columns are read by position. The
 quarterly ZTP_Q_RLP is printed on every month of its quarter and stays empty
 until the quarter is over. A two-figure row is therefore missing the last
@@ -271,7 +277,8 @@ the October 2026 `2026_10_GAZ-VARIABLE_GAS_WAL_FR.pdf` and
   with the fee column's `(€/an)` left nearest, is refused;
 - the index history: values of all three indices, the quarter filling, an
   empty current quarter, the depth from 06/2024, and refusal of a reordered
-  header;
+  header, of a document stating another unit or none, and of one stating
+  two;
 - `fetch`, `probe` and `fetch_for_month`: the URLs built (unpadded month),
   refusal of another month's card, the transient raise, the soft 404 as no
   card, the Brussels clock at a month boundary, and no request for a future
