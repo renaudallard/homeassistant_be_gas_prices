@@ -128,6 +128,22 @@ async def test_daily_consumption_in_cubic_metres(recorder_mock: Any, hass: HomeA
     assert days[date(2026, 9, 2)] == pytest.approx(12.0)
 
 
+async def test_the_days_read_end_with_the_last_day_asked(
+    recorder_mock: Any, hass: HomeAssistant
+) -> None:
+    """A read to 2 September leaves the 3rd out, and a read to the 3rd, the
+    day still running, holds its hours so far."""
+    await _zone(hass)
+    start = dt_util.as_utc(dt_util.start_of_local_day(date(2026, 9, 1)))
+    _import(hass, "m³", start, 48 + 10, 0.5)
+    await async_wait_recording_done(hass)
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 9, 1), date(2026, 9, 2))
+    assert sorted(days) == [date(2026, 9, 1), date(2026, 9, 2)]
+    days = await gas_meter.daily_changes(hass, METER, "volume", date(2026, 9, 2), date(2026, 9, 3))
+    assert sorted(days) == [date(2026, 9, 2), date(2026, 9, 3)]
+    assert days[date(2026, 9, 3)] == pytest.approx(5.0)
+
+
 async def test_litres_are_converted_to_cubic_metres(
     recorder_mock: Any, hass: HomeAssistant
 ) -> None:

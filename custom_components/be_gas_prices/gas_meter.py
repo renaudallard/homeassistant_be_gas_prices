@@ -213,7 +213,9 @@ async def daily_changes(
     if end < start:
         return {}
     start_dt = dt_util.start_of_local_day(start).astimezone(UTC)
-    end_dt = dt_util.start_of_local_day(end + timedelta(days=1)).astimezone(UTC)
+    # The recorder moves a day read's end on to the next local midnight, so
+    # the start of the last day asked ends the read with that day.
+    end_dt = dt_util.start_of_local_day(end).astimezone(UTC)
     changes = await _changes(hass, statistic_id, kind, start_dt, end_dt, "day")
     return {dt_util.as_local(hour).date(): change for hour, change in changes.items()}
 
