@@ -2482,7 +2482,7 @@ _KEMPEN = {
 
 
 async def test_the_run_writes_the_network_sheets_table(
-    tmp_path: Path, network_reads: AsyncMock
+    tmp_path: Path, web: _Session, network_reads: AsyncMock
 ) -> None:
     """What each DSO's sheet gives a custom entry, by month: a month read
     again is written again, one no longer read keeps what was written, and a
