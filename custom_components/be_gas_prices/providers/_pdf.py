@@ -347,9 +347,15 @@ def _is_internal(host: str) -> bool:
 
 
 def _refusal(url: URL) -> str | None:
-    """Why ``url`` is not requested, or None when it may be."""
+    """Why ``url`` is not requested, or None when it may be.
+
+    An address carrying a login is refused: aiohttp would send it along as
+    an Authorization header, and no address the integration reads has one.
+    """
     if url.scheme != "https" or not url.raw_host:
         return "not an https address"
+    if url.user is not None or url.password is not None:
+        return "an address carrying credentials"
     if _is_internal(url.raw_host):
         return "not a public address"
     return None

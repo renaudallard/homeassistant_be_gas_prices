@@ -247,6 +247,25 @@ async def test_an_address_off_https_or_on_the_household_network_is_never_asked(
     assert site.asked == []
 
 
+@pytest.mark.parametrize("login", ["admin:hunter2", "admin", ":hunter2"])
+async def test_an_address_carrying_a_login_is_never_asked(
+    socket_enabled: None, tmp_path: Path, login: str
+) -> None:
+    """aiohttp sends the user and password of an address as an Authorization
+    header. Neither a link read off a page nor a redirect gets to write one."""
+    app = _redirecting(f"https://{login}@store.test:{{port}}/assets")
+    async with https_site(app, tmp_path) as site:
+        direct = f"https://{login}@card.test:{site.port}/assets"
+        with pytest.raises(ExtractorError, match=r"^refusing .*: an address carrying credentials$"):
+            await fetch_text(site.session, direct)
+        assert site.asked == []
+        with pytest.raises(ExtractorError, match="refusing to follow it") as err:
+            await fetch_text(site.session, site.url("/card"))
+    assert site.asked == ["GET /card"]
+    assert str(err.value).endswith("the target is an address carrying credentials")
+    assert login not in str(err.value)
+
+
 @pytest.mark.parametrize(
     ("url", "on"),
     [

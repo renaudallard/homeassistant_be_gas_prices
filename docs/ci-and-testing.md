@@ -50,12 +50,12 @@ cache and 54 seconds with a full one.
   and the tariff as published for every other test.
 - `test_fetch.py`: the shared HTTP helpers against a local server
   (`socket_enabled`, since the harness blocks sockets otherwise): the caps,
-  an address off https or on the household's network never asked, and a
-  redirect refused before its target is asked, or followed over https to
-  another site. `tests/local_https.py` serves a test over https
-  under names of its own, on a certificate authority made for the run, and
-  stands an http server in for an appliance on the household's network,
-  logging what it is asked.
+  an address off https, on the household's network or carrying a login
+  never asked, and a redirect refused before its target is asked, or
+  followed over https to another site. `tests/local_https.py` serves a test
+  over https under names of its own, on a certificate authority made for the
+  run, and stands an http server in for an appliance on the household's
+  network, logging what it is asked.
 - `test_module_size.py`: every integration module under 1000 lines, the
   generated postcode table aside; a module past it is split along a seam it
   already has.
