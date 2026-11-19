@@ -579,7 +579,11 @@ images still embeds the fonts of the text set over its picture, so a glyph
 the library lacks shows before any card needs it read from pixels. The
 fonts and characters are filed under `archive-cards-glyphs`, naming the
 card to learn them from; a card the tool crashes on fails the step, which
-files nothing and lets the run go on. Both lists come from the walk, which
+files nothing and lets the run go on. The step has thirty minutes of its
+own, since it runs before the uploads that hand the walk over: a card the
+tool never returned on held the job to its seven hours and lost a walk that
+had succeeded. Stopped at its limit it fails like a crash, and the run goes
+on (`test_the_glyph_check_cannot_hold_the_hand_over`). Both lists come from the walk, which
 runs third-party code on what the suppliers serve, so each is posted in a
 code block no line of it can close: its CRs go and every line starts with
 `- ` (`test_the_walk_s_lists_stay_in_their_code_block`).
