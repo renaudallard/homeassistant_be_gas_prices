@@ -115,7 +115,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, timedelta, tzinfo
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from email.utils import parsedate_to_datetime
 from urllib.parse import urljoin
 
@@ -395,18 +395,21 @@ def _month_urls(contract: _ContractDef, card: _Card, month: date) -> tuple[str, 
 
 def _made_by(uploads: list[tuple[str, str | None]], day: date, belgium: tzinfo) -> list[str]:
     """The uploads made by the end of ``day`` in Belgium, the newest first:
-    the cards the listing had shown by then. The first upload alone where
+    the cards the listing had shown by then. The earliest upload alone where
     every one came later, a card published after its month began; all of
-    them where one bears no date to tell by."""
-    made: list[str] = []
+    them as they come where one bears no date to tell by."""
+    dated: list[tuple[datetime, str]] = []
     for url, modified in uploads:
         try:
             stamp = parsedate_to_datetime(modified or "")
         except ValueError:
-            return [url for url, _ in reversed(uploads)]
-        if stamp.astimezone(belgium).date() <= day:
-            made.append(url)
-    return made[::-1] or [url for url, _ in uploads[:1]]
+            return [url for url, _ in uploads]
+        dated.append((stamp.astimezone(belgium), url))
+    made = [upload for upload in dated if upload[0].date() <= day]
+    made.sort(key=lambda upload: upload[0], reverse=True)
+    if not made and dated:
+        made = [min(dated, key=lambda upload: upload[0])]
+    return [url for _, url in made]
 
 
 async def _fetch_in_force(
@@ -421,10 +424,14 @@ async def _fetch_in_force(
     From November 2026 EnergyVision's listing shows the newest upload of a
     month's card, and it has uploaded one again within its month at another
     price: the one-year fixed card of November 2026 on the 10th. So there
-    the uploads of the first folder that holds any are read, those made by
-    ``day``, the newest first. An earlier month, sold off the list the
-    listing's script carries, and a Brusol card, which its page links by
-    name, are asked by the plain name as they always were.
+    the uploads of every folder are read, those made by ``day``, the newest
+    first. Drupal files an upload under the month it is made in: a card put
+    up before its month began sits in the month before's folder, and one
+    uploaded again within the month under the plain name in the delivery
+    month's, so the folder asked first can hold nothing made by ``day``. An
+    earlier month, sold off the list the listing's script carries, and a
+    Brusol card, which its page links by name, are asked by the plain name
+    as they always were.
     """
     contract = _CONTRACTS_BY_ID.get(contract_id)
     card = None if contract is None else contract.cards.get(region)
@@ -433,14 +440,16 @@ async def _fetch_in_force(
     first = day.replace(day=1)
     by_upload = card.page is None and first >= _UPLOAD_FOLDERS_FROM
     belgium = await dt_util.async_get_time_zone(_BELGIUM) or UTC
-    for url in _month_urls(contract, card, first):
-        names = [url]
-        if by_upload:
-            names = _made_by(await _uploads(session, url), day, belgium)
-        for name in names:
-            snapshot = await month_card(_read(session, contract_id, region, name), first)
-            if snapshot is not None:
-                return snapshot
+    names = list(_month_urls(contract, card, first))
+    if by_upload:
+        # Each folder's newest name first, the order uploads of one moment
+        # and uploads without a date are read in.
+        uploads = [upload for url in names for upload in reversed(await _uploads(session, url))]
+        names = _made_by(uploads, day, belgium)
+    for name in names:
+        snapshot = await month_card(_read(session, contract_id, region, name), first)
+        if snapshot is not None:
+            return snapshot
     return None
 
 

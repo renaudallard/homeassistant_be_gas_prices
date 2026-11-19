@@ -768,6 +768,119 @@ async def test_a_card_uploaded_again_is_read_by_the_day_signed(
     assert energyvision.EXTRACTOR.fetch_on_day is energyvision.fetch_on_day
 
 
+# A card put up before its month began, as the November GSG cards were,
+# and uploaded again within the month: Drupal files each upload under the
+# month it is made in, so the second is the plain name in November's folder.
+_BEFORE_ITS_MONTH = "2026-10/EV-1126-GS1JVG-nl.pdf"
+_WITHIN_ITS_MONTH = "2026-11/EV-1126-GS1JVG-nl.pdf"
+_TWO_FOLDERS = {
+    _BEFORE_ITS_MONTH: "Fri, 30 Oct 2026 10:00:00 GMT",
+    _WITHIN_ITS_MONTH: "Tue, 10 Nov 2026 15:26:10 GMT",
+}
+
+
+async def _two_folders(_session: object, url: str) -> str:
+    second = url == _FILES + _WITHIN_ITS_MONTH
+    return _card(f"EV-1126-GS1JVG-nl{'_1' if second else ''}.pdf")
+
+
+@pytest.mark.parametrize(
+    ("day", "upload", "price"),
+    [
+        (date(2026, 11, 1), _BEFORE_ITS_MONTH, 0.0995),
+        (date(2026, 11, 5), _BEFORE_ITS_MONTH, 0.0995),
+        (date(2026, 11, 9), _BEFORE_ITS_MONTH, 0.0995),
+        (date(2026, 11, 10), _WITHIN_ITS_MONTH, 0.092),
+        (date(2026, 11, 30), _WITHIN_ITS_MONTH, 0.092),
+    ],
+)
+async def test_a_card_in_two_month_folders_is_read_by_the_day_signed(
+    day: date, upload: str, price: float
+) -> None:
+    """The delivery month's folder, asked first, holds only the upload of
+    the 10th: a day before it is priced on the card in the month before's
+    folder, which was in force then, not on the first upload of the first
+    folder that holds any."""
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(_TWO_FOLDERS)),
+        patch.object(energyvision, "fetch_pdf_text_layout", _two_folders),
+    ):
+        snap = await energyvision.fetch_on_day(AsyncMock(), _GS1JVG, REGION_FLANDERS, day)
+    assert snap is not None
+    assert snap.source_url == _FILES + upload
+    assert isinstance(snap.energy, FixedRates)
+    assert snap.energy.price == pytest.approx(price)
+
+
+async def test_a_card_in_two_month_folders_reads_the_same_live_and_archived() -> None:
+    """What ``fetch`` read on a day is what ``fetch_on_day`` gives for it
+    afterwards, and the card ``fetch`` ends the month on is the month's."""
+    asked = AsyncMock(), _GS1JVG, REGION_FLANDERS
+    with patch.object(energyvision, "fetch_pdf_text_layout", _two_folders):
+        before = {_BEFORE_ITS_MONTH: _TWO_FOLDERS[_BEFORE_ITS_MONTH]}
+        with (
+            freeze_time(datetime(2026, 11, 5, 11)),
+            patch.object(energyvision, "head_or_raise", _dated(before)),
+        ):
+            fifth = await energyvision.fetch(*asked)
+        with (
+            freeze_time(datetime(2026, 11, 20, 11)),
+            patch.object(energyvision, "head_or_raise", _dated(_TWO_FOLDERS)),
+        ):
+            twentieth = await energyvision.fetch(*asked)
+            signed = await energyvision.fetch_on_day(*asked, date(2026, 11, 5))
+            month = await energyvision.fetch_for_month(*asked, date(2026, 11, 1))
+    assert fifth.source_url == _FILES + _BEFORE_ITS_MONTH
+    assert signed == fifth
+    assert twentieth.source_url == _FILES + _WITHIN_ITS_MONTH
+    assert month == twentieth
+
+
+async def test_a_day_before_every_upload_reads_the_earliest_of_all_folders() -> None:
+    """A card published after its month began: the earliest upload, in
+    whichever folder it sits, not the first of the folder asked first."""
+    earliest = "inline-files/EV-1126-GS1JVG-nl.pdf"
+    stamps = {
+        _WITHIN_ITS_MONTH: "Tue, 10 Nov 2026 15:26:10 GMT",
+        earliest: "Wed, 04 Nov 2026 11:28:55 GMT",
+    }
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(stamps)),
+        patch.object(energyvision, "fetch_pdf_text_layout", _two_folders),
+    ):
+        snap = await energyvision.fetch_on_day(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 11, 2)
+        )
+    assert snap is not None
+    assert snap.source_url == _FILES + earliest
+
+
+async def test_uploads_without_a_date_are_read_in_the_order_asked() -> None:
+    """Nothing tells which was in force: each folder in the listing's
+    order, its newest name first, as before."""
+    names = (
+        "2026-11/EV-1126-GS1JVG-nl.pdf",
+        "2026-11/EV-1126-GS1JVG-nl_0.pdf",
+        "2026-10/EV-1126-GS1JVG-nl.pdf",
+    )
+    read: list[str] = []
+
+    async def text(_session: object, url: str) -> str:
+        read.append(url.removeprefix(_FILES))
+        raise ExtractorError("EnergyVision: energy price not found")
+
+    stamps = dict.fromkeys(names, "Wed, 04 Nov 2026 11:28:55 GMT") | {names[2]: ""}
+    with (
+        patch.object(energyvision, "head_or_raise", _dated(stamps)),
+        patch.object(energyvision, "fetch_pdf_text_layout", text),
+    ):
+        snap = await energyvision.fetch_on_day(
+            AsyncMock(), _GS1JVG, REGION_FLANDERS, date(2026, 11, 9)
+        )
+    assert snap is None
+    assert read == [names[1], names[0], names[2]]
+
+
 async def test_a_past_month_s_card_is_the_newest_upload_of_its_month() -> None:
     """What the listing showed while the month ran, and what fetch read
     then: the last upload made within it. One made after the month, as the

@@ -133,17 +133,24 @@ the layout reader is used here too. Index name: `ZTP-RLP-M`.
   another price. The Flemish and Walloon GS1JVG cards of November 2026 went
   up on the 4th (plain name and `_0`, the same file, 9,95 c€/kWh) and again
   on the 10th (`_1`, titled "Tariefkaart november 2026 V10/11/2026", 9,20).
-  The uploads of the first folder that holds any are listed with HEAD
-  requests as the current card's are, and dated by their Last-Modified read
-  in Belgium (`_made_by`):
+  The uploads of every folder are listed with HEAD requests as the current
+  card's are, and dated by their Last-Modified read in Belgium
+  (`_made_by`). Every folder, not the first that holds any: Drupal files an
+  upload under the month it is made in, so a card put up before its month
+  began sits in the month before's folder (the November GSG cards, in
+  `2026-10`) and one uploaded again within the month lands under the plain
+  name in the delivery month's, which then holds nothing made by a day
+  before it.
   - `fetch_for_month` reads the newest upload made by the month's last
     day, which is what the listing showed, and `fetch` read, while the
     month ran; an upload made after the month is none of its cards.
   - `fetch_on_day` reads the newest upload made by the day signed, the
-    tariff card date, and the first upload where every one came later (a
-    card published after its month began).
+    tariff card date, and the earliest upload of all where every one came
+    later (a card published after its month began).
   - An upload that does not read or names another month leaves the one
-    before it; an upload without a Last-Modified leaves the newest.
+    before it. Where an upload bears no Last-Modified nothing tells which
+    was in force: every upload is tried, each folder in the listing's
+    order, its newest name first.
 - Brusol: the delivery-month folder is tried first, then the month before.
   August 2026 is in both, and the later upload (2026-08) carries the new
   excise; every other month from January 2026 is in exactly one, January
@@ -240,5 +247,13 @@ Not modelled: the one-off welcome credit the Flemish cards print
   upload folder alone, current and archived.
 - `fetch_for_month`: the plain name, both Brusol folders in order, another
   month, a transient failure, no Brussels GS1JVG.
+- A card uploaded again within its month (the real November GS1JVG pair):
+  `fetch_on_day` by the day signed, the upload's day read in Belgium,
+  `fetch_for_month` on the newest upload of the month, an upload that does
+  not read. The same pair in two month folders: the month before's card
+  for a day before the second upload, `fetch` on a day and `fetch_on_day`
+  for it afterwards reading the same card, the earliest upload of all
+  folders for a day before every one, uploads without a date in the order
+  asked.
 - The index document table and `fetch_index` following the page link, the
   first on EnergyVision's own site, none when every link is elsewhere.
