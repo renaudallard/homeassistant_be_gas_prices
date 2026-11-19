@@ -440,7 +440,9 @@ A card that cannot be fetched never stops the pricing. The last good one
 keeps serving, from storage across a restart; with none at all, or one that
 has gone stale (a week without a successful fetch, or a week past the month it
 prices), the project's card archive stands in. Fixing the `snapshot_stale`
-Repairs card fetches the card again; `extractor_failed` appears after two
+Repairs card fetches the card again, and says so when the fetch worked but the
+supplier still serves the card of a month that ended over a week ago: the
+repair stays until a newer card is out. `extractor_failed` appears after two
 failures in a row that a retry will not fix, and `card_missing` in its place
 when the last of them found no card at the address (a 404 or 410, or a web
 page served instead), which is a card not published yet or moved rather than

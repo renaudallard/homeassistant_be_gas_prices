@@ -444,7 +444,8 @@
           }
         },
         "abort": {
-          "still_stale": "Die Karte konnte weiterhin nicht aktualisiert werden. Letzter Fehler: {error}. Sie wird stündlich erneut abgerufen, und diese Reparatur bleibt bis dahin bestehen."
+          "still_stale": "Die Karte konnte weiterhin nicht aktualisiert werden. Letzter Fehler: {error}. Sie wird stündlich erneut abgerufen, und diese Reparatur bleibt bis dahin bestehen.",
+          "supplier_late": "Der Abruf hat funktioniert, aber {supplier} stellt weiterhin die Karte eines Monats bereit, der seit über einer Woche abgelaufen ist. Sie wird stündlich erneut abgefragt, und diese Reparatur bleibt bestehen, bis eine neuere Karte veröffentlicht ist."
         }
       }
     },

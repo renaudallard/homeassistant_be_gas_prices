@@ -55,13 +55,19 @@ class RetryFetchFlow(RepairsFlow):
             await coordinator.async_force_refresh(wait=True)
             if coordinator.snapshot_stale():
                 # Finishing the flow would delete the Repairs card although
-                # nothing was fixed; aborted, it stays. The reason is markdown,
-                # and the error quotes what the supplier's server answered.
+                # nothing was fixed; aborted, it stays.
+                if not coordinator.last_error:
+                    # The fetch worked, so the card is fresh and still stale
+                    # by its month: the supplier has published none since.
+                    return self.async_abort(
+                        reason="supplier_late",
+                        description_placeholders={"supplier": coordinator.extractor.label},
+                    )
+                # The reason is markdown, and the error quotes what the
+                # supplier's server answered.
                 return self.async_abort(
                     reason="still_stale",
-                    description_placeholders={
-                        "error": escape_markdown(coordinator.last_error or "-")
-                    },
+                    description_placeholders={"error": escape_markdown(coordinator.last_error)},
                 )
         return self.async_create_entry(data={})
 

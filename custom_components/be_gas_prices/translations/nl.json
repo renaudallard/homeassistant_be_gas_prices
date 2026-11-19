@@ -444,7 +444,8 @@
           }
         },
         "abort": {
-          "still_stale": "De kaart kon nog steeds niet vernieuwd worden. Laatste fout: {error}. Ze wordt elk uur opnieuw geprobeerd, en deze reparatie blijft staan tot dat lukt."
+          "still_stale": "De kaart kon nog steeds niet vernieuwd worden. Laatste fout: {error}. Ze wordt elk uur opnieuw geprobeerd, en deze reparatie blijft staan tot dat lukt.",
+          "supplier_late": "Het ophalen is gelukt, maar {supplier} biedt nog steeds de kaart aan van een maand die al meer dan een week voorbij is. Ze wordt elk uur opnieuw opgevraagd, en deze reparatie blijft staan tot er een nieuwere kaart gepubliceerd is."
         }
       }
     },

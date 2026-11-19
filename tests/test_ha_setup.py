@@ -4354,6 +4354,32 @@ async def test_the_stale_card_repair_stays_until_a_fetch_works(
     assert issues.async_get_issue(DOMAIN, issue_id) is None
 
 
+@pytest.mark.freeze_time("2026-10-09 10:00:00+02:00")
+async def test_the_stale_card_repair_says_when_the_supplier_is_late(
+    hass: HomeAssistant, fetch: AsyncMock
+) -> None:
+    """On 9 October the card Engie serves is still September's: the fetch
+    the flow makes works, and the card stays stale by its month. The flow
+    said it could not be refreshed, with a dash for the error."""
+    entry = await _setup(hass)
+    issue_id = f"snapshot_stale_{entry.entry_id}"
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
+    assert await async_setup_component(hass, "repairs", {})
+    flows = repairs_flow_manager(hass)
+    assert flows is not None
+    fetched = fetch.await_count
+    result = await flows.async_init(DOMAIN, data={"issue_id": issue_id})
+    result = await flows.async_configure(result["flow_id"], {})
+    assert fetch.await_count == fetched + 1
+    assert entry.runtime_data.last_error == ""
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "supplier_late"
+    assert result["description_placeholders"] == {"supplier": "Engie"}
+    # Aborted, so the repair stays until a newer card is published.
+    assert issues.async_get_issue(DOMAIN, issue_id) is not None
+
+
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 @pytest.mark.parametrize("message", [BODY, STATUS])
 async def test_the_failed_card_quotes_the_error_escaped(

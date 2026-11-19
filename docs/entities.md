@@ -60,7 +60,7 @@ keep what they show.
 
 | Card | Raised when |
 | --- | --- |
-| `snapshot_stale` | The card is a week old or a week past its month. Fixable: fetch again, the card staying while the fetch fails. |
+| `snapshot_stale` | The card is a week old or a week past its month. Fixable: fetch again, the card staying while the fetch fails (the flow aborts with `still_stale` and the error) or works and still gives the card of a month that ended over a week ago (`supplier_late`, naming the supplier: it is asked again every hour, and the repair stays until a newer card is published). |
 | `extractor_failed` | Two fetches in a row failed for a reason a retry will not fix. Held back from the 1st to the 5th of a month while a card prices the entry and the failures began that month. |
 | `card_missing` | As `extractor_failed`, but the last fetch found no card at the address: a 404 or 410, or a web page served in the card's place (`_pdf.is_missing_card_error`). The supplier has not published the card yet, withdrew the product or moved its cards. |
 | `card_unreadable` | The supplier published its card as images and the card archive holds no reading of it for the month. |
@@ -76,7 +76,8 @@ The `error` placeholder quotes a fetch error, which can carry what a
 supplier's server answered (aiohttp quotes a piece of a malformed status or
 header line), or the unit another integration gave the meter, so
 `sync_issues` (`issues.py`) and the fix flow's `still_stale` abort
-(`repairs.py`) pass it through `escape_markdown` (`markdown_text.py`): every
+(`repairs.py`) pass it through `escape_markdown` (`markdown_text.py`; the
+`supplier_late` abort quotes no error, only the supplier's name): every
 ASCII punctuation character is backslash-escaped and the text put on one line,
 every run of whitespace a single space, so nothing in it forms a link, an
 image or a tag, and it reads as given. The fix flow's form shows the card's

@@ -444,7 +444,8 @@
           }
         },
         "abort": {
-          "still_stale": "La carte n'a toujours pas pu être actualisée. Dernière erreur : {error}. Elle est réessayée toutes les heures, et cette réparation reste affichée jusque-là."
+          "still_stale": "La carte n'a toujours pas pu être actualisée. Dernière erreur : {error}. Elle est réessayée toutes les heures, et cette réparation reste affichée jusque-là.",
+          "supplier_late": "La récupération a réussi, mais {supplier} propose toujours la carte d'un mois terminé depuis plus d'une semaine. Elle est redemandée toutes les heures, et cette réparation reste affichée jusqu'à la publication d'une carte plus récente."
         }
       }
     },

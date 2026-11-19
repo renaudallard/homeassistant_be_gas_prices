@@ -186,7 +186,9 @@ archive's OCR reading taken as a stand-in, which count as one; any other
 stand-in is as old as its month) or a week past the last day it prices (a supplier that has
 not published a new month). It raises the `snapshot_stale` Repairs card,
 whose fix flow fetches again at once and keeps the card when the card in
-hand is still stale, and it is what lets the card archive stand in.
+hand is still stale, saying whether the fetch failed or the supplier still
+serves the card of a month over, and it is what lets the card archive stand
+in.
 
 ## Services and the button
 
