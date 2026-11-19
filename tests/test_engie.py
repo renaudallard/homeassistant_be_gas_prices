@@ -188,14 +188,16 @@ def test_a_fixed_price_headed_in_eurocent_is_read() -> None:
 
 def test_a_variable_card_with_its_fee_a_month_is_refused() -> None:
     """The variable card's fee stands under the same heading, which pypdf
-    6.18 ends its line on, as in the card archive's texts, and 6.20 runs
-    into "Prix mensuels": both read, and a fee headed a month is refused
-    rather than read a twelfth of itself."""
+    6.18 ends its line on, as in the card archive's texts, 6.20 runs into
+    "Prix mensuels" and 7 sets a space after: each reads, and a fee headed
+    a month is refused rather than read a twelfth of itself."""
     text = _card("G_FLOW_R_GREY_C_I_24_W_F_202609.pdf")
-    broken = f"{_FIXED_HEADING}\nPrix mensuels\n7,643\n50,00 Prix par kWh"
-    joined = f"{_FIXED_HEADING}Prix mensuels\n7,643\n50,00 Prix par kWh"
-    assert text.count(broken) + text.count(joined) == 1
-    for rendering in (text.replace(joined, broken), text.replace(broken, joined)):
+    blocks = [
+        f"{_FIXED_HEADING}{gap}Prix mensuels\n7,643\n50,00 Prix par kWh" for gap in ("\n", "", " ")
+    ]
+    (rendered,) = (block for block in blocks if block in text)
+    assert text.count(rendered) == 1
+    for rendering in (text.replace(rendered, block) for block in blocks):
         energy = engie.parse_snapshot("engie_flow", REGION_WALLONIA, rendering).energy
         assert energy.yearly_fixed_fee == 50.0
         monthly = rendering.replace("fixe (€/an)(11)", "fixe (€/mois)(11)").replace(

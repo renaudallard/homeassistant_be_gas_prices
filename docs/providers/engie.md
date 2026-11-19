@@ -60,7 +60,7 @@ configured region's card is read.
   (€/an)(11) Prix par kWh(1) (c€/kWh)", is their only statement and is read
   with the figures, on the fixed card and on the variable one, where it
   stands right before "Prix mensuels" (pypdf 6.18 ends its line there, 6.20
-  runs the two together). All 525 archived rows of April 2024 to November
+  runs the two together and 7 sets a space between them). All 525 archived rows of April 2024 to November
   2026 print the fee in "€/an" and the price in "€cent/kWh" up to December
   2025 and "c€/kWh" since, with a footnote mark after the fee's unit from
   December 2025. A card heading either in another unit is refused, and one
