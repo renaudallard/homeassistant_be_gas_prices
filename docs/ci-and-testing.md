@@ -107,8 +107,9 @@ offset bug a Belgian integration can have.
 ### Slow cards
 
 pdfplumber takes 20 to 60 seconds a page on some cards on a Raspberry Pi
-(Bolt, Frank), so `test_bolt.py` and `test_frank.py` raise the per-test
-timeout to 180 seconds. The full suite takes 4 to 10 minutes on a Raspberry Pi
+(Bolt, Frank), so `test_bolt.py`, `test_frank.py` and the test of
+`test_vat_table.py` that lays out a Bolt card raise the per-test timeout to
+180 seconds. The full suite takes 4 to 10 minutes on a Raspberry Pi
 with three workers (`-n 3`) while the text cache is empty, under a minute once
 it is full.
 

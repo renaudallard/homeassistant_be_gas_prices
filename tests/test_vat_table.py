@@ -355,6 +355,9 @@ def test_typed_figures_are_grossed_by_the_month_s_rate() -> None:
     assert fixed.price == pytest.approx(0.075 * 1.21)
 
 
+# Laying out the Bolt card takes 45 seconds of pdfplumber on a Raspberry Pi
+# when its text is not cached yet, as in test_bolt.py.
+@pytest.mark.timeout(180)
 @pytest.mark.parametrize(
     ("read", "grossed"),
     [
