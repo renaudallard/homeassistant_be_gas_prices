@@ -73,10 +73,11 @@ _METHODS: Final = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 
 # What a payload that is not a readable workbook raises: not a zip, damaged
 # or cut short, a part missing, or XML that does not parse or is refused.
+# LookupError is a missing part (KeyError), a shared string that is not there
+# (IndexError) and the parser's own on an encoding it does not know.
 UNREADABLE: Final = (
     ValueError,
-    KeyError,
-    IndexError,
+    LookupError,
     zipfile.BadZipFile,
     zlib.error,
     EOFError,

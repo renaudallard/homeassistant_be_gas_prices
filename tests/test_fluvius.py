@@ -39,6 +39,7 @@ import pytest
 from custom_components.be_gas_prices import fluvius
 from custom_components.be_gas_prices.fluvius import ensure_tariff_sheet
 from custom_components.be_gas_prices.providers.base import ExtractorError
+from tests.test_xlsx import _rewritten
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "fluvius"
 # Fluvius Antwerpen's sheets as served: 2026's, and 2024's, whose title is set
@@ -77,6 +78,10 @@ def _damaged(workbook: bytes) -> bytes:
     for i in range(start, start + 30):
         data[i] ^= 0xFF
     return bytes(data)
+
+
+# The 2026 workbook with a sheet the XML parser raises a bare LookupError on.
+_UNKNOWN_ENCODING = _rewritten(_SHEET_2026, b'<?xml version="1.0" encoding="x-none"?><worksheet/>')
 
 
 @pytest.fixture(autouse=True)
@@ -214,6 +219,7 @@ async def test_a_year_not_listed_yet_yields_nothing_until_the_backoff() -> None:
         ("a workbook with damaged compressed data", _damaged(_SHEET_2026)),
         ("a directory entry flagged encrypted", _flagged(_SHEET_2026, 8, 0x01)),
         ("a directory entry of a zip version to come", _flagged(_SHEET_2026, 6, 199)),
+        ("a sheet in an encoding the parser does not know", _UNKNOWN_ENCODING),
     ],
 )
 async def test_a_body_that_is_not_a_sheet_never_raises(label: str, body: bytes) -> None:
@@ -269,8 +275,15 @@ async def test_a_custom_entry_reads_its_areas_network_and_the_year_before_stands
     assert session.asked == []
 
 
-async def test_an_areas_sheet_that_does_not_read_never_raises() -> None:
-    session: Any = _Session(b"<html>maintenance</html>")
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param(b"<html>maintenance</html>", id="a maintenance page"),
+        pytest.param(_UNKNOWN_ENCODING, id="an encoding the parser does not know"),
+    ],
+)
+async def test_an_areas_sheet_that_does_not_read_never_raises(body: bytes) -> None:
+    session: Any = _Session(body)
     await fluvius.ensure_area_network(session, 2026, "fluvius_antwerpen")
     assert fluvius.cached_area_network(2026, "fluvius_antwerpen") is None
     assert (2026, "fluvius_antwerpen") in fluvius._area_failed_at

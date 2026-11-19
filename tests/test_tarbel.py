@@ -65,9 +65,9 @@ def _row(
     return [text, "100\n200\n300", f"0\n{rate}\n0", unit]
 
 
-def _workbook(rows: list[list[str]], sheet: str = "Q") -> bytes:
+def _workbook(rows: list[list[str]], sheet: str = "Q", declaration: str = "") -> bytes:
     """A workbook of one sheet named ``sheet``, the header row then
-    ``rows``, as inline strings."""
+    ``rows``, as inline strings, its XML opening with ``declaration``."""
     lines = []
     for number, cells in enumerate([_HEADER, *rows], start=1):
         body = "".join(
@@ -91,7 +91,8 @@ def _workbook(rows: list[list[str]], sheet: str = "Q") -> bytes:
         )
         z.writestr(
             "xl/worksheets/sheet1.xml",
-            f'<worksheet xmlns="{_NS}"><sheetData>{"".join(lines)}</sheetData></worksheet>',
+            f'{declaration}<worksheet xmlns="{_NS}"><sheetData>{"".join(lines)}</sheetData>'
+            "</worksheet>",
         )
     return out.getvalue()
 
@@ -319,6 +320,10 @@ def test_a_workbook_not_as_expected_is_refused(
     [
         pytest.param(b"<html>maintenance</html>", id="a maintenance page answered with 200"),
         pytest.param(_workbook(_QUARTER, sheet="R"), id="a workbook without sheet Q"),
+        pytest.param(
+            _workbook(_QUARTER, declaration='<?xml version="1.0" encoding="x-none"?>'),
+            id="a sheet in an encoding the parser does not know",
+        ),
     ],
 )
 async def test_a_payload_that_is_not_the_tariff_never_raises(payload: bytes) -> None:

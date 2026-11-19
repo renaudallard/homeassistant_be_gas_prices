@@ -48,7 +48,9 @@ _CAP = 4 * 1024 * 1024
 
 def _rewritten(workbook: bytes, sheet: bytes, method: int = zipfile.ZIP_DEFLATED) -> bytes:
     """``workbook`` with its first sheet's member holding ``sheet``, written
-    with ``method``."""
+    with ``method``. The member keeps its own date, so the bytes are the
+    same in every process: a test module builds some at collection, and
+    xdist refuses workers that collected different parameters."""
     out = io.BytesIO()
     with (
         zipfile.ZipFile(io.BytesIO(workbook)) as src,
@@ -56,7 +58,8 @@ def _rewritten(workbook: bytes, sheet: bytes, method: int = zipfile.ZIP_DEFLATED
     ):
         for info in src.infolist():
             if info.filename == _SHEET:
-                dst.writestr(_SHEET, sheet, compress_type=method)
+                member = zipfile.ZipInfo(_SHEET, date_time=info.date_time)
+                dst.writestr(member, sheet, compress_type=method)
             else:
                 dst.writestr(info, src.read(info))
     return out.getvalue()
@@ -162,6 +165,14 @@ def test_a_member_compressed_as_no_workbook_is_refused(method: int) -> None:
         sheet = z.read(_SHEET)
     with pytest.raises(zipfile.BadZipFile, match="compressed with method"):
         xlsx.rows(_rewritten(_FLUVIUS, sheet, method), max_unpacked=_CAP)
+
+
+def test_a_member_in_an_encoding_the_parser_does_not_know_is_unreadable() -> None:
+    """The parser raises a bare LookupError on such a declaration, which is
+    neither a KeyError nor an IndexError."""
+    sheet = b'<?xml version="1.0" encoding="x-none"?><worksheet/>'
+    with pytest.raises(xlsx.UNREADABLE, match="unknown encoding"):
+        xlsx.rows(_rewritten(_FLUVIUS, sheet), max_unpacked=_CAP)
 
 
 def test_what_the_members_inflate_to_is_counted_against_one_cap() -> None:
