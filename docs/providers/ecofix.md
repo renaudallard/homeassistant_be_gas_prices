@@ -63,9 +63,20 @@ The text is the engine's pdfplumber-shaped reading (the fixtures
   monthly price in c EUR/kWh, VAT inclusive. Up to July 2026 the card printed
   only an expected yearly price ("60.00 3.49 Verwachte jaarprijs" in
   January), and such a card is refused.
+- Units of the fee and the price: the two lines above the figures,
+  "Vaste vergoeding Prijs per kWh (€ cent/kWh)" and "(€/jaar) Maandelijkse
+  prijzen", are their only statement and are read with them. The engine
+  read both whole on each of the six cards of September to November 2026. A
+  card stating another unit on either is refused and the error names it,
+  and a card whose heading line the engine left out has no price: restated
+  in €/kWh the price would read a hundredth of itself.
 - Formula: "Onze tariefformule voor aardgas (excl. btw): (0,1010*TTF-RLP-M)
   + 0,5200 c€/kWh" (0,2200 on Flexy Online), c EUR/kWh excluding VAT against
-  the index in EUR/MWh, grossed up by the card's 6%.
+  the index in EUR/MWh, grossed up by the card's 6%. The "c€/kWh" of the
+  result is part of the pattern. The card states no unit for TTF-RLP-M
+  anywhere and prints no value of it, so the index's unit cannot be held
+  to the card: a formula restated on an index in c€/kWh, its factor ten
+  times larger, would still read.
 - Flanders table, between "Vlaanderen Distributie" and "Wallonië
   Distributie": per tier the fixed term then the proportional one, then data
   management and transport: "Fluvius Kempen 16,17 2,275 85,83 0,882 580,25
@@ -113,6 +124,8 @@ them to it, which a misread digit of a base would break by several EUR/MWh.
 
 - Both products: price, fee, factor, base and formula; the two formulas
   pricing their cards at one index value; month and VAT.
+- The units above the fee and the price: a price headed in €/kWh or a fee
+  headed a month refused, as is a card without the heading line.
 - Flanders: the Kempen row in full, no connection fee. Wallonia: the ORES
   collapse and the RESA row with its card error, the levies as printed.
 - A line the engine left out fails the parse; the January 2026 card (the

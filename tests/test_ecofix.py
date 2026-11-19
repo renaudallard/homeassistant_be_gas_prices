@@ -89,6 +89,46 @@ def test_energy_leg(name: str, contract: str, price: float, fee: float, base: fl
     assert energy.base == pytest.approx(base / 100 * VAT)
 
 
+@pytest.mark.parametrize(
+    ("printed", "restated", "figures", "refusal"),
+    [
+        # In €/kWh the price would read a hundredth of itself.
+        (
+            "(€ cent/kWh)",
+            "(€/kWh)",
+            "60,00 + 0,0723 Maandprijs",
+            "price and fee are headed '€/kWh' and '€/jaar'",
+        ),
+        # A month, the fee would read a twelfth of itself.
+        (
+            "(€/jaar)",
+            "(€/maand)",
+            "5,00 + 7,23 Maandprijs",
+            "price and fee are headed '€ cent/kWh' and '€/maand'",
+        ),
+        # A heading line the engine left out states no unit.
+        (
+            "Vaste vergoeding Prijs per kWh (€ cent/kWh)\n",
+            "",
+            "60,00 + 7,23 Maandprijs",
+            "fee and monthly price not found",
+        ),
+    ],
+)
+def test_a_card_headed_in_other_units_is_refused(
+    printed: str, restated: str, figures: str, refusal: str
+) -> None:
+    """The two lines above the fee and the price, "Vaste vergoeding Prijs
+    per kWh (€ cent/kWh)" and "(€/jaar) Maandelijkse prijzen", are the only
+    statement of their units and are read with them."""
+    text = fixture_page("ecofix", FLEXY)
+    for old, new in ((printed, restated), ("60,00 + 7,23 Maandprijs", figures)):
+        assert text.count(old) == 1
+        text = text.replace(old, new)
+    with pytest.raises(ExtractorError, match=refusal):
+        ecofix.parse_snapshot("ecofix_flexy", REGION_FLANDERS, text, "url")
+
+
 def test_both_formulas_price_their_card_at_one_index_value() -> None:
     """Ecofix names no index value, but its two products are priced on the
     same one. Each card's printed price, taken back through its formula,

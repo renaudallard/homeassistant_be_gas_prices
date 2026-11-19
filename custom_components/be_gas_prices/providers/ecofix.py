@@ -77,7 +77,13 @@ from ._network import (
     require_region,
 )
 from ._parse import require_contract, to_float
-from ._pdf import NL_MONTHS, fetch_pdf_text_layout, head_freshness_key, printed_vat_rate
+from ._pdf import (
+    NL_MONTHS,
+    fetch_pdf_text_layout,
+    head_freshness_key,
+    printed_vat_rate,
+    shown_text,
+)
 from ._rates import Contract, IndexedRates
 from ._validity import end_of_month
 from .base import DsoOverlay, ExtractorError, SupplierExtractor, SupplierSnapshot, TaxOverlay
@@ -162,7 +168,17 @@ _VAT_RE = re.compile(r"Prijzen inclusief (\d+)% BTW")
 # The fee in EUR a year, then the monthly price in c EUR/kWh, both VAT
 # inclusive: "60,00 + 7,23 Maandprijs". Up to July 2026 the card printed only
 # an expected yearly price, and a card without the monthly one is refused.
-_PRICE_RE = re.compile(r"^(\d+,\d+) \+ (\d+,\d+) Maandprijs$", re.MULTILINE)
+# The two lines above the figures are the only statement of their units,
+# "Vaste vergoeding Prijs per kWh (€ cent/kWh)" then "(€/jaar) Maandelijkse
+# prijzen", and are read with them: the engine read both whole on each of
+# the six cards of September to November 2026, and a price restated in
+# €/kWh would read a hundredth of itself.
+_PRICE_RE = re.compile(
+    r"^Vaste vergoeding Prijs per kWh \(([^()\n]*)\)\n\(([^()\n]*)\) Maandelijkse prijzen\n"
+    r"(\d+,\d+) \+ (\d+,\d+) Maandprijs$",
+    re.MULTILINE,
+)
+_UNITS = ("€ cent/kWh", "€/jaar")
 # "Onze tariefformule voor aardgas (excl. btw): (0,1010*TTF-RLP-M) + 0,5200
 # c€/kWh", in c EUR/kWh against the index in EUR/MWh.
 _FORMULA_RE = re.compile(
@@ -182,6 +198,11 @@ def _energy(text: str, vat: float) -> IndexedRates:
     price = _PRICE_RE.search(text)
     if price is None:
         raise ExtractorError("Ecofix: fee and monthly price not found")
+    if price.group(1, 2) != _UNITS:
+        raise ExtractorError(
+            f"Ecofix: price and fee are headed {shown_text(price.group(1))!r} and "
+            f"{shown_text(price.group(2))!r}, expected {_UNITS[0]!r} and {_UNITS[1]!r}"
+        )
     formula = _FORMULA_RE.search(text)
     if formula is None:
         raise ExtractorError(f"Ecofix: {_INDEX} formula not found")
@@ -190,8 +211,8 @@ def _energy(text: str, vat: float) -> IndexedRates:
         factor=to_float(formula.group(1)) / 100.0 * vat,
         base=to_float(formula.group(2)) / 100.0 * vat,
         index=_INDEX,
-        price=to_float(price.group(2)) / 100.0,
-        yearly_fixed_fee=to_float(price.group(1)),
+        price=to_float(price.group(4)) / 100.0,
+        yearly_fixed_fee=to_float(price.group(3)),
         formula=formula.group(0),
         settled=False,
     )
