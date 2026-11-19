@@ -121,7 +121,8 @@ async def fetch_archived_row(
             blob = json.loads(await read_capped(resp, url, _ROW_LIMIT))
     except (aiohttp.ClientError, TimeoutError) as err:
         raise ArchiveUnavailable(f"network error fetching {url}: {error_text(err)}") from err
-    except (ExtractorError, ValueError) as err:
+    except (ExtractorError, ValueError, RecursionError) as err:
+        # RecursionError: a row nested deeper than the JSON decoder's stack.
         _LOGGER.warning("card archive row %s not read: %s", url, err)
         return None
     try:

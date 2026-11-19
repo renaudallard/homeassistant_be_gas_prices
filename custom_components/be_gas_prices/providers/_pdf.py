@@ -845,7 +845,8 @@ def parse_json(body: str, what: str) -> Any:
     """
     try:
         return json.loads(body)
-    except ValueError as err:
+    except (ValueError, RecursionError) as err:
+        # RecursionError: a body nested deeper than the decoder's stack.
         raise ExtractorError(f"{what} is not JSON: {err}") from err
 
 

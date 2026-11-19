@@ -191,7 +191,9 @@ async def list_months(
             for entry in year.get("children", [])
             if (match := _FILE_RE.match(str(entry.get("name", ""))))
         }
-    except (ValueError, TypeError, AttributeError, KeyError) as err:
+    except (ValueError, TypeError, AttributeError, KeyError, RecursionError) as err:
+        # RecursionError: what the JSON decoder raises on a list nested
+        # deeper than its stack, which is no ValueError.
         raise CalorificError(f"Atrias folder list is not what it was: {err}") from err
     if not months:
         raise CalorificError("Atrias lists no calorific value file")

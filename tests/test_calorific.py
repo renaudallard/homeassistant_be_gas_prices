@@ -30,6 +30,7 @@ from __future__ import annotations
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import certifi
 import pytest
@@ -195,6 +196,18 @@ async def test_the_key_goes_in_a_header_and_stays_out_of_errors(
             await calorific.fetch_month(site.session, client_context(), key, months["2026-08"])
     assert key not in str(err.value)
     assert queries and all(key not in query for query in queries)
+
+
+async def test_a_folder_list_nested_past_the_decoder_s_depth_is_a_calorific_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """100 kB of opening brackets, under the cap: the JSON decoder raises
+    RecursionError on it, no ValueError, which failed the whole tick and
+    the station step of the flow as an unexpected error."""
+    monkeypatch.setattr(calorific, "_get", AsyncMock(return_value=b"[" * 100_000))
+    with pytest.raises(CalorificError, match=r"^Atrias folder list is not what it was: ") as err:
+        await calorific.list_months(AsyncMock(), client_context(), "0123abcd")
+    assert len(str(err.value)) < 200
 
 
 async def test_a_malformed_answer_from_atrias_reaches_the_error_cut(

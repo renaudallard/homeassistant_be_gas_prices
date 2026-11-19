@@ -516,6 +516,13 @@ def test_an_index_answer_that_is_no_list_is_an_extractor_error(parse: Any, key: 
         parse(body)
 
 
+@pytest.mark.parametrize("parse", [elegant.parse_index_id, elegant.parse_rates])
+def test_an_index_answer_nested_past_the_decoder_s_depth_is_an_extractor_error(parse: Any) -> None:
+    """The JSON decoder raises RecursionError on it, which is no ValueError."""
+    with pytest.raises(ExtractorError, match=r"^Elegant: unexpected index (list|rates) answer$"):
+        parse("[" * 100_000)
+
+
 @pytest.mark.parametrize("value", [None, "x", [2]])
 def test_an_index_id_that_is_no_number_is_an_extractor_error(value: object) -> None:
     body = json.dumps([{"result": {"data": {"indexes": [{"name": "TTFDAM", "id": value}]}}}])

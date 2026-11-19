@@ -109,7 +109,11 @@ document read as text (`MAX_TEXT_BYTES`), less where the caller sizes its own
 (`limit`): the card archive's rows and tables, energie.be's endpoints and
 Atrias's answers, each sized from what it is today. Text is parsed on the
 event loop, and a worker thread would not shorten the stall, since
-json.loads holds the GIL: the cap is what bounds it.
+json.loads holds the GIL: the cap is what bounds it. A body nested deeper
+than the decoder's stack, 100 kB of opening brackets, makes it raise
+RecursionError, which is no ValueError: `parse_json`, Elegant's tRPC reader,
+the card archive's row reader and Atrias's folder list catch it with the
+decode errors, and none quotes the body.
 
 `read_text_capped` decodes a text in the charset it declares only when that
 is UTF-8, Latin-1, Windows-1252 or ASCII, and as UTF-8 otherwise: the decode

@@ -51,6 +51,7 @@ from custom_components.be_gas_prices.providers._pdf import (
     head_or_raise,
     is_missing_card_error,
     is_transient_fetch_error,
+    parse_json,
 )
 from custom_components.be_gas_prices.providers.base import ExtractorError
 from tests.local_https import device, https_site, malformed_status_line, raw_site
@@ -185,6 +186,33 @@ async def test_an_archive_row_past_its_cap_is_not_parsed(
     async with https_site(app, tmp_path) as site:
         assert await _archived_row(site.session, site.url("/card")) is None
     assert "declared 400000 bytes (limit 262144)" in caplog.text
+
+
+# 100 kB, under every cap: the JSON decoder gives up on its depth with a
+# RecursionError, which is no ValueError.
+_NESTED = "[" * 100_000
+
+
+async def test_an_archive_row_nested_past_the_decoder_s_depth_is_not_read(
+    socket_enabled: None, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The decoder's error escaped the read, and with it the tick."""
+
+    async def row(request: web.Request) -> web.Response:
+        return web.Response(text=_NESTED, content_type="application/json")
+
+    app = web.Application()
+    app.router.add_get("/rows/{tail:.*}", row)
+    async with https_site(app, tmp_path) as site:
+        assert await _archived_row(site.session, site.url("/card")) is None
+    assert "2026-11.json not read" in caplog.text
+    assert "[[[" not in caplog.text
+
+
+def test_json_nested_past_the_decoder_s_depth_is_an_extractor_error() -> None:
+    with pytest.raises(ExtractorError, match=r"^Acme: product list is not JSON: ") as raised:
+        parse_json(_NESTED, "Acme: product list")
+    assert len(str(raised.value)) < 200
 
 
 async def test_an_archive_table_past_its_cap_is_not_held(

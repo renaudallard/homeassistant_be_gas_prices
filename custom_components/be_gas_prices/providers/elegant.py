@@ -242,7 +242,8 @@ def _trpc_data(body: str, label: str) -> dict[str, Any]:
     """The ``result.data`` object of a one-call tRPC batch answer, or raise."""
     try:
         data = json.loads(body)[0]["result"]["data"]
-    except (ValueError, KeyError, IndexError, TypeError) as err:
+    except (ValueError, KeyError, IndexError, TypeError, RecursionError) as err:
+        # RecursionError: an answer nested deeper than the decoder's stack.
         raise ExtractorError(f"Elegant: unexpected {label} answer") from err
     if not isinstance(data, dict):
         raise ExtractorError(f"Elegant: unexpected {label} answer")
