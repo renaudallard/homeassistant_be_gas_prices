@@ -449,10 +449,12 @@ page served instead), which is a card not published yet or moved rather than
 a layout change. From the 1st to the 5th of a month both are held back while
 a card still prices the entry, as told under
 [Suppliers are often late](#suppliers-are-often-late). A card that states its
-formula in a unit its supplier's cards never used, or whose formula no longer
-gives back the price it prints at the index it names, fails to parse like a
-layout change: read on the old scale it would bill ten times off, as OCTA+'s
-November 2026 cards briefly did. A contract its
+formula, its price or its fee in a unit its supplier's cards never used, or
+whose formula no longer gives back the price it prints at the index it names,
+fails to parse like a layout change: read on the old scale it would bill ten
+times off, as OCTA+'s November 2026 cards briefly did. A supplier's index
+publication that states its values in another unit is refused the same way,
+and the values already held keep pricing. A contract its
 supplier withdrew keeps pricing on the last card held for it, from storage,
 the card archive or the supplier's own archive, and the `contract_withdrawn`
 Repairs card suggests recording the change of contract once the supplier
