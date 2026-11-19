@@ -72,13 +72,17 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
   ended in its first six, which is not read.
 - The November 2026 JN card prints its subscription as "0,00*": "Gedurende
   de eerste 12 maanden van het contract ontvang je een maandelijkse korting
-  op de abonnementskosten", after which "gelden de abonnementskosten
+  op de abonnementskosten, waardoor deze worden verlaagd naar € 0,00 per
+  maand", after which "gelden de abonnementskosten
   volgens de tariefkaart Gas ZTP - JN - Oktober 2026". `_with_waived_fee`
   bills the fee that card prints, 2,17 a month, read once per process, and
   sets `fee_waived_months` to 12, so a contract signed on the card pays none
   of it over its first twelve months (`bill.fee_waiver`). A waiver naming
   another tier's card, the card's own month or a later one, or no month,
-  fails the fetch. So does a subscription of 0, or one bearing a footnote
+  fails the fetch. So does a footnote lowering the subscription to another
+  amount than 0,00, or one under a printed subscription other than 0: only
+  a subscription lowered to nothing is waived, and read as a waiver a
+  subscription lowered to 1,00 would be billed as none for those months. So does a subscription of 0, or one bearing a footnote
   mark, on a card no waiver was read from: with the footnote worded another
   way, "0,00*" would be billed as no subscription to every JN household,
   those past their first year included. No other card in the archive
@@ -197,6 +201,7 @@ Module: `custom_components/be_gas_prices/providers/frank.py`. Tests:
 - JN's waiver: `test_the_november_jn_card_bills_the_subscription_it_waives`
   (the October card's fee, read once, and the waiver stored),
   `test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused`,
+  `test_a_subscription_lowered_to_another_amount_than_nothing_is_refused`,
   `test_a_subscription_under_a_footnote_not_read_is_refused`.
 - `test_the_plus_card_reads_as_the_standard_tier_from_november_2026`.
 - The catalog: `test_the_terms_page_links_the_gas_tiers_sold` (the pages of

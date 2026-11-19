@@ -405,9 +405,12 @@ def _card_month(text: str, contract: _ContractDef) -> date:
 # korting op de abonnementskosten, waardoor deze worden verlaagd naar € 0,00
 # per maand. Na afloop van deze periode gelden de abonnementskosten volgens
 # de tariefkaart Gas ZTP - JN - Oktober 2026", under the JN card's "0,00*".
+# The amount the subscription is lowered to is read with it: only a
+# subscription lowered to nothing is one waived.
 _FEE_WAIVER_RE = re.compile(
     r"eerste\s+(\d+)\s+maanden\s+van\s+het\s+contract\s+ontvang\s+je\s+een\s+"
-    r"maandelijkse\s+korting\s+op\s+de\s+abonnementskosten"
+    r"maandelijkse\s+korting\s+op\s+de\s+abonnementskosten\s*,\s*waardoor\s+deze\s+"
+    r"worden\s+verlaagd\s+naar\s+€\s*(\d+,\d+)\s+per\s+maand"
 )
 _FEE_CARD_RE = re.compile(
     r"abonnementskosten\s+volgens\s+de\s+tariefkaart\s+Gas\s+ZTP\s*"
@@ -435,6 +438,9 @@ async def _with_waived_fee(
     waived for those months of a contract signed on it. A card waiving none
     is returned as it is; one naming no earlier card of its own tier fails,
     since the subscription billed after the waiver would be a guess. So
+    does one lowering its subscription to another amount than 0, or
+    printing another than 0 above the footnote: the waived months are
+    billed none of it. So
     does a card whose subscription is 0 or bears a footnote mark ("0,00*")
     while no waiver was read: a footnote worded another way, which would
     bill every household no subscription at all."""
@@ -457,6 +463,8 @@ async def _with_waived_fee(
         or snap.valid_until is None
         or when > snap.valid_until.replace(day=1)
         or when == snap.valid_until.replace(day=1)
+        or to_float(waiver.group(2)) != 0.0
+        or snap.energy.yearly_fixed_fee != 0.0
     ):
         raise ExtractorError(
             f"Frank Energie: the {contract.label} card waives its subscription "

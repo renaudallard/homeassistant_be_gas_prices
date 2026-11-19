@@ -463,6 +463,37 @@ async def test_a_waiver_naming_no_earlier_card_of_its_tier_is_refused(
 
 
 @pytest.mark.parametrize(
+    ("printed", "lowered"),
+    [
+        # Lowered to 1,00 a month and printed so: read as a waiver, twelve
+        # months would be billed none of that 1,00.
+        ("1,00*", "€ 1,00 per maand"),
+        # The footnote and the figure above it disagreeing, either way.
+        ("0,00*", "€ 1,00 per maand"),
+        ("1,00*", "€ 0,00 per maand"),
+    ],
+)
+@freeze_time("2026-11-04 12:00:00+01:00")
+async def test_a_subscription_lowered_to_another_amount_than_nothing_is_refused(
+    monkeypatch: pytest.MonkeyPatch, printed: str, lowered: str
+) -> None:
+    """The footnote says what the subscription is lowered to, "verlaagd naar
+    € 0,00 per maand", under a printed "0,00*". Only that is a waiver: the
+    waived months are billed no subscription at all."""
+    monkeypatch.setattr(frank, "_NAMED_FEES", {})
+    card = _card(JN_NOVEMBER)
+    footnote = "verlaagd naar € 0,00 per maand"
+    assert card.count("0,00*") == 1 and card.count(footnote) == 1
+    text = card.replace("0,00*", printed).replace(footnote, f"verlaagd naar {lowered}")
+    with (
+        patch.object(frank, "fetch_text", AsyncMock(return_value=_assets_nov())),
+        patch.object(frank, "fetch_pdf_text_layout", AsyncMock(return_value=text)),
+        pytest.raises(ExtractorError, match="waives its subscription in a way not priced"),
+    ):
+        await frank.fetch(AsyncMock(), "frank_variable_jn", REGION_FLANDERS)
+
+
+@pytest.mark.parametrize(
     ("printed", "worded"),
     [
         # The footnote worded another way, its mark left.
