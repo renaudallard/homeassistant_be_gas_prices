@@ -68,14 +68,14 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption, or its hourly changes, out of recorder statistics, in m³ or kWh; the gas of an outage shared out over its days. |
 | `calorific.py` | Atrias's monthly gross calorific value per gas reception station: the kWh one cubic metre is worth. |
 | `excise_law.py` | The residential special excise and its voted steps, and the energy contribution beside it, read daily from article 419 on Justel and kept in the Store. |
-| `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store; and an area's whole network off its own sheet, for a custom entry taking it from the sheet. |
-| `brugel.py`, `cwape.py` | Sibelga's gas network off Brugel's yearly sheet (PDF), and ORES's and RESA's off the CWaPE's approved grids (XLSX), for a custom entry taking its network from the sheet. |
-| `network_sheet.py` | Which sheet such an entry reads, by its DSO, and the network held for a delivery month, which `providers/_resolve.py` bills on the month's VAT in place of the T1 and T2 terms and metering typed. |
+| `fluvius.py` | The data management fee of a yearly-read meter, off Fluvius's yearly gas tariff sheet (XLSX), per year and kept in the Store; and an area's whole network off its own sheet, for a card taking it from the sheet. |
+| `brugel.py`, `cwape.py` | Sibelga's gas network off Brugel's yearly sheet (PDF), and ORES's and RESA's off the CWaPE's approved grids (XLSX), for a card taking its network from the sheet. |
+| `network_sheet.py` | Whether a card takes its network off its DSO's sheet for a year (a custom card ticked so, a withdrawn contract's last card after its own year), which sheet it reads, by its DSO, and the network held for a delivery month, which `providers/_resolve.py` bills on the month's VAT in place of the card's T1 and T2 terms and metering. |
 | `tarbel.py` | The residential special excise by quarter, the notices of article 420 included, and the energy contribution, read daily from FPS Finance's excise tariff (XLSX) and kept in the Store. |
 | `xlsx.py` | The cells of a workbook as text, for the readers above: the zip's directory bounded before it is parsed, and each member inflated no further than its own cap and the cap on what the workbook unpacks to. |
 | `vat_rates.py` | The residential VAT rate by delivery month, read daily from the card archive's `vat.json` (the rate the cards of each month agree on) by an entry that lets the archive be read, and kept in the Store; `const.py`'s rate before it is read. |
 | `law_archive.py` | What the integration billed each month on from the law, read daily from the card archive's `law.json` by an entry that lets the archive be read, and kept in the Store; billed only for a month the tariff and Justel no longer give. |
-| `network_archive.py` | What each DSO's network sheet gave a custom entry each month, read daily from the card archive's `network.json` by an entry with a contract taking its network from a sheet that lets the archive be read, and kept in its Store; `network_sheet.held_network` bills it only for a month no sheet held covers. |
+| `network_archive.py` | What each DSO's network sheet gave each month, read daily from the card archive's `network.json` by an entry with a contract taking its network from a sheet that lets the archive be read, and kept in its Store; `network_sheet.held_network` bills it only for a month no sheet held covers. |
 | `archive_table.py` | The daily read of those three tables, a failure waiting six hours. |
 | `month_cards.py` | The card of a past month: the card archive in be_price_cards, then the supplier's archive. `current_card`: the card a contract is priced on now, the card archive's OCR reading standing in for a card published as images. |
 | `contract_periods.py` | Contracts the household held earlier in the year, recorded at a switch, billed on their own suppliers' cards. |
@@ -138,8 +138,8 @@ async_setup_entry                       __init__.py
                    (and a contract taking its network from a sheet)
         fluvius:   this year's gas tariff sheet, once         fluvius.py
                    (an entry billing a Flemish contract)
-        network:   this year's sheet of a custom entry's DSO  network_sheet.py
-                   (a custom entry taking its network from it)
+        network:   this year's sheet of the entry's DSO       network_sheet.py
+                   (a card taking its network from it)
         months:    past months' cards, card archive then supplier archive
                    (the first tick's in the background, then async_reprice)
         meter:     recorder daily changes, m³ or kWh           gas_meter.py

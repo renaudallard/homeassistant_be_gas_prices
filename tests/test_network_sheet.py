@@ -125,8 +125,9 @@ async def test_the_dispatcher_reads_the_sheet_of_the_entry_s_region() -> None:
         patch.object(cwape, "ensure_network", AsyncMock()) as grids,
     ):
         for dso in ("fluvius_antwerpen", DSO_SIBELGA, DSO_ORES):
-            await _ENSURE(None, _typed(dso, **{CONF_CUSTOM_NETWORK_FROM_SHEET: True}), 2026)  # type: ignore[arg-type]
-        await _ENSURE(None, _typed(DSO_ORES), 2026)  # type: ignore[arg-type]
+            card = build_snapshot(_typed(dso, **{CONF_CUSTOM_NETWORK_FROM_SHEET: True}))
+            await _ENSURE(None, card, dso, 2026)  # type: ignore[arg-type]
+        await _ENSURE(None, build_snapshot(_typed(DSO_ORES)), DSO_ORES, 2026)  # type: ignore[arg-type]
     area.assert_awaited_once_with(None, 2026, "fluvius_antwerpen")
     sheet.assert_awaited_once_with(None, 2026)
     grids.assert_awaited_once_with(None, 2026, DSO_ORES)
@@ -157,8 +158,8 @@ async def test_an_earlier_custom_contract_reads_its_own_dso_s_sheet() -> None:
     data = record_switch(custom, date(2026, 6, 1))
     reads: Any = contract_periods.ensure_network_sheet
     await PeriodBilling(MonthCardCache()).fill(None, data, date(2026, 9, 1), use_archive=False)  # type: ignore[arg-type]
-    [(_session, period, year)] = [call.args for call in reads.await_args_list]
-    assert period[CONF_DSO] == DSO_SIBELGA and period[CONF_CUSTOM_NETWORK_FROM_SHEET] is True
+    [(_session, card, dso, year)] = [call.args for call in reads.await_args_list]
+    assert dso == DSO_SIBELGA and card.network_from_sheet is True
     assert year == 2026
 
 

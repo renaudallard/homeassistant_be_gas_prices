@@ -40,11 +40,11 @@ is the fee in EUR a year excluding VAT. It is one figure for all eight areas
 DSO bills it for every connection whatever the supplier, and the resolver
 puts it on a Flemish card that prints none (Luminus's).
 
-A custom entry that takes its network off the sheet reads its own area's
-(:func:`ensure_area_network`): the fixed and proportional terms of T1 and T2
-with every charge per kWh printed below them added, the public service,
-pension and levy rates whatever each year calls them, and the fee above.
-That is what every card prints for the area, less VAT.
+A card that takes its network off the sheet (network_sheet.py) reads its
+own area's (:func:`ensure_area_network`): the fixed and proportional terms
+of T1 and T2 with every charge per kWh printed below them added, the public
+service, pension and levy rates whatever each year calls them, and the fee
+above. That is what every card prints for the area, less VAT.
 
 What is read is held for the process, per year, and kept in every entry's
 store so a restart without the network still knows it. A year whose sheet

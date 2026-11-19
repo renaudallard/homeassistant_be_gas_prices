@@ -23,55 +23,72 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""The network a custom entry takes off its DSO's published tariff sheet.
+"""The network a card takes off its DSO's published tariff sheet.
 
 A custom entry types its DSO's figures, or ticks the box that takes them off
 the regulator's sheet of each delivery year instead: Fluvius's sheet for its
 area in Flanders (fluvius.py), Brugel's in Brussels (brugel.py) or its
-operator's grid as the CWaPE publishes it in Wallonia (cwape.py). For a month
-whose own year's sheet is not held, what the card archive kept of that
-month's sheet stands in (network_archive.py), then the latest earlier sheet
-held, and the typed figures while none of them is.
+operator's grid as the CWaPE publishes it in Wallonia (cwape.py). The last
+card of a contract its supplier withdrew does the same from the year after
+its own, whose network terms it no longer prints. For a month whose own
+year's sheet is not held, what the card archive kept of that month's sheet
+stands in (network_archive.py), then the latest earlier sheet held, and the
+card's own figures while none of them is.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import re
 from datetime import date
-from typing import Any
 
 import aiohttp
 
 from . import brugel, cwape, fluvius, network_archive
-from .const import (
-    BRUSSELS_DSO_KEYS,
-    CONF_CUSTOM_NETWORK_FROM_SHEET,
-    CONF_DSO,
-    CONF_SUPPLIER,
-    FLUVIUS_KEYS,
-    SUPPLIER_CUSTOM,
-    WALLONIA_DSO_KEYS,
-)
-from .providers.base import SheetNetwork
+from .const import BRUSSELS_DSO_KEYS, FLUVIUS_KEYS, WALLONIA_DSO_KEYS
+from .providers import get as get_extractor
+from .providers.base import ExtractorError, SheetNetwork, SupplierSnapshot
+
+_MONTH_RE = re.compile(r"(\d{4})-\d{2}")
 
 
-def takes_network_sheet(data: Mapping[str, Any]) -> bool:
-    """Whether this entry, or an earlier contract's settings, is a custom
-    one taking its network off its DSO's sheet."""
-    return data.get(CONF_SUPPLIER) == SUPPLIER_CUSTOM and bool(
-        data.get(CONF_CUSTOM_NETWORK_FROM_SHEET)
-    )
+def card_year(card: SupplierSnapshot) -> int | None:
+    """The year ``card`` prints its figures for: that of the last day it
+    prices, else of the month it names, None for one naming neither."""
+    if card.valid_until is not None:
+        return card.valid_until.year
+    named = _MONTH_RE.match(card.publication_label)
+    return None if named is None else int(named.group(1))
+
+
+def _withdrawn(card: SupplierSnapshot) -> bool:
+    """Whether the supplier of ``card`` withdrew its contract."""
+    try:
+        contracts = get_extractor(card.supplier).contracts
+    except ExtractorError:
+        return False
+    return any(c.id == card.contract and c.withdrawn is not None for c in contracts)
+
+
+def takes_network_sheet(card: SupplierSnapshot, year: int) -> bool:
+    """Whether ``card`` bills the network of a month of ``year`` off its
+    DSO's sheet: a custom card ticked for it, in every year, or the last
+    card of a contract its supplier withdrew, in a year after the card's
+    own, since the distribution and metering terms it prints are that
+    year's."""
+    if card.network_from_sheet:
+        return True
+    printed = card_year(card)
+    return printed is not None and year > printed and _withdrawn(card)
 
 
 async def ensure_network_sheet(
-    session: aiohttp.ClientSession, data: Mapping[str, Any], year: int
+    session: aiohttp.ClientSession, card: SupplierSnapshot, dso: str, year: int
 ) -> None:
-    """Read the sheet such an entry takes its network from for ``year``,
-    before its card is resolved, which reads it synchronously. Never raises,
-    as each reader promises."""
-    if not takes_network_sheet(data):
+    """Read ``dso``'s sheet of ``year`` where ``card`` takes its network
+    from it (:func:`takes_network_sheet`), before the card is resolved,
+    which reads it synchronously. Never raises, as each reader promises."""
+    if not takes_network_sheet(card, year):
         return
-    dso = str(data.get(CONF_DSO, ""))
     if dso in FLUVIUS_KEYS:
         await fluvius.ensure_area_network(session, year, dso)
     elif dso in BRUSSELS_DSO_KEYS:

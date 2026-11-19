@@ -416,9 +416,7 @@ class PeriodBilling:
                 except ExtractorError:
                     continue
                 if extractor.id == SUPPLIER_CUSTOM:
-                    # The typed card prices every month the contract supplied,
-                    # its network off its DSO's sheet where it was ticked so.
-                    await ensure_network_sheet(session, period, today.year)
+                    # The typed card prices every month the contract supplied.
                     continue
                 contract = str(period[CONF_CONTRACT])
                 region = str(period[CONF_REGION])
@@ -432,6 +430,35 @@ class PeriodBilling:
                             _LOGGER.debug(
                                 "%s card for %s not read: %s", extractor.label, month, err
                             )
+            # The sheet of the year a card bills its network off, once the
+            # card is held.
+            for card, dso in self.sheet_cards(data, today):
+                await ensure_network_sheet(session, card, dso, today.year)
+
+    def sheet_cards(self, data: dict[str, Any], today: date) -> list[tuple[SupplierSnapshot, str]]:
+        """The earlier contracts of the year whose card may take its network
+        off its DSO's sheet, as that card and DSO, for
+        ``network_sheet.takes_network_sheet`` to decide: a custom one's typed
+        card, and a withdrawn one's last card where it is held, which bills
+        the months after it was last sold."""
+        from .providers import get as get_extractor
+
+        out: list[tuple[SupplierSnapshot, str]] = []
+        for period, _start, _end in periods_this_year(data, today):
+            try:
+                extractor = get_extractor(str(period[CONF_SUPPLIER]))
+            except ExtractorError:
+                continue
+            contract = str(period[CONF_CONTRACT])
+            card = None
+            if extractor.id == SUPPLIER_CUSTOM:
+                card = build_custom_snapshot(period)
+            elif (last := last_month_sold(extractor, contract)) is not None:
+                row = self._months.get(extractor.id, contract, str(period[CONF_REGION]), last)
+                card = None if row is None else row.snapshot
+            if card is not None:
+                out.append((card, str(period[CONF_DSO])))
+        return out
 
     def priced_from(self, data: dict[str, Any], today: date) -> list[Any]:
         """What the earlier contracts of the year are priced from, as held

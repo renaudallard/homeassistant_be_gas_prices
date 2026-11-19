@@ -25,8 +25,9 @@
 
 """The network sheets the card archive kept, by delivery month and DSO.
 
-A custom entry can take its network off its DSO's tariff sheet
-(network_sheet.py). The card archive reads the same sheets every day through
+A card can take its network off its DSO's tariff sheet (network_sheet.py):
+a custom one ticked so, or a withdrawn contract's last card after its own
+year. The card archive reads the same sheets every day through
 the same readers and keeps, for each month and DSO, each tier's terms and
 the metering the sheet of the month's own year gives, excluding VAT, in
 ``network.json`` (``scripts/archive_cards.py``): a month still read is
@@ -34,7 +35,7 @@ written again, one no longer read keeps what was written.
 
 It answers only for a month an entry's own reading of that year's sheet
 does not give (network_sheet.held_network), ahead of an earlier year's sheet
-held and of the figures typed. Read daily by
+held and of the card's figures. Read daily by
 an entry with a contract taking its network from a sheet that lets the card
 archive be read, held for the process, and kept in such an entry's store so a
 restart without the network still knows it.

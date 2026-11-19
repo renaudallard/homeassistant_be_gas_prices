@@ -68,7 +68,7 @@ keep what they show.
 | `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. The costs keep the last figures meanwhile. |
 | `several_meters` | The Energy dashboard lists several gas meters and none is set in the options. |
 | `recorder_missing` | Home Assistant runs without its recorder, so no meter can be read and the costs and volumes stay unknown; it goes once the recorder runs. The price sensors are not affected. |
-| `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card of the last month it was sold, from the card archive or the supplier's own archive) keeps pricing and never goes stale, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
+| `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card of the last month it was sold, from the card archive or the supplier's own archive) keeps pricing and never goes stale, its distribution and metering terms taken off the DSO's sheet of the delivery year from the year after its own, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
 
 Home Assistant renders a card, its fix flow and the reason that flow aborts
 with as markdown, and lets links and images with an https address through.

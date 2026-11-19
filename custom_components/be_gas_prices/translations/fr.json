@@ -475,7 +475,7 @@
     },
     "contract_withdrawn": {
       "title": "{supplier} ne vend plus {contract}",
-      "description": "{supplier} a retiré {contract}, dont la carte tarifaire n'est plus publiée. {entry} continue de calculer sur la dernière carte conservée pour ce contrat, qui reste juste tant que votre contrat court à ces conditions, mais qui ne changera plus. Si {supplier} vous fait passer à un autre produit, choisissez « Enregistrer un changement de contrat cette année » dans les options de l'entrée, saisissez le premier jour du nouveau produit et choisissez-le. « Modifier les paramètres » calculerait toute l'année sur les cartes du nouveau produit. Si le nouveau produit a commencé le 1er janvier, passez par « Modifier les paramètres » : le produit retiré n'a rien fourni cette année."
+      "description": "{supplier} a retiré {contract}, dont la carte tarifaire n'est plus publiée. {entry} continue de calculer votre énergie sur la dernière carte conservée pour ce contrat, qui ne changera plus. À partir de l'année qui suit cette carte, les termes de distribution et de comptage sont repris des tarifs de votre gestionnaire de réseau tels que le régulateur les publie ; ceux de la carte valent jusqu'à ce qu'ils soient lus. Si {supplier} vous fait passer à un autre produit, choisissez « Enregistrer un changement de contrat cette année » dans les options de l'entrée, saisissez le premier jour du nouveau produit et choisissez-le. « Modifier les paramètres » calculerait toute l'année sur les cartes du nouveau produit. Si le nouveau produit a commencé le 1er janvier, passez par « Modifier les paramètres » : le produit retiré n'a rien fourni cette année."
     },
     "recorder_missing": {
       "title": "L'enregistreur de Home Assistant ne tourne pas",

@@ -43,7 +43,7 @@ from homeassistant.util import dt as dt_util
 
 from . import excise_law, fluvius, law_archive, network_archive, tarbel, vat_rates
 from .const import CONF_DSO, CONF_STATION, DOMAIN
-from .contract_periods import PeriodBilling, periods_this_year
+from .contract_periods import PeriodBilling
 from .daily_ranking import DailyRanking
 from .month_cards import MonthCardCache
 from .network_sheet import held_network, takes_network_sheet
@@ -248,7 +248,7 @@ class _StoreMixin:
             "ranking_for": self._settings_digest(),
             "held": self._held,
         }
-        if self._sheet_contracts(dt_util.now().date()):
+        if self._sheet_dsos(dt_util.now().date()):
             # What the card archive kept of the network sheets, only where a
             # contract of the year takes its network from one.
             payload["network_archive"] = network_archive.held_table()
@@ -268,27 +268,22 @@ class _StoreMixin:
         """Write the store now, outside a tick."""
         await self._save_persistent()
 
-    def _sheet_contracts(self, today: date) -> list[dict[str, Any]]:
-        """The contracts of the year that take their network from a sheet:
-        the entry's own and the earlier ones recorded at a switch."""
-        contracts = [
-            self._data,
-            *(period for period, _first, _last in periods_this_year(self._data, today)),
-        ]
-        return [contract for contract in contracts if takes_network_sheet(contract)]
+    def _sheet_dsos(self, today: date) -> list[str]:
+        """The DSO of each contract of the year whose card takes its network
+        off that DSO's sheet this year (``takes_network_sheet``): the
+        entry's own and the earlier ones recorded at a switch."""
+        cards = self._periods.sheet_cards(self._data, today)
+        if self._snapshot is not None:
+            cards.insert(0, (self._snapshot, str(self._data.get(CONF_DSO, ""))))
+        return [dso for card, dso in cards if takes_network_sheet(card, today.year)]
 
     def _network_sheets_held(self, today: date) -> list[Any]:
         """What the network sheets held give each month of the year so far,
         for each contract of the year that takes its network from one."""
         days = [date(today.year, month, 1) for month in range(1, today.month + 1)]
         return [
-            [
-                None
-                if (held := held_network(day, str(contract.get(CONF_DSO, "")))) is None
-                else asdict(held)
-                for day in days
-            ]
-            for contract in self._sheet_contracts(today)
+            [None if (held := held_network(day, dso)) is None else asdict(held) for day in days]
+            for dso in self._sheet_dsos(today)
         ]
 
     def earlier_contracts_signature(self) -> str:
@@ -304,8 +299,8 @@ class _StoreMixin:
         """What the year's past months are priced from: the entry's
         settings, each past month's own card and the card in hand as read,
         the index values, the calorific values, the figures of the law and
-        the tier the measured volume falls in, and the network a custom
-        contract takes off its DSO's tariff sheet. It moves when any of them
+        the tier the measured volume falls in, and the network a contract's
+        card takes off its DSO's tariff sheet. It moves when any of them
         changes or lands, a card read again after an update, the value of
         an index that lags the others or a sheet read after the history was
         drawn included, which is when the price history is worth drawing

@@ -50,7 +50,9 @@ cards (`issues.sync_issues`).
    the supplier withdrew fetches nothing: the card held, or when none is
    the card of the last month it was sold (`last_month_sold`), from the
    card archive where the entry reads it, else from the supplier's own
-   archive, prices it and never goes stale. A card another release stored
+   archive, prices it and never goes stale, its network off its DSO's
+   sheet from the year after its own (`network_sheet.takes_network_sheet`).
+   A card another release stored
    is asked for there once more after an update (`_reread_last_card`), as
    the month cards are, since that release may have read it short of what
    this one reads (the fields the month's VAT rate is applied to, named
@@ -78,11 +80,13 @@ cards (`issues.sync_issues`).
    entry billing a Flemish contract this year, the current one or one it
    left before moving, then reads **Fluvius's gas tariff sheet**
    (`fluvius.ensure_tariff_sheet`) of this year, once for the process,
-   with the same six hour wait after a failure. A custom entry taking its
-   network off its DSO's tariff sheet reads that sheet of this year
-   (`network_sheet.ensure_network_sheet`), the year before's standing in
-   until the year's is published, and `PeriodBilling.fill` does the same for
-   an earlier custom contract of the year.
+   with the same six hour wait after a failure. An entry whose card takes
+   its network off its DSO's tariff sheet this year, a custom one ticked so
+   or a withdrawn contract's last card past its own year, reads that sheet
+   of this year (`network_sheet.ensure_network_sheet`), the year before's
+   standing in until the year's is published, and `PeriodBilling.fill` does
+   the same for an earlier such contract of the year, once its card is
+   held (`PeriodBilling.sheet_cards`).
 4. **Past months' cards** (`async_fill_month_cards`) for every closed month
    the current contract supplied this year and the signing month (and the
    signing day, for a supplier with `fetch_on_day`), and
@@ -258,8 +262,9 @@ the entry's settings, each past month's own card and the current card as read
 calorific values (so the value of an index that lags the supplier's others
 redraws it when it lands or is revised), the figures of the law (so a release,
 a Justel or FPS Finance read or a Fluvius sheet that gives another month's
-redraws it), the network a custom contract of the year takes off its DSO's
-tariff sheet, month by month (so a sheet read after the history was drawn, or
+redraws it), the network a contract of the year takes off its DSO's tariff
+sheet, a custom one ticked so or a withdrawn one past its last card's year,
+month by month (so a sheet read after the history was drawn, or
 changed, redraws it; left out where no contract takes one), and the tier the
 measured volume falls in (so a year that crosses into another tier redraws its
 hours on it; the excise blend within a tier, a few hundredths of a cent, does

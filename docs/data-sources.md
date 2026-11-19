@@ -162,11 +162,14 @@ A custom entry that ticks **Take them from my operator's published tariff
 sheet** on its network step takes its T1 and T2 terms and its metering off
 its regulator's sheet of each delivery year (`network_sheet.py`), put on the
 month's VAT, instead of the figures typed, which only stand in while no
-sheet is held. The transport stays as typed: no sheet prints it. Each sheet
-is read in the tick for the current year, the year before's standing in
-until the year's is published, and for an earlier custom contract of the
-year at its DSO; nothing of it is kept over a restart, and a failure waits
-six hours. For a month whose own year's sheet is not held, what the card
+sheet is held. The transport stays as typed: no sheet prints it. The last
+card of a contract its supplier withdrew takes them the same way in the
+years after its own, its transport and Brussels levy staying the card's
+(`network_sheet.takes_network_sheet`). Each sheet is read in the tick for
+the current year, the year before's standing in until the year's is
+published, and for an earlier such contract of the year at its DSO;
+nothing of it is kept over a restart, and a failure waits six hours. For a
+month whose own year's sheet is not held, what the card
 archive kept of that month's sheet stands in (`network.json`, below), then
 the latest earlier sheet held, all ahead of the figures typed
 (`network_sheet.held_network`). The earlier year's sheet comes after the

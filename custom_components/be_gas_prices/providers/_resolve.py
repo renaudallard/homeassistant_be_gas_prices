@@ -272,13 +272,13 @@ def resolve_network_sheet(
     dsos: dict[str, DsoOverlay], taxes: TaxOverlay, delivery: date
 ) -> dict[str, DsoOverlay]:
     """``dsos`` with each DSO's T1 and T2 terms and metering as its tariff
-    sheet held for ``delivery`` gives them (network_sheet.py), for a custom
-    entry taking its network off the sheet.
+    sheet held for ``delivery`` gives them (network_sheet.py), for a card
+    taking its network off the sheet.
 
-    The sheets are excluding VAT and the typed card includes it, so they are
-    put on the VAT of the month (:func:`_vat_factor`). The transport stays
-    as typed, since no sheet prints it, and a DSO no sheet is held for keeps
-    every figure typed.
+    The sheets are excluding VAT and a residential card includes it, so they
+    are put on the VAT of the month (:func:`_vat_factor`). The transport
+    stays the card's, since no sheet prints it, and a DSO no sheet is held
+    for keeps every figure of the card.
     """
     factor = _vat_factor(taxes, delivery) if taxes.vat_rate == 0.0 else 1.0
     out: dict[str, DsoOverlay] = {}
@@ -328,13 +328,14 @@ def resolve_connection_fee(
 def resolve_for_delivery(snapshot: SupplierSnapshot, delivery: date) -> SupplierSnapshot:
     """``snapshot`` as it bills a month delivered on ``delivery``: the levies
     the law sets for that month and the regulated network figures a card
-    leaves out, or on a custom card ticked for it, the DSO's tariff sheet.
-    The social tariff's network part is the CREG's and stands in for the
-    operator's tariffs, the Fluvius data management fee included."""
+    leaves out, or where the card takes them off it, the DSO's tariff sheet
+    (network_sheet.takes_network_sheet). The social tariff's network part is
+    the CREG's and stands in for the operator's tariffs, the Fluvius data
+    management fee included."""
     social = snapshot.supplier == SUPPLIER_SOCIAL
     taxes = resolve_federal_levies(snapshot.taxes, delivery, protected=social)
     dsos = snapshot.dsos if social else resolve_network(snapshot.dsos, snapshot.taxes, delivery)
-    if snapshot.network_from_sheet:
+    if network_sheet.takes_network_sheet(snapshot, delivery.year):
         dsos = resolve_network_sheet(dsos, snapshot.taxes, delivery)
     return replace(
         snapshot,

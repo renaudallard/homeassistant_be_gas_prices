@@ -172,6 +172,18 @@ the card was printed for:
   Flemish card prints none (Luminus's), the custom supplier's typed card
   with metering left at 0 included. A year whose sheet has not been read
   bills the card as printed.
+- The T1 and T2 terms and the metering of a card that takes its network off
+  its DSO's sheet (`network_sheet.takes_network_sheet`): a custom entry's
+  typed card with the box ticked, in every month, and the last card of a
+  contract its supplier withdrew, in a month of a year after the card's own
+  (the year of its `valid_until`, else of the month its `publication_label`
+  names), since the network it prints is that year's. They come off the
+  regulator's sheet of the delivery year, put on the month's VAT
+  (`network_sheet.held_network`: the year's own sheet, else the card
+  archive's `network.json` row of the month, else the latest earlier sheet
+  held), and a DSO none is held for keeps the card's figures. The transport,
+  which no sheet prints, and the Brussels levy stay the card's. The months
+  of a withdrawn contract's last card's own year are billed as printed.
 - The Walloon connection fee, 0,000075 EUR/kWh (0,0075 c EUR/kWh) below
   1 GWh a year, VAT exempt, set by the Walloon order of 19 June 2003 (art. 2)
   and in force since 15 July 2003, on a card of the Walloon DSOs.
@@ -218,7 +230,8 @@ their current card: a month without a card of its own is billed on it, or
 on today's card when it is not held or cannot price the household. A
 contract its supplier withdrew has no card of today's: the months after it
 was last sold, and a month whose own card cannot price the household, are
-billed on the last card it was sold on.
+billed on the last card it was sold on, its network off the sheets from the
+year after that card's (above).
 
 - `rolling_year_kwh`: the 365 days before today, whose own row holds only
   the hours so far, up to 15 missing days scaled across; more missing and it

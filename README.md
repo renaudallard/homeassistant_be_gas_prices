@@ -456,13 +456,18 @@ times off, as OCTA+'s November 2026 cards briefly did. A supplier's index
 publication that states its values in another unit is refused the same way,
 and the values already held keep pricing. A contract its
 supplier withdrew keeps pricing on the last card held for it, from storage,
-the card archive or the supplier's own archive, and the `contract_withdrawn`
-Repairs card suggests recording the change of contract once the supplier
-moves you. The setup still lists it, marked †, for a household whose
-contract runs on it, and with a contract start date it is priced on the
-card of the month signed. Where a Repairs card quotes the error of the last
-fetch, it is shown as plain text: whatever a supplier's server answered
-cannot turn into a link or an image there.
+the card archive or the supplier's own archive. Its energy price stays the
+card's; from 1 January after the card's year, whose network it prints, the
+T1 and T2 terms and the metering come off your operator's sheet of each
+delivery year, as for a custom entry ticked for it (setup step 3), the card's
+own figures standing until one is read, and the transport and the Brussels
+levy stay the card's. The `contract_withdrawn` Repairs card suggests
+recording the change of contract once the supplier moves you. The setup
+still lists it, marked †, for a household whose contract runs on it, and
+with a contract start date it is priced on the card of the month signed.
+Where a Repairs card quotes the error of the last fetch, it is shown as
+plain text: whatever a supplier's server answered cannot turn into a link or
+an image there.
 
 ## How often the integration polls
 
@@ -486,10 +491,10 @@ Every hour, each entry runs one refresh:
   Flemish contract this year (an earlier one included): the data management
   fee a card may leave out. A failure waits six hours.
 - **Your operator's network sheet** of this year, once, for a custom entry
-  taking its network from it (an earlier custom contract of the year
-  included): Fluvius's for your area, Brugel's, or the CWaPE's grid for ORES
-  or RESA, the year before's standing in until the year's is published. A
-  failure waits six hours.
+  taking its network from it, or a withdrawn contract past its last card's
+  year (an earlier such contract of the year included): Fluvius's for your
+  area, Brugel's, or the CWaPE's grid for ORES or RESA, the year before's
+  standing in until the year's is published. A failure waits six hours.
 - **Past months' cards**, once each: a month read is kept for good, one no
   archive holds is asked again a day later.
 - **The card archive's VAT and law tables**, once a day each, for an entry

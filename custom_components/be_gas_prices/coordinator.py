@@ -474,16 +474,19 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
                 await law_archive.ensure_law_archive(self._session)
                 # And what it kept of the network sheets, for a contract of
                 # the year taking its network from one.
-                if self._sheet_contracts(dt_util.now().date()):
+                if self._sheet_dsos(dt_util.now().date()):
                     await network_archive.ensure_network_archive(self._session)
             if self._billed_in_flanders(dt_util.now().date()):
                 # The data management fee a Flemish card may leave out, for
                 # this year: the running costs bill no earlier month, and the
                 # price history of one is per kWh.
                 await fluvius.ensure_tariff_sheet(self._session, dt_util.now().year)
-            # The network a custom entry takes off its DSO's tariff sheet, for
-            # this year, as the fee above.
-            await network_sheet.ensure_network_sheet(self._session, self._data, dt_util.now().year)
+            # The network a card takes off its DSO's tariff sheet, a custom
+            # one's or a withdrawn contract's last, for this year, as the fee
+            # above.
+            await network_sheet.ensure_network_sheet(
+                self._session, self._snapshot, str(self._data[CONF_DSO]), dt_util.now().year
+            )
         today = dt_util.now().date()
         needed = self._months_needed(today)
         if self._first_tick:
