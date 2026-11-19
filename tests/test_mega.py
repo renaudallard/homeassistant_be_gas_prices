@@ -404,6 +404,21 @@ def test_levy_amounts_after_blank_lines_are_read_past_in_time() -> None:
     assert snap == mega.parse_snapshot("mega_smart_flex", REGION_BRUSSELS, card)
 
 
+def test_a_table_label_left_open_is_read_past_in_time() -> None:
+    """Every line after a label left open by "(" joins its row, which was
+    grown and counted again whole at each one: 50 000 lines at the end of
+    the real card's distribution table took 4 s. The card still reads as it
+    does alone, the row being of no DSO's width."""
+    card = _card("WL-092026-Smart0109")
+    closing = "Taxes, redevances"
+    crafted = card.replace(closing, "ORES (\n" + "a\n" * 50000 + closing, 1)
+    assert crafted != card
+    started = time.monotonic()
+    snap = mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, crafted)
+    assert time.monotonic() - started < 1.0
+    assert snap == mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, card)
+
+
 def test_blank_lines_after_a_product_heading_are_read_past_in_time() -> None:
     """The product pattern once took each blank line after "Gaz naturel" for
     the name in turn, scanning the lines after it again from each: 32 000

@@ -561,20 +561,27 @@ def _table_rows(text: str) -> str:
     end = text.find("Taxes, redevances", start)
     if start < 0 or end < 0:
         raise ExtractorError("Mega: distribution table not found")
-    rows: list[str] = []
+    # Each row as the pieces it is joined from, with the parentheses it has
+    # opened and not closed counted as they come: a row grown and counted
+    # again whole at every line of a label left open took time growing with
+    # the square of the table, 4 s for 100 kB.
+    rows: list[list[str]] = []
     open_label = False
+    unclosed = 0
     for raw in text[start:end].splitlines():
         line = raw.strip()
         if not line:
             continue
         if rows and _FIGURE_LINE_RE.fullmatch(line):
-            rows[-1] += " " + line
+            rows[-1].append(" " + line)
         elif open_label:
-            rows[-1] += line if rows[-1].endswith("-") else " " + line
+            rows[-1].append(line if rows[-1][-1].endswith("-") else " " + line)
         else:
-            rows.append(line)
-        open_label = rows[-1].endswith("-") or rows[-1].count("(") > rows[-1].count(")")
-    return "\n".join(rows)
+            rows.append([line])
+            unclosed = 0
+        unclosed += line.count("(") - line.count(")")
+        open_label = line.endswith("-") or unclosed > 0
+    return "\n".join("".join(row) for row in rows)
 
 
 def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
