@@ -709,11 +709,13 @@ def test_manual_rate_replaces_an_indexed_formula() -> None:
 
 @pytest.mark.parametrize("printed", [1.08, 1.0])
 def test_a_typed_factor_past_the_cap_leaves_the_card_s(
-    caplog: pytest.LogCaptureFixture, printed: float
+    caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch, printed: float
 ) -> None:
     """Mega's printed 1,08, or Energy Together's 1, typed before the form
     capped the factor: the card's factor is billed, the typed base still
     counts, and the log says so once, not on every month billed."""
+    # The factors already warned of are kept for the process: start empty.
+    monkeypatch.setattr("custom_components.be_gas_prices.manual_rate._IGNORED", set())
     leg = IndexedRates(factor=0.001, base=0.01, index="ZTP", price=0.07)
     for _ in range(3):
         typed = manual_leg(
