@@ -116,6 +116,15 @@ def test_a_file_whose_every_value_is_refused_is_a_calorific_error() -> None:
         parse_gcv_file(file.encode())
 
 
+def test_an_unknown_header_is_quoted_cut() -> None:
+    """The header line is the file's own, 200 kB of it here, and the error
+    reaches the warning log."""
+    payload = ("ARSName," + ("A" * 1000 + ",") * 200 + "\r\nx\r\n").encode()
+    with pytest.raises(CalorificError, match="unknown header") as err:
+        parse_gcv_file(payload)
+    assert len(str(err.value)) < 700
+
+
 def test_a_file_that_is_no_csv_is_a_calorific_error() -> None:
     """A quote that never closes runs past the csv field limit."""
     payload = b'ARSName,ARSEanGSRN,GCVValue\n"X' + b"x" * 140_000 + b"\n"

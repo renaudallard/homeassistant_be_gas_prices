@@ -63,7 +63,12 @@ from .const import (
 from .month_cards import ArchiveUnavailable, MonthCardCache, current_card, fetch_archived_card
 from .network_sheet import ensure_network_sheet
 from .pricing import PricingError
-from .providers._pdf import guarded, is_transient_fetch_error, memoise_text_fetches
+from .providers._pdf import (
+    guarded,
+    is_transient_fetch_error,
+    memoise_text_fetches,
+    shown_text,
+)
 from .providers._rates import EnergyRates
 from .providers.base import (
     CardNotReadableError,
@@ -605,7 +610,13 @@ class PeriodBilling:
                     with contextlib.suppress(PricingError):
                         cost = cost_on(fallback)
                 if cost is None:
-                    _LOGGER.warning("%s: earlier contract not priced: %s", extractor.label, err)
+                    # The message lists the DSOs a card names, an archive
+                    # row's as it gives them.
+                    _LOGGER.warning(
+                        "%s: earlier contract not priced: %s",
+                        extractor.label,
+                        shown_text(str(err)),
+                    )
                     missing.append(Unpriced(extractor.label, end))
                     continue
                 end_on_current = True

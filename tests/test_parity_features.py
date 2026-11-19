@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from dataclasses import replace
 from datetime import date, timedelta
@@ -441,6 +442,40 @@ async def test_an_earlier_contract_on_the_custom_supplier_is_billed_on_its_typed
         use_archive=True,
     )
     assert (costs, missing) == ([], [Unpriced("Expert: custom figures", date(2026, 5, 31))])
+
+
+async def test_an_earlier_contract_that_cannot_be_priced_is_logged_cut(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The error lists the DSOs the card prices, which a row of the card
+    archive names as it likes: the warning shows 500 characters of it."""
+    base = _flow_card()
+    odd = replace(base, dsos={"x" * 200_000: base.dsos[DSO_ORES]})
+
+    async def fetch_for_month(_s: object, _c: str, _r: str, _first: date) -> SupplierSnapshot:
+        return odd
+
+    stub = replace(
+        engie.EXTRACTOR,
+        fetch=AsyncMock(return_value=odd),
+        fetch_for_month=fetch_for_month,
+        fetch_index=None,
+    )
+    kwh_days = {date(2026, 1, 1) + timedelta(days=day): 10.0 for day in range(296)}
+    caplog.set_level(logging.WARNING)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        costs, missing = await PeriodBilling(MonthCardCache()).bill(
+            AsyncMock(),
+            record_switch(dict(ENTRY), date(2026, 8, 21)),
+            date(2026, 10, 23),
+            kwh_days,
+            5_000.0,
+            use_archive=False,
+        )
+    assert (costs, missing) == ([], [Unpriced("Engie", date(2026, 8, 20))])
+    warnings = [r.getMessage() for r in caplog.records if "not priced" in r.getMessage()]
+    assert len(warnings) == 1
+    assert len(warnings[0]) < 700
 
 
 def test_a_contract_that_ended_last_year_is_not_billed_this_year() -> None:

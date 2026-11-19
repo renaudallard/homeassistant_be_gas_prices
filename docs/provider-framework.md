@@ -132,11 +132,15 @@ by its size, its first bytes going to the debug log. The text of an aiohttp
 error, which quotes a malformed answer whole, is cut at 500 characters too
 (`error_text`). An error reaches last_error, the Repairs cards and the
 diagnostics, and last_error is cut at 500 characters where it is stored
-(`shown_text`), whatever a parser's message quotes of the card. The CWaPE's
-grids and FPS Finance's excise tariff are logged the same way: a grid's
-address, which is the listing's own text, through `shown_url`, an error
-through `error_text`, and an error of the excise tariff quotes no more than
-the first 500 characters of a cell.
+(`shown_text`), whatever a parser's message quotes of the card. A reader's
+message is the reader's to word, and can quote a row, a line or a cell as
+long as the source makes it, so every warning that logs one cuts it the same
+way: the index values and the calorific values not refreshed, an earlier
+contract not priced, a probe that failed (its traceback at debug), and the
+excise law, the excise tariff, Fluvius's sheets and the CWaPE's grids and
+listing not read. A CWaPE grid's address, which is the listing's own text,
+is logged through `shown_url`, and an error of the excise tariff quotes no
+more than the first 500 characters of a cell.
 
 ## A card that moved (providers/_moved.py)
 

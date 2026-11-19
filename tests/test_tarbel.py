@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import logging
 import zipfile
 from datetime import date
 from typing import Any
@@ -428,6 +429,28 @@ async def test_a_payload_that_is_not_the_tariff_never_raises(payload: bytes) -> 
     assert tarbel._failed_at is not None
     assert tarbel.held_table() == held
     tarbel._failed_at = None
+
+
+@pytest.mark.parametrize("reader", ["_household", "_protected", "_contribution"])
+async def test_rows_that_do_not_read_are_logged_cut(
+    caplog: pytest.LogCaptureFixture, reader: str
+) -> None:
+    """A reader's error quotes the row it refused, as long as the workbook
+    makes it: the warning shows 500 characters of it."""
+    quoted = tarbel.TarbelError("a gas row without its slice, period or unit: " + "x" * 200_000)
+    tarbel._failed_at = tarbel._fetched_at = None
+    caplog.set_level(logging.WARNING)
+    with (
+        patch.object(tarbel, "fetch_bytes", AsyncMock(return_value=_workbook(_QUARTER))),
+        patch.object(tarbel, reader, side_effect=quoted),
+    ):
+        await ensure_tariff(AsyncMock())
+    tarbel._failed_at = None
+    warnings = [
+        record.getMessage() for record in caplog.records if "x" * 100 in record.getMessage()
+    ]
+    assert len(warnings) == 1
+    assert len(warnings[0]) < 700
 
 
 async def test_a_fetch_failure_waits_and_a_read_holds() -> None:

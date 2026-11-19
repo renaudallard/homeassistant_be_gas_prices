@@ -57,7 +57,12 @@ from .coordinator_data import Conversion
 from .gas_meter import MeterKind
 from .month_cards import ArchiveUnavailable, MonthCardCache
 from .pricing import PriceBreakdown, PricingError
-from .providers._pdf import guarded, is_transient_fetch_error, memoise_text_fetches
+from .providers._pdf import (
+    guarded,
+    is_transient_fetch_error,
+    memoise_text_fetches,
+    shown_text,
+)
 from .providers._rates import EnergyRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
 from .running_costs import Household
@@ -109,7 +114,10 @@ class _InputsMixin:
         try:
             fetched = await guarded(self.extractor.label, fetch(self._session))
         except ExtractorError as err:
-            _LOGGER.warning("%s: index values not refreshed: %s", self.extractor.label, err)
+            # A reader's message can quote the row or the page it refused.
+            _LOGGER.warning(
+                "%s: index values not refreshed: %s", self.extractor.label, shown_text(str(err))
+            )
             if self._index_table is None and is_transient_fetch_error(str(err)):
                 # Nothing held: every indexed month waits on it at the card's
                 # printed price, so a source that may answer the next time is
@@ -141,7 +149,7 @@ class _InputsMixin:
         except calorific.CalorificError as err:
             # Asked again next tick: with no value held for the station,
             # every running cost waits on it.
-            _LOGGER.warning("calorific values not refreshed: %s", err)
+            _LOGGER.warning("calorific values not refreshed: %s", shown_text(str(err)))
             return
         failed = False
         for month in wanted:
@@ -154,7 +162,7 @@ class _InputsMixin:
                     self._session, self._gcv_context, key, months[month]
                 )
             except calorific.CalorificError as err:
-                _LOGGER.warning("calorific values of %s not read: %s", month, err)
+                _LOGGER.warning("calorific values of %s not read: %s", month, shown_text(str(err)))
                 failed = failed or is_transient_fetch_error(str(err))
                 continue
             for held_station, value in values.items():

@@ -40,7 +40,8 @@ cards (`issues.sync_issues`).
    no extractor raises on purpose (a parser meeting a page it does not
    expect) is failed the same way, through `providers._pdf.guarded`, its
    message logged as a warning and its traceback at debug; a probe raising
-   one is no signal. `last_error` holds at most 500 characters of a message. With no
+   one is no signal, and is logged the same way. `last_error` and every
+   warning hold at most 500 characters of a reader's message. With no
    card at all, or a stale one, the card archive is asked for its latest row
    (`_adopt_archived_card`). With still no card the tick writes the Store,
    so the next setup retry counts the failures on, and raises

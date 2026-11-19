@@ -148,10 +148,14 @@ class _CardMixin:
         if self.extractor.probe is not None:
             try:
                 key = await self.extractor.probe(self._session, self.contract, self.region)
-            except Exception:
+            except Exception as err:
                 # A probe answers None on any failure it expects: one it
                 # does not is no signal either, and the card's age decides.
-                _LOGGER.warning("%s: probe failed", self.extractor.label, exc_info=True)
+                # Its message is cut, since it can quote the page, and its
+                # traceback goes to the debug log, as in guarded().
+                label = self.extractor.label
+                _LOGGER.warning("%s: probe failed: %s", label, shown_text(repr(err)))
+                _LOGGER.debug("%s: probe traceback", label, exc_info=True)
         # Read past the probe, which can take seconds: every fetch forced by
         # now is made by this tick, a press during the probe included, and
         # the press's own tick has nothing left to fetch.

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import date, timedelta
@@ -448,6 +449,25 @@ async def test_an_unexpected_probe_error_leaves_the_card_to_its_age(
     price = hass.states.get("sensor.engie_flow_current_price")
     assert price is not None and price.state != "unavailable"
     assert probe.await_count >= 2
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_unexpected_probe_error_is_logged_cut(
+    hass: HomeAssistant, fetch: AsyncMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A probe that trips over a page names what it read, as long as the
+    page makes it: the warning carried the traceback, and the whole value
+    with it."""
+    quoted = ValueError("could not convert string to float: " + "9" * 200_000)
+    stub = replace(providers.EXTRACTORS["engie"], probe=AsyncMock(side_effect=quoted))
+    caplog.set_level(logging.WARNING)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        await _setup(hass)
+    warnings = [record for record in caplog.records if "probe failed" in record.getMessage()]
+    assert warnings
+    assert all(record.exc_info is None for record in warnings)
+    assert max(len(record.getMessage()) for record in warnings) < 700
+    assert warnings[0].getMessage().startswith("Engie: probe failed: ValueError('could not")
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
@@ -3266,6 +3286,39 @@ async def test_atrias_files_failing_with_nothing_held_are_asked_again_next_tick(
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+@pytest.mark.parametrize("failing", ["list_months", "fetch_month"])
+async def test_an_atrias_error_is_logged_cut(
+    hass: HomeAssistant, fetch: AsyncMock, caplog: pytest.LogCaptureFixture, failing: str
+) -> None:
+    """The reader's error can quote the file, as long as Atrias makes it:
+    the warning shows 500 characters of it."""
+    data = {**DATA, CONF_CONVERSION_MODE: CONVERSION_STATION, CONF_STATION: "541234"}
+    refused = calorific.CalorificError(
+        "calorific value file has an unknown header " + "A" * 200_000
+    )
+    readers = {
+        "list_months": AsyncMock(return_value={"2026-08": "GCV202608.txt"}),
+        "fetch_month": AsyncMock(return_value={}),
+    }
+    readers[failing].side_effect = refused
+    caplog.set_level(logging.WARNING)
+    with (
+        patch.object(calorific, "build_ssl_context", lambda: None),
+        patch.object(calorific, "subscription_key", AsyncMock(return_value="k")),
+        patch.object(calorific, "list_months", readers["list_months"]),
+        patch.object(calorific, "fetch_month", readers["fetch_month"]),
+    ):
+        await _setup(hass, data)
+    warnings = [
+        record.getMessage()
+        for record in caplog.records
+        if "calorific values" in record.getMessage()
+    ]
+    assert len(warnings) == 1
+    assert len(warnings[0]) < 700
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
 async def test_atrias_files_the_parser_refuses_are_read_once_a_day(
     hass: HomeAssistant, fetch: AsyncMock, freezer: FrozenDateTimeFactory
 ) -> None:
@@ -3981,6 +4034,27 @@ async def test_a_closed_month_the_index_source_drops_keeps_its_value(
         await coordinator.async_refresh()
     assert index.await_count == 2
     assert coordinator._index_table == {"ZTPDAM": {"2026-07": 53.116, "2026-08": 61.6}}
+
+
+@pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")
+async def test_an_index_reader_s_error_is_logged_cut(
+    hass: HomeAssistant, fetch: AsyncMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A reader that refuses a line quotes it whole, 200 kB of it here: the
+    warning shows 500 characters of it, where it logged the lot twice a
+    day."""
+    refused = ExtractorError("Engie: unexpected index line " + "Q" * 200_000)
+    stub = replace(providers.EXTRACTORS["engie"], fetch_index=AsyncMock(side_effect=refused))
+    caplog.set_level(logging.WARNING)
+    with patch.dict(providers.EXTRACTORS, {"engie": stub}):
+        await _setup(hass)
+    warnings = [
+        record.getMessage()
+        for record in caplog.records
+        if "index values not refreshed" in record.getMessage()
+    ]
+    assert len(warnings) == 1
+    assert len(warnings[0]) < 700
 
 
 @pytest.mark.freeze_time("2026-09-15 10:00:00+02:00")

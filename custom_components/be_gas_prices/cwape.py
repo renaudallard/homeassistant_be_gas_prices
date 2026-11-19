@@ -226,7 +226,7 @@ async def _listed(session: aiohttp.ClientSession) -> list[_Document]:
     try:
         documents = await read_listing(session)
     except Exception as err:  # the docstring promises no raise
-        _LOGGER.warning("CWaPE document listing could not be read: %s", err)
+        _LOGGER.warning("CWaPE document listing could not be read: %s", error_text(err))
         documents = []
     _listing = (now, documents)
     return documents

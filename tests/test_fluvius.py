@@ -28,11 +28,12 @@
 from __future__ import annotations
 
 import io
+import logging
 import threading
 import zipfile
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -199,6 +200,25 @@ async def test_the_sheets_are_read_off_the_event_loop() -> None:
     assert threading.main_thread() not in threads
     assert fluvius.data_management_fee(2026) == 17.85
     assert fluvius.cached_area_network(2026, "fluvius_antwerpen") is not None
+
+
+async def test_a_sheet_that_does_not_read_is_logged_cut(caplog: pytest.LogCaptureFixture) -> None:
+    """The error can quote a cell of the workbook, as long as the workbook
+    makes it: each warning shows 500 characters of it."""
+    quoted = ValueError("could not convert string to float: " + "9" * 200_000)
+    caplog.set_level(logging.WARNING)
+    with (
+        patch.object(fluvius, "fetch_fee", AsyncMock(side_effect=quoted)),
+        patch.object(fluvius, "read_area_network", AsyncMock(side_effect=quoted)),
+    ):
+        await ensure_tariff_sheet(AsyncMock(), 2026)
+        await fluvius.ensure_area_network(AsyncMock(), 2026, "fluvius_antwerpen")
+    warnings = [record.getMessage() for record in caplog.records]
+    assert [message[:31] for message in warnings[:2]] == [
+        "Fluvius 2026 gas tariff sheet c",
+        "Fluvius 2026 gas sheet for fluv",
+    ]
+    assert max(len(message) for message in warnings) < 700
 
 
 async def test_a_year_not_listed_yet_yields_nothing_until_the_backoff() -> None:

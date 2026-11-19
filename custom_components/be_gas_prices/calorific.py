@@ -81,6 +81,7 @@ from .providers._pdf import (
     error_text,
     read_capped,
     read_text_capped,
+    shown_text,
     shown_url,
 )
 from .providers.base import ExtractorError
@@ -231,7 +232,9 @@ def parse_gcv_file(payload: bytes) -> dict[Station, float]:
         ean_at = header.index("ARSEanGSRN")
         value_at = header.index("GCVValue")
     except ValueError:
-        raise CalorificError(f"calorific value file has an unknown header {header}") from None
+        raise CalorificError(
+            f"calorific value file has an unknown header {shown_text(str(header))}"
+        ) from None
     out: dict[Station, float] = {}
     for row in rows[1:]:
         if not max(name_at, ean_at, value_at) < len(row) <= len(header):

@@ -71,7 +71,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import EXCISE_BAND_KWH, EXCISE_LAW_URL, GAS_EXCISE_KNOWN_UNTIL
 from .providers._parse import strip_tags, sub_closed
-from .providers._pdf import MONTH_NAMES, fetch_text
+from .providers._pdf import MONTH_NAMES, fetch_text, shown_text
 from .providers.base import ExtractorError
 
 _LOGGER = logging.getLogger(__name__)
@@ -465,7 +465,7 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
     except ExciseLawError as err:
         # The page came back and is not the article: a layout change, or a
         # bot check served instead of the law.
-        _LOGGER.warning("The gas excise law could not be read: %s", err)
+        _LOGGER.warning("The gas excise law could not be read: %s", shown_text(str(err)))
         _failed_at = now
         return
     except ExtractorError as err:
@@ -489,12 +489,16 @@ async def ensure_excise_law(session: aiohttp.ClientSession) -> None:
     except ExciseLawError as err:
         # Only the social tariff bills it, and FPS Finance's tariff still
         # gives the months it lists: the household rates stay read.
-        _LOGGER.warning("The protected customer's gas excise could not be read: %s", err)
+        _LOGGER.warning(
+            "The protected customer's gas excise could not be read: %s", shown_text(str(err))
+        )
     try:
         hold_contribution(await asyncio.to_thread(parse_contribution, page))
     except ExciseLawError as err:
         # FPS Finance's tariff gives the months it lists, and const.py the
         # rest: the excise stays read.
-        _LOGGER.warning("The gas energy contribution could not be read from the law: %s", err)
+        _LOGGER.warning(
+            "The gas energy contribution could not be read from the law: %s", shown_text(str(err))
+        )
     _fetched_at = now
     _failed_at = None

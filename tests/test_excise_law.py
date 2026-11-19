@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -310,6 +311,30 @@ async def test_a_failure_never_raises_and_waits_before_asking_again(
     await ensure_excise_law(None)  # type: ignore[arg-type]
     assert len(asked) == 1
     assert excise_law._HELD == []
+
+
+@pytest.mark.parametrize("reader", ["parse", "parse_protected", "parse_contribution"])
+async def test_an_article_that_does_not_read_is_logged_cut(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, reader: str
+) -> None:
+    """A reader's error quotes the figure it could not convert, as long as
+    the page makes it: the warning shows 500 characters of it."""
+
+    async def fetch_text(_session: Any, _url: str, **_kwargs: Any) -> str:
+        return _PAGE
+
+    def refuse(_page: str) -> Any:
+        raise excise_law.ExciseLawError("unreadable article: " + "9" * 200_000)
+
+    monkeypatch.setattr(excise_law, "fetch_text", fetch_text)
+    monkeypatch.setattr(excise_law, reader, refuse)
+    caplog.set_level(logging.WARNING)
+    await ensure_excise_law(None)  # type: ignore[arg-type]
+    warnings = [
+        record.getMessage() for record in caplog.records if "9" * 100 in record.getMessage()
+    ]
+    assert len(warnings) == 1
+    assert len(warnings[0]) < 700
 
 
 async def test_a_failure_with_nothing_held_names_the_months_left_on_the_card(

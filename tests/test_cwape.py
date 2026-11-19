@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -148,6 +150,31 @@ async def test_a_grid_that_does_not_read_is_logged_on_one_short_line(
     assert message.startswith("CWaPE https://www.cwape.be/sites/x%0A2026-11-19%2009:00:00.000")
     assert "could not be read" in message
     assert "\n" not in message and len(message) < 1200
+
+
+async def test_a_grid_or_a_listing_that_does_not_read_is_logged_cut(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The error can quote the workbook or the listing, and the grid's
+    address is the listing's own: each warning shows 500 characters of
+    either."""
+    quoted = ValueError("could not convert string to float: " + "9" * 200_000)
+    address = f"{cwape._SITE}/{'a' * 200_000}/ORES%20GAZ%202026.xlsx"
+    grid = cwape._Document(cwape._OPERATORS[DSO_ORES][0], 2026, address)
+    caplog.set_level(logging.WARNING)
+    with (
+        patch.object(cwape, "read_listing", AsyncMock(return_value=[grid])),
+        patch.object(cwape, "read_grid", AsyncMock(side_effect=quoted)),
+    ):
+        await cwape.ensure_network(AsyncMock(), 2026, DSO_ORES)
+    cwape._listing = None
+    with patch.object(cwape, "read_listing", AsyncMock(side_effect=quoted)):
+        await cwape.ensure_network(AsyncMock(), 2026, DSO_RESA)
+    warnings = [record.getMessage() for record in caplog.records]
+    assert len(warnings) == 2
+    assert warnings[0].startswith(f"CWaPE {cwape._SITE}/aaa")
+    assert warnings[1].startswith("CWaPE document listing could not be read: ")
+    assert max(len(message) for message in warnings) < 1200
 
 
 async def test_a_listing_that_does_not_answer_never_raises() -> None:

@@ -74,7 +74,7 @@ from .const import (
     DSO_FLUVIUS_WEST,
     DSO_FLUVIUS_ZENNE_DIJLE,
 )
-from .providers._pdf import fetch_bytes, fetch_text
+from .providers._pdf import fetch_bytes, fetch_text, shown_text
 from .providers.base import ExtractorError, SheetNetwork
 
 _LOGGER = logging.getLogger(__name__)
@@ -151,7 +151,9 @@ async def ensure_tariff_sheet(session: aiohttp.ClientSession, year: int) -> None
         except xlsx.UNREADABLE as err:
             # The page came back and is not the workbook as expected, or
             # its compressed data is damaged or cut short.
-            _LOGGER.warning("Fluvius %d gas tariff sheet could not be read: %s", year, err)
+            _LOGGER.warning(
+                "Fluvius %d gas tariff sheet could not be read: %s", year, shown_text(str(err))
+            )
             fee = None
         if fee is None:
             _failed_at[year] = dt_util.utcnow()
@@ -255,7 +257,10 @@ async def ensure_area_network(session: aiohttp.ClientSession, year: int, dso: st
                 terms = None
             except xlsx.UNREADABLE as err:
                 _LOGGER.warning(
-                    "Fluvius %d gas sheet for %s could not be read: %s", wanted, dso, err
+                    "Fluvius %d gas sheet for %s could not be read: %s",
+                    wanted,
+                    dso,
+                    shown_text(str(err)),
                 )
                 terms = None
             if terms is None:
