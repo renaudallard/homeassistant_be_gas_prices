@@ -97,6 +97,7 @@ from ._pdf import (
     is_pdf_payload,
     parse_json,
     render_pdf,
+    shown_text,
     strip_pdf_prefix,
 )
 from ._pdf_render import (
@@ -651,6 +652,13 @@ _INDEX_ROW_RE = re.compile(
     r"^(\d{2})/(\d{4})((?:[ \t]+(?:\d+(?:,\d+)?|-)){5})[ \t]*$", re.MULTILINE
 )
 _COLUMNS_READ = {_TTF_INDEX: 2, _INDEX: 3}
+# The table carries no unit. The document states it once, in its opening
+# sentence: "La formule de prix du Gaz Naturel d'OCTA+ est basée sur les
+# indices (€/MWh HTVA) avec les définitions suivantes". The values are read
+# only when that is the one unit it states: restated in c€/kWh, as the
+# cards' formulas were in November 2026, they would price a tenth.
+_INDEX_UNIT_RE = re.compile(r"basée sur les indices \(([^()]{0,40})\)")
+_INDEX_UNIT = "€/MWh HTVA"
 
 
 def parse_index(text: str) -> IndexTable:
@@ -659,10 +667,17 @@ def parse_index(text: str) -> IndexTable:
 
     One row per delivery month ("08/2026 53,734 45,112 61,729 61,899 -"); a
     month not over yet prints "-". The other columns (TTF101, TTF103 and the
-    quarterly ZTP RLP) are no gas card's index and are not read.
+    quarterly ZTP RLP) are no gas card's index and are not read. A document
+    stating its indices in another unit than EUR/MWh excluding VAT, or in
+    none, is refused.
     """
-    if _INDEX_HEADER not in " ".join(text.split()):
+    flat = " ".join(text.split())
+    if _INDEX_HEADER not in flat:
         raise ExtractorError("OCTA+: index table heading not found")
+    units = set(_INDEX_UNIT_RE.findall(flat))
+    if units != {_INDEX_UNIT}:
+        stated = shown_text(", ".join(sorted(units)) or "no unit")
+        raise ExtractorError(f"OCTA+: the index document states {stated}, expected {_INDEX_UNIT}")
     table: IndexTable = {name: {} for name in _COLUMNS_READ}
     for month, year, cells in _INDEX_ROW_RE.findall(text):
         for name, column in _COLUMNS_READ.items():

@@ -564,6 +564,38 @@ def test_index_table_with_another_heading_fails_loud() -> None:
         octaplus.parse_index(text.replace("ZTP RLP Mois", "ZTP Mois"))
 
 
+@pytest.mark.parametrize(
+    ("restated", "refusal"),
+    [
+        # In c€/kWh, as the cards' formulas were restated in November 2026,
+        # every value would price a tenth.
+        ("les indices (c€/kWh HTVA) avec", "states c€/kWh HTVA, expected €/MWh HTVA"),
+        # Including VAT.
+        ("les indices (€/MWh TVAC) avec", "states €/MWh TVAC, expected €/MWh HTVA"),
+        ("les indices avec", "states no unit, expected €/MWh HTVA"),
+    ],
+)
+def test_index_document_stating_another_unit_is_refused(restated: str, refusal: str) -> None:
+    """The table carries no unit: the document's opening sentence states it,
+    "basée sur les indices (€/MWh HTVA)", and the values are read under it
+    alone."""
+    text = fixture_text("octaplus", "paramètres_gaz_fr.pdf", "layout")
+    printed = "les indices (€/MWh HTVA) avec"
+    assert text.count(printed) == 1
+    with pytest.raises(ExtractorError, match=re.escape(refusal)):
+        octaplus.parse_index(text.replace(printed, restated))
+
+
+def test_index_document_stating_a_second_unit_is_refused() -> None:
+    """A second table in another unit, as Engie's page gained in November
+    2026, would overwrite the first one's rows: a document stating two
+    units is not read."""
+    text = fixture_text("octaplus", "paramètres_gaz_fr.pdf", "layout")
+    again = "\nLa formule est basée sur les indices (c€/kWh HTVA)\n08/2026 5,3734 4,5112 6,1729 6,1899 -"
+    with pytest.raises(ExtractorError, match="states c€/kWh HTVA, €/MWh HTVA, expected"):
+        octaplus.parse_index(text + again)
+
+
 def _archive(pages: dict[str, str]) -> Callable[..., Any]:
     """A fetch_text stand-in answering each URL with a fixture page: the
     listing by region and month, the sheet by card name."""

@@ -141,6 +141,13 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   Mois columns as `{"ZTP RLP M": {"2026-08": 61.899, ...}, "TTF RLP M":
   {"2026-08": 61.729, ...}}` in EUR/MWh. The other columns are no gas card's
   index and are not read.
+- The table carries no unit. The document states it once, in its opening
+  sentence, "La formule de prix du Gaz Naturel d'OCTA+ est basée sur les
+  indices (€/MWh HTVA) avec les définitions suivantes", and `parse_index`
+  reads the values only when that is the one unit stated: a document
+  stating another (c€/kWh, as the cards' formulas were restated in November
+  2026, or TVAC), none, or a second one beside it is refused, and the held
+  table keeps pricing.
 - Definitions differ slightly: the PDF and the Smart Variable card say ZTP
   DAP quotes weighted by the Synergrid RLP; the Boost Flex, Eco Boost Flex
   and Basic Online cards, like Flux before them, say EGSI ZTP indices
@@ -227,7 +234,8 @@ Module: `custom_components/be_gas_prices/providers/octaplus.py`. Tests:
   ORES in full, five ORES rows collapsed).
 - Levies on the WL and VL cards; a VL card read for Wallonia, Brussels,
   another product's card and a card without its formula all fail.
-- `parse_index` on `paramètres_gaz_fr.pdf`, and its heading check.
+- `parse_index` on `paramètres_gaz_fr.pdf`, its heading check, and the unit
+  its opening sentence states (another unit, none, or two refused).
 - Catalog: `test_the_tariff_page_names_the_gas_products_sold`,
   `test_discover_reads_the_tariff_page`.
 - `fetch` and `probe` URLs, the probe key moving with the month, and
