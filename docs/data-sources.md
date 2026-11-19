@@ -212,7 +212,10 @@ all or has gone stale. The request names the supplier, the contract,
 the region and the month and nothing else; the *Read the project's card
 archive* option switches it off. A row past 256 KiB is refused as it
 streams (the largest of the 3,037 held on 5 November 2026 was 4 kB), and so
-is a table below past 1 MiB (network.json, the largest, was 42 kB).
+is a table below past 1 MiB (network.json, the largest, was 42 kB). A
+figure of a table that is no JSON number (true or false, a string, an
+integer no float holds) is not read, and a table its reader cannot hold is a
+failed read like one that did not arrive.
 
 Beside the cards, the workflow writes `gas/vat.json`: per card month, the
 residential VAT rate three suppliers or more state and none contradicts.

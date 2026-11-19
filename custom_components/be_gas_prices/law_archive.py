@@ -90,11 +90,21 @@ def contribution_for(month: date) -> float | None:
     return rate
 
 
-def _rate(value: Any) -> float | None:
+def table_number(value: Any) -> float | None:
+    """A number of a card archive table, or ``None``: JSON's true and false
+    are no figure, a string is none either, and no float holds an integer of
+    309 digits or more."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    rate = float(value)
-    return rate if 0.0 <= rate < _MAX_EUR_PER_KWH else None
+    try:
+        return float(value)
+    except OverflowError:
+        return None
+
+
+def _rate(value: Any) -> float | None:
+    rate = table_number(value)
+    return rate if rate is not None and 0.0 <= rate < _MAX_EUR_PER_KWH else None
 
 
 def _entry(raw: Any) -> dict[str, Any]:

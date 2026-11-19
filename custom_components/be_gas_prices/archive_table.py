@@ -76,10 +76,10 @@ class ArchiveTable:
             table = json.loads(await fetch_text(session, self.url, limit=_LIMIT))
             if not isinstance(table, Mapping):
                 raise ValueError("not a table")
+            self._hold(table)
         except Exception as err:  # the docstring promises no raise
             _LOGGER.debug("%s could not be read: %s", self.url, err)
             self.failed_at = now
             return
-        self._hold(table)
         self.fetched_at = now
         self.failed_at = None

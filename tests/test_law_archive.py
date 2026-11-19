@@ -99,6 +99,27 @@ def test_only_figures_that_read_are_held() -> None:
     assert law_archive.excise_for(date(2026, 8, 1)) is None
 
 
+def test_an_integer_no_float_holds_is_no_figure() -> None:
+    """json.loads reads an integer this long as an int, and float() of it
+    raises."""
+    huge = 10**400
+    assert json.loads(str(huge)) == huge
+    law_archive.hold(
+        {
+            "residential": {
+                "2026-09": {**KEPT, "protected": huge},
+                "2026-10": {**KEPT, "excise": [huge, 0.0114]},
+            }
+        }
+    )
+    assert law_archive.held_table() == {
+        "residential": {
+            "2026-09": {k: v for k, v in KEPT.items() if k != "protected"},
+            "2026-10": {k: v for k, v in KEPT.items() if k != "excise"},
+        }
+    }
+
+
 def test_every_month_of_the_archives_table_is_held() -> None:
     """law.json as the card archive published it on 6 November 2026, January
     2025 to November 2026, figure for figure."""
@@ -159,6 +180,22 @@ async def test_the_table_is_read_once_a_day_and_a_failure_never_raises() -> None
         assert law_archive._TABLE.failed_at is not None
         # What was read goes on billing.
         assert law_archive.protected_excise_for(SEP) == 0.0031
+
+
+async def test_a_table_that_cannot_be_held_is_a_failed_read() -> None:
+    """The tick calls ensure: a reader that raises on what the archive sent
+    is a failure asked again six hours on, not one raised on every tick."""
+
+    def hold(table: Any) -> None:
+        raise OverflowError("int too large to convert to float")
+
+    table = archive_table.ArchiveTable("https://example.invalid/law.json", hold)
+    fetch = AsyncMock(return_value="{}")
+    with patch.object(archive_table, "fetch_text", fetch):
+        await table.ensure(None)  # type: ignore[arg-type]
+        await table.ensure(None)  # type: ignore[arg-type]
+    assert fetch.await_count == 1
+    assert table.fetched_at is None and table.failed_at is not None
 
 
 async def test_a_failure_waits_six_hours_before_the_table_is_asked_again() -> None:

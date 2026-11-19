@@ -147,6 +147,11 @@ def test_only_agreed_months_within_bounds_are_held() -> None:
                 "2026-12": {"rate": 6},
                 "2027-13": {"rate": 0.21},
                 "not a month": {"rate": 0.21},
+                # Only a JSON number is a rate, as in the other two tables,
+                # and float() raises on an integer this long.
+                "2027-01": {"rate": False},
+                "2027-02": {"rate": "0.21"},
+                "2027-03": {"rate": 10**400},
             }
         }
     )

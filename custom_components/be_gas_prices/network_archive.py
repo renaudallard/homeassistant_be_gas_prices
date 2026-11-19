@@ -51,7 +51,7 @@ import aiohttp
 
 from .archive_table import ArchiveTable
 from .const import NETWORK_TABLE_URL
-from .law_archive import table_months
+from .law_archive import table_months, table_number
 from .providers.base import SheetNetwork
 
 # A figure outside these is a misread, not a tariff, excluding VAT: EUR a
@@ -78,12 +78,11 @@ def _network(raw: Any) -> SheetNetwork | None:
         return None
     figures: dict[str, float] = {}
     for name, value in raw.items():
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            return None
+        figure = table_number(value)
         bound = _MAX_EUR_PER_KWH if name in _PER_KWH else _MAX_EUR_PER_YEAR
-        if not 0.0 <= float(value) < bound:
+        if figure is None or not 0.0 <= figure < bound:
             return None
-        figures[str(name)] = float(value)
+        figures[str(name)] = figure
     return SheetNetwork(**figures)
 
 

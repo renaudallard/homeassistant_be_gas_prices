@@ -219,6 +219,7 @@ def test_only_a_network_month_from_2000_to_next_year_is_held() -> None:
         {"metering_per_year": -1.0},
         {"t2_fixed": "132.95"},
         {"t2_fixed": True},
+        {"t2_fixed": 10**400},
         {"transport": 0.00165},
     ],
 )
