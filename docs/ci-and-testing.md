@@ -402,6 +402,20 @@ card prints it (`test_a_label_is_shown_as_one_code_span`), and the failing
 labels the issue leads with lose their backticks and CRs before each is put
 in its span (`test_a_failing_check_is_listed_as_one_code_span`).
 
+The issue does not rest on those spans. The report is written by the check
+job, the one that runs the readers on what the suppliers serve, and posted
+by the `file` job, the one that writes issues: posted as markdown, a report
+the check job was made to write could mention, link and embed as the bot.
+The `file` job posts it inside a fenced code block of its own making, with
+tr, awk and grep and no code of the repository. The report's control
+characters go first, since a CR ends a line and one dropped later would
+join two runs of backticks, and the fence is one backtick longer than the
+longest run left, so no line of the report closes it. A body cut at the
+60 000 byte cap has its block closed again before the note that says so.
+The tables therefore show as plain text in the issue
+(`test_the_report_is_posted_in_a_code_block_it_cannot_close`,
+`test_a_report_cut_at_the_limit_stays_in_its_code_block`).
+
 Exit codes: 0 all passed, 1 a persistent failure, 2 only transient ones, 3
 the check itself crashed. A crash before the check runs (an import that
 fails) exits 1 without writing the fingerprint, and the workflow reads that
@@ -655,7 +669,7 @@ can quote one.
 | --- | --- | --- |
 | `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite; pip's downloads, the two mypy caches and the fixture text are kept between runs with `actions/cache` |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
-| `live_check.yml` | daily, and on pull requests that touch a provider, the readers of the law, of FPS Finance's tariff or of the card archive's tables, or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and reads the report the check hands over |
+| `live_check.yml` | daily, and on pull requests that touch a provider, the readers of the law, of FPS Finance's tariff or of the card archive's tables, or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and posts the report the check hands over inside a code block it fences itself |
 | `archive_cards.yml` | daily at 05:53 UTC, before the live check | seven jobs, so no token shares a runner with third-party code, each passing what it made to the next as an artifact: `walk`, with no token, on Python 3.14 with the OCR engine, clones be_price_cards without credentials and archives into `gas/`; `keep` uploads the PDFs as `gas-<YYYY-MM>` releases with `BE_GAS_CARDS` and prunes those past 36 months, taking only a folder named `gas-YYYY-MM` and a file named by its SHA-256, the names the walk writes, and skipping anything else the artifact holds (`test_only_the_cards_the_walk_names_are_uploaded`); `index`, with no token, whenever the walk succeeded even if an upload failed, rewrites the sheets and writes the root and `gas/` READMEs; `push` lays them over a fresh clone and pushes with `BE_GAS_CARDS` through gh's credential helper (`gh auth git-credential`), on no command line and in no file, and a rebase retry; `token` warns 14 days before the token expires; `ocr` files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`); `report` files an issue when a job failed. Only `ocr`, `token` and `report` get a `github.token` that writes issues |
 | `autorelease.yml` | push to main that changes `manifest.json` | the test suite, HACS and hassfest, then the tag and the release |
 

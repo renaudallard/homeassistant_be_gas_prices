@@ -2184,6 +2184,88 @@ def test_a_failing_check_is_listed_as_one_code_span(tmp_path: Path) -> None:
     )
 
 
+def _rendered(body: str) -> str:
+    """The lines of ``body`` outside its fenced code blocks, which GitHub
+    renders as markdown. By CommonMark's rule a block opens on a line of
+    three or more backticks or tildes, indented at most three spaces, and
+    closes on a line of at least as many of the same character and nothing
+    else but spaces and tabs."""
+    outside: list[str] = []
+    fence = ""
+    for line in body.split("\n"):
+        text = line.lstrip(" ")
+        run = re.match(r"`{3,}|~{3,}", text) if len(line) - len(text) <= 3 else None
+        if not fence:
+            if run is not None and (run[0][0] == "~" or "`" not in text[run.end() :]):
+                fence = run[0]
+            else:
+                outside.append(line)
+        elif (
+            run is not None
+            and run[0][0] == fence[0]
+            and len(run[0]) >= len(fence)
+            and not text[run.end() :].strip(" \t")
+        ):
+            fence = ""
+    return "\n".join(outside)
+
+
+# What a report must never get rendered: a mention, an image, a link, a tag,
+# and the fences and line endings that would let them out of a code block.
+_CRAFTED_REPORT = (
+    "# Live check\n\n## Failures\n\n"
+    "| `acme/fix/flanders: fetch` | `HTTP 404` |\n"
+    "```\n@someone a mention\n"
+    "   `````\n![an image](https://evil.example/x.png)\n"
+    "~~~~\n[a link](https://evil.example)\n"
+    "```\r```\n<img src=https://evil.example/y.png>\n"
+    "\x00```\x00```\x00```\n@someone again\n"
+)
+_CRAFTED = ("@someone", "![an image]", "[a link]", "evil.example", "<img", "~~~~")
+
+
+def test_the_report_is_posted_in_a_code_block_it_cannot_close(tmp_path: Path) -> None:
+    """The report is written by the job that runs the readers on what the
+    suppliers serve, and was posted as markdown by the job that writes
+    issues: a report that job was made to write could mention, link and
+    embed as the bot. It is posted in a block fenced longer than any run of
+    backticks in it, counted once its control characters are gone, since a
+    CR or a NUL dropped later would join two runs."""
+    body, _fingerprint = _filed_issue(
+        tmp_path, "acme/fix/flanders: fetch\n", f"{_CRAFTED_REPORT}\n## All checks\n\n- a\n"
+    )
+    assert "\r" not in body and "\x00" not in body
+    rendered = _rendered(body)
+    for crafted in _CRAFTED:
+        assert crafted in body
+        assert crafted not in rendered
+    assert rendered.startswith("## Run\n\nx/x/actions/runs/x\n\n## Failing checks\n\n")
+    assert rendered.endswith("- `acme/fix/flanders: fetch`\n\n")
+    # The longest run is the nine backticks the three NULs kept apart.
+    assert body.count(f"\n{'`' * 10}\n") == 2
+    assert "All checks" not in body
+
+
+@pytest.mark.parametrize(
+    ("failures", "fenced"),
+    [("acme/fix/flanders: fetch\n", True), ("acme/fix/flanders: fetch\n" * 3000, False)],
+)
+def test_a_report_cut_at_the_limit_stays_in_its_code_block(
+    tmp_path: Path, failures: str, fenced: bool
+) -> None:
+    """A body near GitHub's limit is cut, which takes the closing fence
+    with it: the block is closed again before the note. A cut that falls in
+    the failing checks, before the report, has no block to close."""
+    body, _fingerprint = _filed_issue(tmp_path, failures, _CRAFTED_REPORT * 400)
+    assert len(body.encode()) <= 60100
+    rendered = _rendered(body)
+    assert rendered.endswith("\n\n_[issue body truncated: full report in the run log]_\n")
+    for crafted in _CRAFTED:
+        assert (crafted in body) is fenced
+        assert crafted not in rendered
+    assert body.count(f"\n{'`' * 10}\n") == (2 if fenced else 0)
+
+
 def test_a_label_is_shown_as_one_code_span() -> None:
     """A label can carry the month a card names itself for, as the card
     prints it: a backtick in it closed the label's span in the report's

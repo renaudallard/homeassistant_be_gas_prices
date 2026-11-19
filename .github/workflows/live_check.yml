@@ -209,6 +209,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # The report is written by the check job, which runs the readers
+          # on what the suppliers serve, and this job is the one that writes
+          # issues: posted as markdown, a report that job was made to write
+          # could mention, link and embed as the bot. It is posted in a code
+          # block nothing in it can close. The control characters go first,
+          # since a CR ends a line and one dropped later would join two
+          # runs of backticks, and the fence is one backtick longer than
+          # the longest run left. Its "All checks" list is left out: it
+          # only repeats the tables above it and would push a large fleet's
+          # body past GitHub's 65,536 character limit.
+          tr -d '\000-\010\013-\037\177' < tmp/report/report.md > report.clean
+          awk '/^## All checks$/{exit} {print}' report.clean > report.txt
+          fence=$(LC_ALL=C awk '
+            { line = $0
+              while (match(line, /`+/)) {
+                if (RLENGTH > n) n = RLENGTH
+                line = substr(line, RSTART + RLENGTH)
+              } }
+            END { for (n = (n < 3 ? 3 : n + 1); n > 0; n--) printf "`"; print "" }' report.txt)
           {
             echo "## Run"
             echo
@@ -221,15 +240,19 @@ jobs:
             # let it out of its code span.
             tr -d '\r`' < tmp/report/failures.txt | sed 's/^/- `/; s/$/`/'
             echo
-            # The report without its "All checks" list, which only repeats
-            # the tables above it and would push a large fleet's body past
-            # GitHub's 65,536 character limit.
-            awk '/^## All checks$/{exit} {print}' tmp/report/report.md
+            printf '%s\n' "$fence"
+            cat report.txt
+            printf '%s\n' "$fence"
           } > issue_body.md
           # Defensive cap: a mass failure could still reach the limit through
           # the tables alone. Cut at a line boundary and point at the log.
+          # The cut takes the closing fence with it, so a block it left open
+          # is closed again: no other line is the fence.
           if [ "$(wc -c < issue_body.md)" -gt 60000 ]; then
             head -c 60000 issue_body.md | sed '$d' > issue_body.tmp
+            if grep -qxF -e "$fence" issue_body.tmp; then
+              printf '%s\n' "$fence" >> issue_body.tmp
+            fi
             printf '\n_[issue body truncated: full report in the run log]_\n' >> issue_body.tmp
             mv issue_body.tmp issue_body.md
           fi
