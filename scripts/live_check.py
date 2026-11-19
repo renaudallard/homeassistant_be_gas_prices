@@ -95,6 +95,7 @@ import argparse
 import asyncio
 import functools
 import inspect
+import io
 import itertools
 import json
 import re
@@ -1698,6 +1699,17 @@ def exit_code(checks: Iterable[Check]) -> int:
     return 0
 
 
+def escape_stdout() -> None:
+    """Have stdout print as an escape what strict UTF-8 refuses.
+
+    A failure can quote its card, and pypdf reads a font map naming half a
+    surrogate pair as just that. Printed to a strict stream it raised once
+    the work was done: the archive's walk failed after its rows were
+    written, and the live check exited as crashed and filed nothing."""
+    if isinstance(sys.stdout, io.TextIOWrapper):
+        sys.stdout.reconfigure(errors="backslashreplace")
+
+
 def render_fingerprint(checks: Iterable[Check]) -> str:
     """The failing labels, one per line and sorted: what the issue is filed on."""
     return "".join(
@@ -1819,7 +1831,9 @@ async def _run(texts: Path | None, fingerprint: Path) -> int:
             f"_{cache.served} of {cache.served + cache.rendered} cards were served "
             f"from the archive's texts; {cache.rendered} were rendered._"
         )
-    fingerprint.write_text(render_fingerprint(checks), encoding="utf-8")
+    # Escaped like the report: the issue job posts the labels and hashes the
+    # file, so it has to be UTF-8 and the same bytes on every run.
+    fingerprint.write_text(render_fingerprint(checks), encoding="utf-8", errors="backslashreplace")
     return exit_code(checks)
 
 
@@ -1848,6 +1862,7 @@ def main() -> int:
     # installation sets to its own zone, and a Belgian one is in Brussels:
     # on UTC the 1st starts two hours late.
     dt_util.set_default_time_zone(BRUSSELS)
+    escape_stdout()
     try:
         return asyncio.run(_run(args.texts, args.fingerprint))
     except Exception:

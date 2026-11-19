@@ -107,7 +107,6 @@ import binascii
 import functools
 import hashlib
 import inspect
-import io
 import json
 import re
 import sys
@@ -146,6 +145,7 @@ from live_check import (  # type: ignore[import-not-found]  # noqa: E402
     Patience,
     check_excise_law,
     check_excise_tariff,
+    escape_stdout,
     fetch_with_retry,
     is_transient,
     label_month,
@@ -1805,11 +1805,7 @@ def main() -> int:
     # The providers take the month off Home Assistant's clock, which an
     # installation sets to its own zone, and a Belgian one is in Brussels.
     dt_util.set_default_time_zone(BRUSSELS)
-    # A failure can quote its card, half a surrogate pair included, which a
-    # strict stream refuses: printed as an escape, it cannot fail a run whose
-    # rows are already written.
-    if isinstance(sys.stdout, io.TextIOWrapper):
-        sys.stdout.reconfigure(errors="backslashreplace")
+    escape_stdout()
     summary = asyncio.run(
         archive(
             args.out,

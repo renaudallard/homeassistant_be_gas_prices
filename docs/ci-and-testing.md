@@ -421,6 +421,15 @@ the check itself crashed. A crash before the check runs (an import that
 fails) exits 1 without writing the fingerprint, and the workflow reads that
 as 3.
 
+A label or a detail can quote a card, and pypdf reads a font map naming
+half a surrogate pair as just that, which strict UTF-8 refuses: the report
+or the fingerprint raised, the run exited 3 and nothing was filed while the
+card was served. Both write it as an escape (`escape_stdout`, shared with
+the archive, and `backslashreplace` on the fingerprint): the issue job posts
+the labels and hashes the file, so it stays UTF-8 and the same bytes on
+every run
+(`test_main_reports_a_failure_quoting_half_a_surrogate_pair`).
+
 ### Where a moved card went (`scripts/card_finder.py`)
 
 Last of all, the live check asks the card finder about every row that failed

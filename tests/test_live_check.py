@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import io
 import json
 import os
 import re
@@ -1996,6 +1997,41 @@ def test_main_writes_the_fingerprint_and_returns_the_code(
 
     monkeypatch.setattr(lc, "check_fleet", crash)
     assert lc.main() == 3
+
+
+def test_main_reports_a_failure_quoting_half_a_surrogate_pair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, freezer: FrozenDateTimeFactory
+) -> None:
+    """pypdf reads a font map naming half a surrogate pair as just that, and
+    a failure can quote its card. Strict UTF-8 refuses it: the report or the
+    fingerprint raised, the run exited as crashed and nothing was filed
+    while the card was served. Both show it as an escape, the same bytes on
+    every run, which the issue job posts and hashes."""
+    freezer.move_to("2026-10-19T08:00:00+02:00")
+    label = "acme: fluvius_kempen metering for 2026-1\ud83d"
+
+    async def check_fleet(*_args: Any, **_kwargs: Any) -> list[Any]:
+        return [lc.Check(label, "fail", "prints 0 EUR/year on \ud83d")]
+
+    _offline(monkeypatch)
+    monkeypatch.setattr(lc, "check_fleet", check_fleet)
+    fingerprint = tmp_path / "failures.txt"
+    monkeypatch.setattr(sys, "argv", ["live_check.py", "--fingerprint", str(fingerprint)])
+    failing = []
+    for _run in range(2):
+        printed = io.BytesIO()
+        monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(printed, encoding="utf-8"))
+        assert lc.main() == 1
+        sys.stdout.flush()
+        failing.append(fingerprint.read_bytes())
+    report = printed.getvalue().decode("utf-8")
+    escaped = "acme: fluvius_kempen metering for 2026-1\\ud83d"
+    assert failing == [f"{escaped}\n".encode()] * 2
+    assert f"| `{escaped}` | `prints 0 EUR/year on \\ud83d` |" in report
+    # What the issue job makes of the two hand-overs.
+    body, filed = _filed_issue(tmp_path, failing[0].decode("utf-8"), report)
+    assert f"\n- `{escaped}`\n" in body
+    assert filed == f"{escaped}\n"
 
 
 # The run's own read of a Fluvius sheet, which _offline stands in for.
