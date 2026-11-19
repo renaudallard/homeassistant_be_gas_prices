@@ -534,12 +534,16 @@ def test_pdfplumber_is_bounded_on_what_pdfminer_decodes(
         extract(_hidden_stream_pdf(zlib.compress(_comment(1000), 9), shape))
 
 
-def _object_stream_pdf(padding: int, *, listed: int = 0, free: int = 0) -> bytes:
+def _object_stream_pdf(
+    padding: int, *, listed: int = 0, last: bytes = b"null", free: int = 0
+) -> bytes:
     """A PDF whose catalog, page tree and page sit in an object stream padded
     with ``padding`` blanks, behind a cross-reference stream, so pdfminer
     inflates it opening the file. The stream lists ``listed`` times more an
-    object the file's table lacks, a null behind the blanks, and the table
-    ends in ``free`` entries more, each of an object not in use."""
+    object the file's table lacks, each a byte further into the blanks and
+    ``last`` behind them, as pypdf 7 refuses a stream listing an offset
+    twice, and the table ends in ``free`` entries more, each of an object
+    not in use."""
     import struct
     import zlib
 
@@ -554,8 +558,8 @@ def _object_stream_pdf(padding: int, *, listed: int = 0, free: int = 0) -> bytes
         offsets.append(len(body))
         body += obj + b"\n"
     header = b" ".join(b"%d %d" % (n, o) for n, o in enumerate(offsets, 1))
-    header += b" 9 %d" % len(body) * listed
-    packed = zlib.compress(header + b"\n" + body + b" " * padding + b"null" * bool(listed), 9)
+    header += b"".join(b" 9 %d" % (len(body) + at) for at in range(listed))
+    packed = zlib.compress(header + b"\n" + body + b" " * padding + last * bool(listed), 9)
     text = b"BT /F1 12 Tf 72 720 Td (Hello) Tj ET"
     out = bytearray(b"%PDF-1.5\n")
     at = {4: len(out)}
@@ -1909,6 +1913,26 @@ def test_the_character_count_is_put_over_wrappers_that_lack_it(
     assert counting() == first
 
 
+def test_what_pypdf_reads_again_of_an_object_stream_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pypdf reads every object an object stream lists each time it reads
+    one of them, and keeps none the file's table does not give that stream,
+    so a stream listing one string again and again cost its entries times
+    the string, each one object parsed: 5000 bytes listed 500 times took
+    2,9 s, from a 430-byte file. Here each entry opens a string one
+    parenthesis further in. A byte read again counts."""
+    monkeypatch.setattr(_pdf_bound, "_MAX_PARSED", 20_000)
+
+    def nested(length: int) -> bytes:
+        return b"(" * 60 + b"a" * length + b")" * 60
+
+    with pytest.raises(ExtractorError, match=r"^PDF has a reader parse more than 20000"):
+        extract_pdf_text(_object_stream_pdf(0, listed=60, last=nested(1000)))
+    with pytest.raises(CardNotReadableError, match="no text layer"):
+        extract_pdf_text(_object_stream_pdf(0, listed=60, last=nested(100)))
+
+
 def test_each_field_of_a_cross_reference_stream_s_entry_counts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1956,9 +1980,9 @@ def test_the_reader_count_is_put_over_wrappers_that_lack_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Like the character count, the count of what pypdf's reader module
-    passes over, reads of a cross-reference stream and searches goes in
-    over the wrappers a release from before put in place without it, once,
-    and leaves them as they are."""
+    passes over, reads of a cross-reference stream, reads again of an
+    object stream and searches goes in over the wrappers a release from
+    before put in place without it, once, and leaves them as they are."""
     from pypdf.generic import EncodedStreamObject
 
     reader = vars(_pdf_bound.pypdf_reader)
@@ -1968,6 +1992,7 @@ def test_the_reader_count_is_put_over_wrappers_that_lack_it(
         "skip_over_whitespace",
         "skip_over_comment",
         "convert_to_int",
+        "read_object",
         "re",
     )
     for name in names:
