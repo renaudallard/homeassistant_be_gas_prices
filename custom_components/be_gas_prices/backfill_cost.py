@@ -346,17 +346,20 @@ async def _total_before(hass: HomeAssistant, sid: str, first: datetime) -> float
     The last row is found by month, then by hour within that month, so a
     long gap costs two short reads. A read by month runs on to the end of
     the month ``first`` opens when it falls on the 1st, as 1 January does,
-    so a month from ``first`` on is not one before it.
+    so a month from ``first`` on is not one before it. It runs on to the
+    end of the month ``first`` falls in as well: the row of a month the
+    window opens in the middle of begins before it and may hold no hour
+    before it, and the last one is then in the month before.
     """
     months = await _read(hass, sid, first - timedelta(days=400), first, "month")
     if months is None:
         return None
     months = [row for row in months if row["start"] < first.timestamp()]
-    if not months:
-        return 0.0
-    hours = await _read(hass, sid, datetime.fromtimestamp(months[-1]["start"], UTC), first, "hour")
-    if hours is None:
-        return None
-    if not hours or hours[-1].get("sum") is None:
-        return 0.0
-    return float(hours[-1]["sum"])
+    for month in reversed(months):
+        hours = await _read(hass, sid, datetime.fromtimestamp(month["start"], UTC), first, "hour")
+        if hours is None:
+            return None
+        if hours:
+            total = hours[-1].get("sum")
+            return 0.0 if total is None else float(total)
+    return 0.0

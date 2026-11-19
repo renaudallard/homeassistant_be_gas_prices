@@ -62,6 +62,7 @@ backfill_cost_module = importlib.import_module("custom_components.be_gas_prices.
 SID = "sensor.gas_current_year_cost"
 OLD = datetime(2025, 12, 31, 23, tzinfo=UTC)  # 1 January 2026, Brussels
 JULY = datetime(2026, 6, 30, 22, tzinfo=UTC)  # 1 July 2026, Brussels
+MID = datetime(2026, 9, 14, 22, tzinfo=UTC)  # 15 September 2026, Brussels
 NEW = datetime(2026, 12, 31, 23, tzinfo=UTC)  # 1 January 2027, Brussels
 
 
@@ -222,6 +223,33 @@ async def test_a_moved_window_waits_for_the_sensors_first_row_of_it(
     got = await hass.async_add_executor_job(_rows, hass, h)
     assert [r[1] for r in got] == pytest.approx([780.0, 780.2, 780.4]), got
     assert [r[2] for r in got[1:]] == pytest.approx([0.2, 0.2]), got
+
+
+async def test_a_window_opening_mid_month_continues_the_month_before(
+    recorder_mock: Any, hass: HomeAssistant, freezer: Any
+) -> None:
+    """A year counted from a contract start of 15 September, on a sensor
+    that recorded nothing from 21 August to the 20th: the read by month
+    still gives September, which begins before the window and holds no hour
+    before it, and the total before the window read 0.0 where August had
+    left 600. The cycle was written from nothing and September's change was
+    -569.5. It continues August's total."""
+    await _sensor(hass)
+    august = datetime(2026, 8, 20, 8, tzinfo=UTC)
+    await _live(hass, freezer, august + timedelta(minutes=1), 0.0, OLD)
+    await _live(hass, freezer, august + timedelta(minutes=56), 600.0, OLD)
+    await _live(hass, freezer, august + timedelta(hours=1, minutes=56), 600.0, OLD)
+    h = datetime(2026, 9, 20, 8, tzinfo=UTC)
+    await _live(hass, freezer, h + timedelta(minutes=1), 30.0, MID)
+    await _live(hass, freezer, h + timedelta(minutes=56), 30.5, MID)
+    await _live(hass, freezer, h + timedelta(hours=1, minutes=1), 30.6, MID)
+    hours = int((h - MID).total_seconds()) // 3600 + 1
+    totals = [(MID + timedelta(hours=n), 30.5 * (n + 1) / hours) for n in range(hours)]
+    assert await _import_cost_rows(hass, SID, totals, MID)
+    await async_wait_recording_done(hass)
+    months = await hass.async_add_executor_job(_rows, hass, august - timedelta(days=25), "month")
+    assert [r[1] for r in months] == pytest.approx([600.0, 630.5]), months
+    assert [r[2] for r in months] == pytest.approx([600.0, 30.5]), months
 
 
 async def test_a_run_past_the_next_hour_moves_that_hours_row(

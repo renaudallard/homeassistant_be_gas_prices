@@ -266,7 +266,9 @@ those statistics.
 The rows are joined to what the recorder compiled from the live sensor: they
 continue the total recorded before the window (last year's whole bill, on an
 entry that ran through it, since the compile carries its total on across a
-new cycle), and the recorder moves the sensor's own rows, short-term and
+new cycle; the last hour recorded before the window, which for one opening
+at a contract start in the middle of a month can lie in the month before,
+`_total_before`), and the recorder moves the sensor's own rows, short-term and
 hourly, onto the imported total in its own queue: a sum adjustment from the
 start of the window, queued ahead of the import, so a row it compiles
 meanwhile is moved with the rest. The adjustment is what the reads found
