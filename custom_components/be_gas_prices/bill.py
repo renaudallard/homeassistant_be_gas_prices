@@ -263,9 +263,8 @@ def bill_month(
     year, number = (int(part) for part in month.split("-"))
     start = date(year, number, 1)
     begin = start if first is None else first
-    energy = energy_for(card, residential_vat(start))
-    priced = replace(resolve_for_delivery(card, start), energy=energy)
-    price, index = resolve_energy_price(energy, table, month)
+    priced, price, index = priced_month(card, energy_for, table, month)
+    energy = priced.energy
     breakdown = compute_breakdown(priced, dso, annual_kwh, price)
     costs = fixed_costs(priced, dso, annual_kwh, caliber)
     fixed = costs.total * days / days_in_year
@@ -284,15 +283,37 @@ def bill_month(
         taxes_cost=kwh * breakdown.taxes,
         fixed_cost=fixed,
         index=index,
-        provisional=(isinstance(energy, VariableRates) and energy.estimate)
-        or (
-            isinstance(energy, IndexedRates)
-            and (
-                index.month != month or index.stand_in
-                if index is not None
-                else not _settled_for(card, energy, month)
-            )
-        ),
+        provisional=is_provisional(card, energy, index, month),
+    )
+
+
+def priced_month(
+    card: SupplierSnapshot, energy_for: LegFor, table: IndexTable | None, month: str
+) -> tuple[SupplierSnapshot, float, IndexValue | None]:
+    """``card`` as it bills ``month``: the levies and the network resolved
+    for that delivery month, with the energy leg ``energy_for`` gives at the
+    month's residential VAT rate, and that leg's price of the month on the
+    card's VAT basis with the index value it was priced at."""
+    year, number = (int(part) for part in month.split("-"))
+    start = date(year, number, 1)
+    energy = energy_for(card, residential_vat(start))
+    priced = replace(resolve_for_delivery(card, start), energy=energy)
+    price, index = resolve_energy_price(energy, table, month)
+    return priced, price, index
+
+
+def is_provisional(
+    card: SupplierSnapshot, energy: EnergyRates, index: IndexValue | None, month: str
+) -> bool:
+    """Whether ``energy``, priced at ``index`` for ``month`` on ``card``, is
+    not yet the price the month settles at (``MonthBill.provisional``)."""
+    return (isinstance(energy, VariableRates) and energy.estimate) or (
+        isinstance(energy, IndexedRates)
+        and (
+            index.month != month or index.stand_in
+            if index is not None
+            else not _settled_for(card, energy, month)
+        )
     )
 
 

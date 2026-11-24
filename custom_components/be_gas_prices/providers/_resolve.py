@@ -190,7 +190,7 @@ def law_contribution(delivery: date) -> float | None:
 _BELGIAN_VAT_RATES = (VAT_RATE_REDUCED, 0.12, 0.21)
 
 
-def _vat_factor(taxes: TaxOverlay, delivery: date) -> float:
+def vat_factor(taxes: TaxOverlay, delivery: date) -> float:
     """What a law figure excluding VAT is multiplied by on ``taxes``'s card
     for ``delivery``: the rate the card states, else the residential rate of
     the month (vat_rates.py)."""
@@ -215,7 +215,7 @@ def resolve_federal_levies(
 
     Only a residential card is touched: its values are VAT inclusive
     (``vat_rate`` 0.0), and the law's rate is put on the VAT the card states
-    (:func:`_vat_factor`). A professional card prints excluding VAT and is
+    (:func:`vat_factor`). A professional card prints excluding VAT and is
     taxed on other rates.
 
     A ``protected`` customer's card, the social tariff's, prints no excise:
@@ -225,7 +225,7 @@ def resolve_federal_levies(
     """
     if taxes.vat_rate != 0.0:
         return taxes
-    factor = _vat_factor(taxes, delivery)
+    factor = vat_factor(taxes, delivery)
     if protected:
         rate = law_protected_excise(delivery)
         return replace(
@@ -259,7 +259,7 @@ def resolve_network(
     htva = fluvius.data_management_fee(delivery.year)
     if taxes.vat_rate != 0.0 or htva is None:
         return dsos
-    fee = htva * _vat_factor(taxes, delivery)
+    fee = htva * vat_factor(taxes, delivery)
     return {
         key: replace(overlay, metering_per_year=fee)
         if key in FLUVIUS_KEYS and overlay.metering_per_year == 0.0
@@ -276,11 +276,11 @@ def resolve_network_sheet(
     taking its network off the sheet.
 
     The sheets are excluding VAT and a residential card includes it, so they
-    are put on the VAT of the month (:func:`_vat_factor`). The transport
+    are put on the VAT of the month (:func:`vat_factor`). The transport
     stays the card's, since no sheet prints it, and a DSO no sheet is held
     for keeps every figure of the card.
     """
-    factor = _vat_factor(taxes, delivery) if taxes.vat_rate == 0.0 else 1.0
+    factor = vat_factor(taxes, delivery) if taxes.vat_rate == 0.0 else 1.0
     out: dict[str, DsoOverlay] = {}
     for key, overlay in dsos.items():
         sheet = network_sheet.held_network(delivery, key)
