@@ -119,11 +119,20 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   weekend mid prices over the delivery month (eneco.be/indexatie), known only
   at month end, so `settled` is False. The card's Maandprijs is the formula at
   the last closed month, footnoted "(08/2026: €61,6374/MWh)".
+- TTFDAW-RLP: the same mean over the delivery quarter, printed on each
+  month of the quarter once it is over. The quarterly Flex cards before
+  April 2023 index on it, and a contract signed on one is billed on it, a
+  quarter not out yet at the latest quarter published.
 - `fetch_index` reads
-  https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-aardgas.pdf:
-  columns TTF-DAHW, TTFDAW-RLP, TTFDAW-RLP-M, ZTP-S41, ZTP-S31, TTF103,
-  TTF303, one row per month from January 2023. Every column is returned, the
-  quarterly ones month by month as printed.
+  https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-aardgas.pdf
+  and the months it has dropped from
+  https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-aardgas-oud.pdf,
+  the current one winning a month both print. In November 2026 the current
+  one has columns TTFDAW-RLP and TTFDAW-RLP-M from January 2024, the older
+  one TTF-DAHW, TTFDAW-RLP, TTFDAW-RLP-M, ZTP-S41, ZTP-S31, TTF103 and
+  TTF303 from January 2023 to September 2026 (the September 2026 fixture
+  of the current one still had those columns from January 2023). Every
+  column is returned, the quarterly ones month by month as printed.
 - The PDF leaves cells empty (TTFDAW-RLP-M before March 2023, quarterly
   columns until the quarter closes), and its text layer cannot say which
   column a figure is in. `index_table_text` places each figure under the
@@ -175,9 +184,13 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Indexation PDF: TTF-DAHW prints its own value for October 2025 (30,04),
   but for November and December 2025, and TTFDAW-RLP for all of Q4 2025,
   the cells repeat the column's newest closed quarter as of the edition
-  read: Q2 2026 in the September 2026 fixture, Q3 2026 in the values the
-  card archive read in November. No residential gas product uses these two
-  columns.
+  read: Q2 2026 (45,95) in the September 2026 fixture, Q3 2026 (65,26) in
+  both PDFs of November 2026 and in the values the card archive read from 7
+  October. The edition of 27 February 2026 on the Wayback Machine printed
+  29,41 for Q4 2025, and 30,04 for TTF-DAHW in each month of it. A Flex
+  contract signed on a quarterly card is billed on TTFDAW-RLP, so its Q4
+  2025 is priced at what the PDF prints, 7,596 c€/kWh excluding VAT on
+  October 2022's formula where 29,41 gives 4,011.
 - The Walloon cards of January 2025 add the trucked-gas supplement CWaPE
   sets for RESA ("supplément pour gaz porté", 0,0058066 EUR/kWh excluding
   VAT, 0,6155 c€/kWh with it) to RESA's T1 and T2: 4,86 / 2,93, as every
@@ -224,4 +237,8 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 - Index: `test_index_pdf_places_each_figure_under_its_heading`,
   `test_published_index_reproduces_the_cards`,
   `test_index_text_without_the_monthly_column_fails_loud`,
-  `test_fetch_index_reads_the_indexation_pdf`.
+  `test_fetch_index_reads_the_indexation_pdf`, the older PDF's months:
+  `test_fetch_index_reads_the_months_the_current_pdf_dropped`.
+- A contract signed on October 2022's card, against Eneco's bills of 2024
+  and 2025: `test_a_contract_on_the_october_2022_card_is_billed_its_quarter`,
+  `test_the_october_2022_card_s_fee_is_billed`.

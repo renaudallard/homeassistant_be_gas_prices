@@ -61,7 +61,8 @@ index on TTFDAW-RLP-M, the RLP-weighted mean of the ICIS Heren TTF day-ahead
 and weekend prices over the delivery month, known once the month is over. The
 card's Maandprijs is the formula at the last month known, which a footnote
 names ("08/2026: €61,6374/MWh"). Eneco publishes every month's value to two
-decimals in its indexation PDF, which is what fetch_index reads.
+decimals in its indexation PDF, and the months it has dropped in an older
+one, which is what fetch_index reads.
 
 Flex cards before April 2023 indexed per quarter, on TTFDAW-RLP, the
 RLP-weighted mean over the delivery quarter: "(0,1 X TTFDAW-RLP + 1,07) X
@@ -152,6 +153,8 @@ _BASE_URL = "https://cdn.eneco.be/downloads/nl/general/tk"
 # With the trailing slash: the bare path answers a 308 to this one.
 _LISTING_URL = "https://eneco.be/nl/elektriciteit-gas/tariefkaarten/"
 _INDEX_URL = "https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-aardgas.pdf"
+# The months the current one has dropped, from January 2023.
+_OLD_INDEX_URL = "https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-aardgas-oud.pdf"
 
 # The index both variable products settle on, as the card and the indexation
 # PDF name it.
@@ -653,11 +656,18 @@ def parse_index_text(text: str) -> IndexTable:
 
 
 async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
-    """Eneco's published gas index values."""
-    text = await fetch_pdf_rendered(
-        session, _INDEX_URL, variant="eneco-index", timeout=30, render=index_table_text
-    )
-    return parse_index_text(text)
+    """Eneco's published gas index values: the current indexation PDF's,
+    over the older one's for the months it has dropped. A Flex contract
+    signed before April 2023 is priced on the quarterly TTFDAW-RLP back to
+    January 2023."""
+    table: IndexTable = {}
+    for url in (_OLD_INDEX_URL, _INDEX_URL):
+        text = await fetch_pdf_rendered(
+            session, url, variant="eneco-index", timeout=30, render=index_table_text
+        )
+        for name, values in parse_index_text(text).items():
+            table.setdefault(name, {}).update(values)
+    return table
 
 
 EXTRACTOR = SupplierExtractor(

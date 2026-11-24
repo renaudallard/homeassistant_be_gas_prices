@@ -38,7 +38,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun import freeze_time
 
+from custom_components.be_gas_prices.bill import bill_month, contract_leg
 from custom_components.be_gas_prices.const import (
+    CALIBER_Q10,
     DSO_FLUVIUS_HALLE_VILVOORDE,
     DSO_FLUVIUS_KEMPEN,
     DSO_FLUVIUS_MIDDEN_VLAANDEREN,
@@ -74,6 +76,14 @@ _FLEX_2209 = "BC_032_012209_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_2207 = "BC_032_012207_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_2203 = "BC_032_012203_NL_ENECO_GAS_FLEX.pdf"
 _INDEX_PDF = "indexatieparameters-aardgas.pdf"
+_ACQ = "https://cdn.eneco.be/downloads/nl/b2c/acq"
+# The current indexation PDF and the older one as Eneco served them on 24
+# November 2026: the current one starts in January 2024, the older one in
+# January 2023.
+_INDEX_PDFS_2611 = {
+    f"{_ACQ}/indexatieparameters-aardgas-oud.pdf": "indexatieparameters-aardgas-oud.pdf",
+    f"{_ACQ}/indexatieparameters-aardgas.pdf": "indexatieparameters-aardgas_2026-11.pdf",
+}
 
 
 def _card(name: str) -> str:
@@ -92,6 +102,23 @@ def _index_text() -> str:
 @cache
 def _index_table() -> IndexTable:
     return eneco.parse_index_text(_index_text())
+
+
+@cache
+def _rendered_index(name: str) -> str:
+    return eneco.index_table_text((FIXTURES / "eneco" / name).read_bytes())
+
+
+async def _fetched_index(old: Callable[[str], str] = lambda text: text) -> IndexTable:
+    """What fetch_index reads off the two PDFs of November 2026, the older
+    one's text passed through ``old``."""
+
+    async def rendered(_session: object, url: str, **_kwargs: object) -> str:
+        text = _rendered_index(_INDEX_PDFS_2611[url])
+        return old(text) if url.endswith("-oud.pdf") else text
+
+    with patch.object(eneco, "fetch_pdf_rendered", rendered):
+        return await eneco.fetch_index(AsyncMock())
 
 
 @pytest.mark.parametrize("region", [REGION_FLANDERS, REGION_WALLONIA])
@@ -748,6 +775,77 @@ async def test_fetch_index_reads_the_indexation_pdf() -> None:
     )
     assert fetched.call_args.kwargs["render"] is eneco.index_table_text
     assert table["TTFDAW-RLP-M"]["2026-08"] == pytest.approx(61.64)
+
+
+async def test_fetch_index_reads_the_months_the_current_pdf_dropped() -> None:
+    """The current PDF of November 2026 starts in January 2024; the older
+    one goes on giving 2023, a month both print being the current one's."""
+    table = await _fetched_index()
+    assert table["TTFDAW-RLP"]["2023-01"] == pytest.approx(55.18)
+    assert table["TTFDAW-RLP"]["2023-12"] == pytest.approx(39.78)
+    assert table["TTFDAW-RLP-M"]["2023-03"] == pytest.approx(44.79)
+    assert table["TTFDAW-RLP-M"]["2026-10"] == pytest.approx(88.29)
+    assert "2026-10" not in table["TTFDAW-RLP"]
+    altered = await _fetched_index(
+        lambda text: text.replace("Februari 2024 27,47 27,60", "Februari 2024 27,47 99,99")
+    )
+    assert altered["TTFDAW-RLP"]["2024-02"] == pytest.approx(27.60)
+
+
+# Eneco's yearly bills to a Walloon household on Flex signed on the October
+# 2022 card, the energy excluding VAT in c€/kWh and the TTFDAW-RLP they
+# print beside it: "0,100 x TTFDAHW-RLP + 1,070".
+_BILLED_2210 = [
+    ("2024-02", 3.82996),  # 01/01/24-31/03/24, 27,60
+    ("2025-02", 5.81542),  # 06/01-31/03/25, 47,45
+    ("2025-05", 4.59959),  # 01/04-30/06/25, 35,29
+    ("2025-08", 4.30706),  # 01/07-30/09/25, 32,37
+]
+
+
+async def _billed_on_2210(month: str) -> tuple[float, str]:
+    """The energy price of ``month`` excluding VAT in c€/kWh and the month
+    of the index it is priced at, for a Walloon contract signed on the
+    October 2022 card. The card of the month only sets the network and the
+    levies; December 2024's stands in for each."""
+    signed = _parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2210)
+    bill = bill_month(
+        month=month,
+        card=_parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2412),
+        energy_for=lambda card, vat: contract_leg(card.energy, signed.energy, {}, vat),
+        table=await _fetched_index(),
+        dso=DSO_ORES,
+        annual_kwh=17_000.0,
+        caliber=CALIBER_Q10,
+        kwh=1000.0,
+        days=30,
+        days_in_year=365,
+    )
+    assert bill.index is not None
+    return bill.breakdown.energy / 1.06 * 100, bill.index.month
+
+
+@pytest.mark.parametrize(("month", "billed"), _BILLED_2210)
+async def test_a_contract_on_the_october_2022_card_is_billed_its_quarter(
+    month: str, billed: float
+) -> None:
+    """Eneco bills it on that card's formula, at the quarter's TTFDAW-RLP, not
+    on each month's card. A bill prints five decimals off a value the PDF
+    prints to two, and a hundredth of a EUR/MWh of it is 0,001 c€/kWh. Q4
+    2025 is left out: every edition read from September 2026 on prints a
+    later quarter's value in its cells (docs/providers/eneco.md)."""
+    price, index_month = await _billed_on_2210(month)
+    assert index_month == month
+    assert price == pytest.approx(billed, abs=1e-3)
+
+
+def test_the_october_2022_card_s_fee_is_billed() -> None:
+    """52,56 a year, which the bills print as 49,58710 excluding VAT."""
+    signed = _parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2210).energy
+    own = _parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2412).energy
+    leg = contract_leg(own, signed, {}, 0.06)
+    assert leg.yearly_fixed_fee == pytest.approx(52.56)
+    assert leg.yearly_fixed_fee / 1.06 == pytest.approx(49.58710, abs=5e-3)
 
 
 def test_the_listing_names_the_gas_products_sold() -> None:
