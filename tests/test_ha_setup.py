@@ -116,12 +116,13 @@ from custom_components.be_gas_prices.coordinator import GasCoordinator
 from custom_components.be_gas_prices.gas_meter import RecorderUnavailable
 from custom_components.be_gas_prices.markdown_text import escape_markdown
 from custom_components.be_gas_prices.month_cards import MonthCard
-from custom_components.be_gas_prices.providers import _pdf, engie, octaplus, social
+from custom_components.be_gas_prices.providers import _pdf, eneco, engie, octaplus, social
 from custom_components.be_gas_prices.providers._rates import FixedRates, IndexedRates
 from custom_components.be_gas_prices.providers.base import CardNotReadableError, ExtractorError
 from custom_components.be_gas_prices.running_costs import Household
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import fixture_text
+from tests.test_eneco import _fetched_index
 from tests.test_markdown_text import BODY, STATUS
 
 TABLE = {"ZTPDAM": {"2026-07": 53.116, "2026-08": 61.537}}
@@ -3829,6 +3830,57 @@ async def test_a_card_reissued_within_its_month_prices_the_day_signed(
     assert coordinator._energy_for(fetch.return_value, VAT_RATE_REDUCED).price == pytest.approx(
         0.0754
     )
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_a_contract_on_the_october_2022_card_is_priced_on_it_years_on(
+    hass: HomeAssistant,
+) -> None:
+    """Eneco bills a Flex contract signed on its October 2022 card on that
+    card's formula however long it has run, at the quarter's TTFDAW-RLP:
+    2025 and 2026 are priced on it, and November 2026, whose quarter is not
+    out yet, at the third quarter's value."""
+    cdn = "https://cdn.eneco.be/downloads/nl/general/tk"
+    signed_name = "BC_032_012210_NL_ENECO_GAS_FLEX.pdf"
+    current_name = "BC_032_012611_NL_ENECO_GAS_FLEX.pdf"
+
+    async def pdf_text(_session: Any, url: str, **_kwargs: Any) -> str:
+        if url != f"{cdn}/{signed_name}":
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        return fixture_text("eneco", signed_name)
+
+    current = eneco.parse_snapshot(
+        "eneco_aardgas_flex",
+        REGION_WALLONIA,
+        fixture_text("eneco", current_name),
+        f"{cdn}/{current_name}",
+    )
+    stub = replace(
+        eneco.EXTRACTOR,
+        fetch=AsyncMock(return_value=current),
+        fetch_index=AsyncMock(return_value=await _fetched_index()),
+    )
+    data = {
+        **DATA,
+        CONF_SUPPLIER: "eneco",
+        CONF_CONTRACT: "eneco_aardgas_flex",
+        CONF_TARIFF_CARD_DATE: "2022-10-01",
+    }
+    with (
+        patch.dict(providers.EXTRACTORS, {"eneco": stub}),
+        patch.object(eneco, "fetch_pdf_text", pdf_text),
+    ):
+        entry = await _setup(hass, data)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    coordinator = entry.runtime_data
+    signed = coordinator._signing_card()
+    assert signed is not None
+    assert signed.publication_label == "2022-10"
+    # "(0,1 X TTFDAW-RLP + 1,07) X 1,06" at Q3 2025, Q2 2026 and Q3 2026.
+    for month, value in (("2025-08", 32.37), ("2026-05", 45.95), ("2026-11", 65.26)):
+        priced = coordinator.month_price(month)
+        assert priced is not None
+        assert priced[0].energy == pytest.approx((0.1 * value + 1.07) * 1.06 / 100)
 
 
 @pytest.mark.parametrize(

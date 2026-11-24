@@ -241,4 +241,7 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   `test_fetch_index_reads_the_months_the_current_pdf_dropped`.
 - A contract signed on October 2022's card, against Eneco's bills of 2024
   and 2025: `test_a_contract_on_the_october_2022_card_is_billed_its_quarter`,
-  `test_the_october_2022_card_s_fee_is_billed`.
+  `test_the_october_2022_card_s_fee_is_billed`; still priced on it in 2025
+  and 2026, through the coordinator:
+  `test_a_contract_on_the_october_2022_card_is_priced_on_it_years_on` in
+  `tests/test_ha_setup.py`.
