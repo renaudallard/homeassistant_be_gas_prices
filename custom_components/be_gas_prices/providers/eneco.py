@@ -63,6 +63,17 @@ card's Maandprijs is the formula at the last month known, which a footnote
 names ("08/2026: €61,6374/MWh"). Eneco publishes every month's value to two
 decimals in its indexation PDF, which is what fetch_index reads.
 
+Flex cards before April 2023 indexed per quarter, on TTFDAW-RLP, the
+RLP-weighted mean over the delivery quarter: "(0,1 X TTFDAW-RLP + 1,07) X
+1,06" on October 2022's, with a Kwartaalprijs at the last quarter known
+("3de kwartaal 2022: €195,2918/MWh"). Eneco still bills a contract signed on
+one by its formula and that index, which the indexation PDF prints on each
+month of a quarter once the quarter is over. Only their energy leg is read:
+their DSO and levy tables are of a layout no later card uses, and the cards
+of January to March 2022 price at 21% VAT, so they are refused. The cards
+before 2022 index on TTFDAW-S41, which Eneco no longer publishes, and are
+refused too.
+
 The card is read with pypdf. pdfplumber sets the tax block on the same lines
 as the DSO rows and scrambles the one DSO label that wraps.
 """
@@ -70,7 +81,7 @@ as the DSO rows and scrambles the one DSO label that wraps.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from itertools import pairwise
 from typing import Any
@@ -145,6 +156,9 @@ _INDEX_URL = "https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-aard
 # The index both variable products settle on, as the card and the indexation
 # PDF name it.
 _INDEX = "TTFDAW-RLP-M"
+# The one Flex cards before _MONTHLY_FROM settle on, per quarter.
+_QUARTERLY_INDEX = "TTFDAW-RLP"
+_MONTHLY_FROM = date(2023, 4, 1)
 
 _REGIONS = frozenset({REGION_FLANDERS, REGION_WALLONIA})
 _NL_MONTH = {name: number for number, name in enumerate(NL_MONTHS, 1)}
@@ -262,11 +276,23 @@ def parse_snapshot(contract_id: str, region: str, text: str, source_url: str) ->
     """Parse one card's text as pypdf extracts it, for ``region``.
 
     One card serves both regions, so the region picks the DSO rows and
-    whether the Walloon connection fee applies.
+    whether the Walloon connection fee applies. A Flex card before April
+    2023 gives its energy leg alone.
     """
     contract = _contract(contract_id, region)
     _require_product(text, contract)
     card_month = _card_month(text)
+    if contract.kind == "indexed" and card_month < _MONTHLY_FROM:
+        return SupplierSnapshot(
+            supplier="eneco",
+            contract=contract_id,
+            energy=_quarterly_energy(text),
+            dsos={},
+            taxes=TaxOverlay(excise_bands=(), card_vat_rate=printed_vat_rate(text, _VAT_RE)),
+            source_url=source_url,
+            publication_label=f"{card_month:%Y-%m}",
+            valid_until=end_of_month(card_month.year, card_month.month),
+        )
     return SupplierSnapshot(
         supplier="eneco",
         contract=contract_id,
@@ -316,9 +342,29 @@ _VARIABLE_RE = re.compile(
     _ENERGY_HEAD
     + rf"{LINE_BREAK}\d+,\d+{_BULLET}Geschatte jaarprijs{LINE_BREAK}(\d+,\d+){_BULLET}Maandprijs"
 )
-_FORMULA_RE = re.compile(
-    rf"\(\s*(\d+(?:,\d+)?)\s*X\s*{_INDEX}\s*([{SIGN_CHARS}])\s*(\d+,\d+)\s*\)\s*X\s*(\d+,\d+)"
+# Before April 2023 the price below the estimate, or above it, was the
+# Kwartaalprijs.
+_QUARTERLY_RE = re.compile(
+    _ENERGY_HEAD
+    + rf"(?:{LINE_BREAK}\d+,\d+{_BULLET}Geschatte jaarprijs)?"
+    + rf"{LINE_BREAK}(\d+,\d+){_BULLET}Kwartaalprijs"
 )
+
+
+def _formula_re(index: str) -> re.Pattern[str]:
+    """The formula on ``index``. The sign has to follow the name, so
+    TTFDAW-RLP is not read off TTFDAW-RLP-M."""
+    return re.compile(
+        rf"\(\s*(\d+(?:,\d+)?)\s*X\s*{re.escape(index)}\s*([{SIGN_CHARS}])\s*(\d+,\d+)\s*\)"
+        r"\s*X\s*(\d+,\d+)"
+    )
+
+
+_FORMULA_RE = _formula_re(_INDEX)
+_QUARTERLY_FORMULA_RE = _formula_re(_QUARTERLY_INDEX)
+# The VAT multiplier a formula carries, the rate every card has stated since
+# April 2022.
+_FORMULA_VAT = "1,06"
 # The formula is the last row under the price table's heading, below the
 # estimate and the Maandprijs: "VERBRUIK (€cent/kWh)", spelt that way and
 # printed once on every Flex card since November 2023 and every Flex One
@@ -335,10 +381,16 @@ _FORMULA_UNIT = "€cent/kWh"
 # would still read under its heading. Held to its Maandprijs at the value in
 # €/MWh, it misses it.
 _INDEX_VALUE_RE = re.compile(r"\(\d{2}/\d{4}:\s*€\s*(\d+(?:[.,]\d+)*)\s*/MWh\)")
+# The Kwartaalprijs's, by quarter: "(3de kwartaal 2022: €195,2918/MWh)".
+_QUARTER_VALUE_RE = re.compile(
+    r"\(\d(?:ste|de)\s+kwartaal\s+\d{4}:\s*€\s*(\d+(?:[.,]\d+)*)\s*/MWh\)"
+)
 # On the 80 Flex and Flex One rows of November 2023 to November 2026 the
 # formula at that value gives the Maandprijs back within 0,124%, the rounding
 # of a price printed to the hundredth, at most 0,133% down to the lowest of
-# them, 3,77. Only a price under 1 c€/kWh rounds by more than the tolerance.
+# them, 3,77, and on the Kwartaalprijs of the twelve quarterly Flex cards of
+# April 2022 to March 2023 within 0,04%. Only a price under 1 c€/kWh rounds
+# by more than the tolerance.
 # A factor ten times off misses it by 65% or more, and a base alone by 2,2%
 # or more (Flex One's 0,225 read as a tenth of itself).
 _RECOMPUTE_TOLERANCE = 5e-3
@@ -357,7 +409,35 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
     formula = _FORMULA_RE.search(text)
     if monthly is None or formula is None:
         raise ExtractorError("Eneco: variable price block or formula not found")
-    # The heading also anchors the Maandprijs, so a card restating it fails
+    return _indexed(text, monthly, formula, _INDEX, _INDEX_VALUE_RE)
+
+
+def _quarterly_energy(text: str) -> IndexedRates:
+    """The energy leg of a Flex card before April 2023, on TTFDAW-RLP."""
+    quarterly = _QUARTERLY_RE.search(text)
+    formula = _QUARTERLY_FORMULA_RE.search(text)
+    if quarterly is None or formula is None:
+        raise ExtractorError(f"Eneco: Kwartaalprijs or {_QUARTERLY_INDEX} formula not found")
+    if formula.group(4) != _FORMULA_VAT:
+        raise ExtractorError(
+            f"Eneco: the formula carries X {formula.group(4)}, expected X {_FORMULA_VAT}, "
+            "the 6% VAT billed since April 2022"
+        )
+    return replace(
+        _indexed(text, quarterly, formula, _QUARTERLY_INDEX, _QUARTER_VALUE_RE), period="quarter"
+    )
+
+
+def _indexed(
+    text: str,
+    block: re.Match[str],
+    formula: re.Match[str],
+    index: str,
+    stated_re: re.Pattern[str],
+) -> IndexedRates:
+    """The leg ``formula`` on ``index`` gives, with the fee and the price
+    ``block`` holds, checked against the index value ``stated_re`` reads."""
+    # The heading also anchors the price, so a card restating it fails
     # above. A formula under a heading of its own would still be read on the
     # €cent scale.
     unit = stated_unit(text, _FORMULA_UNIT_RE, formula.span(), before=150)
@@ -370,33 +450,35 @@ def _energy(text: str, contract: _ContractDef) -> FixedRates | IndexedRates:
     scale = to_float(formula.group(4)) / 100.0
     factor = to_float(formula.group(1)) * scale
     base = parse_sign(formula.group(2)) * to_float(formula.group(3)) * scale
-    price = to_float(monthly.group(2)) / 100.0
-    _require_price(text, factor, base, price)
+    price = to_float(block.group(2)) / 100.0
+    _require_price(text, factor, base, price, index, stated_re)
     return IndexedRates(
         factor=factor,
         base=base,
-        index=_INDEX,
+        index=index,
         price=price,
-        yearly_fixed_fee=to_float(monthly.group(1)),
+        yearly_fixed_fee=to_float(block.group(1)),
         formula=formula.group(0),
     )
 
 
-def _require_price(text: str, factor: float, base: float, price: float) -> None:
-    """Refuse a formula that does not give the Maandprijs back at the index
-    value the card names in €/MWh: read on the €cent scale against an index
-    in €/MWh, a restated formula or index would come out ten times off and
-    still parse."""
-    stated = _INDEX_VALUE_RE.search(text)
+def _require_price(
+    text: str, factor: float, base: float, price: float, index: str, stated_re: re.Pattern[str]
+) -> None:
+    """Refuse a formula that does not give the card's price back at the
+    index value the card names in €/MWh: read on the €cent scale against an
+    index in €/MWh, a restated formula or index would come out ten times off
+    and still parse."""
+    stated = stated_re.search(text)
     if stated is None:
         raise ExtractorError(
-            f"Eneco: the card names no {_INDEX} value in €/MWh to check its formula on"
+            f"Eneco: the card names no {index} value in €/MWh to check its formula on"
         )
     value = to_float(stated.group(1))
     if not formula_gives(price, factor, value, base, tolerance=_RECOMPUTE_TOLERANCE):
         raise ExtractorError(
             f"Eneco: the formula gives {(factor * value + base) * 100:.2f} €cent/kWh at "
-            f"{_INDEX} {value} €/MWh where the card prints {price * 100:.2f}"
+            f"{index} {value} €/MWh where the card prints {price * 100:.2f}"
         )
 
 

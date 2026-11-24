@@ -31,7 +31,7 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
 |---|---|---|---|---|
 | `eneco_aardgas_vast` | Eneco Aardgas Vast | FIX | fixed | flanders, wallonia |
 | `eneco_aardgas_fix_one` | Eneco Aardgas Fix One | FIX_ONE | fixed | flanders, wallonia |
-| `eneco_aardgas_flex` | Eneco Aardgas Flex | FLEX | indexed, monthly | flanders, wallonia |
+| `eneco_aardgas_flex` | Eneco Aardgas Flex | FLEX | indexed, monthly (quarterly before April 2023) | flanders, wallonia |
 | `eneco_aardgas_flex_one` | Eneco Aardgas Flex One | FLEX_ONE | indexed, monthly | flanders, wallonia |
 
 - No Brussels: Brugel's supplier list notes "Eneco ne propose actuellement
@@ -82,6 +82,14 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
     catches a card restating the index alone in c€/kWh, its factor ten
     times larger: it misses its Maandprijs, or names no value in €/MWh.
     Either way it is refused rather than billed about nine times too high.
+  - Flex before April 2023 indexed per quarter: the fee, then "21,84 >
+    Kwartaalprijs" with the estimate above or below it or none, then
+    "(0,1 X TTFDAW-RLP + 1,07) X 1,06" (October 2022), held to the
+    Kwartaalprijs at the footnoted quarter, "(3de kwartaal 2022:
+    €195,2918/MWh)". The twelve cards of April 2022 to March 2023 give it
+    back within 0,04%. The leg is on TTFDAW-RLP, `period` "quarter". The
+    cards of January to March 2022 carry "X 1,21", the 21% VAT of the day,
+    and are refused, as are those before 2022, on TTFDAW-S41.
 - VAT: "Alle prijzen en tarieven zijn inclusief 6% btw" into `card_vat_rate`.
 - DSO table, after "Netbeheerder": columns T1 vaste term (€/jaar), T1
   proportionele term (€cent/kWh), T2 vaste term, T2 proportionele term,
@@ -142,6 +150,11 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   Their Walloon rows read from February 2024; the April, May and December
   2023 and January 2024 cards checked print five different ORES rows and
   give the energy leg alone the same way.
+- The quarterly Flex cards before April 2023 give their energy leg alone in
+  both regions, with no DSO row and no levy: their tables (sub-areas merged
+  since, the 2022 excise bands) are of a layout no later card uses.
+  Eneco bills a contract signed on one on that card's formula, so only the
+  energy leg is needed.
 - A month ahead of today (Home Assistant's clock) is not asked for; a card
   naming another month is refused.
 
@@ -194,6 +207,10 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   Walloon card without its connection fee reads:
   `test_card_without_the_walloon_connection_fee_is_read`.
 - Pre-2025 layout: `test_pre_2025_card_reads_for_wallonia_only`.
+- Quarterly Flex cards before April 2023:
+  `test_a_flex_card_before_april_2023_reads_its_quarterly_leg`, refused off
+  their index or price: `test_a_quarterly_card_off_its_index_is_refused`,
+  at 21% VAT: `test_a_flex_card_at_21_percent_vat_is_refused`.
 - Discovery: `test_listing_links_each_product_once`,
   `test_fix_never_takes_the_fix_one_card`,
   `test_fetch_reads_the_card_the_listing_links`.
@@ -201,9 +218,9 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   `test_discover_reads_the_listing`.
 - Withdrawn: `test_aardgas_vast_is_withdrawn`,
   `test_a_withdrawn_product_is_not_fetched_but_its_past_months_are`.
-- Archive: the `test_fetch_for_month_*` tests (URL, Brussels midnight,
-  wrong month, transient failure, 404 before a product existed, future
-  month and Brussels region).
+- Archive: the `test_fetch_for_month_*` tests (URL, a card before April
+  2023, Brussels midnight, wrong month, transient failure, 404 before a
+  product existed, future month and Brussels region).
 - Index: `test_index_pdf_places_each_figure_under_its_heading`,
   `test_published_index_reproduces_the_cards`,
   `test_index_text_without_the_monthly_column_fails_loud`,

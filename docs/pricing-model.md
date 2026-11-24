@@ -96,8 +96,9 @@ its own card's leg. A card from before its supplier's current table layout
 is read for its energy leg with no DSO rows: a Flemish card from before the
 2025 Fluvius merger, an Eneco or Luminus Walloon card of 2023 (Eneco's of
 January 2024 too) and an EnergyVision card from before February 2026
-(`_network.signing_dsos`), and an OCTA+ card from before June 2026
-(`octaplus.parse_older`). It prices a contract signed on it, and its own
+(`_network.signing_dsos`), an OCTA+ card from before June 2026
+(`octaplus.parse_older`), and an Eneco Flex card from April 2022 to March
+2023, which indexed per quarter on TTFDAW-RLP. It prices a contract signed on it, and its own
 month is billed on another card. Figures the household typed from its
 contract (`manual_rate.py`) are laid over that leg. Where the supplier has
 published no index value up to month M (Ecofix publishes none, and Trevion's and

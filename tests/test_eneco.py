@@ -24,7 +24,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 """Eneco gas card extractor, against the September 2026 cards and the
-archive issues back to December 2024."""
+archive issues back to March 2022."""
 
 from __future__ import annotations
 
@@ -69,6 +69,10 @@ _FIX_ONE_2610 = "BC_032_012610_NL_ENECO_GAS_FIX_ONE.pdf"
 _FLEX_2608 = "BC_032_012608_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_2604 = "BC_032_012604_NL_ENECO_GAS_FLEX.pdf"
 _FLEX_2412 = "BC_032_012412_NL_ENECO_GAS_FLEX.pdf"
+_FLEX_2210 = "BC_032_012210_NL_ENECO_GAS_FLEX.pdf"
+_FLEX_2209 = "BC_032_012209_NL_ENECO_GAS_FLEX.pdf"
+_FLEX_2207 = "BC_032_012207_NL_ENECO_GAS_FLEX.pdf"
+_FLEX_2203 = "BC_032_012203_NL_ENECO_GAS_FLEX.pdf"
 _INDEX_PDF = "indexatieparameters-aardgas.pdf"
 
 
@@ -182,8 +186,13 @@ def test_a_line_of_spaces_is_read_past_in_time() -> None:
             _FLEX_2609,
             "VERBRUIK\n(€cent/kWh)\n60,00\n7,20" + " " * 32000 + "x\n",
         ),
+        (
+            "eneco_aardgas_flex",
+            _FLEX_2210,
+            "VERBRUIK\n(€cent/kWh)\n52,56\n22,74" + " " * 32000 + "x\n",
+        ),
     ],
-    ids=["blank lines after the heading", "spaces before a label"],
+    ids=["blank lines after the heading", "spaces before a label", "spaces on a 2022 card"],
 )
 def test_crafted_energy_blocks_are_read_past_in_time(
     contract: str, name: str, crafted: str
@@ -433,6 +442,77 @@ def test_pre_2025_card_reads_for_wallonia_only() -> None:
     assert snap.publication_label == "2024-12"
 
 
+@pytest.mark.parametrize(
+    ("name", "printed", "fee", "base", "value"),
+    [
+        # "52,56", "22,74 > Geschatte jaarprijs", "21,84 > Kwartaalprijs",
+        # "(0,1 X TTFDAW-RLP + 1,07) X 1,06", "3de kwartaal 2022: €195,2918/MWh".
+        (_FLEX_2210, 21.84, 52.56, 1.07, 195.2918),
+        # The Kwartaalprijs above the estimate, "2de kwartaal 2022: €96,3300/MWh".
+        (_FLEX_2209, 11.22, 52.56, 0.955, 96.33),
+        # No estimate.
+        (_FLEX_2207, 11.10, 52.56, 0.835, 96.33),
+    ],
+)
+@pytest.mark.parametrize("region", [REGION_FLANDERS, REGION_WALLONIA])
+def test_a_flex_card_before_april_2023_reads_its_quarterly_leg(
+    region: str, name: str, printed: float, fee: float, base: float, value: float
+) -> None:
+    """Before April 2023 Flex indexed per quarter on TTFDAW-RLP and printed a
+    Kwartaalprijs. Only its energy leg is read: the network and levy tables
+    are of a layout no later card uses."""
+    snap = _parse("eneco_aardgas_flex", region, name)
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.index == "TTFDAW-RLP"
+    assert energy.period == "quarter"
+    assert not energy.settled
+    assert energy.price == pytest.approx(printed / 100)
+    assert energy.yearly_fixed_fee == pytest.approx(fee)
+    assert energy.factor == pytest.approx(0.001 * 1.06)
+    assert energy.base == pytest.approx(base / 100 * 1.06)
+    assert energy.at(value) == pytest.approx(printed / 100, abs=5e-5)
+    assert snap.dsos == {}
+    assert snap.taxes.excise_bands == ()
+    assert snap.taxes.card_vat_rate == pytest.approx(0.06)
+    # "BC_032_012210_...": issue 01, then the card's year and month.
+    assert snap.publication_label == f"20{name[9:11]}-{name[11:13]}"
+
+
+@pytest.mark.parametrize(
+    ("restate", "error"),
+    [
+        pytest.param(
+            lambda text: text.replace("TTFDAW-RLP +", "TTFDAW-S41 +"),
+            "TTFDAW-RLP formula not found",
+            id="TTFDAW-S41, as before 2022",
+        ),
+        pytest.param(
+            lambda text: text.replace("TTFDAW-RLP +", "TTFDAW-RLP-M +"),
+            "TTFDAW-RLP formula not found",
+            id="the monthly index",
+        ),
+        pytest.param(
+            lambda text: text.replace("21,84 > Kwartaalprijs", "2,18 > Kwartaalprijs"),
+            "where the card prints 2.18",
+            id="a price the formula does not give",
+        ),
+    ],
+)
+def test_a_quarterly_card_off_its_index_is_refused(
+    restate: Callable[[str], str], error: str
+) -> None:
+    with pytest.raises(ExtractorError, match=re.escape(error)):
+        eneco.parse_snapshot("eneco_aardgas_flex", REGION_WALLONIA, restate(_card(_FLEX_2210)), "")
+
+
+def test_a_flex_card_at_21_percent_vat_is_refused() -> None:
+    """January to March 2022 priced at 21% VAT, "(0,1 X TTFDAW-RLP + 0,794)
+    X 1,21": no month since is billed at that rate."""
+    with pytest.raises(ExtractorError, match=re.escape("carries X 1,21")):
+        _parse("eneco_aardgas_flex", REGION_WALLONIA, _FLEX_2203)
+
+
 def test_brussels_is_refused() -> None:
     with pytest.raises(ExtractorError, match="not sold"):
         _parse("eneco_aardgas_flex", REGION_BRUSSELS, _FLEX_2609)
@@ -526,6 +606,23 @@ async def test_fetch_for_month_builds_the_issue_url() -> None:
     assert snap is not None
     assert snap.valid_until == date(2026, 8, 31)
     assert snap.source_url == f"{_CDN}/{_FLEX_2608}"
+
+
+async def test_fetch_for_month_reads_a_card_before_april_2023() -> None:
+    """October 2022's Flex card, on which Eneco still bills the contracts
+    signed on it."""
+    with (
+        freeze_time(datetime(2026, 11, 24, 12)),
+        patch.object(eneco, "fetch_pdf_text", AsyncMock(return_value=_card(_FLEX_2210))) as fetched,
+    ):
+        snap = await eneco.fetch_for_month(
+            AsyncMock(), "eneco_aardgas_flex", REGION_WALLONIA, date(2022, 10, 1)
+        )
+    assert fetched.call_args.args[1] == f"{_CDN}/{_FLEX_2210}"
+    assert snap is not None
+    assert snap.valid_until == date(2022, 10, 31)
+    assert isinstance(snap.energy, IndexedRates)
+    assert snap.energy.index == "TTFDAW-RLP"
 
 
 async def test_fetch_for_month_takes_the_month_in_brussels_time() -> None:

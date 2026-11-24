@@ -171,7 +171,7 @@ this integration prices like any other.
 | **EBEM** | Aardgas Variabel · G@S+ *(monthly ZTP-RLP0)* | Flanders only · [`ebem.py`](./custom_components/be_gas_prices/providers/ebem.py) · [notes](./docs/providers/ebem.md) |
 | **Ecofix** ⚠️ *(cards are page images, read by the card archive)* | Flexy · Flexy Online *(TTF-RLP-M; Ecofix publishes no index values, so each month is priced at the price its card prints)* | Flanders + Wallonia · [`ecofix.py`](./custom_components/be_gas_prices/providers/ecofix.py) · [notes](./docs/providers/ecofix.md) · **see the note below the table** |
 | **Elegant** | Flex · ComfortFlex *(monthly TTFDAM)* · Zeker & Vast | Flanders only · [`elegant.py`](./custom_components/be_gas_prices/providers/elegant.py) · [notes](./docs/providers/elegant.md) |
-| **Eneco** | Aardgas Fix One · Aardgas Flex · Aardgas Flex One *(monthly TTFDAW-RLP-M)* · *withdrawn on 2026-10-30, marked † for households still on it:* Aardgas Vast | Flanders + Wallonia · [`eneco.py`](./custom_components/be_gas_prices/providers/eneco.py) · [notes](./docs/providers/eneco.md) |
+| **Eneco** | Aardgas Fix One · Aardgas Flex · Aardgas Flex One *(monthly TTFDAW-RLP-M; quarterly TTFDAW-RLP on Flex cards before April 2023)* · *withdrawn on 2026-10-30, marked † for households still on it:* Aardgas Vast | Flanders + Wallonia · [`eneco.py`](./custom_components/be_gas_prices/providers/eneco.py) · [notes](./docs/providers/eneco.md) |
 | **energie.be** | Gas particulier online *(monthly TTF_RLP; a month energie.be has not published yet is priced on Trevion's TTF_RLP, the same index, and stays provisional until energie.be's own value is out)* · Gas vast particulier online | Flanders only · [`energiebe.py`](./custom_components/be_gas_prices/providers/energiebe.py) · [notes](./docs/providers/energiebe.md) |
 | **Energy Together brands** | HOA Energy Nova · Prime · APEX Online · Servolt Control · Comfort · Solar · Evident Energie Flexi · Power2You Variabel · Flex · Prijspunten Energie Marktflex · Smappee Smiles Variabel *(all monthly TTF_RLP, one card template)* | Flanders only · [`energy_together.py`](./custom_components/be_gas_prices/providers/energy_together.py) · [notes](./docs/providers/energy_together.md) |
 | **EnergyVision** | Goedkope stroom - Gas *(monthly ZTP-RLP-M)* · Goedkope stroom 1 jaar vast - Gas | All three regions, the fixed card Flanders + Wallonia · [`energyvision.py`](./custom_components/be_gas_prices/providers/energyvision.py) · [notes](./docs/providers/energyvision.md) |
@@ -563,7 +563,8 @@ otherwise each month is priced on its own card rather than the one
 signed for, unless you type the figures of your contract. An older card
 whose network table can no longer be read still gives the price and fee
 signed on it: a Flemish card from before the 2025 Fluvius merger, an Eneco
-or Luminus Walloon card of 2023 (Eneco's of January 2024 too), an
+or Luminus Walloon card of 2023 (Eneco's of January 2024 too), an Eneco
+Flex card from April 2022 to March 2023, an
 EnergyVision card from before February 2026, and an OCTA+ card from before
 June 2026. A card an installation has read is kept in its store; an update
 reads it again where it is still served and keeps the stored one where it is
