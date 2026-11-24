@@ -129,7 +129,8 @@ Module: `custom_components/be_gas_prices/providers/luminus.py`. Tests:
 - `fetch_index` reads the indexation page
   https://www.luminus.be/fr/particuliers/energie/parametres-d-indexation/, takes
   the `fileId` of its "Télécharger les indices" link (one distinct id, or the
-  fetch fails) and downloads
+  fetch fails; the label sits in a span, or since November 2026 after an empty
+  loading wrapper span) and downloads
   `https://www.luminus.be/api-next/download/?fileId=<id>&openFile=true`. The id
   changes with each upload and old ids answer 500 (checked against the
   December 2025 and March 2026 pages in the Wayback Machine).

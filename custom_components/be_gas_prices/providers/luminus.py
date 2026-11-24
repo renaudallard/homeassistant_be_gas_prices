@@ -574,9 +574,12 @@ def _taxes(text: str, region: str, vat_rate: float) -> TaxOverlay:
 
 # The indexation page links the PDF from its "Télécharger les indices"
 # buttons, read in each link's tag with _parse.in_tag: one pattern running
-# on through "[^>]*>" scanned to the next ">" again from every link.
+# on through "[^>]*>" scanned to the next ">" again from every link. The
+# label sat in a <span> up to November 2026, then after an empty loading
+# wrapper <span></span>: at most two span tags are let through, so a run of
+# them cannot be scanned again from every ">".
 _INDEX_LINK_OPEN_RE = re.compile(r'href="/api-next/download/?\?fileId=(file-[0-9a-f]+-pdf)[^"]*"')
-_INDEX_LINK_RE = re.compile(r">\s*<span>Télécharger les indices")
+_INDEX_LINK_RE = re.compile(r">(?:\s*</?span[^>]*>){0,2}\s*Télécharger les indices")
 
 _INDEX_BY_TITLE = {title: name for name, (title, _) in _INDICES.items()}
 _YEAR_RE = re.compile(r"20\d\d")

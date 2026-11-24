@@ -530,6 +530,25 @@ def test_indexation_page_links_the_index_pdf() -> None:
     )
 
 
+def test_indexation_page_links_the_index_pdf_after_its_loading_wrapper() -> None:
+    """From November 2026 the label follows an empty loading wrapper span."""
+    page = fixture_page("luminus", "parametres-d-indexation_fr-202611.html")
+    assert luminus.parse_index_page(page) == (
+        "https://www.luminus.be/api-next/download/"
+        "?fileId=file-9fd95011ec5925ac698ffb86f5e815ba364687e5-pdf&openFile=true"
+    )
+
+
+def test_index_links_a_run_of_span_tags_is_read_past_in_time() -> None:
+    """Span tags before the label are let through: a run of them with no
+    label is not scanned again from every ">"."""
+    page = 'href="/api-next/download/?fileId=file-a-pdf">' + "<span>" * 50000
+    started = time.monotonic()
+    with pytest.raises(ExtractorError, match="0 index PDF links"):
+        luminus.parse_index_page(page)
+    assert time.monotonic() - started < 1.0
+
+
 def test_index_links_no_tag_end_follows_are_read_past_in_time() -> None:
     """The index PDF's link was looked for with a pattern running on to the
     end of the link's tag, from every link again: 8 000 links that no ">"
