@@ -45,11 +45,14 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
+from homeassistant.const import Platform
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
     DateSelector,
+    EntitySelector,
+    EntitySelectorConfig,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -62,7 +65,9 @@ from .bill import month_key
 from .compare import IndexCache, OwnContract, Quote, quote_contract, rank
 from .compare_table import quote_table
 from .const import (
+    BILL_INTEGRATION,
     CONF_ANNUAL_CONSUMPTION_KWH,
+    CONF_BILL_ENTITY,
     CONF_CALIBER,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
@@ -146,7 +151,30 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         options = ["settings", "compare", "compare_all", "switch"]
         if removable_switch(self.config_entry.data, dt_util.now().date()) is not None:
             options.append("remove_switch")
+        options.append("bill")
         return self.async_show_menu(step_id="init", menu_options=options)
+
+    async def async_step_bill(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Pick the Eneco integration's last bill sensor whose lines are held
+        against the rates priced here, or clear it to check none."""
+        if user_input is not None:
+            self._data = dict(self.config_entry.data)
+            if user_input.get(CONF_BILL_ENTITY):
+                self._data[CONF_BILL_ENTITY] = user_input[CONF_BILL_ENTITY]
+            else:
+                self._data.pop(CONF_BILL_ENTITY, None)
+            return await self._async_finish()
+        schema = self.add_suggested_values_to_schema(
+            vol.Schema(
+                {
+                    vol.Optional(CONF_BILL_ENTITY): EntitySelector(
+                        EntitySelectorConfig(domain=Platform.SENSOR, integration=BILL_INTEGRATION)
+                    )
+                }
+            ),
+            {CONF_BILL_ENTITY: self.config_entry.data.get(CONF_BILL_ENTITY)},
+        )
+        return self.async_show_form(step_id="bill", data_schema=schema)
 
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None

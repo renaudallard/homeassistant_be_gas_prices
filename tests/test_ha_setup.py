@@ -3052,7 +3052,7 @@ async def test_an_unreadable_card_stays_marked_through_a_restart(
 def _failing_coordinator(**values: Any) -> SimpleNamespace:
     """A coordinator as sync_issues reads it, two fetches in a row failed."""
     base: dict[str, Any] = {
-        "entry": SimpleNamespace(title="Engie Flow", entry_id="e1"),
+        "entry": SimpleNamespace(title="Engie Flow", entry_id="e1", data={}),
         "extractor": SimpleNamespace(label="Engie", contract_label=lambda _c: "Engie Flow"),
         "contract": "engie_flow",
         "failures": 2,
@@ -3067,6 +3067,7 @@ def _failing_coordinator(**values: Any) -> SimpleNamespace:
         "meter_count": None,
         "meter_error": None,
         "snapshot_stale": lambda: False,
+        "bill_check": None,
     }
     return SimpleNamespace(**{**base, **values})
 

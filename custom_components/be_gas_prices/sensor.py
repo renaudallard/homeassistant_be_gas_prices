@@ -47,6 +47,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_BILL_ENTITY,
     CONF_CONTRACT,
     CONF_CONTRACT_END_DATE,
     CONF_DAILY_COMPARE,
@@ -331,6 +332,13 @@ _CONTRACT_END = GasSensorDescription(
 )
 
 
+_BILL_CHECK = GasSensorDescription(
+    key="bill_check",
+    translation_key="bill_check",
+    value_fn=lambda d: None,
+)
+
+
 def device_info(entry: ConfigEntry, label: str) -> DeviceInfo:
     """The one device every entity of an entry hangs off."""
     return DeviceInfo(
@@ -356,6 +364,7 @@ async def async_setup_entry(
             PotentialSavingSensor,
             bool(entry.data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE)),
         ),
+        (_BILL_CHECK, BillCheckSensor, bool(entry.data.get(CONF_BILL_ENTITY))),
     )
     for description, sensor, wanted in optional:
         if wanted:
@@ -465,4 +474,29 @@ class PotentialSavingSensor(GasSensor):
                 }
                 for row in ranking.rows
             ],
+        }
+
+
+class BillCheckSensor(GasSensor):
+    """How many lines of the Eneco bill are billed off the rates priced
+    here, each line with both rates."""
+
+    # A bill has dozens of lines, the same until the next one.
+    _unrecorded_attributes = GasSensor._unrecorded_attributes | {"lines"}
+
+    @property
+    def native_value(self) -> int | None:
+        check = self.coordinator.bill_check
+        return None if check is None else check.off
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        check = self.coordinator.bill_check
+        if check is None:
+            return None
+        return {
+            "issued": check.issued,
+            "period_start": check.period_start,
+            "period_end": check.period_end,
+            "lines": [line.as_dict() for line in check.lines],
         }

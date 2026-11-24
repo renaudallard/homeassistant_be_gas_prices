@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import logging
 import ssl
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -40,8 +41,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from . import calorific
-from .bill import bill_month, contract_leg, fee_waiver, merged_index, month_key
+from .bill import (
+    bill_month,
+    contract_leg,
+    fee_waiver,
+    is_provisional,
+    merged_index,
+    month_key,
+    priced_month,
+)
+from .bill_check import BillCheck, MonthRates, bill_period, check_bill, month_rates
 from .const import (
+    CONF_BILL_ENTITY,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
@@ -65,7 +76,7 @@ from .providers._pdf import (
 )
 from .providers._rates import EnergyRates
 from .providers.base import ExtractorError, IndexTable, SupplierExtractor, SupplierSnapshot
-from .running_costs import Household
+from .running_costs import Household, months_between
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,6 +84,10 @@ _LOGGER = logging.getLogger(__name__)
 # a publication within a day.
 INDEX_TTL = timedelta(hours=12)
 CALORIFIC_TTL = timedelta(hours=24)
+
+# The most months of a bill to check whose cards are fetched, the last ones:
+# as many as the card archive keeps.
+BILL_MONTHS = 36
 
 
 class _InputsMixin:
@@ -326,3 +341,51 @@ class _InputsMixin:
                 continue
             return bill.breakdown, self._m3_factor(month)[0]
         return None
+
+    # ---- the bill check -------------------------------------------------------
+
+    def _bill_attributes(self) -> Mapping[str, Any] | None:
+        """What the sensor of the bill to check shows, or None."""
+        entity = self._data.get(CONF_BILL_ENTITY)
+        state = self.hass.states.get(str(entity)) if entity else None
+        return None if state is None else state.attributes
+
+    def _bill_months(self) -> list[str]:
+        """The closed months the bill to check covers, whose cards are
+        fetched with the year's."""
+        attributes = self._bill_attributes()
+        period = None if attributes is None else bill_period(attributes)
+        if period is None:
+            return []
+        due = belgian_today()
+        return [m for m in months_between(*period) if card_key_due(m, due)][-BILL_MONTHS:]
+
+    def _bill_rates(self, month: str) -> MonthRates | str:
+        """What ``month`` is billed on here, for the bill check: its own
+        card, the one in hand for the running month, with the energy leg the
+        contract is billed on and the household the last tick priced. A
+        month whose card is not held is not priced, rather than on another
+        month's card."""
+        snapshot = self._snapshot
+        household = self.household
+        if snapshot is None or household is None:
+            return "nothing priced yet"
+        card = snapshot if month == month_key(dt_util.now().date()) else self._month_card(month)
+        if card is None:
+            return f"no card held for {month}"
+        priced, price, index = priced_month(card, self._energy_for, self._index_table, month)
+        return month_rates(
+            priced,
+            price,
+            index,
+            is_provisional(card, priced.energy, index, month),
+            month=month,
+            dso=household.dso,
+            annual_kwh=household.annual_kwh,
+        )
+
+    def check_bill(self) -> BillCheck | None:
+        """The bill to check held against the rates priced here, or None
+        without one."""
+        attributes = self._bill_attributes()
+        return None if attributes is None else check_bill(attributes, self._bill_rates)

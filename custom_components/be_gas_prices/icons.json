@@ -42,6 +42,9 @@
       },
       "potential_saving": {
         "default": "mdi:piggy-bank"
+      },
+      "bill_check": {
+        "default": "mdi:receipt"
       }
     },
     "button": {

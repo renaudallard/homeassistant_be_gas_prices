@@ -253,7 +253,8 @@
           "compare": "Comparer un autre contrat (devis ponctuel)",
           "compare_all": "Comparer tous les contrats (classement)",
           "switch": "Enregistrer un changement de contrat cette année",
-          "remove_switch": "Supprimer le dernier changement de contrat"
+          "remove_switch": "Supprimer le dernier changement de contrat",
+          "bill": "Contrôler une facture Eneco"
         }
       },
       "compare": {
@@ -328,6 +329,16 @@
           "custom_excise_low": "Accise jusqu'à 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Accise au-delà de 12 000 kWh (c€/kWh)",
           "custom_levy": "Redevance bruxelloise pour votre compteur (€ par an)"
+        }
+      },
+      "bill": {
+        "title": "Facture Eneco",
+        "description": "Choisissez le capteur Dernière facture de l'intégration Eneco pour comparer chaque ligne de cette facture au tarif que cette intégration calcule pour la période propre à la ligne. Un capteur Contrôle de facture compte alors les lignes qui s'en écartent. Laissez-le vide pour ne rien contrôler.",
+        "data": {
+          "bill_entity": "Facture Eneco"
+        },
+        "data_description": {
+          "bill_entity": "Seules les lignes des factures de gaz en français sont reconnues, par leur libellé. Une ligne couvrant des mois calculés ici à des tarifs différents n'est pas comparée."
         }
       }
     },
@@ -425,6 +436,9 @@
       },
       "potential_saving": {
         "name": "Économie possible"
+      },
+      "bill_check": {
+        "name": "Contrôle de facture"
       }
     },
     "button": {
@@ -480,6 +494,10 @@
     "recorder_missing": {
       "title": "L'enregistreur de Home Assistant ne tourne pas",
       "description": "Les coûts et volumes de {entry} sont lus dans l'historique du compteur de gaz, que l'enregistreur de Home Assistant conserve, et l'enregistreur n'est pas chargé. Ils restent inconnus tant qu'il ne tourne pas ; les capteurs de prix ne sont pas concernés.\n\nActivez l'enregistreur (il fait partie de default_config, ou ajoutez `recorder:` à configuration.yaml) et redémarrez Home Assistant."
+    },
+    "bill_lines_off": {
+      "title": "Des lignes de la facture Eneco s'écartent des tarifs calculés ici",
+      "description": "{count} lignes de la facture Eneco émise le {issued} pour {entry} sont facturées à un prix unitaire plus éloigné de celui que cette intégration calcule pour leur période que ne l'expliquent les arrondis de l'une et de l'autre. Le capteur Contrôle de facture liste chaque ligne avec les deux prix."
     }
   },
   "services": {

@@ -36,10 +36,20 @@ levies on FPS Finance's tariff and the law as conftest holds them.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import replace
+from datetime import date
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.be_gas_prices import providers
 from custom_components.be_gas_prices.bill import contract_leg, is_provisional, priced_month
 from custom_components.be_gas_prices.bill_check import (
     NOT_COMPARED,
@@ -51,11 +61,24 @@ from custom_components.be_gas_prices.bill_check import (
     month_rates,
 )
 from custom_components.be_gas_prices.const import (
+    CONF_ANNUAL_CONSUMPTION_KWH,
+    CONF_BILL_ENTITY,
+    CONF_CARD_ARCHIVE,
+    CONF_CONTRACT,
+    CONF_CONVERSION_FACTOR,
+    CONF_CONVERSION_MODE,
+    CONF_DSO,
+    CONF_REGION,
+    CONF_SUPPLIER,
+    CONF_TARIFF_CARD_DATE,
+    CONVERSION_MANUAL,
+    DOMAIN,
     DSO_ORES,
     REGION_WALLONIA,
 )
 from custom_components.be_gas_prices.providers import eneco
 from custom_components.be_gas_prices.providers.base import (
+    ExtractorError,
     IndexTable,
     SupplierSnapshot,
 )
@@ -327,3 +350,224 @@ async def test_unreadable_lines_are_not_compared() -> None:
     check = check_bill({**_attributes(BILL), "lines": lines}, _rates_for(await _fetched_index()))
     assert check is not None
     assert [line.status for line in check.lines] == [NOT_COMPARED] * 3
+
+
+# ---- in Home Assistant ----------------------------------------------------------
+
+DATA = {
+    CONF_REGION: REGION_WALLONIA,
+    CONF_DSO: DSO_ORES,
+    CONF_SUPPLIER: "eneco",
+    CONF_CONTRACT: "eneco_aardgas_flex",
+    CONF_ANNUAL_CONSUMPTION_KWH: _ANNUAL_KWH,
+    CONF_CONVERSION_MODE: CONVERSION_MANUAL,
+    CONF_CONVERSION_FACTOR: 11.3,
+    CONF_CARD_ARCHIVE: True,
+    CONF_TARIFF_CARD_DATE: "2022-10-01",
+    CONF_BILL_ENTITY: _BILL_ENTITY,
+}
+
+
+@contextmanager
+def _eneco(table: IndexTable) -> Iterator[AsyncMock]:
+    """Eneco's November 2026 card in hand, the October 2022 one served by
+    Eneco, and each month's row by the card archive."""
+    current = eneco.parse_snapshot(
+        "eneco_aardgas_flex",
+        REGION_WALLONIA,
+        fixture_text("eneco", _CURRENT),
+        f"{_CDN}/{_CURRENT}",
+    )
+    stub = replace(
+        eneco.EXTRACTOR,
+        fetch=AsyncMock(return_value=current),
+        fetch_index=AsyncMock(return_value=table),
+    )
+
+    async def pdf_text(_session: Any, url: str, **_kwargs: Any) -> str:
+        if url != f"{_CDN}/{_SIGNED}":
+            raise ExtractorError(f"HTTP 404 fetching {url}")
+        return fixture_text("eneco", _SIGNED)
+
+    async def archived(
+        _session: Any, supplier: str, contract: str, region: str, month: str
+    ) -> SupplierSnapshot | None:
+        if (supplier, contract, region) != ("eneco", "eneco_aardgas_flex", REGION_WALLONIA):
+            return None
+        path = _ROWS / f"{month}.json"
+        return _row(month) if path.exists() else None
+
+    rows = AsyncMock(side_effect=archived)
+    with (
+        patch.dict(providers.EXTRACTORS, {"eneco": stub}),
+        patch.object(eneco, "fetch_pdf_text", pdf_text),
+        patch("custom_components.be_gas_prices.month_cards.fetch_archived_card", rows),
+        patch(
+            "custom_components.be_gas_prices.coordinator_card.fetch_archived_row",
+            AsyncMock(return_value=None),
+        ),
+    ):
+        yield rows
+
+
+async def _setup(hass: HomeAssistant, data: dict[str, Any]) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=DOMAIN, title="Eneco Flex", data=data)
+    entry.add_to_hass(hass)
+    with _eneco(await _fetched_index()):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    return entry
+
+
+def _check_entity(hass: HomeAssistant, entry: MockConfigEntry) -> str | None:
+    return er.async_get(hass).async_get_entity_id("sensor", DOMAIN, f"{entry.entry_id}_bill_check")
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_the_bill_is_checked_on_the_cards_of_its_own_months(hass: HomeAssistant) -> None:
+    """The tick fetches the cards of the bill's months, which the year's
+    costs and price history have no use for, and the check prices each line
+    on them; a bill whose lines all agree clears the Repairs card."""
+    hass.states.async_set(_BILL_ENTITY, "2000.00", _attributes(BILL))
+    entry = await _setup(hass, DATA)
+    coordinator = entry.runtime_data
+    entity = _check_entity(hass, entry)
+    assert entity is not None
+    state = hass.states.get(entity)
+    assert state is not None
+    assert state.state == "5"
+    assert [line["status"] for line in state.attributes["lines"]] == [
+        OK,
+        OK,
+        OK,
+        OK,
+        OK,
+        OK,
+        OK,
+        OFF,
+        OK,
+        OFF,
+        OFF,
+        OFF,
+        OFF,
+        OK,
+    ]
+    assert state.attributes["issued"] == "2025-12-22"
+    assert (state.attributes["period_start"], state.attributes["period_end"]) == (_FROM, _TO)
+    assert state.state_info is not None
+    assert "lines" in state.state_info["unrecorded_attributes"]
+    # 2025's cards are held for the bill alone.
+    assert all(coordinator._month_card(f"2025-{m:02d}") is not None for m in range(1, 13))
+    assert not [m for m in coordinator._months_needed(date(2026, 11, 24)) if m.startswith("2025")]
+
+    issues = ir.async_get(hass)
+    issue = issues.async_get_issue(DOMAIN, f"bill_lines_off_{entry.entry_id}")
+    assert issue is not None
+    assert issue.translation_placeholders == {
+        "entry": "Eneco Flex",
+        "supplier": "Eneco",
+        "count": "5",
+        "issued": "2025-12-22",
+    }
+
+    agreed = [
+        line
+        for line, shown in zip(BILL, state.attributes["lines"], strict=True)
+        if shown["status"] == OK
+    ]
+    hass.states.async_set(_BILL_ENTITY, "1900.00", _attributes(agreed))
+    await hass.async_block_till_done()
+    state = hass.states.get(entity)
+    assert state is not None
+    assert state.state == "0"
+    assert issues.async_get_issue(DOMAIN, f"bill_lines_off_{entry.entry_id}") is None
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_a_bill_sensor_that_comes_later_is_checked(hass: HomeAssistant) -> None:
+    """The Eneco integration may set up after this one: its bill is checked
+    once its sensor shows one, on the cards held."""
+    entry = await _setup(hass, DATA)
+    entity = _check_entity(hass, entry)
+    assert entity is not None
+    state = hass.states.get(entity)
+    assert state is not None
+    assert state.state == "unknown"
+    hass.states.async_set(_BILL_ENTITY, "2000.00", _attributes(BILL[1:2]))
+    await hass.async_block_till_done()
+    state = hass.states.get(entity)
+    assert state is not None
+    # January to March 2025 are not held yet: the next tick fetches them.
+    assert state.attributes["lines"][0]["reason"] == "no card held for 2025-01"
+    with _eneco(await _fetched_index()):
+        await entry.runtime_data.async_reprice(lambda: True)
+        await hass.async_block_till_done()
+    state = hass.states.get(entity)
+    assert state is not None
+    assert state.attributes["lines"][0]["status"] == OK
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_without_a_bill_nothing_is_checked(hass: HomeAssistant) -> None:
+    """No sensor and no card, and naming no bill once named removes its
+    sensor; the bill's months are not fetched."""
+    hass.states.async_set(_BILL_ENTITY, "2000.00", _attributes(BILL))
+    entry = await _setup(hass, DATA)
+    assert _check_entity(hass, entry) is not None
+    data = {key: value for key, value in DATA.items() if key != CONF_BILL_ENTITY}
+    with _eneco(await _fetched_index()) as rows:
+        hass.config_entries.async_update_entry(entry, data=data)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert entry.runtime_data.bill_check is None
+    assert _check_entity(hass, entry) is None
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"bill_lines_off_{entry.entry_id}") is None
+    assert not [call for call in rows.call_args_list if call.args[4].startswith("2025")]
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_naming_a_bill_leaves_the_priced_settings_alone(hass: HomeAssistant) -> None:
+    """The bill to check prices nothing: the figures held and the history
+    drawn under the settings stay theirs."""
+    hass.states.async_set(_BILL_ENTITY, "2000.00", _attributes(BILL))
+    entry = await _setup(hass, DATA)
+    named = entry.runtime_data._settings_digest()
+    data = {key: value for key, value in DATA.items() if key != CONF_BILL_ENTITY}
+    with _eneco(await _fetched_index()):
+        hass.config_entries.async_update_entry(entry, data=data)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    assert entry.runtime_data._settings_digest() == named
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_the_card_stays_while_the_bill_sensor_shows_no_bill(hass: HomeAssistant) -> None:
+    """As on a restart before the Eneco integration has set up: the card,
+    which the user may have chosen to ignore, is not deleted and raised
+    again moments later."""
+    hass.states.async_set(_BILL_ENTITY, "2000.00", _attributes(BILL))
+    entry = await _setup(hass, DATA)
+    key = f"bill_lines_off_{entry.entry_id}"
+    ir.async_ignore_issue(hass, DOMAIN, key, True)
+    hass.states.async_set(_BILL_ENTITY, "unavailable", {})
+    await hass.async_block_till_done()
+    with _eneco(await _fetched_index()):
+        await entry.runtime_data.async_reprice(lambda: True)
+        await hass.async_block_till_done()
+    entity = _check_entity(hass, entry)
+    assert entity is not None
+    state = hass.states.get(entity)
+    assert state is not None
+    assert state.state == "unknown"
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, key)
+    assert issue is not None
+    assert issue.dismissed_version is not None
+
+
+@pytest.mark.freeze_time("2026-11-24 12:00:00+01:00")
+async def test_the_card_goes_with_the_entry(hass: HomeAssistant) -> None:
+    hass.states.async_set(_BILL_ENTITY, "2000.00", _attributes(BILL))
+    entry = await _setup(hass, DATA)
+    key = f"bill_lines_off_{entry.entry_id}"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, key) is not None
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert ir.async_get(hass).async_get_issue(DOMAIN, key) is None

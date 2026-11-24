@@ -47,6 +47,7 @@ from custom_components.be_gas_prices import calorific, flow_steps, postcodes
 from custom_components.be_gas_prices.compare import OwnContract, Quote
 from custom_components.be_gas_prices.const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
+    CONF_BILL_ENTITY,
     CONF_CALIBER,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT,
@@ -1689,6 +1690,43 @@ async def test_a_switch_of_last_year_is_not_offered_for_removal(hass: HomeAssist
     )
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert "remove_switch" not in result["menu_options"]
+
+
+async def test_the_options_name_the_eneco_bill_to_check(hass: HomeAssistant) -> None:
+    """Any sensor of the Eneco integration, shown again when the options
+    are opened again, and none once cleared."""
+    entry = _entry(hass)
+    before = dict(entry.data)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "bill" in result["menu_options"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "bill"}
+    )
+    assert result["step_id"] == "bill"
+    schema = result["data_schema"]
+    assert schema is not None
+    key = next(iter(schema.schema))
+    assert key == CONF_BILL_ENTITY
+    assert key.description == {"suggested_value": None}
+    config = schema.schema[key].config
+    assert config["integration"] == "eneco_be"
+    assert config["domain"] == ["sensor"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_BILL_ENTITY: "sensor.gas_last_bill"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert dict(entry.data) == {**before, CONF_BILL_ENTITY: "sensor.gas_last_bill"}
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "bill"}
+    )
+    schema = result["data_schema"]
+    assert schema is not None
+    assert next(iter(schema.schema)).description == {"suggested_value": "sensor.gas_last_bill"}
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert dict(entry.data) == before
 
 
 async def _contract_step(hass: HomeAssistant, entry: MockConfigEntry) -> ConfigFlowResult:

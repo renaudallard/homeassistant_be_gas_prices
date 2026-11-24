@@ -38,6 +38,8 @@ from homeassistant.config_entries import (
     ConfigEntryState,
 )
 from homeassistant.core import (
+    Event,
+    EventStateChangedData,
     HomeAssistant,
     ServiceCall,
     ServiceResponse,
@@ -47,7 +49,7 @@ from homeassistant.core import (
 from homeassistant.exceptions import ConfigEntryError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.event import async_track_time_change
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.typing import ConfigType
@@ -56,7 +58,14 @@ from homeassistant.util.json import JsonValueType
 
 from .backfill import backfill_once_a_year, backfill_prices
 from .backfill_cost import backfill_cost, backfill_cost_once
-from .const import CONF_CARD_ARCHIVE, DEFAULT_CARD_ARCHIVE, DOMAIN, PLATFORMS, STORAGE_VERSION
+from .const import (
+    CONF_BILL_ENTITY,
+    CONF_CARD_ARCHIVE,
+    DEFAULT_CARD_ARCHIVE,
+    DOMAIN,
+    PLATFORMS,
+    STORAGE_VERSION,
+)
 from .coordinator import GasCoordinator
 from .daily_ranking import ranking_minute
 from .issues import clear_issues
@@ -209,6 +218,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
         )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
+
+    bill = entry.data.get(CONF_BILL_ENTITY)
+    if bill:
+
+        @callback
+        def _bill_changed(_event: Event[EventStateChangedData]) -> None:
+            coordinator.bill_changed()
+
+        entry.async_on_unload(async_track_state_change_event(hass, str(bill), _bill_changed))
 
     running: set[str] = set()
 

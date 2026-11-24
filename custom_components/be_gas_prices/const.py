@@ -316,6 +316,11 @@ DEFAULT_CARD_ARCHIVE: Final = True
 CONF_DAILY_COMPARE: Final = "daily_compare"
 DEFAULT_DAILY_COMPARE: Final = False
 
+# The Eneco integration's last bill sensor whose lines are held against the
+# rates priced here (bill_check.py); none is checked without one.
+CONF_BILL_ENTITY: Final = "bill_entity"
+BILL_INTEGRATION: Final = "eneco_be"
+
 # The coordinator ticks hourly: a cheap probe decides whether a card is
 # fetched again, and the running costs follow the meter.
 UPDATE_INTERVAL_MINUTES: Final = 60

@@ -42,7 +42,7 @@ from homeassistant.loader import async_get_integration
 from homeassistant.util import dt as dt_util
 
 from . import excise_law, fluvius, law_archive, network_archive, tarbel, vat_rates
-from .const import CONF_DSO, CONF_STATION, DOMAIN
+from .const import CONF_BILL_ENTITY, CONF_DSO, CONF_STATION, DOMAIN
 from .contract_periods import PeriodBilling
 from .daily_ranking import DailyRanking
 from .month_cards import MonthCardCache
@@ -261,8 +261,9 @@ class _StoreMixin:
 
     def _settings_digest(self) -> str:
         """The entry's settings, digested: what a stored ranking was made
-        under."""
-        return _digest(self._data)
+        under. The bill to check prices nothing, so naming one leaves the
+        figures held and the history drawn as they are."""
+        return _digest({key: value for key, value in self._data.items() if key != CONF_BILL_ENTITY})
 
     async def async_save(self) -> None:
         """Write the store now, outside a tick."""

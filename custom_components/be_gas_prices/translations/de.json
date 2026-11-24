@@ -253,7 +253,8 @@
           "compare": "Einen anderen Vertrag vergleichen (einmaliges Angebot)",
           "compare_all": "Alle Verträge vergleichen (Rangliste)",
           "switch": "Einen Vertragswechsel in diesem Jahr erfassen",
-          "remove_switch": "Den letzten Vertragswechsel entfernen"
+          "remove_switch": "Den letzten Vertragswechsel entfernen",
+          "bill": "Eine Eneco-Rechnung prüfen"
         }
       },
       "compare": {
@@ -328,6 +329,16 @@
           "custom_excise_low": "Verbrauchsteuer bis 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Verbrauchsteuer über 12 000 kWh (c€/kWh)",
           "custom_levy": "Brüsseler Zählerabgabe für Ihren Zähler (€ pro Jahr)"
+        }
+      },
+      "bill": {
+        "title": "Eneco-Rechnung",
+        "description": "Wählen Sie den Sensor Letzte Rechnung der Eneco-Integration, um jede Zeile dieser Rechnung mit dem Tarif zu vergleichen, den diese Integration für den Zeitraum der Zeile berechnet. Ein Sensor Rechnungsprüfung zählt dann die abweichenden Zeilen. Leer lassen, um nichts zu prüfen.",
+        "data": {
+          "bill_entity": "Eneco-Rechnung"
+        },
+        "data_description": {
+          "bill_entity": "Nur die Zeilen französischsprachiger Gasrechnungen werden erkannt, an ihrer Bezeichnung. Eine Zeile über Monate, die hier zu verschiedenen Tarifen berechnet werden, wird nicht verglichen."
         }
       }
     },
@@ -425,6 +436,9 @@
       },
       "potential_saving": {
         "name": "Mögliche Ersparnis"
+      },
+      "bill_check": {
+        "name": "Rechnungsprüfung"
       }
     },
     "button": {
@@ -480,6 +494,10 @@
     "recorder_missing": {
       "title": "Der Recorder von Home Assistant läuft nicht",
       "description": "Die Kosten und Mengen von {entry} werden aus dem Verlauf des Gaszählers gelesen, den der Recorder von Home Assistant führt, und der Recorder ist nicht geladen. Sie bleiben unbekannt, bis er läuft; die Preissensoren sind nicht betroffen.\n\nAktiviere den Recorder (er gehört zu default_config, oder füge `recorder:` zu configuration.yaml hinzu) und starte Home Assistant neu."
+    },
+    "bill_lines_off": {
+      "title": "Zeilen der Eneco-Rechnung weichen von den hier berechneten Tarifen ab",
+      "description": "{count} Zeilen der Eneco-Rechnung vom {issued} für {entry} sind zu einem Stückpreis abgerechnet, der weiter von dem abweicht, den diese Integration für ihren Zeitraum berechnet, als die Rundung beider erklärt. Der Sensor Rechnungsprüfung listet jede Zeile mit beiden Preisen."
     }
   },
   "services": {

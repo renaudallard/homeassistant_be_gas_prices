@@ -253,7 +253,8 @@
           "compare": "Compare another contract (one-off quote)",
           "compare_all": "Compare every contract (ranked)",
           "switch": "Record a change of contract this year",
-          "remove_switch": "Remove the last change of contract"
+          "remove_switch": "Remove the last change of contract",
+          "bill": "Check an Eneco bill"
         }
       },
       "compare": {
@@ -328,6 +329,16 @@
           "custom_excise_low": "Excise up to 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Excise above 12 000 kWh (c€/kWh)",
           "custom_levy": "Brussels per-meter levy for your meter (€ a year)"
+        }
+      },
+      "bill": {
+        "title": "Eneco bill",
+        "description": "Pick the Last bill sensor of the Eneco integration to hold each line of that bill against the rate this integration prices for the line's own period. A Bill check sensor then counts the lines that are off. Leave it empty to check none.",
+        "data": {
+          "bill_entity": "Eneco bill"
+        },
+        "data_description": {
+          "bill_entity": "Only the lines of French gas bills are matched, by their label. A line billed over months priced here at different rates is not compared."
         }
       }
     },
@@ -425,6 +436,9 @@
       },
       "potential_saving": {
         "name": "Potential saving"
+      },
+      "bill_check": {
+        "name": "Bill check"
       }
     },
     "button": {
@@ -480,6 +494,10 @@
     "recorder_missing": {
       "title": "Home Assistant's recorder is not running",
       "description": "The costs and volumes of {entry} are read from the gas meter's history, which Home Assistant's recorder keeps, and the recorder is not loaded. They stay unknown until it runs; the price sensors are not affected.\n\nEnable the recorder (it is part of default_config, or add `recorder:` to configuration.yaml) and restart Home Assistant."
+    },
+    "bill_lines_off": {
+      "title": "Eneco bill lines differ from the rates priced here",
+      "description": "{count} lines of the Eneco bill issued {issued} for {entry} are billed at a unit price further from the one this integration prices for their period than the printing of either explains. The Bill check sensor lists every line with both prices."
     }
   },
   "services": {

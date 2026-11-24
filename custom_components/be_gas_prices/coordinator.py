@@ -48,7 +48,7 @@ from typing import Any
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -64,6 +64,7 @@ from . import (
     vat_rates,
 )
 from .bill import IndexValue, bill_month, month_key
+from .bill_check import BillCheck
 from .compare import OwnContract, rank
 from .const import (
     CONF_ANNUAL_CONSUMPTION_KWH,
@@ -253,6 +254,9 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
         # task computing the next one.
         self.daily_ranking: DailyRanking | None = None
         self._ranking_task: asyncio.Task[None] | None = None
+        # The Eneco bill held against the rates priced here, when the entry
+        # names one (bill_check.py).
+        self.bill_check: BillCheck | None = None
 
     # ---- settings ---------------------------------------------------------
 
@@ -489,6 +493,8 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             )
         today = dt_util.now().date()
         needed = self._months_needed(today)
+        # And those of the bill to check, which price none of the year.
+        needed += [month for month in self._bill_months() if month not in needed]
         if self._first_tick:
             # The first tick is what setup waits on: fetch the past months'
             # cards, the earlier contracts' too, in the background and price
@@ -539,9 +545,21 @@ class GasCoordinator(_StoreMixin, _CardMixin, _InputsMixin, DataUpdateCoordinato
             # One waiting for the energy manager showed the held figures
             # and priced no card that landed.
             self._cards_priced = landed
+        self.bill_check = self.check_bill()
         self.maybe_rank(today)
         await self._save_persistent()
         return data
+
+    @callback
+    def bill_changed(self) -> None:
+        """Check the bill again once its sensor changes. The cards of months
+        it adds come with the next tick."""
+        if self.data is None:
+            return
+        self.bill_check = self.check_bill()
+        if self._set_up():
+            sync_issues(self.hass, self)
+        self.async_update_listeners()
 
     def maybe_rank(self, today: date) -> None:
         """Start the day's ranking once its minute has come, when the entry

@@ -253,7 +253,8 @@
           "compare": "Vergelijk een ander contract (eenmalige offerte)",
           "compare_all": "Vergelijk alle contracten (gerangschikt)",
           "switch": "Een contractwissel van dit jaar vastleggen",
-          "remove_switch": "De laatste contractwissel verwijderen"
+          "remove_switch": "De laatste contractwissel verwijderen",
+          "bill": "Een Eneco-factuur controleren"
         }
       },
       "compare": {
@@ -328,6 +329,16 @@
           "custom_excise_low": "Accijns tot 12 000 kWh (c€/kWh)",
           "custom_excise_high": "Accijns boven 12 000 kWh (c€/kWh)",
           "custom_levy": "Brusselse heffing voor je meter (€ per jaar)"
+        }
+      },
+      "bill": {
+        "title": "Eneco-factuur",
+        "description": "Kies de sensor Laatste factuur van de Eneco-integratie om elke lijn van die factuur te vergelijken met het tarief dat deze integratie voor de eigen periode van die lijn rekent. Een sensor Factuurcontrole telt dan de lijnen die afwijken. Laat het leeg om niets te controleren.",
+        "data": {
+          "bill_entity": "Eneco-factuur"
+        },
+        "data_description": {
+          "bill_entity": "Alleen de lijnen van Franstalige gasfacturen worden herkend, aan hun omschrijving. Een lijn over maanden die hier tegen verschillende tarieven worden gerekend, wordt niet vergeleken."
         }
       }
     },
@@ -425,6 +436,9 @@
       },
       "potential_saving": {
         "name": "Mogelijke besparing"
+      },
+      "bill_check": {
+        "name": "Factuurcontrole"
       }
     },
     "button": {
@@ -480,6 +494,10 @@
     "recorder_missing": {
       "title": "De recorder van Home Assistant draait niet",
       "description": "De kosten en volumes van {entry} worden gelezen uit de geschiedenis van de gasmeter, die de recorder van Home Assistant bijhoudt, en de recorder is niet geladen. Ze blijven onbekend tot hij draait; de prijssensoren worden niet beïnvloed.\n\nSchakel de recorder in (hij hoort bij default_config, of voeg `recorder:` toe aan configuration.yaml) en herstart Home Assistant."
+    },
+    "bill_lines_off": {
+      "title": "Lijnen van de Eneco-factuur wijken af van de tarieven hier",
+      "description": "{count} lijnen van de Eneco-factuur van {issued} voor {entry} zijn gefactureerd tegen een eenheidsprijs die verder afligt van wat deze integratie voor hun periode rekent dan de afronding van beide verklaart. De sensor Factuurcontrole toont elke lijn met beide prijzen."
     }
   },
   "services": {

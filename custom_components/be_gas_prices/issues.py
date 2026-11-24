@@ -37,7 +37,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import CONF_BILL_ENTITY, DOMAIN
 from .gas_meter import recorder_loaded
 from .markdown_text import escape_markdown
 
@@ -67,6 +67,7 @@ ISSUES = (
     "several_meters",
     "contract_withdrawn",
     "recorder_missing",
+    "bill_lines_off",
 )
 
 
@@ -189,6 +190,26 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
             "several_meters",
             coordinator.meter_count > 1,
             {**base, "count": str(coordinator.meter_count)},
+        )
+    # Lines of the Eneco bill billed at a rate other than the one priced
+    # here, by more than the printing of the two explains (bill_check.py).
+    # Left alone while the bill's sensor shows no bill, as before the Eneco
+    # integration has set up: deleting the card there and raising it again
+    # moments later would lose a choice to ignore it.
+    check = coordinator.bill_check
+    if check is not None or not entry.data.get(CONF_BILL_ENTITY):
+        off = 0 if check is None else check.off
+        _sync(
+            hass,
+            entry.entry_id,
+            "bill_lines_off",
+            off > 0,
+            {
+                **base,
+                "count": str(off),
+                # An ISO date, or "-".
+                "issued": (check.issued if check else None) or "-",
+            },
         )
 
 

@@ -33,12 +33,12 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_GAS_METER, CONF_POSTCODE, CONF_STATION
+from .const import CONF_BILL_ENTITY, CONF_GAS_METER, CONF_POSTCODE, CONF_STATION
 from .snapshot_codec import snapshot_to_json
 
 # Where the household lives and which meter it reads are not needed to
 # debug a price and should not travel with an issue report.
-TO_REDACT = {CONF_POSTCODE, CONF_GAS_METER, CONF_STATION, "meter"}
+TO_REDACT = {CONF_POSTCODE, CONF_GAS_METER, CONF_STATION, CONF_BILL_ENTITY, "meter"}
 
 
 async def async_get_config_entry_diagnostics(

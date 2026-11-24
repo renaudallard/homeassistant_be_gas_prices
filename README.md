@@ -262,6 +262,7 @@ All sensors share one device per entry, named after the contract.
 | `projected_year_consumption`, `rolling_year_consumption` | The corresponding volumes. |
 | `contract_end_date` | With an end date set, for a renewal reminder. |
 | `potential_saving` | With the daily comparison on: what the cheapest contract would save a year. |
+| `bill_check` | With an Eneco bill named in the options: how many of its lines are billed off the rates priced here, each line as an attribute (see [Checking an Eneco bill](#checking-an-eneco-bill)). |
 
 The device also has a **Refresh tariff card** button, which fetches the card,
 the index values and the calorific values again, even while the card cannot
@@ -408,7 +409,41 @@ a contract marks a provisional price, one the month's index may still move,
 and the † of the product list marks a product no longer sold), record a
 change of contract this year, or remove the last one recorded this year,
 which makes the contract left the current one again (the household's
-settings stay; an end date it had is entered again in the settings).
+settings stay; an end date it had is entered again in the settings), or
+name an Eneco bill to check.
+
+## Checking an Eneco bill
+
+The [Eneco Belgium](https://github.com/renaudallard/homeassistant_eneco)
+integration can read your settlement bills: its **Last bill** sensor lists
+every billed line. Pick that sensor under **Check an Eneco bill** in the
+options menu, and a **Bill check** sensor holds each line against the rate
+this integration prices for the line's own period: that period's card, or the
+card your contract was signed on for the energy, your household settings and
+the law of those months. The cards of months before this year are fetched for
+it, from the card archive first where the entry reads it; your meter's
+history is not used.
+
+Each line in the sensor's `lines` attribute gives its label, section, period
+and unit, the unit price billed and the one priced here (EUR per kWh or per
+year, before VAT), and a status:
+
+- `ok`, or `off` when the two differ by more than the printing of either
+  explains: 0,005 c€/kWh and 0,005 EUR a year for a card's figure, which a
+  card prints VAT included to the hundredth of a cent or to the cent, and
+  0,001 c€/kWh for an energy price off an index printed to two decimals and
+  for the law's levies;
+- `not_compared`, with the reason: a label not matched, a flat amount, a
+  month whose card is not held or whose energy price is not final yet, or a
+  line over months priced here at different rates, such as a network term
+  across 1 January or an excise line across a quarter. Those are never
+  averaged.
+
+The state counts the lines that are off, and a Repairs card says so while
+there is one. Lines are matched by label, as Eneco prints them on its French
+gas bills, which carry no line codes; any other label is not compared. The
+excise is the blend of its slices at your annual volume, as Eneco prints it,
+so a volume set here far from the one the bill used can show as off.
 
 ## Suppliers are often late
 
@@ -607,8 +642,8 @@ consumption and costs), and the meter's coverage: the first day of history
 read (a year and sixteen days back at most), how many of the rolling year's
 365 days are on record against the 350 it needs, and the first of last
 year's remaining days the year-end projection misses. The postcode, the gas
-meter, the reception station and the meter the entry reads are redacted, so
-the file can be attached to an issue as it is.
+meter, the reception station, the meter the entry reads and the Eneco bill
+sensor are redacted, so the file can be attached to an issue as it is.
 
 ## Troubleshooting
 
@@ -616,8 +651,9 @@ the file can be attached to an issue as it is.
   a stale card (fixing it fetches the card again), a card that could not be
   read or is missing, one read from its image, a meter that cannot be read
   (the costs keep their last figures meanwhile), several gas meters on the
-  Energy dashboard, and a Home Assistant running without its recorder, whose
-  history every cost is read from.
+  Energy dashboard, a Home Assistant running without its recorder, whose
+  history every cost is read from, and lines of the Eneco bill checked that
+  are billed off the rates priced here.
 - **Debug logging**: add this to `configuration.yaml` and restart, or turn
   on debug logging from the integration's page, which logs the same:
 

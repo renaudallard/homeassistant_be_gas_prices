@@ -23,6 +23,7 @@ the contract end date keep their device class's icon.
 | `rolling_year_consumption` | kWh | The 365 days before today. |
 | `contract_end_date` | timestamp | Only with an end date set; removed when it is cleared. |
 | `potential_saving` | EUR | Only with the daily ranking on, removed when it is turned off: the cheapest contract's saving against the household's own (on the custom supplier, its typed card, quoted beside the ranking), the ranking as an attribute. |
+| `bill_check` | | Only with an Eneco bill named in the options (`bill_entity`), removed when it is cleared: how many lines of the bill the Eneco integration's last bill sensor shows are `off` (`bill_check.py`). Attributes: `issued`, `period_start`, `period_end` and `lines`, each with `label`, `section`, `start`, `end`, `unit`, `billed` and `priced` (EUR per unit before VAT), `status` (`ok`, `off`, `not_compared`) and `reason`; `lines` is kept out of the recorder. Unknown while that sensor shows no bill. |
 
 The running costs report `unknown` until a gas meter is readable. Right after
 a restart they show the figures they showed before it, without their per-month
@@ -68,6 +69,7 @@ keep what they show.
 | `meter_unit` | The gas meter cannot be read: its statistics are in a unit that converts neither to a volume nor to energy, or the recorder could not be queried, until a tick reads it again. The costs keep the last figures meanwhile. |
 | `several_meters` | The Energy dashboard lists several gas meters and none is set in the options. |
 | `recorder_missing` | Home Assistant runs without its recorder, so no meter can be read and the costs and volumes stay unknown; it goes once the recorder runs. The price sensors are not affected. |
+| `bill_lines_off` | A line of the Eneco bill checked is billed further from the rate priced here than the printing of the two explains (`bill_check.py`), with the count and the day the bill was issued. Left as it is while the bill's sensor shows no bill, as before the Eneco integration sets up after a restart, and cleared once no line is off or no bill is named. |
 | `contract_withdrawn` | The supplier withdrew the entry's contract: nothing is fetched, the last card held (from the store, else the card of the last month it was sold, from the card archive or the supplier's own archive) keeps pricing and never goes stale, its distribution and metering terms taken off the DSO's sheet of the delivery year from the year after its own, and the card suggests recording a change of contract. With no card at all the entry retries setup. |
 
 Home Assistant renders a card, its fix flow and the reason that flow aborts
@@ -87,8 +89,8 @@ same way.
 
 ## Diagnostics
 
-The download holds the entry's settings (postcode, meter and station
-redacted), the card as parsed, the computed state, and `meter_coverage`
+The download holds the entry's settings (postcode, meter, station and bill
+sensor redacted), the card as parsed, the computed state, and `meter_coverage`
 (`running_costs.meter_coverage`): the first day read, the rolling year's
 days on record and the number it needs, and the first of last year's days
 the year-end projection reads that is missing, as the last tick that read

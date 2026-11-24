@@ -77,3 +77,8 @@ reloads the entry.
   and the earlier changes stay. A change recorded with the wrong date is
   corrected by removing it and recording it again; a new one cannot be
   earlier than the last.
+- **Check an Eneco bill**: an entity selector limited to the sensors of the
+  `eneco_be` integration, meant for its last bill sensor; saved as
+  `bill_entity`, removed when the field is cleared. It prices nothing, so it
+  is left out of the settings digest (`_settings_digest`) that held figures,
+  the stored ranking and the history stamps are keyed on.
