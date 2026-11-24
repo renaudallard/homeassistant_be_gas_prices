@@ -188,9 +188,11 @@ Module: `custom_components/be_gas_prices/providers/eneco.py`. Tests:
   both PDFs of November 2026 and in the values the card archive read from 7
   October. The edition of 27 February 2026 on the Wayback Machine printed
   29,41 for Q4 2025, and 30,04 for TTF-DAHW in each month of it. A Flex
-  contract signed on a quarterly card is billed on TTFDAW-RLP, so its Q4
-  2025 is priced at what the PDF prints, 7,596 c€/kWh excluding VAT on
-  October 2022's formula where 29,41 gives 4,011.
+  contract signed on a quarterly card is billed on TTFDAW-RLP, and Eneco's
+  yearly bill of December 2025 for one on October 2022's card prices that
+  quarter at 4,05168 c€/kWh excluding VAT, printing the index as 29,82. So
+  Q4 2025 TTFDAW-RLP is taken as 29,82 whatever an edition prints
+  (`_BILLED_INDEX` in the extractor).
 - The Walloon cards of January 2025 add the trucked-gas supplement CWaPE
   sets for RESA ("supplément pour gaz porté", 0,0058066 EUR/kWh excluding
   VAT, 0,6155 c€/kWh with it) to RESA's T1 and T2: 4,86 / 2,93, as every

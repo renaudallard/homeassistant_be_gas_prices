@@ -792,6 +792,15 @@ async def test_fetch_index_reads_the_months_the_current_pdf_dropped() -> None:
     assert altered["TTFDAW-RLP"]["2024-02"] == pytest.approx(27.60)
 
 
+async def test_q4_2025_is_the_value_eneco_bills() -> None:
+    """The PDFs of November 2026 print 65,26 for Q4 2025; the bill, 29,82."""
+    for month in ("2025-10", "2025-11", "2025-12"):
+        assert (await _fetched_index())["TTFDAW-RLP"][month] == pytest.approx(29.82)
+    # The rest of the column, and the monthly one, are as printed.
+    assert (await _fetched_index())["TTFDAW-RLP"]["2025-09"] == pytest.approx(32.37)
+    assert (await _fetched_index())["TTFDAW-RLP-M"]["2025-10"] == pytest.approx(31.95)
+
+
 # Eneco's yearly bills to a Walloon household on Flex signed on the October
 # 2022 card, the energy excluding VAT in c€/kWh and the TTFDAW-RLP they
 # print beside it: "0,100 x TTFDAHW-RLP + 1,070".
@@ -800,6 +809,7 @@ _BILLED_2210 = [
     ("2025-02", 5.81542),  # 06/01-31/03/25, 47,45
     ("2025-05", 4.59959),  # 01/04-30/06/25, 35,29
     ("2025-08", 4.30706),  # 01/07-30/09/25, 32,37
+    ("2025-11", 4.05168),  # 01/10-16/12/25, 29,82, pinned (_BILLED_INDEX)
 ]
 
 
@@ -832,8 +842,8 @@ async def test_a_contract_on_the_october_2022_card_is_billed_its_quarter(
     """Eneco bills it on that card's formula, at the quarter's TTFDAW-RLP, not
     on each month's card. A bill prints five decimals off a value the PDF
     prints to two, and a hundredth of a EUR/MWh of it is 0,001 c€/kWh. Q4
-    2025 is left out: every edition read from September 2026 on prints a
-    later quarter's value in its cells (docs/providers/eneco.md)."""
+    2025 is the value the bill prints, every edition read from September
+    2026 on printing a later quarter's in its cells (docs/providers/eneco.md)."""
     price, index_month = await _billed_on_2210(month)
     assert index_month == month
     assert price == pytest.approx(billed, abs=1e-3)

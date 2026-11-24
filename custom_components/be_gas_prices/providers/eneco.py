@@ -159,6 +159,19 @@ _OLD_INDEX_URL = "https://cdn.eneco.be/downloads/nl/b2c/acq/indexatieparameters-
 # The index both variable products settle on, as the card and the indexation
 # PDF name it.
 _INDEX = "TTFDAW-RLP-M"
+
+# Closed quarters whose printed value is wrong, at the value Eneco bills.
+# Every edition read since September 2026 prints Q4 2025 TTFDAW-RLP as the
+# column's newest closed quarter of that edition (45,95, then 65,26 from 7
+# October), where the edition of February 2026 printed 29,41. Eneco's own
+# yearly gas bill of December 2025 for a contract on the October 2022 card
+# prices 01/10-16/12/2025 at 4,05168 c€/kWh excluding VAT and prints the
+# index as 29,82, so that is the value, whatever an edition prints.
+_BILLED_INDEX: dict[tuple[str, str], float] = {
+    ("TTFDAW-RLP", "2025-10"): 29.82,
+    ("TTFDAW-RLP", "2025-11"): 29.82,
+    ("TTFDAW-RLP", "2025-12"): 29.82,
+}
 # The one Flex cards before _MONTHLY_FROM settle on, per quarter.
 _QUARTERLY_INDEX = "TTFDAW-RLP"
 _MONTHLY_FROM = date(2023, 4, 1)
@@ -667,6 +680,8 @@ async def fetch_index(session: aiohttp.ClientSession) -> IndexTable:
         )
         for name, values in parse_index_text(text).items():
             table.setdefault(name, {}).update(values)
+    for (name, month), value in _BILLED_INDEX.items():
+        table.setdefault(name, {})[month] = value
     return table
 
 
