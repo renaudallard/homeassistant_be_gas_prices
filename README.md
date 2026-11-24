@@ -365,7 +365,13 @@ manifest.
    of contract cannot be recorded on that day. Another product of the same
    supplier does the same with the figures and with every date left as
    shown; a date you change is kept, and a start date you change keeps
-   counting this year's cost from it.
+   counting this year's cost from it. An Eneco Flex bill is priced on the
+   card it names after "Carte tarifaire version: 01YYMM", which can be years
+   older than this month's (012210 is October 2022): set the tariff card date
+   to a day of that month, the one the `card_month` attribute of the tariff
+   card sensor of the
+   [Eneco Belgium](https://github.com/renaudallard/homeassistant_eneco)
+   integration gives too. Its cards before April 2022 are not read.
 3. **Network operator**, only asked without a postcode and outside
    Brussels. The expert custom supplier then asks for the figures of your
    card: the energy price and fee, then your network operator's terms, the
