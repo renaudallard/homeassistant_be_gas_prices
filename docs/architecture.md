@@ -65,6 +65,7 @@ Paths relative to `custom_components/be_gas_prices/`.
 | `bill.py` | One month billed: the card, the energy leg (the month's card, the signing card or typed figures), the index value of the month, the volume and the days. Pure. |
 | `running_costs.py` | The year walked month by month on each month's card, the rolling year and the year-end projection. Pure. |
 | `pricing.py` | The per-kWh breakdown and the yearly fixed costs of one household on one card. Pure. |
+| `bill_check.py` | Each line of an Eneco bill, matched by its label, held against the rate a month of its period is billed on here, before VAT, with the tolerance each rate's printing allows. Pure; the coordinator gives it the months (`_InputsMixin._bill_rates`) and fetches their cards with the year's. |
 | `gas_meter.py` | Finding the gas meter (configured or from the Energy dashboard) and reading its daily consumption, or its hourly changes, out of recorder statistics, in m³ or kWh; the gas of an outage shared out over its days. |
 | `calorific.py` | Atrias's monthly gross calorific value per gas reception station: the kWh one cubic metre is worth. |
 | `excise_law.py` | The residential special excise and its voted steps, and the energy contribution beside it, read daily from article 419 on Justel and kept in the Store. |

@@ -1,0 +1,78 @@
+{
+ "_seen_on": "2026-10-20",
+ "_sources": [
+  {
+   "pdf": "57eceab97951c5c5f64204876d90d013817512fa06b7400926a3a7cecce2d890",
+   "readers": "pypdf==6.18.0 pdfplumber==0.11.9 render=dd8cdfbeda9efa02",
+   "text": "texts/2026-10/e99daff5e4369647d0f202d183ca1a87a742e3e54fd782aeb45dfd42d905f380.txt",
+   "url": "https://cdn.eneco.be/downloads/nl/general/tk/BC_032_012506_NL_ENECO_GAS_FLEX.pdf",
+   "variant": "plain"
+  }
+ ],
+ "_via": "archive",
+ "contract": "eneco_aardgas_flex",
+ "dsos": {
+  "ores": {
+   "metering": 0.0,
+   "tiers": {
+    "t1": [
+     30.86,
+     0.0404
+    ],
+    "t2": [
+     135.42,
+     0.0204
+    ]
+   },
+   "transport": 0.00165
+  },
+  "resa": {
+   "metering": 0.0,
+   "tiers": {
+    "t1": [
+     33.97,
+     0.0425
+    ],
+    "t2": [
+     119.9,
+     0.0231
+    ]
+   },
+   "transport": 0.00165
+  }
+ },
+ "energy": {
+  "base": 0.0112148,
+  "factor": 0.00106,
+  "fee": 65.0,
+  "formula": "(0,1 X TTFDAW-RLP-M + 1,058) X 1,06",
+  "index": "TTFDAW-RLP-M",
+  "kind": "indexed",
+  "period": "month",
+  "price": 0.0478,
+  "settled": false,
+  "vat_grossed": []
+ },
+ "publication_label": "2025-06",
+ "schema": 3,
+ "source_url": "https://cdn.eneco.be/downloads/nl/general/tk/BC_032_012506_NL_ENECO_GAS_FLEX.pdf",
+ "supplier": "eneco",
+ "taxes": {
+  "card_vat_rate": 0.06,
+  "connection_fee": 7.5e-05,
+  "contribution": 0.0010580000000000001,
+  "excise": [
+   [
+    12000.0,
+    0.008723999999999999
+   ],
+   [
+    null,
+    0.009250000000000001
+   ]
+  ],
+  "osp": null,
+  "vat_rate": 0.0
+ },
+ "valid_until": "2025-06-30"
+}
