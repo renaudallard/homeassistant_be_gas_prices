@@ -333,7 +333,7 @@
       },
       "bill": {
         "title": "Facture Eneco",
-        "description": "Choisissez le capteur Dernière facture de l'intégration Eneco pour comparer chaque ligne de cette facture au tarif que cette intégration calcule pour la période propre à la ligne. Un capteur Contrôle de facture compte alors les lignes qui s'en écartent. Laissez-le vide pour ne rien contrôler.",
+        "description": "Choisissez le capteur Dernière facture annuelle de l'intégration Eneco pour comparer chaque ligne de cette facture au tarif que cette intégration calcule pour la période propre à la ligne. Un capteur Contrôle de facture compte alors les lignes qui s'en écartent. Laissez-le vide pour ne rien contrôler.",
         "data": {
           "bill_entity": "Facture Eneco"
         },

@@ -333,7 +333,7 @@
       },
       "bill": {
         "title": "Eneco-factuur",
-        "description": "Kies de sensor Laatste factuur van de Eneco-integratie om elke lijn van die factuur te vergelijken met het tarief dat deze integratie voor de eigen periode van die lijn rekent. Een sensor Factuurcontrole telt dan de lijnen die afwijken. Laat het leeg om niets te controleren.",
+        "description": "Kies de sensor Laatste jaarfactuur van de Eneco-integratie om elke lijn van die factuur te vergelijken met het tarief dat deze integratie voor de eigen periode van die lijn rekent. Een sensor Factuurcontrole telt dan de lijnen die afwijken. Laat het leeg om niets te controleren.",
         "data": {
           "bill_entity": "Eneco-factuur"
         },

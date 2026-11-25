@@ -333,7 +333,7 @@
       },
       "bill": {
         "title": "Eneco bill",
-        "description": "Pick the Last bill sensor of the Eneco integration to hold each line of that bill against the rate this integration prices for the line's own period. A Bill check sensor then counts the lines that are off. Leave it empty to check none.",
+        "description": "Pick the Last yearly bill sensor of the Eneco integration to hold each line of that bill against the rate this integration prices for the line's own period. A Bill check sensor then counts the lines that are off. Leave it empty to check none.",
         "data": {
           "bill_entity": "Eneco bill"
         },

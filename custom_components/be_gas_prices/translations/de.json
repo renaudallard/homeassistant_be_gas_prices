@@ -333,7 +333,7 @@
       },
       "bill": {
         "title": "Eneco-Rechnung",
-        "description": "Wählen Sie den Sensor Letzte Rechnung der Eneco-Integration, um jede Zeile dieser Rechnung mit dem Tarif zu vergleichen, den diese Integration für den Zeitraum der Zeile berechnet. Ein Sensor Rechnungsprüfung zählt dann die abweichenden Zeilen. Leer lassen, um nichts zu prüfen.",
+        "description": "Wählen Sie den Sensor Letzte Jahresrechnung der Eneco-Integration, um jede Zeile dieser Rechnung mit dem Tarif zu vergleichen, den diese Integration für den Zeitraum der Zeile berechnet. Ein Sensor Rechnungsprüfung zählt dann die abweichenden Zeilen. Leer lassen, um nichts zu prüfen.",
         "data": {
           "bill_entity": "Eneco-Rechnung"
         },
