@@ -46,7 +46,8 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.const import Platform
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
@@ -82,6 +83,7 @@ from .const import (
     DEFAULT_CARD_ARCHIVE,
     DOMAIN,
     SUPPLIER_CUSTOM,
+    SUPPLIER_ENECO,
     SUPPLIER_SOCIAL,
 )
 from .contract_periods import (
@@ -134,6 +136,41 @@ class BeGasPricesConfigFlow(_FlowSteps, ConfigFlow, domain=DOMAIN):
         return BeGasPricesOptionsFlow()
 
 
+def _meter_energy(hass: HomeAssistant, entity: er.RegistryEntry) -> str | None:
+    """The energy of the Eneco meter an eneco_be sensor belongs to, as its
+    subentry names it ("Electricity" or "Gas"), or None where it cannot be
+    told: the sensor's entry or subentry is gone, or the key is missing."""
+    entry = (
+        hass.config_entries.async_get_entry(entity.config_entry_id)
+        if entity.config_entry_id
+        else None
+    )
+    subentry = (
+        entry.subentries.get(entity.config_subentry_id)
+        if entry is not None and entity.config_subentry_id
+        else None
+    )
+    energy = None if subentry is None else subentry.data.get("energy_type")
+    return energy if isinstance(energy, str) else None
+
+
+def _not_a_bill(hass: HomeAssistant, entity_id: str) -> dict[str, str]:
+    """An error on the bill picker unless it names a Last yearly bill sensor
+    of the eneco_be integration: any other of its sensors carries no bill
+    lines. One of an electricity meter is refused too, whose lines no gas
+    rate prices."""
+    entity = er.async_get(hass).async_get(entity_id)
+    if (
+        entity is None
+        or entity.platform != BILL_INTEGRATION
+        or not entity.unique_id.endswith("_last_bill")
+    ):
+        return {CONF_BILL_ENTITY: "eneco_bill_not_a_bill"}
+    if _meter_energy(hass, entity) == "Electricity":
+        return {CONF_BILL_ENTITY: "eneco_bill_other_energy"}
+    return {}
+
+
 class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
     """Edit the settings, compare contracts, or record a supplier switch."""
 
@@ -151,19 +188,27 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
         options = ["settings", "compare", "compare_all", "switch"]
         if removable_switch(self.config_entry.data, dt_util.now().date()) is not None:
             options.append("remove_switch")
-        options.append("bill")
+        # An Eneco bill, only an Eneco contract's own.
+        if self.config_entry.data.get(CONF_SUPPLIER) == SUPPLIER_ENECO:
+            options.append("bill")
         return self.async_show_menu(step_id="init", menu_options=options)
 
     async def async_step_bill(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Pick the Eneco integration's last bill sensor whose lines are held
-        against the rates priced here, or clear it to check none."""
+        """Pick the Eneco integration's Last yearly bill sensor whose lines
+        are held against the rates priced here, or clear it to check none.
+        A sensor that is not one, or an electricity meter's, is refused."""
+        errors: dict[str, str] = {}
+        bill = self.config_entry.data.get(CONF_BILL_ENTITY)
         if user_input is not None:
             self._data = dict(self.config_entry.data)
-            if user_input.get(CONF_BILL_ENTITY):
-                self._data[CONF_BILL_ENTITY] = user_input[CONF_BILL_ENTITY]
+            bill = user_input.get(CONF_BILL_ENTITY)
+            if bill:
+                self._data[CONF_BILL_ENTITY] = bill
+                errors = _not_a_bill(self.hass, str(bill))
             else:
                 self._data.pop(CONF_BILL_ENTITY, None)
-            return await self._async_finish()
+            if not errors:
+                return await self._async_finish()
         schema = self.add_suggested_values_to_schema(
             vol.Schema(
                 {
@@ -172,9 +217,9 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
                     )
                 }
             ),
-            {CONF_BILL_ENTITY: self.config_entry.data.get(CONF_BILL_ENTITY)},
+            {CONF_BILL_ENTITY: bill},
         )
-        return self.async_show_form(step_id="bill", data_schema=schema)
+        return self.async_show_form(step_id="bill", data_schema=schema, errors=errors)
 
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
@@ -187,6 +232,9 @@ class BeGasPricesOptionsFlow(_FlowSteps, OptionsFlow):
 
     async def _async_finish(self) -> ConfigFlowResult:
         entry = self.config_entry
+        # An Eneco bill checks nothing on another supplier's contract.
+        if self._data.get(CONF_SUPPLIER) != SUPPLIER_ENECO:
+            self._data.pop(CONF_BILL_ENTITY, None)
         # The title the wizard gave follows the contract; one the user typed
         # is theirs and stays.
         try:

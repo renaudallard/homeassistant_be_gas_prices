@@ -320,6 +320,8 @@ DEFAULT_DAILY_COMPARE: Final = False
 # rates priced here (bill_check.py); none is checked without one.
 CONF_BILL_ENTITY: Final = "bill_entity"
 BILL_INTEGRATION: Final = "eneco_be"
+# The supplier whose bill the integration above reads.
+SUPPLIER_ENECO: Final = "eneco"
 
 # The coordinator ticks hourly: a cheap probe decides whether a card is
 # fetched again, and the running costs follow the meter.

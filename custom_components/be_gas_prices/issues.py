@@ -37,7 +37,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_BILL_ENTITY, DOMAIN
+from .bill_check import bill_checked
+from .const import DOMAIN
 from .gas_meter import recorder_loaded
 from .markdown_text import escape_markdown
 
@@ -197,7 +198,7 @@ def sync_issues(hass: HomeAssistant, coordinator: GasCoordinator) -> None:
     # integration has set up: deleting the card there and raising it again
     # moments later would lose a choice to ignore it.
     check = coordinator.bill_check
-    if check is not None or not entry.data.get(CONF_BILL_ENTITY):
+    if check is not None or bill_checked(entry.data) is None:
         off = 0 if check is None else check.off
         _sync(
             hass,

@@ -37,9 +37,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.config_entries import ConfigFlowResult, ConfigSubentryDataWithId
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -1692,17 +1693,63 @@ async def test_a_switch_of_last_year_is_not_offered_for_removal(hass: HomeAssist
     assert "remove_switch" not in result["menu_options"]
 
 
-async def test_the_options_name_the_eneco_bill_to_check(hass: HomeAssistant) -> None:
-    """Any sensor of the Eneco integration, shown again when the options
-    are opened again, and none once cleared."""
-    entry = _entry(hass)
-    before = dict(entry.data)
+def _eneco_meters(hass: HomeAssistant) -> tuple[str, str, str]:
+    """The Last yearly bill sensors of an Eneco login's gas and electricity
+    meters, and another sensor of the gas meter."""
+    eneco = MockConfigEntry(
+        domain="eneco_be",
+        subentries_data=[
+            ConfigSubentryDataWithId(
+                data={"ean": ean, "energy_type": energy},
+                subentry_id=energy,
+                subentry_type="meter",
+                title=energy,
+                unique_id=None,
+            )
+            for ean, energy in (
+                ("541449000000000001", "Electricity"),
+                ("541449000000000002", "Gas"),
+            )
+        ],
+    )
+    eneco.add_to_hass(hass)
+    registry = er.async_get(hass)
+
+    def sensor(unique_id: str, energy: str) -> str:
+        return registry.async_get_or_create(
+            "sensor", "eneco_be", unique_id, config_entry=eneco, config_subentry_id=energy
+        ).entity_id
+
+    return (
+        sensor("541449000000000002_last_bill", "Gas"),
+        sensor("541449000000000001_last_bill", "Electricity"),
+        sensor("541449000000000002_status", "Gas"),
+    )
+
+
+async def _to_bill(hass: HomeAssistant, entry: MockConfigEntry) -> ConfigFlowResult:
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert "bill" in result["menu_options"]
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "bill"}
     )
     assert result["step_id"] == "bill"
+    return result
+
+
+async def test_the_options_name_the_eneco_bill_to_check(hass: HomeAssistant) -> None:
+    """Offered on an Eneco entry: a gas meter's Last yearly bill sensor,
+    shown again when the options are opened again, and none once cleared.
+    Another sensor of the Eneco integration is refused, and so is an
+    electricity meter's bill."""
+    gas, power, status = _eneco_meters(hass)
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(
+        entry,
+        data={**entry.data, CONF_SUPPLIER: "eneco", CONF_CONTRACT: "eneco_aardgas_flex"},
+    )
+    before = dict(entry.data)
+    result = await _to_bill(hass, entry)
     schema = result["data_schema"]
     assert schema is not None
     key = next(iter(schema.schema))
@@ -1711,22 +1758,44 @@ async def test_the_options_name_the_eneco_bill_to_check(hass: HomeAssistant) -> 
     config = schema.schema[key].config
     assert config["integration"] == "eneco_be"
     assert config["domain"] == ["sensor"]
+    for picked, error in ((status, "eneco_bill_not_a_bill"), (power, "eneco_bill_other_energy")):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {CONF_BILL_ENTITY: picked}
+        )
+        assert result["errors"] == {CONF_BILL_ENTITY: error}
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_BILL_ENTITY: "sensor.gas_last_bill"}
+        result["flow_id"], {CONF_BILL_ENTITY: gas}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert dict(entry.data) == {**before, CONF_BILL_ENTITY: "sensor.gas_last_bill"}
+    assert dict(entry.data) == {**before, CONF_BILL_ENTITY: gas}
 
-    result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"next_step_id": "bill"}
-    )
+    result = await _to_bill(hass, entry)
     schema = result["data_schema"]
     assert schema is not None
-    assert next(iter(schema.schema)).description == {"suggested_value": "sensor.gas_last_bill"}
+    assert next(iter(schema.schema)).description == {"suggested_value": gas}
     result = await hass.config_entries.options.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert dict(entry.data) == before
+
+
+@pytest.mark.freeze_time("2026-09-15 12:00:00+02:00")
+async def test_another_supplier_is_offered_no_bill_and_drops_one(hass: HomeAssistant) -> None:
+    """An Eneco bill checks nothing on another supplier's contract: none is
+    offered, and saving the entry drops one picked before."""
+    gas, _power, _status = _eneco_meters(hass)
+    entry = _entry(hass)
+    hass.config_entries.async_update_entry(
+        entry,
+        data={**record_switch(dict(entry.data), date(2026, 6, 1)), CONF_BILL_ENTITY: gas},
+    )
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert "bill" not in result["menu_options"]
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "remove_switch"}
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert CONF_BILL_ENTITY not in entry.data
 
 
 async def _contract_step(hass: HomeAssistant, entry: MockConfigEntry) -> ConfigFlowResult:

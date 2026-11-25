@@ -58,9 +58,9 @@ from homeassistant.util.json import JsonValueType
 
 from .backfill import backfill_once_a_year, backfill_prices
 from .backfill_cost import backfill_cost, backfill_cost_once
+from .bill_check import bill_checked
 from .bill_cost import window_cost
 from .const import (
-    CONF_BILL_ENTITY,
     CONF_CARD_ARCHIVE,
     DEFAULT_CARD_ARCHIVE,
     DOMAIN,
@@ -242,14 +242,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: GasConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload))
 
-    bill = entry.data.get(CONF_BILL_ENTITY)
+    bill = bill_checked(entry.data)
     if bill:
 
         @callback
         def _bill_changed(_event: Event[EventStateChangedData]) -> None:
             coordinator.bill_changed()
 
-        entry.async_on_unload(async_track_state_change_event(hass, str(bill), _bill_changed))
+        entry.async_on_unload(async_track_state_change_event(hass, bill, _bill_changed))
 
     running: set[str] = set()
 

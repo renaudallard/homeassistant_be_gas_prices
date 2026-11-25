@@ -59,6 +59,7 @@ from datetime import date
 from typing import Any, Final
 
 from .bill import IndexValue
+from .const import CONF_BILL_ENTITY, CONF_SUPPLIER, SUPPLIER_ENECO
 from .providers._resolve import effective_excise, tier_for, vat_factor
 from .providers.base import SupplierSnapshot
 from .running_costs import months_between
@@ -158,6 +159,15 @@ class BillCheck:
     def off(self) -> int:
         """How many of the lines compared are off."""
         return sum(1 for line in self.lines if line.status == OFF)
+
+
+def bill_checked(data: Mapping[str, Any]) -> str | None:
+    """The bill sensor an entry checks: the one picked, on an Eneco entry.
+    One picked before a switch to another supplier checks nothing."""
+    bill = data.get(CONF_BILL_ENTITY)
+    if data.get(CONF_SUPPLIER) != SUPPLIER_ENECO or not isinstance(bill, str):
+        return None
+    return bill or None
 
 
 def month_rates(

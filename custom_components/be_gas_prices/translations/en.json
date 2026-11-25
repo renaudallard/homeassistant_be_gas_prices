@@ -353,7 +353,9 @@
       "invalid_factor": "Enter the factor as your bill prints it: a number from 9 to 13, such as 11,6.",
       "invalid_number": "Type a number with a decimal comma or point, such as 8,25. It cannot be negative or higher than any card prints.",
       "switch_date_invalid": "The new contract must start after 1 January, after the current contract started and after the last change recorded, and no later than today. A contract that started on 1 January is set in \"Edit settings\" instead.",
-      "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on."
+      "card_archive_needed": "A contract of this year is with a supplier that publishes its cards as images, which only the project's card archive reads: turn this option on.",
+      "eneco_bill_not_a_bill": "Pick the Last yearly bill sensor of the Eneco integration: its other sensors carry no bill.",
+      "eneco_bill_other_energy": "That is the bill of an electricity meter: pick the Last yearly bill sensor of the gas meter."
     },
     "abort": {
       "compare_done": "Comparison complete, nothing was changed.",

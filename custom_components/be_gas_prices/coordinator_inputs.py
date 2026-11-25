@@ -50,9 +50,15 @@ from .bill import (
     month_key,
     priced_month,
 )
-from .bill_check import BillCheck, MonthRates, bill_period, check_bill, month_rates
+from .bill_check import (
+    BillCheck,
+    MonthRates,
+    bill_checked,
+    bill_period,
+    check_bill,
+    month_rates,
+)
 from .const import (
-    CONF_BILL_ENTITY,
     CONF_CARD_ARCHIVE,
     CONF_CONTRACT_START_DATE,
     CONF_CONVERSION_FACTOR,
@@ -346,8 +352,8 @@ class _InputsMixin:
 
     def _bill_attributes(self) -> Mapping[str, Any] | None:
         """What the sensor of the bill to check shows, or None."""
-        entity = self._data.get(CONF_BILL_ENTITY)
-        state = self.hass.states.get(str(entity)) if entity else None
+        entity = bill_checked(self._data)
+        state = self.hass.states.get(entity) if entity else None
         return None if state is None else state.attributes
 
     def _bill_months(self) -> list[str]:

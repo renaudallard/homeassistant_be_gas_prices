@@ -57,6 +57,7 @@ from custom_components.be_gas_prices.bill_check import (
     OK,
     BillCheck,
     RatesFor,
+    bill_checked,
     check_bill,
     month_rates,
 )
@@ -350,6 +351,14 @@ async def test_unreadable_lines_are_not_compared() -> None:
     check = check_bill({**_attributes(BILL), "lines": lines}, _rates_for(await _fetched_index()))
     assert check is not None
     assert [line.status for line in check.lines] == [NOT_COMPARED] * 3
+
+
+def test_only_an_eneco_entry_checks_its_bill() -> None:
+    """One picked before a switch to another supplier checks nothing."""
+    assert bill_checked({CONF_SUPPLIER: "eneco", CONF_BILL_ENTITY: "sensor.x"}) == "sensor.x"
+    assert bill_checked({CONF_SUPPLIER: "engie", CONF_BILL_ENTITY: "sensor.x"}) is None
+    assert bill_checked({CONF_SUPPLIER: "eneco", CONF_BILL_ENTITY: ""}) is None
+    assert bill_checked({CONF_SUPPLIER: "eneco"}) is None
 
 
 # ---- in Home Assistant ----------------------------------------------------------

@@ -353,7 +353,9 @@
       "invalid_factor": "Geben Sie den Faktor so ein, wie er auf Ihrer Rechnung steht: eine Zahl von 9 bis 13, zum Beispiel 11,6.",
       "invalid_number": "Geben Sie eine Zahl mit Dezimalkomma oder -punkt ein, zum Beispiel 8,25. Sie kann weder negativ noch höher sein als das, was eine Karte angibt.",
       "switch_date_invalid": "Der neue Vertrag muss nach dem 1. Januar, nach dem Beginn des aktuellen Vertrags und nach dem zuletzt erfassten Wechsel beginnen, spätestens heute. Ein Vertrag, der am 1. Januar begann, wird unter „Einstellungen bearbeiten“ eingetragen.",
-      "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein."
+      "card_archive_needed": "Ein Vertrag dieses Jahres ist bei einem Lieferanten, der seine Karten als Bilder veröffentlicht, die nur das Kartenarchiv des Projekts liest: schalten Sie diese Option ein.",
+      "eneco_bill_not_a_bill": "Wählen Sie den Sensor Letzte Jahresrechnung der Eneco-Integration: Seine anderen Sensoren tragen keine Rechnung.",
+      "eneco_bill_other_energy": "Das ist die Rechnung eines Stromzählers: Wählen Sie den Sensor Letzte Jahresrechnung des Gaszählers."
     },
     "abort": {
       "compare_done": "Vergleich abgeschlossen, nichts wurde geändert.",

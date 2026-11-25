@@ -353,7 +353,9 @@
       "invalid_factor": "Indiquez le facteur tel qu'il figure sur votre facture : un nombre de 9 à 13, par exemple 11,6.",
       "invalid_number": "Saisissez un nombre avec une virgule ou un point décimal, par exemple 8,25. Il ne peut être ni négatif ni plus élevé que ce qu'une carte indique.",
       "switch_date_invalid": "Le nouveau contrat doit commencer après le 1er janvier, après le début du contrat actuel et après le dernier changement enregistré, et au plus tard aujourd'hui. Un contrat commencé le 1er janvier se règle dans « Modifier les paramètres ».",
-      "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option."
+      "card_archive_needed": "Un contrat de cette année est chez un fournisseur qui publie ses cartes sous forme d'images, que seule l'archive des cartes du projet lit : activez cette option.",
+      "eneco_bill_not_a_bill": "Choisissez le capteur Dernière facture annuelle de l'intégration Eneco : ses autres capteurs ne portent aucune facture.",
+      "eneco_bill_other_energy": "C'est la facture d'un compteur d'électricité : choisissez le capteur Dernière facture annuelle du compteur de gaz."
     },
     "abort": {
       "compare_done": "Comparaison terminée, rien n'a été modifié.",

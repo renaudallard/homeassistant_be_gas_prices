@@ -46,8 +46,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .bill_check import bill_checked
 from .const import (
-    CONF_BILL_ENTITY,
     CONF_CONTRACT,
     CONF_CONTRACT_END_DATE,
     CONF_DAILY_COMPARE,
@@ -364,7 +364,7 @@ async def async_setup_entry(
             PotentialSavingSensor,
             bool(entry.data.get(CONF_DAILY_COMPARE, DEFAULT_DAILY_COMPARE)),
         ),
-        (_BILL_CHECK, BillCheckSensor, bool(entry.data.get(CONF_BILL_ENTITY))),
+        (_BILL_CHECK, BillCheckSensor, bill_checked(entry.data) is not None),
     )
     for description, sensor, wanted in optional:
         if wanted:

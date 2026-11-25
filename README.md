@@ -416,11 +416,14 @@ name an Eneco bill to check.
 
 The [Eneco Belgium](https://github.com/renaudallard/homeassistant_eneco)
 integration can read your settlement bills: its **Last yearly bill** sensor
-lists every line billed over the last full year. Pick that sensor under
-**Check an Eneco bill** in the options menu, and a **Bill check** sensor holds each line against the rate
-this integration prices for the line's own period: that period's card, or the
-card your contract was signed on for the energy, your household settings and
-the law of those months. The cards of months before this year are fetched for
+lists every line billed over the last full year. On an Eneco entry, pick
+that sensor under **Check an Eneco bill** in the options menu, as the
+electricity integration has it; another sensor of the Eneco integration is
+refused, and so is an electricity meter's bill, and a switch to another
+supplier drops it. Then a **Bill check** sensor holds each line against the
+rate this integration prices for the line's own period: that period's card,
+or the card your contract was signed on for the energy, your household
+settings and the law of those months. The cards of months before this year are fetched for
 it, from the card archive first where the entry reads it; your meter's
 history is not used.
 
