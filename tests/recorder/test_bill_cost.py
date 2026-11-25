@@ -31,7 +31,7 @@ Run on the real recorder, since what it prices is the meter's history.
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -44,6 +44,7 @@ from pytest_homeassistant_custom_component.components.recorder.common import (
     async_wait_recording_done,
 )
 
+from custom_components.be_gas_prices import bill_cost
 from custom_components.be_gas_prices.const import CONF_CONVERSION_FACTOR, DOMAIN
 from tests.recorder.test_gas_meter import _card, _import, _setup_entry, _zone
 
@@ -152,6 +153,24 @@ async def test_a_last_day_not_recorded_is_not_covered(
 
     assert got["covered"] is False
     assert got["days_on_record"] == 61
+
+
+@pytest.mark.timeout(300, method="thread")
+@pytest.mark.freeze_time("2026-09-15 10:30:00+02:00")
+async def test_a_total_started_over_is_not_covered(
+    recorder_mock: Any, hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A day the recorder's total went back lost the gas before it."""
+    await _meter(hass)
+    entry = await _setup_entry(hass)
+    days = {date(2026, 6, 30) + timedelta(days=n): 24.0 for n in range(33)}
+    days[date(2026, 7, 10)] = -500.0
+
+    with patch.object(bill_cost, "daily_changes", AsyncMock(return_value=days)):
+        got = await _cost(hass, entry.entry_id, "2026-07-01", "2026-08-01")
+
+    assert got["days_on_record"] == 32
+    assert got["covered"] is False
 
 
 @pytest.mark.timeout(300, method="thread")

@@ -160,8 +160,12 @@ async def window_cost(
         "cost": round(costs.current_year_cost, 2),
         "kwh": round(costs.ytd_kwh, 3),
         # Whether the meter holds the whole window: a day before it, which
-        # the first day of it is measured from, and its last day.
-        "covered": bool(changes) and min(changes) < start and end in changes,
+        # the first day of it is measured from, its last day, and no day in
+        # between whose total the recorder started over, losing its gas.
+        "covered": bool(changes)
+        and min(changes) < start
+        and end in changes
+        and all(changes[day] >= 0.0 for day in on_record),
         "days": (end - start).days + 1,
         "days_on_record": len(on_record),
         "first_day_on_record": on_record[0].isoformat() if on_record else None,
