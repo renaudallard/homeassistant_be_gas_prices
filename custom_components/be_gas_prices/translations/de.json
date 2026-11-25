@@ -528,6 +528,24 @@
           "description": "Löscht die Statistiken der Preissensoren vollständig vor dem Schreiben; erfordert einen Eintrag. Die Kosten des Jahres werden neu geschrieben, nicht gelöscht."
         }
       }
+    },
+    "bill_cost": {
+      "name": "Rechnungskosten",
+      "description": "Berechnet den Preis des Gases, das der Zähler über eine Reihe abgeschlossener Tage erfasst hat, wie die Kosten des Jahres, um die Rechnung eines Lieferanten damit zu vergleichen. Gibt die Kosten inkl. MwSt., die kWh und den Anteil dieser Tage zurück, den der Zähler abdeckt.",
+      "fields": {
+        "entry_id": {
+          "name": "Eintrag",
+          "description": "Der Eintrag, dessen Preise verwendet werden."
+        },
+        "start": {
+          "name": "Startdatum",
+          "description": "Der erste abgerechnete Tag. Nicht vor dem 1. Januar des Vorjahres und nicht vor dem zuletzt erfassten Vertragswechsel."
+        },
+        "end": {
+          "name": "Enddatum",
+          "description": "Der letzte abgerechnete Tag, vor heute."
+        }
+      }
     }
   },
   "exceptions": {
@@ -548,6 +566,30 @@
     },
     "refresh_pressed_recently": {
       "message": "Der Tarif wurde zuletzt um {last} geprüft; ab {next} kann er erneut geprüft werden."
+    },
+    "window_reversed": {
+      "message": "Das Enddatum liegt vor dem Startdatum."
+    },
+    "window_not_closed": {
+      "message": "Das Enddatum muss vor heute liegen: nur ganze Tage, die der Zähler erfasst hat, werden berechnet."
+    },
+    "window_before_switch": {
+      "message": "Diese Tage beginnen vor dem {switched}, dem Tag, an dem der aktuelle Vertrag übernommen hat: nur seine eigenen Tage werden berechnet."
+    },
+    "nothing_priced_yet": {
+      "message": "Der Eintrag hat seine Tarifkarte noch nicht berechnet; versuchen Sie es nach seiner ersten Aktualisierung erneut."
+    },
+    "no_meter": {
+      "message": "Es wird kein Gaszähler gelesen: wählen Sie einen in den Einstellungen des Eintrags oder fügen Sie einen zum Energie-Dashboard hinzu."
+    },
+    "meter_not_read": {
+      "message": "Der Gaszähler konnte nicht gelesen werden: {error}"
+    },
+    "no_conversion_factor": {
+      "message": "Ein Monat dieser Tage enthält Gas, aber für ihn ist kein kWh-Wert pro Kubikmeter bekannt."
+    },
+    "window_not_priced": {
+      "message": "Diese Tage konnten nicht berechnet werden: {error}"
     }
   }
 }

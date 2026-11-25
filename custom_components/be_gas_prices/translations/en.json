@@ -528,6 +528,24 @@
           "description": "Deletes the price sensors' statistics in full before writing; needs an entry. The year's cost is rewritten, not deleted."
         }
       }
+    },
+    "bill_cost": {
+      "name": "Bill cost",
+      "description": "Price the gas the meter recorded over a closed run of days the way the year's cost is priced, to hold a supplier's bill against. Returns the cost with VAT, the kWh and how much of the days the meter covers.",
+      "fields": {
+        "entry_id": {
+          "name": "Entry",
+          "description": "The entry whose prices are used."
+        },
+        "start": {
+          "name": "Start date",
+          "description": "The first day billed. No earlier than 1 January of last year, nor than the last recorded change of contract."
+        },
+        "end": {
+          "name": "End date",
+          "description": "The last day billed, before today."
+        }
+      }
     }
   },
   "exceptions": {
@@ -548,6 +566,30 @@
     },
     "refresh_pressed_recently": {
       "message": "The tariff was last checked at {last}; the next check can start from {next}."
+    },
+    "window_reversed": {
+      "message": "The end date comes before the start date."
+    },
+    "window_not_closed": {
+      "message": "The end date has to be before today: only whole days the meter has recorded are priced."
+    },
+    "window_before_switch": {
+      "message": "The days start before {switched}, the day the current contract took over: only its own days are priced."
+    },
+    "nothing_priced_yet": {
+      "message": "The entry has not priced its card yet; try again after its first update."
+    },
+    "no_meter": {
+      "message": "No gas meter is read: choose one in the entry's settings or add one to the Energy dashboard."
+    },
+    "meter_not_read": {
+      "message": "The gas meter could not be read: {error}"
+    },
+    "no_conversion_factor": {
+      "message": "A month of those days holds gas, but no kWh per cubic metre is held for it."
+    },
+    "window_not_priced": {
+      "message": "Those days could not be priced: {error}"
     }
   }
 }

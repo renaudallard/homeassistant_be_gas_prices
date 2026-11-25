@@ -59,6 +59,9 @@
     },
     "backfill_statistics": {
       "service": "mdi:history"
+    },
+    "bill_cost": {
+      "service": "mdi:receipt-text"
     }
   }
 }

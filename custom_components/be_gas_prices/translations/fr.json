@@ -528,6 +528,24 @@
           "description": "Efface entièrement les statistiques des capteurs de prix avant d'écrire ; nécessite une entrée. Le coût de l'année est réécrit, pas effacé."
         }
       }
+    },
+    "bill_cost": {
+      "name": "Coût d'une facture",
+      "description": "Calcule le prix du gaz que le compteur a enregistré sur une suite de jours révolus, comme le coût de l'année, pour le comparer à la facture d'un fournisseur. Renvoie le coût TVA comprise, les kWh et la part de ces jours que le compteur couvre.",
+      "fields": {
+        "entry_id": {
+          "name": "Entrée",
+          "description": "L'entrée dont les prix sont utilisés."
+        },
+        "start": {
+          "name": "Date de début",
+          "description": "Le premier jour facturé. Pas avant le 1er janvier de l'année dernière, ni avant le dernier changement de contrat enregistré."
+        },
+        "end": {
+          "name": "Date de fin",
+          "description": "Le dernier jour facturé, avant aujourd'hui."
+        }
+      }
     }
   },
   "exceptions": {
@@ -548,6 +566,30 @@
     },
     "refresh_pressed_recently": {
       "message": "Le tarif a été vérifié pour la dernière fois à {last} ; la prochaine vérification peut commencer à partir de {next}."
+    },
+    "window_reversed": {
+      "message": "La date de fin précède la date de début."
+    },
+    "window_not_closed": {
+      "message": "La date de fin doit précéder aujourd'hui : seuls des jours entiers enregistrés par le compteur sont calculés."
+    },
+    "window_before_switch": {
+      "message": "Ces jours commencent avant le {switched}, jour où le contrat actuel a pris le relais : seuls ses propres jours sont calculés."
+    },
+    "nothing_priced_yet": {
+      "message": "L'entrée n'a pas encore calculé sa carte tarifaire ; réessayez après sa première mise à jour."
+    },
+    "no_meter": {
+      "message": "Aucun compteur de gaz n'est lu : choisissez-en un dans les paramètres de l'entrée ou ajoutez-en un au tableau de bord Énergie."
+    },
+    "meter_not_read": {
+      "message": "Le compteur de gaz n'a pas pu être lu : {error}"
+    },
+    "no_conversion_factor": {
+      "message": "Un mois de ces jours contient du gaz, mais aucune valeur de kWh par mètre cube n'est connue pour lui."
+    },
+    "window_not_priced": {
+      "message": "Ces jours n'ont pas pu être calculés : {error}"
     }
   }
 }

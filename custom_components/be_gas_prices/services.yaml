@@ -21,3 +21,18 @@ backfill_statistics:
       default: false
       selector:
         boolean:
+bill_cost:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: be_gas_prices
+    start:
+      required: true
+      selector:
+        date:
+    end:
+      required: true
+      selector:
+        date:

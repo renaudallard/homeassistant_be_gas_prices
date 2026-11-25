@@ -528,6 +528,24 @@
           "description": "Wist de statistieken van de prijssensoren volledig voor het schrijven; vereist een item. De kosten van het jaar worden herschreven, niet gewist."
         }
       }
+    },
+    "bill_cost": {
+      "name": "Kosten van een factuur",
+      "description": "Berekent de prijs van het gas dat de meter over een reeks afgesloten dagen registreerde, zoals de kosten van het jaar, om de factuur van een leverancier ermee te vergelijken. Geeft de kosten incl. btw, de kWh en welk deel van die dagen de meter dekt.",
+      "fields": {
+        "entry_id": {
+          "name": "Item",
+          "description": "Het item waarvan de prijzen gebruikt worden."
+        },
+        "start": {
+          "name": "Startdatum",
+          "description": "De eerste gefactureerde dag. Niet vroeger dan 1 januari van vorig jaar, noch dan de laatst vastgelegde contractwissel."
+        },
+        "end": {
+          "name": "Einddatum",
+          "description": "De laatste gefactureerde dag, vóór vandaag."
+        }
+      }
     }
   },
   "exceptions": {
@@ -548,6 +566,30 @@
     },
     "refresh_pressed_recently": {
       "message": "Het tarief werd het laatst gecontroleerd om {last}; vanaf {next} kan het opnieuw worden gecontroleerd."
+    },
+    "window_reversed": {
+      "message": "De einddatum ligt vóór de startdatum."
+    },
+    "window_not_closed": {
+      "message": "De einddatum moet vóór vandaag liggen: alleen volledige dagen die de meter registreerde worden berekend."
+    },
+    "window_before_switch": {
+      "message": "Die dagen beginnen vóór {switched}, de dag waarop het huidige contract het overnam: alleen de eigen dagen ervan worden berekend."
+    },
+    "nothing_priced_yet": {
+      "message": "Het item heeft zijn tariefkaart nog niet berekend; probeer opnieuw na de eerste update."
+    },
+    "no_meter": {
+      "message": "Er wordt geen gasmeter gelezen: kies er een in de instellingen van het item of voeg er een toe aan het Energie-dashboard."
+    },
+    "meter_not_read": {
+      "message": "De gasmeter kon niet gelezen worden: {error}"
+    },
+    "no_conversion_factor": {
+      "message": "Een maand van die dagen bevat gas, maar er is geen kWh per kubieke meter voor bekend."
+    },
+    "window_not_priced": {
+      "message": "Die dagen konden niet berekend worden: {error}"
     }
   }
 }

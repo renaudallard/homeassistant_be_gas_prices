@@ -58,6 +58,7 @@ from homeassistant.util.json import JsonValueType
 
 from .backfill import backfill_once_a_year, backfill_prices
 from .backfill_cost import backfill_cost, backfill_cost_once
+from .bill_cost import window_cost
 from .const import (
     CONF_BILL_ENTITY,
     CONF_CARD_ARCHIVE,
@@ -76,12 +77,20 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 SERVICE_REFRESH = "refresh"
 SERVICE_BACKFILL = "backfill_statistics"
+SERVICE_BILL_COST = "bill_cost"
 _REFRESH_SCHEMA = vol.Schema({vol.Optional("entry_id"): cv.string})
 _BACKFILL_SCHEMA = vol.Schema(
     {
         vol.Optional("entry_id"): cv.string,
         vol.Optional("start_date"): cv.date,
         vol.Optional("clear", default=False): cv.boolean,
+    }
+)
+_BILL_COST_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("start"): cv.date,
+        vol.Required("end"): cv.date,
     }
 )
 
@@ -167,6 +176,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             written.update(await backfill_cost(hass, coordinator))
         return {"rows": written}
 
+    async def _bill_cost(call: ServiceCall) -> ServiceResponse:
+        (coordinator,) = _loaded_coordinators(hass, call.data["entry_id"])
+        return await window_cost(coordinator, call.data["start"], call.data["end"])
+
     # For administrators only, as the backfill below. Every call fetches the
     # card, the index values and the calorific values again whatever their
     # age, and any user, read-only ones included, could repeat it at will. A
@@ -183,6 +196,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _backfill,
         schema=_BACKFILL_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    # For administrators only: it reads the meter's history, which says when
+    # a household is away, and fetches the cards of the months asked.
+    async_register_admin_service(
+        hass,
+        DOMAIN,
+        SERVICE_BILL_COST,
+        _bill_cost,
+        schema=_BILL_COST_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )
     return True
 

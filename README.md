@@ -623,6 +623,12 @@ data:
   entry_id: 01H...                       # optional; required with clear
   start_date: "2026-01-01"               # optional; 1 January, or the contract start when the year counts from it; never before 1 January of last year
   clear: false                           # true deletes the price sensors' statistics in full first
+
+service: be_gas_prices.bill_cost         # what the meter's gas over closed days cost, priced here
+data:
+  entry_id: 01H...
+  start: "2025-01-06"                    # the first day billed; never before 1 January of last year, nor the last change of contract
+  end: "2025-12-16"                      # the last day billed, before today
 ```
 
 `backfill_statistics` also rewrites `current_year_cost`'s statistics over the
@@ -631,6 +637,16 @@ them would take the years before with them. Only an administrator can call
 it, as with Home Assistant's own statistics actions; an automation can too.
 The same holds for `refresh`, which fetches from the supplier every time it
 is called; the button is there for everyone else.
+
+`bill_cost` is there to hold a supplier's bill against: it only answers (tick
+*Return response* under *Developer tools > Actions*) and changes nothing. The
+days are billed as the year's cost bills them, each month on its own card,
+at the volume the entry prices its tier and excise on now, and on the current
+contract only. The answer has the cost VAT included, the kWh, each month's
+energy, network, taxes and fixed costs, whether the meter's history covers
+every day (`covered`, with `days_on_record`), the months billed on another
+month's card and those whose energy price is not final yet. It reads the
+meter's history, so only an administrator can call it.
 
 ## Diagnostics
 
