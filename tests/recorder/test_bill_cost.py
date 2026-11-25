@@ -188,12 +188,12 @@ async def test_days_that_cannot_be_priced_are_refused(
     for start, end, key in (
         ("2026-08-02", "2026-08-01", "window_reversed"),
         ("2026-09-01", "2026-09-15", "window_not_closed"),
-        ("2024-12-31", "2025-01-31", "start_date_too_early"),
+        ("2023-12-31", "2024-01-31", "bill_start_too_early"),
     ):
         with pytest.raises(ServiceValidationError) as err:
             await _cost(hass, entry.entry_id, start, end)
         assert err.value.translation_key == key
-    assert (await _cost(hass, entry.entry_id, "2025-01-01", "2025-01-31"))["kwh"] == 0.0
+    assert (await _cost(hass, entry.entry_id, "2024-01-01", "2024-01-31"))["kwh"] == 0.0
 
     with (
         patch.object(coordinator, "switch_day", return_value=date(2026, 7, 15)),

@@ -50,7 +50,6 @@ from .contract_periods import belgian_today, card_key_due
 from .gas_meter import RecorderUnavailable, consumption, daily_changes, statistic_kind
 from .pricing import PricingError
 from .providers._pdf import shown_text
-from .providers._validity import earliest_priced_month
 from .running_costs import RunningCosts, months_between, running_costs, to_kwh
 
 if TYPE_CHECKING:
@@ -70,6 +69,15 @@ def _failed(key: str, **placeholders: str) -> HomeAssistantError:
     )
 
 
+def earliest_bill_day(today: date) -> date:
+    """The first day a bill can start on: 1 January two years back, so a
+    yearly bill is priced until the next one comes. Its months, 36 at most,
+    are within what the card archive keeps (coordinator_inputs.BILL_MONTHS);
+    one whose index the supplier no longer publishes is priced
+    provisionally, and named so."""
+    return date(today.year - 2, 1, 1)
+
+
 def check_window(coordinator: GasCoordinator, start: date, end: date, today: date) -> None:
     """Refuse a window that is not a closed run of days of the current
     contract the cards reach back to."""
@@ -77,9 +85,9 @@ def check_window(coordinator: GasCoordinator, start: date, end: date, today: dat
         raise _invalid("window_reversed")
     if end >= today:
         raise _invalid("window_not_closed")
-    earliest = earliest_priced_month(today)
+    earliest = earliest_bill_day(today)
     if start < earliest:
-        raise _invalid("start_date_too_early", earliest=earliest.isoformat())
+        raise _invalid("bill_start_too_early", earliest=earliest.isoformat())
     switched = coordinator.switch_day()
     if switched is not None and start < switched:
         raise _invalid("window_before_switch", switched=switched.isoformat())

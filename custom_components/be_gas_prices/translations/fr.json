@@ -539,7 +539,7 @@
         },
         "start": {
           "name": "Date de début",
-          "description": "Le premier jour facturé. Pas avant le 1er janvier de l'année dernière, ni avant le dernier changement de contrat enregistré."
+          "description": "Le premier jour facturé. Pas avant le 1er janvier d'il y a deux ans, ni avant le dernier changement de contrat enregistré."
         },
         "end": {
           "name": "Date de fin",
@@ -590,6 +590,9 @@
     },
     "window_not_priced": {
       "message": "Ces jours n'ont pas pu être calculés : {error}"
+    },
+    "bill_start_too_early": {
+      "message": "La date de début ne peut pas précéder le {earliest} : l'archive des cartes tarifaires n'en garde pas de plus anciennes."
     }
   }
 }

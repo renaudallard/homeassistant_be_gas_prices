@@ -539,7 +539,7 @@
         },
         "start": {
           "name": "Startdatum",
-          "description": "Der erste abgerechnete Tag. Nicht vor dem 1. Januar des Vorjahres und nicht vor dem zuletzt erfassten Vertragswechsel."
+          "description": "Der erste abgerechnete Tag. Nicht vor dem 1. Januar vor zwei Jahren und nicht vor dem zuletzt erfassten Vertragswechsel."
         },
         "end": {
           "name": "Enddatum",
@@ -590,6 +590,9 @@
     },
     "window_not_priced": {
       "message": "Diese Tage konnten nicht berechnet werden: {error}"
+    },
+    "bill_start_too_early": {
+      "message": "Das Startdatum darf nicht vor dem {earliest} liegen: das Archiv der Tarifkarten bewahrt keine älteren auf."
     }
   }
 }

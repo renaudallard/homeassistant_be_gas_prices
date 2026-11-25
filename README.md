@@ -627,7 +627,7 @@ data:
 service: be_gas_prices.bill_cost         # what the meter's gas over closed days cost, priced here
 data:
   entry_id: 01H...
-  start: "2025-01-06"                    # the first day billed; never before 1 January of last year, nor the last change of contract
+  start: "2025-01-06"                    # the first day billed; never before 1 January two years back, nor the last change of contract
   end: "2025-12-16"                      # the last day billed, before today
 ```
 
@@ -646,7 +646,11 @@ contract only. The answer has the cost VAT included, the kWh, each month's
 energy, network, taxes and fixed costs, whether the meter's history covers
 every day (`covered`, with `days_on_record`), the months billed on another
 month's card and those whose energy price is not final yet. It reads the
-meter's history, so only an administrator can call it.
+meter's history, so only an administrator can call it. The first day can be
+as early as 1 January two years back, so a yearly bill can be priced until
+the next one comes; with the calorific values of a reception station, which
+are read from January of last year, an older month is refused for having no
+conversion factor.
 
 ## Diagnostics
 

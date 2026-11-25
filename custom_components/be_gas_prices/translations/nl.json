@@ -539,7 +539,7 @@
         },
         "start": {
           "name": "Startdatum",
-          "description": "De eerste gefactureerde dag. Niet vroeger dan 1 januari van vorig jaar, noch dan de laatst vastgelegde contractwissel."
+          "description": "De eerste gefactureerde dag. Niet vroeger dan 1 januari twee jaar terug, noch dan de laatst vastgelegde contractwissel."
         },
         "end": {
           "name": "Einddatum",
@@ -590,6 +590,9 @@
     },
     "window_not_priced": {
       "message": "Die dagen konden niet berekend worden: {error}"
+    },
+    "bill_start_too_early": {
+      "message": "De startdatum mag niet vroeger zijn dan {earliest}: het archief van tariefkaarten bewaart geen oudere."
     }
   }
 }
