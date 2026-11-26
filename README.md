@@ -632,6 +632,12 @@ data:
   entry_id: 01H...
   start: "2025-01-06"                    # the first day billed; never before 1 January two years back, nor the last change of contract
   end: "2025-12-16"                      # the last day billed, before today
+
+service: be_gas_prices.energy_rate       # the energy price of each month, to project a bill with
+data:
+  entry_id: 01H...
+  start: "2025-12-17"                    # a day in the first month; never before 1 January two years back, nor the last change of contract
+  end: "2027-01-15"                      # a day in the last month, at most 14 months after this one
 ```
 
 `backfill_statistics` also rewrites `current_year_cost`'s statistics over the
@@ -654,6 +660,16 @@ as early as 1 January two years back, so a yearly bill can be priced until
 the next one comes; with the calorific values of a reception station, which
 are read from January of last year, an older month is refused for having no
 conversion factor.
+
+`energy_rate` only answers as well. It gives each month's energy price in EUR
+per kWh VAT included, the leg the contract is billed on, on the month's own
+card and index as `bill_cost` prices it, without the network, levies or fixed
+costs. A month the index has not reached yet takes the latest value
+published, and a month after this one the card in hand; both are marked
+`provisional` unless the price is fixed, and `stand_in_card` names a past
+month priced on the card in hand. The Eneco integration calls it to project a
+yearly bill. Only an administrator can call it, since it fetches the cards of
+the months asked.
 
 ## Diagnostics
 

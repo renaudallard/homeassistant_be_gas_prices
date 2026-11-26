@@ -548,6 +548,24 @@
           "description": "Der letzte abgerechnete Tag, vor heute."
         }
       }
+    },
+    "energy_rate": {
+      "name": "Energiepreis",
+      "description": "Gibt den Energiepreis jedes Monats inklusive MwSt. an, wie der Vertrag auf seinen Tarifkarten und seinem Index abgerechnet wird, um die kommende Rechnung eines Lieferanten hochzurechnen. Ein Monat, dessen Index noch nicht veröffentlicht ist, wird mit dem letzten berechnet und als vorläufig markiert.",
+      "fields": {
+        "entry_id": {
+          "name": "Eintrag",
+          "description": "Der Eintrag, dessen Preise verwendet werden."
+        },
+        "start": {
+          "name": "Erster Monat",
+          "description": "Ein Tag im ersten Monat. Nicht vor dem 1. Januar vor zwei Jahren und nicht vor dem zuletzt erfassten Vertragswechsel."
+        },
+        "end": {
+          "name": "Letzter Monat",
+          "description": "Ein Tag im letzten Monat, höchstens 14 Monate nach diesem."
+        }
+      }
     }
   },
   "exceptions": {
@@ -595,6 +613,9 @@
     },
     "bill_start_too_early": {
       "message": "Das Startdatum darf nicht vor dem {earliest} liegen: das Archiv der Tarifkarten bewahrt keine älteren auf."
+    },
+    "rate_end_too_late": {
+      "message": "Der letzte Monat darf nicht nach {latest} liegen: so weit lässt sich kein Preis hochrechnen."
     }
   }
 }

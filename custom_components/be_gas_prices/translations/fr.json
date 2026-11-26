@@ -548,6 +548,24 @@
           "description": "Le dernier jour facturé, avant aujourd'hui."
         }
       }
+    },
+    "energy_rate": {
+      "name": "Prix de l'énergie",
+      "description": "Donne le prix de l'énergie de chaque mois, TVA comprise, tel que le contrat est facturé sur ses cartes et son index, pour projeter la prochaine facture d'un fournisseur. Un mois dont l'index n'est pas encore publié est calculé sur le dernier et marqué provisoire.",
+      "fields": {
+        "entry_id": {
+          "name": "Entrée",
+          "description": "L'entrée dont les prix sont utilisés."
+        },
+        "start": {
+          "name": "Premier mois",
+          "description": "Un jour du premier mois. Pas avant le 1er janvier d'il y a deux ans, ni avant le dernier changement de contrat enregistré."
+        },
+        "end": {
+          "name": "Dernier mois",
+          "description": "Un jour du dernier mois, au plus 14 mois après celui-ci."
+        }
+      }
     }
   },
   "exceptions": {
@@ -595,6 +613,9 @@
     },
     "bill_start_too_early": {
       "message": "La date de début ne peut pas précéder le {earliest} : l'archive des cartes tarifaires n'en garde pas de plus anciennes."
+    },
+    "rate_end_too_late": {
+      "message": "Le dernier mois ne peut pas dépasser {latest} : aucun prix ne peut être projeté aussi loin."
     }
   }
 }

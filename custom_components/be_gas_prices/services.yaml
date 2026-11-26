@@ -36,3 +36,18 @@ bill_cost:
       required: true
       selector:
         date:
+energy_rate:
+  fields:
+    entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: be_gas_prices
+    start:
+      required: true
+      selector:
+        date:
+    end:
+      required: true
+      selector:
+        date:

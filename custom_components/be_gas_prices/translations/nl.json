@@ -548,6 +548,24 @@
           "description": "De laatste gefactureerde dag, vóór vandaag."
         }
       }
+    },
+    "energy_rate": {
+      "name": "Energieprijs",
+      "description": "Geeft de energieprijs van elke maand, btw inbegrepen, zoals het contract op zijn tariefkaarten en index gefactureerd wordt, om de komende factuur van een leverancier te ramen. Een maand waarvan de index nog niet gepubliceerd is, krijgt de laatste en is voorlopig.",
+      "fields": {
+        "entry_id": {
+          "name": "Item",
+          "description": "Het item waarvan de prijzen gebruikt worden."
+        },
+        "start": {
+          "name": "Eerste maand",
+          "description": "Een dag in de eerste maand. Niet vroeger dan 1 januari twee jaar terug, noch dan de laatst vastgelegde contractwissel."
+        },
+        "end": {
+          "name": "Laatste maand",
+          "description": "Een dag in de laatste maand, hoogstens 14 maanden na deze."
+        }
+      }
     }
   },
   "exceptions": {
@@ -595,6 +613,9 @@
     },
     "bill_start_too_early": {
       "message": "De startdatum mag niet vroeger zijn dan {earliest}: het archief van tariefkaarten bewaart geen oudere."
+    },
+    "rate_end_too_late": {
+      "message": "De laatste maand mag niet later zijn dan {latest}: zo ver kan geen prijs geraamd worden."
     }
   }
 }

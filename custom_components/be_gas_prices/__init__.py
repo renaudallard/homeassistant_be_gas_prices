@@ -69,6 +69,7 @@ from .const import (
 )
 from .coordinator import GasCoordinator
 from .daily_ranking import ranking_minute
+from .energy_rate import energy_rates
 from .issues import clear_issues
 from .providers._validity import earliest_priced_month
 from .providers.base import ExtractorError
@@ -78,6 +79,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 SERVICE_REFRESH = "refresh"
 SERVICE_BACKFILL = "backfill_statistics"
 SERVICE_BILL_COST = "bill_cost"
+SERVICE_ENERGY_RATE = "energy_rate"
 _REFRESH_SCHEMA = vol.Schema({vol.Optional("entry_id"): cv.string})
 _BACKFILL_SCHEMA = vol.Schema(
     {
@@ -180,6 +182,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         (coordinator,) = _loaded_coordinators(hass, call.data["entry_id"])
         return await window_cost(coordinator, call.data["start"], call.data["end"])
 
+    async def _energy_rate(call: ServiceCall) -> ServiceResponse:
+        (coordinator,) = _loaded_coordinators(hass, call.data["entry_id"])
+        return await energy_rates(coordinator, call.data["start"], call.data["end"])
+
     # For administrators only, as the backfill below. Every call fetches the
     # card, the index values and the calorific values again whatever their
     # age, and any user, read-only ones included, could repeat it at will. A
@@ -204,6 +210,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         DOMAIN,
         SERVICE_BILL_COST,
         _bill_cost,
+        schema=_BILL_COST_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    # For administrators only, as bill_cost: every call fetches the cards of
+    # the months asked that are not held yet.
+    async_register_admin_service(
+        hass,
+        DOMAIN,
+        SERVICE_ENERGY_RATE,
+        _energy_rate,
         schema=_BILL_COST_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
