@@ -14,15 +14,17 @@ process).
 `requirements-dev.txt` pins what the suite installs, and the live check and
 the archive take their pypdf and pdfplumber from it with pip's `-c`, so the
 workflows read a card with the pypdf the suite ran on. The manifest only
-sets a floor (`pypdf>=6.16.2`), so an installation reads its cards with the
-newest pypdf, which no workflow does: the pin is the last release of the 6
-series, 6.21.4, and the suite is also run by hand on the newest, 7.1.1 on
-19 November 2026, and `tests/test_pdf_bound.py` on the floor, each installed
-alone in a directory put ahead of the venv (`pip install --target <dir>
---no-deps pypdf==<version>`, then `PYTHONPATH=<dir>`). Both matter between
-releases: the readers' bounds wrap pypdf's internals by name, and its plain
-text moves, 6.20 running Engie's fee heading into the words after it and 7
-setting a space between them.
+sets a floor (`pypdf>=6.16.2`), so a new installation reads its cards with
+the newest pypdf and an older one keeps the pypdf it has. The pin is the
+newest, 7.2.0 on 27 November 2026, and the suite is also run by hand on the
+last release of the 6 series, 6.21.4, and `tests/test_pdf_bound.py` on the
+floor, each installed alone in a directory put ahead of the venv (`pip
+install --target <dir> --no-deps pypdf==<version>`, then `PYTHONPATH=<dir>`).
+Both matter between releases: the readers' bounds wrap pypdf's internals by
+name, and its plain text moves, 6.20 running Engie's fee heading into the
+words after it, 7 setting a space between them, and 7.2 keeping the pieces
+of one line together where 7.1 put each on a line of its own, which broke
+every Mega card (issue #19).
 
 Reading the fixture cards is most of what the suite spends, a Frank or Bolt
 card 40 to 50 seconds of pdfplumber on a Raspberry Pi, so `fixture_text`

@@ -274,6 +274,56 @@ def test_july_card_prints_the_old_excise_and_the_energy_contribution() -> None:
     assert snap.valid_until == date(2026, 7, 31)
 
 
+def test_november_cosy_flex_is_indexed_to_the_monthly_ztp() -> None:
+    """One excise column: the energy contribution is part of it since
+    August 2026."""
+    snap = mega.parse_snapshot("mega_cosy_flex", REGION_FLANDERS, _card("VL-112026-Cosy1711"))
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.index == "ZTP mensuel"
+    assert energy.formula == "ZTP x 1,08 + 1,15 c€/kWh"
+    assert energy.yearly_fixed_fee == 105.0
+    # "pour le mois de octobre 2026 ... 11.02"
+    assert energy.price == pytest.approx(0.1102)
+    assert snap.taxes.excise_bands == (
+        (12000.0, pytest.approx(0.0109286)),
+        (None, pytest.approx(0.0118296)),
+    )
+    assert snap.taxes.energy_contribution == 0.0
+    assert snap.valid_until == date(2026, 11, 30)
+
+
+def test_april_cosy_flex_keeps_its_own_formula_and_fee() -> None:
+    """Two excise columns: the energy contribution beside each slice."""
+    snap = mega.parse_snapshot("mega_cosy_flex", REGION_FLANDERS, _card("VL-042026-Cosy0104"))
+    energy = snap.energy
+    assert isinstance(energy, IndexedRates)
+    assert energy.index == "ZTP mensuel"
+    assert energy.formula == "ZTP x 1,08 + 1 c€/kWh"
+    assert energy.yearly_fixed_fee == 90.1
+    assert snap.taxes.excise_bands == (
+        (12000.0, pytest.approx(0.0087238)),
+        (None, pytest.approx(0.0098645)),
+    )
+    assert snap.taxes.energy_contribution == pytest.approx(0.0010577)
+    assert snap.valid_until == date(2026, 4, 30)
+
+
+@pytest.mark.parametrize("name", ["VL-112026-Cosy1711", "VL-042026-Cosy0104"])
+def test_a_card_reads_alike_from_either_pypdf_layout(name: str) -> None:
+    """pypdf up to 7.1 puts every piece a card draws on a line of its own,
+    7.2 keeps the pieces of one line together. An install keeps the pypdf it
+    has, so both are read, to the same figures, kept as 6.21.4 and 7.2.0 put
+    them whatever pypdf the suite runs on."""
+    old = fixture_page("mega", f"Mega-FR-NG-B2C-{name}.pypdf6.txt")
+    new = fixture_page("mega", f"Mega-FR-NG-B2C-{name}.pypdf72.txt")
+    assert "Gaz naturel\nCosy Flex" in old
+    assert "Gaz naturel Cosy Flex" in new
+    snap = mega.parse_snapshot("mega_cosy_flex", REGION_FLANDERS, _card(name))
+    assert mega.parse_snapshot("mega_cosy_flex", REGION_FLANDERS, old) == snap
+    assert mega.parse_snapshot("mega_cosy_flex", REGION_FLANDERS, new) == snap
+
+
 def test_card_for_another_product_is_refused() -> None:
     with pytest.raises(ExtractorError, match="Smart Fixed"):
         mega.parse_snapshot("mega_zen_fixed", REGION_WALLONIA, _card("WL-092026-Smart0809-Fixed"))
@@ -303,8 +353,8 @@ def test_unknown_contract_is_refused() -> None:
         "La formule tarifaire pour le gaz",
         "Weekend ZTP (EGSI)",
         "La contribution énergétique est fixée à 0",
-        "Coût du transport\n",
-        "Prix du \nmois",
+        "Coût du transport",
+        "Prix du",
     ],
 )
 def test_card_that_lost_a_mandatory_figure_fails_loud(missing: str) -> None:
@@ -433,16 +483,29 @@ def test_blank_lines_after_a_product_heading_are_read_past_in_time() -> None:
     assert snap == mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, card)
 
 
-def test_a_product_name_holding_a_run_of_spaces_is_refused_in_time() -> None:
+def test_a_product_name_holding_a_run_of_spaces_is_read_past_in_time() -> None:
     """The term after the name was looked for from every space of a run in
     it, to the end of the run each time: a name holding 16 000 spaces took
-    5,4 s to be refused."""
-    text = "Gaz naturel\nSmart" + " " * 16000 + "Flex\n(Variable)\n"
-    text += _card("WL-092026-Smart0109")
+    5,4 s to be refused. A name is at most 80 characters, so that one names
+    no product and the card's own heading is read."""
+    card = _card("WL-092026-Smart0109")
+    text = "Gaz naturel\nSmart" + " " * 16000 + "Flex\n(Variable)\n" + card
     started = time.monotonic()
-    with pytest.raises(ExtractorError, match="card is for"):
-        mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, text)
+    snap = mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, text)
     assert time.monotonic() - started < 1.0
+    assert snap == mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, card)
+
+
+def test_product_headings_along_one_line_are_read_past_in_time() -> None:
+    """Read to the end of its line, the name was scanned again from every
+    "Gaz naturel" along it: 20 000 of them took 26 s on a Raspberry Pi."""
+    card = _card("WL-092026-Smart0109")
+    started = time.monotonic()
+    snap = mega.parse_snapshot(
+        "mega_smart_flex", REGION_WALLONIA, "Gaz naturel x" * 20000 + "\n" + card
+    )
+    assert time.monotonic() - started < 1.0
+    assert snap == mega.parse_snapshot("mega_smart_flex", REGION_WALLONIA, card)
 
 
 def test_a_card_url_of_many_month_segments_is_read_in_time() -> None:

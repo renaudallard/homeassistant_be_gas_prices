@@ -78,13 +78,18 @@ the region code, which their archive is built off.
 
 ## How each figure is read
 
-The card is read with pypdf (`fetch_pdf_text`), which puts one value per line.
-pdfplumber lays the table out better but took 12,9 s on a Smart Flex card on
+The card is read with pypdf (`fetch_pdf_text`). Up to 7.1 it puts every piece
+the card draws on a line of its own, `Gaz naturel` / `Cosy Flex` /
+`(Variable)`; from 7.2 it keeps the pieces of one line together, `Gaz naturel
+Cosy Flex (Variable)`, `Coût énergie (c€/kWh) 11.43`. An installation keeps the
+pypdf it has, so a label and its figure may be parted by a line break or a
+space, and both read to the same figures (issue #19). pdfplumber lays the table out better but took 12,9 s on a Smart Flex card on
 a Raspberry Pi against 1,5 s for pypdf.
 
-- Product: the line between `Gaz naturel` and `(Variable)` or `(Fixe)`, less
-  a trailing term (`2Y`, `3Y`), must equal the contract's card name. The
-  January 2025 card printed `Smart Flex` without a term.
+- Product: what follows `Gaz naturel` up to `(Variable)` or `(Fixe)`, on its
+  line or the next, at most 80 characters, less a trailing term (`2Y`,
+  `3Y`), must equal the contract's card name. The January 2025 card printed
+  `Smart Flex` without a term.
 - Month: `Prix du mois MM/YYYY`. `valid_until` is the end of that month.
 - VAT: `TVA 6% incluse`, stored as `card_vat_rate`. Mandatory.
 - Price and fee: the figure after `Coût énergie (c€/kWh)` and after
@@ -111,7 +116,8 @@ a Raspberry Pi against 1,5 s for pypdf.
   labels wrapped at a hyphen or an open parenthesis (`Fluvius Halle-` /
   `Vilvoorde`, `ORES (Brabant` / `wallon)`) before `read_dsos`.
 - Transport: `Coût du transport` then `0.165`, printed once, passed as
-  `transport=`.
+  `transport=`. Under pypdf 7.2 some cards run the footnote into it,
+  `0.165(1) Ces prix`.
 - Excise: `Consommation entre 0 et 12.000 kWh` and `Consommation de plus de
   12.000 kWh`, one figure each. Cards before August 2026 print the energy
   contribution in a second column (`0.10577` on both slices); later ones
@@ -121,8 +127,9 @@ a Raspberry Pi against 1,5 s for pypdf.
   EUR/kWh). A Walloon card without it reads as zero, since the law's fee is
   billed whatever a card prints.
 - Brussels levy: after `Obligations de Service Public`, each amount is the
-  line after `/heure`, `/heure*` or `/heure**` (the caliber prints as `6 ou 10
-  m`, `3`, `/heure*`). Nine amounts, in order, go to `osp_table`.
+  figure after `/heure`, `/heure*` or `/heure**` (the caliber prints as `6 ou
+  10 m`, `3`, `/heure*` up to pypdf 7.1, `6 ou 10 m3/heure*` from 7.2). Nine
+  amounts, in order, go to `osp_table`.
 
 Decimals use a dot and drop trailing zeros (`2.5`, `376`, `15.9`); the formula
 uses a comma. `to_float` reads both.
@@ -245,6 +252,12 @@ energy leg a contract signed on it is priced on (Smart Fixed of November
   `test_brussels_card_reads_the_per_meter_levy`: full rows per region,
   transport, metering, connection fee, excise, levy table.
 - `test_july_card_prints_the_old_excise_and_the_energy_contribution`.
+- `test_november_cosy_flex_is_indexed_to_the_monthly_ztp` (one excise column)
+  and `test_april_cosy_flex_keeps_its_own_formula_and_fee` (two), the Flemish
+  Cosy Flex cards of issue #19.
+- `test_a_card_reads_alike_from_either_pypdf_layout`: both of those cards as
+  pypdf 6.21.4 and 7.2.0 put them (`*.pypdf6.txt`, `*.pypdf72.txt`) read to
+  the same snapshot as the installed pypdf's text of the PDF.
 - Catalog: `test_the_listing_names_the_gas_products_sold`,
   `test_a_product_read_off_its_last_card_is_sold_while_unlisted`,
   `test_discover_reads_the_listing`.

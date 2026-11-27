@@ -114,7 +114,6 @@ from ._network import (
     signing_dsos,
 )
 from ._parse import (
-    LINE_BREAK,
     SIGN_CHARS,
     elements,
     html_cells,
@@ -405,6 +404,11 @@ async def fetch_for_month(
 
 
 _FIG = r"\d+(?:[.,]\d+)?"
+# What separates a label from its figure: a line break up to pypdf 7.1,
+# which put every piece the card draws on a line of its own, a space from
+# 7.2, which keeps the pieces of one line together. Taken whole, as
+# LINE_BREAK is, before a figure that cannot begin with a space.
+_GAP = r"(?>\s+)"
 
 
 def parse_snapshot(
@@ -438,13 +442,13 @@ def parse_snapshot(
     )
 
 
-# "Gaz naturel / Smart Flex 2Y / (Variable)". The term is not part of the
-# name: the January 2025 card printed "Smart Flex" alone. The name is the
-# first line after "Gaz naturel" that is not blank: the line break before it
-# is taken whole. Backing into it read a blank line between as the name,
-# which names no product, and scanned the lines after it again from every
-# one, in time growing with their square.
-_PRODUCT_RE = re.compile(r"Gaz naturel(?>\s*\n)(.+)\n\s*\((?:Variable|Fixe)\)")
+# "Gaz naturel / Smart Flex 2Y / (Variable)" up to pypdf 7.1, "Gaz naturel
+# Smart Flex 2Y (Variable)" from 7.2. The term is not part of the name: the
+# January 2025 card printed "Smart Flex" alone. The name is what follows
+# "Gaz naturel" up to the end of its line or the parenthesis, taken whole
+# and at most 80 characters, so that a search tried from every "Gaz
+# naturel" of a long line does not scan it to the end again each time.
+_PRODUCT_RE = re.compile(r"Gaz naturel(?>\s+)(?>([^\n(]{1,80}))(?>\s*)\((?:Variable|Fixe)\)")
 # The term after the name, from the first space before it: tried from
 # every space of a run, it was scanned to the end of the run again.
 _TERM_RE = re.compile(r"(?<!\s)\s+\d+Y$")
@@ -475,8 +479,8 @@ def _card_month(flat: str) -> date:
     return month_date(match.group(2), match.group(1), "Mega")
 
 
-_PRICE_RE = re.compile(rf"Coût énergie \(c€/kWh\){LINE_BREAK}({_FIG})\s*\n")
-_FEE_RE = re.compile(rf"Redevance fixe \(€/an\){LINE_BREAK}({_FIG})\s*\n")
+_PRICE_RE = re.compile(rf"Coût énergie \(c€/kWh\){_GAP}({_FIG})\s*\n")
+_FEE_RE = re.compile(rf"Redevance fixe \(€/an\){_GAP}({_FIG})\s*\n")
 _FORMULA_RE = re.compile(
     rf"formule tarifaire pour le gaz est la suivante \(HTVA\) ?: "
     rf"((ZTP|TTF) x ({_FIG}) ([{SIGN_CHARS}]) ({_FIG}) c€/kWh)"
@@ -545,17 +549,20 @@ _LABELS: dict[str, dict[str, str]] = {
     REGION_BRUSSELS: {"Sibelga": DSO_SIBELGA},
 }
 _FIGURE_LINE_RE = re.compile(_FIG)
-_TRANSPORT_RE = re.compile(rf"Coût du transport{LINE_BREAK}({_FIG})\s*\n")
+# The figure ends the line, or from pypdf 7.2 runs into the footnote some
+# cards print on the same line: "Coût du transport 0.165(1) Ces prix".
+_TRANSPORT_RE = re.compile(rf"Coût du transport{_GAP}({_FIG})(?![\d.,])")
 
 
 def _table_rows(text: str) -> str:
     """The distribution table with each row on one line.
 
-    pypdf gives one cell per line, the label first and wrapped where it is
-    long ("ORES (Brabant" / "wallon)", "Fluvius Halle-" / "Vilvoorde"). A
-    figure joins the row above it, and a line after a label left open by a
-    hyphen or a parenthesis completes that label. The header's own wrapped
-    lines end up as rows of the wrong width, which the readers skip.
+    pypdf up to 7.1 gives one cell per line, 7.2 a row per line, the label
+    first and wrapped where it is long ("ORES (Brabant" / "wallon)",
+    "Fluvius Halle-" / "Vilvoorde"). A figure joins the row above it, and a
+    line after a label left open by a hyphen or a parenthesis completes that
+    label. The header's own wrapped lines end up as rows of the wrong width,
+    which the readers skip.
     """
     start = text.find("Prix de la distribution et du transport")
     end = text.find("Taxes, redevances", start)
@@ -602,7 +609,7 @@ def _dsos(text: str, region: str) -> dict[str, DsoOverlay]:
 
 # One excise row per slice, followed on the cards printed before August 2026
 # by the energy contribution in a column of its own.
-_EXCISE_ROW = rf"{LINE_BREAK}({_FIG})(?:{LINE_BREAK}({_FIG}))?\s*\n"
+_EXCISE_ROW = rf"{_GAP}({_FIG})(?:{_GAP}({_FIG}))?\s*\n"
 _EXCISE_LOW_RE = re.compile(r"Consommation entre 0 et 12\.000 kWh" + _EXCISE_ROW)
 _EXCISE_HIGH_RE = re.compile(r"Consommation de plus de 12\.000 kWh" + _EXCISE_ROW)
 _CONTRIBUTION_ZERO = "La contribution énergétique est fixée à 0"
@@ -628,7 +635,7 @@ def _excise(text: str, flat: str) -> tuple[tuple[tuple[float | None, float], ...
     return bands, 0.0
 
 
-_CONNECTION_FEE_RE = re.compile(rf"Redevance de raccordement{LINE_BREAK}({_FIG})\s*\n")
+_CONNECTION_FEE_RE = re.compile(rf"Redevance de raccordement{_GAP}({_FIG})\s*\n")
 
 
 def _connection_fee(text: str) -> float:
@@ -639,9 +646,9 @@ def _connection_fee(text: str) -> float:
     return 0.0 if match is None else to_float(match.group(1)) / 100.0
 
 
-# "6 ou 10 m / 3 / /heure* / 3.56": the caliber, its unit split around the
-# superscript, the footnote marks, then the amount on a line of its own.
-_OSP_AMOUNT_RE = re.compile(rf"^/heure\**{LINE_BREAK}({_FIG})\s*$", re.MULTILINE)
+# "6 ou 10 m / 3 / /heure* / 3.56" up to pypdf 7.1, "6 ou 10 m3/heure* 3.56"
+# from 7.2: the caliber, its unit, the footnote marks, then the amount.
+_OSP_AMOUNT_RE = re.compile(rf"/heure\**{_GAP}({_FIG})\s*$", re.MULTILINE)
 
 
 def _osp(text: str) -> dict[str, float]:
