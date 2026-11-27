@@ -760,6 +760,7 @@ sensor are redacted, so the file can be attached to an issue as it is.
 
 ```bash
 pip install -r requirements-dev.txt
+scripts/install_requirements.sh newest
 ruff check .
 ruff format --check .
 mypy --strict --cache-dir .mypy_cache_strict custom_components/be_gas_prices
@@ -767,8 +768,12 @@ mypy --cache-dir .mypy_cache_all tests/ scripts/
 pytest tests/
 ```
 
-`scripts/gate.sh` runs all of these at once against a snapshot of HEAD, which
-is what to use before a push.
+`requirements-dev.txt` pins the test harness only. The integration's own
+requirements are installed from the manifest as Home Assistant installs
+them, the newest it allows, and CI runs the suite again on their floor
+(`scripts/install_requirements.sh floor`). `scripts/gate.sh` runs all of
+these at once against a snapshot of HEAD, both ends included, which is what
+to use before a push.
 
 See [docs/](docs/) for the internals.
 

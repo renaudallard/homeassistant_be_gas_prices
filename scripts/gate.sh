@@ -14,14 +14,18 @@
 # run since they check with different options.
 #
 # The interpreter is GATE_PYTHON, else .venv/bin/python in the checkout:
-# any with requirements-dev.txt installed. The workflow linter runs when an
-# actionlint binary sits at tmp/actionlint.
+# any with requirements-dev.txt installed. The integration's own
+# requirements are brought to the newest the manifest allows before the
+# checks start, and the suite runs on them and again on their floor, kept
+# in tmp/floor, as test.yml's two jobs do (scripts/gate_pytest.sh). The
+# workflow linter runs when an actionlint binary sits at tmp/actionlint.
 #
 # When GATE_REMOTE names a host that answers, pytest runs there instead, on
 # the same snapshot shipped with git archive, while the rest runs here. The
 # remote needs a venv at ~/gas_gate/.venv, refreshed here with uv whenever
-# requirements-dev.txt moves. A remote that cannot be reached, or drops
-# mid-run, costs a local pytest, never a gate result.
+# requirements-dev.txt moves, and keeps the floor in ~/gas_gate/floor. A
+# remote that cannot be reached, or drops mid-run, costs a local pytest,
+# never a gate result.
 #
 # pytest is given PYTEST_LIMIT seconds, on the remote host by a timeout run
 # there, so a hung suite is stopped where it runs and fails the gate rather
@@ -48,11 +52,11 @@ REMOTE_DIR="gas_gate/gate-$SHA.$$"
 # connection within about 15 s, so the local fallback starts.
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5
   -o ServerAliveCountMax=3)
-# A whole suite takes about a minute on the runner and up to ten on a
-# Raspberry Pi with an empty text cache: three times that is a hang, not a
-# slow run. A test that hangs in its teardown outlives its own pytest
-# timeout. KILL follows TERM after 30 s.
-PYTEST_LIMIT=1800
+# The suite's two runs take about five minutes on the runner and up to
+# twenty on a Raspberry Pi with an empty text cache: more than twice that is
+# a hang, not a slow run. A test that hangs in its teardown outlives its own
+# pytest timeout. KILL follows TERM after 30 s.
+PYTEST_LIMIT=2700
 BOUND=(timeout -k 30 "$PYTEST_LIMIT")
 shipped=""
 
@@ -96,7 +100,8 @@ start() {
 }
 
 export BE_FIXTURE_TEXT_CACHE="$ROOT/tmp/fixture_text"
-# Ship the snapshot and bring the remote venv in step with the pins. Any
+# Ship the snapshot and bring the remote venv in step with the pins; the
+# integration's own requirements are installed by gate_pytest.sh. Any
 # failure leaves pytest local.
 remote_ready() {
   [ -n "$REMOTE" ] || return 1
@@ -115,14 +120,24 @@ remote_ready() {
     echo $want > gas_gate/.venv/requirements.sha256"
 }
 
+# The integration's requirements as a new installation gets them, here too:
+# the type checks below read their types.
+( cd "$WORKTREE" && scripts/install_requirements.sh newest "$PYTHON" --quiet ) ||
+  { echo "could not install the newest requirements" >&2; exit 1; }
+echo
+
+# The suite on the newest requirements and on their floor
+# (scripts/gate_pytest.sh), the floor kept beside the venv.
 PYTEST_ARGS=("${@:-tests/}")
+FLOOR="$ROOT/tmp/floor"
 if remote_ready; then
   where="$REMOTE"
   start "pytest (on $REMOTE)" "${SSH[@]}" -n "$REMOTE" \
-    "cd $REMOTE_DIR && export BE_FIXTURE_TEXT_CACHE=\$HOME/gas_gate/fixture_text && exec ${BOUND[*]} ../.venv/bin/python -m pytest $(printf '%q ' "${PYTEST_ARGS[@]}")-q -n auto --dist loadfile"
+    "cd $REMOTE_DIR && export BE_FIXTURE_TEXT_CACHE=\$HOME/gas_gate/fixture_text && exec ${BOUND[*]} scripts/gate_pytest.sh ../.venv/bin/python ../floor $(printf '%q ' "${PYTEST_ARGS[@]}")-q -n auto --dist loadfile"
 else
   where=local
-  start "pytest" "${BOUND[@]}" "$PYTHON" -m pytest "${PYTEST_ARGS[@]}" -q -n auto --dist loadfile
+  start "pytest" "${BOUND[@]}" scripts/gate_pytest.sh "$PYTHON" "$FLOOR" "${PYTEST_ARGS[@]}" \
+    -q -n auto --dist loadfile
 fi
 echo "pytest runs on $where"
 echo
@@ -155,7 +170,8 @@ for n in "${order[@]}"; do
     cat "$LOGS/$n.log"
     echo "   lost $REMOTE, rerunning pytest locally"
     name="pytest"
-    ( cd "$WORKTREE" && "${BOUND[@]}" "$PYTHON" -m pytest "${PYTEST_ARGS[@]}" -q -n auto --dist loadfile ) > "$LOGS/$n.log" 2>&1
+    ( cd "$WORKTREE" && "${BOUND[@]}" scripts/gate_pytest.sh "$PYTHON" "$FLOOR" "${PYTEST_ARGS[@]}" \
+      -q -n auto --dist loadfile ) > "$LOGS/$n.log" 2>&1
     rc=$?
   fi
   echo "== $name"

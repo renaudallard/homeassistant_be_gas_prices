@@ -8,17 +8,32 @@ on:
   # Callable so autorelease.yml can gate a release on exactly this suite
   # instead of keeping a hand copy of it that can drift.
   workflow_call:
+  # The integration's requirements are not pinned here but installed as
+  # Home Assistant installs them, so a release of one reaches installations
+  # the day it is out, with no push here. Run daily to meet it the same day.
+  schedule:
+    - cron: "41 6 * * *"
 
 # Cancel a stale push or PR run when a new commit lands. github.workflow is
 # the CALLER's name, so the standalone run and the one autorelease calls land
 # in different groups; sharing one on a push to main, cancel-in-progress
-# would kill the release's own gate.
+# would kill the release's own gate. The event is in the group too, so the
+# daily run and a push to main do not cancel each other.
 concurrency:
-  group: tests-${{ github.workflow }}-${{ github.ref }}
+  group: tests-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
+    # Both ends of what an installation reads its cards with: a new one gets
+    # the newest release of each requirement the manifest allows, an older
+    # one keeps what it had, down to the manifest's floor
+    # (scripts/install_requirements.sh).
+    strategy:
+      fail-fast: false
+      matrix:
+        requirements: [newest, floor]
+    name: test (${{ matrix.requirements }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -33,6 +48,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - name: Restore the type checkers' caches
+        if: matrix.requirements == 'newest'
         # mypy checks every cached module against its source, so a cache
         # restored from an older commit only saves work, never hides any.
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -42,6 +58,15 @@ jobs:
             .mypy_cache_all
           key: mypy-${{ hashFiles('requirements-dev.txt') }}-${{ github.sha }}
           restore-keys: mypy-${{ hashFiles('requirements-dev.txt') }}-
+      - name: Install dependencies
+        id: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          scripts/install_requirements.sh ${{ matrix.requirements }}
+          # What the fixture texts below are keyed on: the readers' releases
+          # move without a change here.
+          echo "packages=$(pip freeze | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - name: Restore the text read out of the fixture PDFs
         # Reading the cards is most of what the suite spends. fixture_text
         # keys every entry on the PDF's digest, the reader code and the pypdf
@@ -54,21 +79,20 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: tmp/fixture_text
-          key: fixture-text-${{ hashFiles('tests/fixtures/**/*.pdf', 'tests/**/*.py', 'custom_components/be_gas_prices/providers/_pdf_render.py', 'custom_components/be_gas_prices/providers/_pdf_bound.py', 'custom_components/be_gas_prices/providers/_pdf_bound_pdfminer.py', 'requirements-dev.txt') }}
-          restore-keys: fixture-text-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          key: fixture-text-${{ matrix.requirements }}-${{ steps.install.outputs.packages }}-${{ hashFiles('tests/fixtures/**/*.pdf', 'tests/**/*.py', 'custom_components/be_gas_prices/providers/_pdf_render.py', 'custom_components/be_gas_prices/providers/_pdf_bound.py', 'custom_components/be_gas_prices/providers/_pdf_bound_pdfminer.py', 'requirements-dev.txt') }}
+          restore-keys: fixture-text-${{ matrix.requirements }}-
       - name: Lint
+        if: matrix.requirements == 'newest'
         run: |
           ruff check .
           ruff format --check .
       - name: Type check (production code, --strict)
+        if: matrix.requirements == 'newest'
         # One cache per run: the two runs check with different options, and
         # sharing one cache made each throw the other's away.
         run: mypy --strict --cache-dir .mypy_cache_strict custom_components/be_gas_prices
       - name: Type check (tests and helper scripts, non-strict)
+        if: matrix.requirements == 'newest'
         # The tests are not --strict clean (the harness has untyped helpers
         # the integration never imports), but a plain mypy still catches the
         # optional index and the wrong argument. The scripts run as daily

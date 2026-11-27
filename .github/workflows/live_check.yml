@@ -67,10 +67,13 @@ jobs:
           python -m pip install --upgrade pip
           # The script imports the integration, which imports Home Assistant,
           # and the providers read their cards with the two PDF readers;
-          # defusedxml reads Fluvius's tariff sheet. Versions come from
-          # requirements-dev.txt so this runs against what the test suite
-          # proved, without a second copy of the numbers.
-          pip install -c requirements-dev.txt pypdf pdfplumber aiohttp homeassistant defusedxml
+          # defusedxml reads Fluvius's tariff sheet. Home Assistant's version
+          # comes from requirements-dev.txt; the integration's own
+          # requirements are installed as Home Assistant installs them, the
+          # newest the manifest allows, so the cards are read as a new
+          # installation reads them.
+          pip install -c requirements-dev.txt aiohttp homeassistant
+          scripts/install_requirements.sh newest
 
       - name: Resolve names through nsec.arnor.org over TLS
         # Fluvius serves fluvius.be from two nameservers that never answer a

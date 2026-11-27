@@ -4,6 +4,7 @@
 
 ```bash
 pip install -r requirements-dev.txt
+scripts/install_requirements.sh newest   # or floor
 pytest tests/ -q -n auto --dist loadfile
 ```
 
@@ -11,20 +12,25 @@ pytest tests/ -q -n auto --dist loadfile
 several tests of one file is rendered once (`tests.fixture_text` is cached per
 process).
 
-`requirements-dev.txt` pins what the suite installs, and the live check and
-the archive take their pypdf and pdfplumber from it with pip's `-c`, so the
-workflows read a card with the pypdf the suite ran on. The manifest only
-sets a floor (`pypdf>=6.16.2`), so a new installation reads its cards with
-the newest pypdf and an older one keeps the pypdf it has. The pin is the
-newest, 7.2.0 on 27 November 2026, and the suite is also run by hand on the
-last release of the 6 series, 6.21.4, and `tests/test_pdf_bound.py` on the
-floor, each installed alone in a directory put ahead of the venv (`pip
-install --target <dir> --no-deps pypdf==<version>`, then `PYTHONPATH=<dir>`).
-Both matter between releases: the readers' bounds wrap pypdf's internals by
-name, and its plain text moves, 6.20 running Engie's fee heading into the
-words after it, 7 setting a space between them, and 7.2 keeping the pieces
-of one line together where 7.1 put each on a line of its own, which broke
-every Mega card (issue #19).
+`requirements-dev.txt` pins the harness: Home Assistant, pytest, mypy, ruff.
+The integration's own requirements (pypdf, pdfplumber, defusedxml) are not
+in it, since an installation does not pin them either. Home Assistant
+installs a requirement only when no installed release meets the manifest,
+with `uv pip install --upgrade <requirement> --constraint
+package_constraints.txt`, so a new installation reads its cards with the
+newest release the manifest allows and an older one keeps what it had, down
+to the floor (`pypdf>=6.16.2`). `scripts/install_requirements.sh` installs
+them the same way, `newest` as the manifest writes them under the
+constraints of the Home Assistant installed, `floor` at each `>=`.
+
+`test.yml` runs the suite on both, as two jobs, and daily as well as on a
+push, so a release of a reader is met the day it reaches installations. The
+live check and the card archive read with the newest. Both ends matter: the
+readers' bounds wrap pypdf's internals by name, and its plain text moves,
+6.20 running Engie's fee heading into the words after it, 7 setting a space
+between them, and 7.2 keeping the pieces of one line together where 7.1 put
+each on a line of its own, which broke every Mega card (issue #19) while
+CI still read with a pinned 6.21.4.
 
 Reading the fixture cards is most of what the suite spends, a Frank or Bolt
 card 40 to 50 seconds of pdfplumber on a Raspberry Pi, so `fixture_text`
@@ -163,7 +169,10 @@ GATE_PYTHON=/path/to/venv/bin/python scripts/gate.sh   # the whole suite
 scripts/gate.sh tests/test_ebem.py                     # one file
 ```
 
-pytest spreads over the cores and the other checks take one each. The text
+pytest spreads over the cores and the other checks take one each. The
+integration's requirements are first brought to the newest, and the suite
+runs on them and then on their floor, kept in `tmp/floor` and installed
+again only when the manifest changes (`scripts/gate_pytest.sh`). The text
 cache and the two mypy caches are the main checkout's, so a gate after the
 first reuses them. The interpreter is `GATE_PYTHON`, else
 `.venv/bin/python`; actionlint runs over the workflows when its binary sits
@@ -172,13 +181,14 @@ at `tmp/actionlint`.
 With `GATE_REMOTE=<host>` pytest runs on that host instead, on the same
 commit shipped with `git archive`, and the other checks stay local. The host
 needs a venv at `~/gas_gate/.venv`, which the gate refreshes with uv when
-`requirements-dev.txt` changes, and keeps its text cache in
-`~/gas_gate/fixture_text`. A host that does not answer, or drops mid-run,
+`requirements-dev.txt` changes, and keeps the floor in `~/gas_gate/floor`
+and its text cache in `~/gas_gate/fixture_text`. A host that does not answer, or drops mid-run,
 gets the suite run locally instead.
 
-pytest gets 30 minutes, three times a cold run on a Raspberry Pi, under
-`timeout` on the host it runs on, so a suite that hangs is stopped there
-and fails the gate with a line saying so, rather than holding it for good.
+pytest gets 45 minutes, more than twice the two cold runs on a Raspberry
+Pi, under `timeout` on the host it runs on, so a suite that hangs is
+stopped there and fails the gate with a line saying so, rather than holding
+it for good.
 
 ## scripts/live_check.py
 
@@ -706,7 +716,7 @@ can quote one.
 
 | Workflow | When | What |
 | --- | --- | --- |
-| `test.yml` | push to main, pull requests, called by `autorelease.yml` | ruff, `mypy --strict` on the integration, `mypy` on tests and scripts, the test suite; pip's downloads, the two mypy caches and the fixture text are kept between runs with `actions/cache` |
+| `test.yml` | push to main, pull requests, daily, called by `autorelease.yml` | two jobs, on the newest of the integration's requirements and on their floor: ruff, `mypy --strict` on the integration and `mypy` on tests and scripts in the first, the test suite in both; pip's downloads, the two mypy caches and the fixture text, keyed per job on what was installed, are kept between runs with `actions/cache` |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
 | `live_check.yml` | daily, and on pull requests that touch a provider, the readers of the law, of FPS Finance's tariff or of the card archive's tables, or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and posts the report the check hands over inside a code block it fences itself |
 | `archive_cards.yml` | daily at 05:53 UTC, before the live check | seven jobs, so no token shares a runner with third-party code, each passing what it made to the next as an artifact: `walk`, with no token, on Python 3.14 with the OCR engine, clones be_price_cards without credentials and archives into `gas/`; `keep` uploads the PDFs as `gas-<YYYY-MM>` releases with `BE_GAS_CARDS` and prunes those past 36 months, taking only a folder named `gas-YYYY-MM` and a file named by its SHA-256, the names the walk writes, and skipping anything else the artifact holds (`test_only_the_cards_the_walk_names_are_uploaded`); `index`, with no token, whenever the walk succeeded even if an upload failed, rewrites the sheets and writes the root and `gas/` READMEs; `push` lays them over a fresh clone and pushes with `BE_GAS_CARDS` through gh's credential helper (`gh auth git-credential`), on no command line and in no file, and a rebase retry; `token` warns 14 days before the token expires; `ocr` files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`); `report` files an issue when a job failed. Only `ocr`, `token` and `report` get a `github.token` that writes issues |
