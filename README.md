@@ -51,7 +51,7 @@ turns an old Android phone stuck to it into a gas meter sensor in m³, which
 this integration prices like any other.
 
 > Targets Home Assistant **2026.2.3 or newer**, the version the test suite
-> installs.
+> installs. CI runs it on a current release as well.
 
 ## Highlights
 
@@ -771,7 +771,8 @@ pytest tests/
 `requirements-dev.txt` pins the test harness only. The integration's own
 requirements are installed from the manifest as Home Assistant installs
 them, the newest it allows, and CI runs the suite again on their floor
-(`scripts/install_requirements.sh floor`). `scripts/gate.sh` runs all of
+(`scripts/install_requirements.sh floor`) and on a current Home Assistant
+release. `scripts/gate.sh` runs all of
 these at once against a snapshot of HEAD, both ends included, which is what
 to use before a push.
 

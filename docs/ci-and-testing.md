@@ -32,6 +32,18 @@ between them, and 7.2 keeping the pieces of one line together where 7.1 put
 each on a line of its own, which broke every Mega card (issue #19) while
 CI still read with a pinned 6.21.4.
 
+Both jobs run on the Home Assistant release `hacs.json` names, 2026.2.3,
+whose constraints hold Pillow at 12 and so pdfplumber at 0.11.9. A third,
+`test-current-ha`, runs the suite on a current release (`HA_VERSION` in the
+workflow, 2026.11.3) on the newest requirements, as a new installation of it
+gets them: pdfplumber 0.11.11 and Pillow 13. Home Assistant publishes its
+test harness, `pytest-homeassistant`, with each release under the same
+version, while `pytest-homeassistant-custom-component`, which the other two
+use, stops at 2026.10, so the tests take the harness's helpers from
+`tests/harness.py`, which imports them from whichever is installed. That
+job runs no type check: 2026.11 types its schemas with probatio, which the
+integration is not written against yet.
+
 Reading the fixture cards is most of what the suite spends, a Frank or Bolt
 card 40 to 50 seconds of pdfplumber on a Raspberry Pi, so `fixture_text`
 also keeps each card's text on disk under `tmp/fixture_text/`. A directory
@@ -716,7 +728,7 @@ can quote one.
 
 | Workflow | When | What |
 | --- | --- | --- |
-| `test.yml` | push to main, pull requests, daily, called by `autorelease.yml` | two jobs, on the newest of the integration's requirements and on their floor: ruff, `mypy --strict` on the integration and `mypy` on tests and scripts in the first, the test suite in both; pip's downloads, the two mypy caches and the fixture text, keyed per job on what was installed, are kept between runs with `actions/cache` |
+| `test.yml` | push to main, pull requests, daily, called by `autorelease.yml` | two jobs, on the newest of the integration's requirements and on their floor: ruff, `mypy --strict` on the integration and `mypy` on tests and scripts in the first, the test suite in both; pip's downloads, the two mypy caches and the fixture text, keyed per job on what was installed, are kept between runs with `actions/cache`; a third, `test-current-ha`, runs the suite on a current Home Assistant and its own harness |
 | `validate.yml` | push, pull requests, daily | HACS and hassfest |
 | `live_check.yml` | daily, and on pull requests that touch a provider, the readers of the law, of FPS Finance's tariff or of the card archive's tables, or the check | `live_check.py --texts` against a read-only clone of be_price_cards, with a read-only `github.token`; on exit 1 one issue labelled `live-check`, fingerprinted on the failing labels and filed by a `file` job that alone holds the issue token and posts the report the check hands over inside a code block it fences itself |
 | `archive_cards.yml` | daily at 05:53 UTC, before the live check | seven jobs, so no token shares a runner with third-party code, each passing what it made to the next as an artifact: `walk`, with no token, on Python 3.14 with the OCR engine, clones be_price_cards without credentials and archives into `gas/`; `keep` uploads the PDFs as `gas-<YYYY-MM>` releases with `BE_GAS_CARDS` and prunes those past 36 months, taking only a folder named `gas-YYYY-MM` and a file named by its SHA-256, the names the walk writes, and skipping anything else the artifact holds (`test_only_the_cards_the_walk_names_are_uploaded`); `index`, with no token, whenever the walk succeeded even if an upload failed, rewrites the sheets and writes the root and `gas/` READMEs; `push` lays them over a fresh clone and pushes with `BE_GAS_CARDS` through gh's credential helper (`gh auth git-credential`), on no command line and in no file, and a rebase retry; `token` warns 14 days before the token expires; `ocr` files the cards the OCR could not read (`archive-cards-ocr`) and the glyphs its library lacks (`archive-cards-glyphs`); `report` files an issue when a job failed. Only `ocr`, `token` and `report` get a `github.token` that writes issues |
