@@ -19,7 +19,7 @@ installs a requirement only when no installed release meets the manifest,
 with `uv pip install --upgrade <requirement> --constraint
 package_constraints.txt`, so a new installation reads its cards with the
 newest release the manifest allows and an older one keeps what it had, down
-to the floor (`pypdf>=6.16.2`). `scripts/install_requirements.sh` installs
+to the floor (`pypdf>=6.20.0`). `scripts/install_requirements.sh` installs
 them the same way, `newest` as the manifest writes them under the
 constraints of the Home Assistant installed, `floor` at each `>=`.
 
