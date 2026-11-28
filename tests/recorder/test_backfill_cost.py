@@ -48,12 +48,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.components.recorder.common import (
+
+from custom_components.be_gas_prices.backfill_cost import _import_cost_rows, backfill_cost
+from tests.harness import (
     async_wait_recording_done,
     do_adhoc_statistics,
 )
-
-from custom_components.be_gas_prices.backfill_cost import _import_cost_rows, backfill_cost
 from tests.recorder.test_gas_meter import _import, _setup_entry, _zone
 
 # The module itself: the package exports a function of the same name.

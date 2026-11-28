@@ -37,10 +37,10 @@ from unittest.mock import patch
 import pytest
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import ServiceValidationError, Unauthorized
-from pytest_homeassistant_custom_component.common import MockUser
 
 from custom_components.be_gas_prices.const import DOMAIN
 from custom_components.be_gas_prices.providers._rates import FixedRates, VariableRates
+from tests.harness import MockUser
 from tests.recorder.test_bill_cost import _meter
 from tests.recorder.test_gas_meter import _setup_entry
 

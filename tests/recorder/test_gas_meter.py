@@ -53,11 +53,6 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-from pytest_homeassistant_custom_component.components.recorder.common import (
-    async_wait_recording_done,
-    do_adhoc_statistics,
-)
 
 from custom_components.be_gas_prices import backfill, gas_meter, providers
 from custom_components.be_gas_prices.backfill import backfill_prices
@@ -83,6 +78,11 @@ from custom_components.be_gas_prices.issues import sync_issues
 from custom_components.be_gas_prices.providers import engie
 from custom_components.be_gas_prices.providers.base import SupplierSnapshot
 from tests import fixture_text
+from tests.harness import (
+    MockConfigEntry,
+    async_wait_recording_done,
+    do_adhoc_statistics,
+)
 
 # A test stopped by its timeout while a worker waits on the recorder hangs in
 # its teardown and again at exit, so the thread method ends the process.

@@ -51,7 +51,6 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.be_gas_prices import (
     calorific,
@@ -122,6 +121,7 @@ from custom_components.be_gas_prices.providers.base import CardNotReadableError,
 from custom_components.be_gas_prices.running_costs import Household
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
 from tests import fixture_text
+from tests.harness import MockConfigEntry, async_fire_time_changed
 from tests.test_eneco import _fetched_index
 from tests.test_markdown_text import BODY, STATUS
 

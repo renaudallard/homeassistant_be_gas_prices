@@ -14,7 +14,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.be_gas_prices import (
     brugel,
@@ -60,6 +59,7 @@ from custom_components.be_gas_prices.providers.base import (
 )
 from custom_components.be_gas_prices.running_costs import Household
 from custom_components.be_gas_prices.snapshot_codec import snapshot_to_json
+from tests.harness import MockConfigEntry
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 _READ_METER = "custom_components.be_gas_prices.coordinator.GasCoordinator._read_meter"

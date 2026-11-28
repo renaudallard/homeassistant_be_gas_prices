@@ -39,13 +39,13 @@ import pytest
 from homeassistant.core import Context, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError, Unauthorized
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockUser
-from pytest_homeassistant_custom_component.components.recorder.common import (
-    async_wait_recording_done,
-)
 
 from custom_components.be_gas_prices import bill_cost
 from custom_components.be_gas_prices.const import CONF_CONVERSION_FACTOR, DOMAIN
+from tests.harness import (
+    MockUser,
+    async_wait_recording_done,
+)
 from tests.recorder.test_gas_meter import _card, _import, _setup_entry, _zone
 
 pytestmark = pytest.mark.timeout(method="thread")

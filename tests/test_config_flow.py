@@ -42,7 +42,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.be_gas_prices import calorific, flow_steps, postcodes
 from custom_components.be_gas_prices.compare import OwnContract, Quote
@@ -97,6 +96,7 @@ from custom_components.be_gas_prices.contract_periods import record_switch
 from custom_components.be_gas_prices.daily_ranking import DailyRanking
 from custom_components.be_gas_prices.providers import engie
 from tests import fixture_text
+from tests.harness import MockConfigEntry
 
 STATIONS = [
     calorific.Station(ean="541460900000000030", name="RESA LIEGE (GOS)"),

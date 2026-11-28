@@ -44,14 +44,14 @@ from homeassistant.components.recorder.tasks import CompileMissingStatisticsTask
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.components.recorder.common import (
-    async_wait_recording_done,
-    do_adhoc_statistics,
-)
 
 from custom_components.be_gas_prices import backfill
 from custom_components.be_gas_prices.backfill import _backfill_end, _hours
 from custom_components.be_gas_prices.backfill_cost import _import_cost_rows
+from tests.harness import (
+    async_wait_recording_done,
+    do_adhoc_statistics,
+)
 from tests.recorder.test_gas_meter import _zone
 
 # A test stopped by its timeout while a worker waits on the recorder hangs in

@@ -47,7 +47,6 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.be_gas_prices import providers
 from custom_components.be_gas_prices.bill import contract_leg, is_provisional, priced_month
@@ -85,6 +84,7 @@ from custom_components.be_gas_prices.providers.base import (
 )
 from custom_components.be_gas_prices.snapshot_codec import snapshot_from_json
 from tests import FIXTURES, fixture_text
+from tests.harness import MockConfigEntry
 from tests.test_eneco import _fetched_index
 
 _ROWS = FIXTURES / "card_archive" / "eneco" / "eneco_aardgas_flex" / "wallonia"
